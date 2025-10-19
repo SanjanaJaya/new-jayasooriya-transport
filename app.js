@@ -380,8 +380,9 @@ document.getElementById('hireRecordForm').addEventListener('submit', async (e) =
         hireAmount += otherCharges;
 
         // Apply minimum hire amount only if calculated amount is less
+        // But always include waiting charges on top of minimum
         if (hireAmount < vehicleData.minimum_hire_amount) {
-            hireAmount = vehicleData.minimum_hire_amount;
+            hireAmount = vehicleData.minimum_hire_amount + waitingCharge;
         }
 
         const fuelCost = fuelLitres * fuelPrice;
