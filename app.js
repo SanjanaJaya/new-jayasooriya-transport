@@ -433,7 +433,7 @@ async function loadHireRecords() {
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
-        const { data, error } = await query.order('hire_date', { ascending: false });
+        const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#hireRecordsTable tbody');
@@ -733,7 +733,7 @@ async function loadCommitmentRecords() {
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
-        const { data, error } = await query.order('hire_date', { ascending: false });
+        const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#commitmentRecordsTable tbody');
@@ -890,7 +890,7 @@ async function loadDayOffs() {
             query = query.gte('day_off_date', startDate).lte('day_off_date', endDate);
         }
 
-        const { data, error } = await query.order('day_off_date', { ascending: false });
+        const { data, error } = await query.order('day_off_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#dayOffsTable tbody');
