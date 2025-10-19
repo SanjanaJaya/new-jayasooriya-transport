@@ -1,66 +1,129 @@
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsbXFqcWtwZ2RocmRjb2VtcGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTg4NzUsImV4cCI6MjA3NjM3NDg3NX0.mXDMuhn0K5sOKhwykhf9OcomUzSVkCGnN5jr60A-TSw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// State Management
+let supabase = null;
 let currentUser = null;
 let currentPage = 'dashboard';
 
+// Initialize Supabase
+function initSupabase() {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+}
+
 // Initialize App
-document.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+async function initializeApp() {
+    initSupabase();
     
-    if (session) {
-        currentUser = session.user;
-        showApp();
-        loadDashboard();
-    } else {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        showLogin();
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+            currentUser = session.user;
+            showApp();
+            loadDashboard();
+        } else {
+            showLogin();
+        }
+    } catch (error) {
+        console.error('Auth error:', error);
         showLogin();
     }
-});
+}
+
+// Wait for DOM and Supabase script to load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
 
 // Authentication Functions
 function showLogin() {
-    document.getElementById('loginModal').classList.add('active');
-    document.querySelector('.pages-container').style.display = 'none';
-    document.querySelector('.sidebar').style.display = 'none';
-    document.querySelector('.top-header').style.display = 'none';
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.classList.add('active');
+    const container = document.querySelector('.pages-container');
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.top-header');
+    if (container) container.style.display = 'none';
+    if (sidebar) sidebar.style.display = 'none';
+    if (header) header.style.display = 'none';
 }
 
 function showApp() {
-    document.getElementById('loginModal').classList.remove('active');
-    document.querySelector('.pages-container').style.display = 'block';
-    document.querySelector('.sidebar').style.display = 'flex';
-    document.querySelector('.top-header').style.display = 'flex';
-    document.getElementById('userEmail').textContent = currentUser.email;
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.classList.remove('active');
+    const container = document.querySelector('.pages-container');
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.top-header');
+    if (container) container.style.display = 'block';
+    if (sidebar) sidebar.style.display = 'flex';
+    if (header) header.style.display = 'flex';
+    if (currentUser) {
+        document.getElementById('userEmail').textContent = currentUser.email;
+    }
 }
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
+// Login Form
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
 
-    try {
-        errorEl.textContent = '';
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        
-        if (error) throw error;
-        
-        currentUser = data.user;
-        showApp();
-        loadDashboard();
-    } catch (error) {
-        errorEl.textContent = error.message || 'Login failed';
-    }
-});
+        try {
+            errorEl.textContent = '';
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            
+            if (error) throw error;
+            
+            currentUser = data.user;
+            showApp();
+            setDefaultMonths();
+            loadDashboard();
+        } catch (error) {
+            errorEl.textContent = error.message || 'Login failed';
+        }
+    });
+}
 
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    currentUser = null;
-    showLogin();
-});
+// Logout Button
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        currentUser = null;
+        showLogin();
+    });
+}
+
+// Set Default Months
+function setDefaultMonths() {
+    const now = new Date();
+    const monthStr = now.toISOString().substring(0, 7);
+    
+    const elements = [
+        'dashboardMonth',
+        'hireRecordsMonth',
+        'commitmentRecordsMonth',
+        'dayOffMonth'
+    ];
+    
+    elements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = monthStr;
+    });
+}
 
 // Navigation
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -75,7 +138,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 function switchPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(page).classList.add('active');
+    const pageEl = document.getElementById(page);
+    if (pageEl) pageEl.classList.add('active');
     
     const titles = {
         'dashboard': 'Dashboard',
@@ -87,7 +151,8 @@ function switchPage(page) {
         'commitment-dayoffs': 'Day Offs'
     };
     
-    document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+    const titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
     
     if (page === 'dashboard') loadDashboard();
     if (page === 'drivers') loadDrivers();
@@ -99,17 +164,17 @@ function switchPage(page) {
 }
 
 // ============ DRIVERS ============
-document.getElementById('addDriverBtn').addEventListener('click', () => {
+document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverForm').reset();
     document.getElementById('driverId').value = '';
     document.getElementById('driverFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelDriverBtn').addEventListener('click', () => {
+document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverFormContainer').style.display = 'none';
 });
 
-document.getElementById('driverForm').addEventListener('submit', async (e) => {
+document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('driverId').value;
     const data = {
@@ -145,6 +210,7 @@ async function loadDrivers() {
         if (error) throw error;
         
         const tbody = document.querySelector('#driversTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
         
         data.forEach(driver => {
@@ -163,7 +229,7 @@ async function loadDrivers() {
             tbody.appendChild(row);
         });
     } catch (error) {
-        alert('Error loading drivers: ' + error.message);
+        console.error('Error loading drivers:', error.message);
     }
 }
 
@@ -197,17 +263,17 @@ async function deleteDriver(id) {
 }
 
 // ============ HIRE-TO-PAY VEHICLES ============
-document.getElementById('addHireVehicleBtn').addEventListener('click', () => {
+document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
     document.getElementById('hireVehicleForm').reset();
     document.getElementById('hireVehicleId').value = '';
     document.getElementById('hireVehicleFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelHireVehicleBtn').addEventListener('click', () => {
+document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () => {
     document.getElementById('hireVehicleFormContainer').style.display = 'none';
 });
 
-document.getElementById('hireVehicleForm').addEventListener('submit', async (e) => {
+document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('hireVehicleId').value;
     const data = {
@@ -248,6 +314,7 @@ async function loadHireVehicles() {
         if (error) throw error;
         
         const tbody = document.querySelector('#hireVehiclesTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
         
         data.forEach(vehicle => {
@@ -271,10 +338,9 @@ async function loadHireVehicles() {
             tbody.appendChild(row);
         });
         
-        // Update vehicle selectors
         updateVehicleSelectors();
     } catch (error) {
-        alert('Error loading vehicles: ' + error.message);
+        console.error('Error loading vehicles:', error.message);
     }
 }
 
@@ -313,19 +379,20 @@ async function deleteHireVehicle(id) {
 }
 
 // ============ HIRE-TO-PAY RECORDS ============
-document.getElementById('addHireRecordBtn').addEventListener('click', () => {
+document.getElementById('addHireRecordBtn')?.addEventListener('click', () => {
     document.getElementById('hireRecordForm').reset();
     document.getElementById('hireRecordId').value = '';
     document.getElementById('hireRecordFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelHireRecordBtn').addEventListener('click', () => {
+document.getElementById('cancelHireRecordBtn')?.addEventListener('click', () => {
     document.getElementById('hireRecordFormContainer').style.display = 'none';
 });
 
-document.getElementById('hireRecordsMonth').addEventListener('change', loadHireRecords);
+document.getElementById('hireRecordsMonth')?.addEventListener('change', loadHireRecords);
+document.getElementById('hireRecordsVehicleFilter')?.addEventListener('change', loadHireRecords);
 
-document.getElementById('hireRecordForm').addEventListener('submit', async (e) => {
+document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('hireRecordId').value;
     const distance = parseFloat(document.getElementById('hireDistance').value);
@@ -337,7 +404,6 @@ document.getElementById('hireRecordForm').addEventListener('submit', async (e) =
     const otherCharges = parseFloat(document.getElementById('hireOtherCharges').value) || 0;
 
     try {
-        // Get vehicle details
         const { data: vehicleData, error: vehicleError } = await supabase
             .from('hire_to_pay_vehicles')
             .select('*')
@@ -346,7 +412,6 @@ document.getElementById('hireRecordForm').addEventListener('submit', async (e) =
         
         if (vehicleError) throw vehicleError;
 
-        // Calculate hire amount based on tiered pricing
         let hireAmount = 0;
         if (distance <= 100) {
             hireAmount = distance * vehicleData.price_0_100km;
@@ -359,28 +424,20 @@ document.getElementById('hireRecordForm').addEventListener('submit', async (e) =
                         ((distance - 250) * vehicleData.price_250km_plus);
         }
 
-        // Add loading charge if applicable
         if (hasLoading) hireAmount += vehicleData.loading_charge;
         
-        // Calculate waiting charge based on hours
         let waitingCharge = 0;
         if (waitingHours > 0) {
             if (waitingHours <= 24) {
-                // First 24 hours: charge per hour × hours
                 waitingCharge = vehicleData.waiting_charge_24hrs * waitingHours;
             } else {
-                // 24+ hours: first 24 hours at 24hrs rate + remaining hours at extra rate
                 waitingCharge = (vehicleData.waiting_charge_24hrs * 24) + 
                               ((waitingHours - 24) * vehicleData.waiting_charge_extra);
             }
         }
         hireAmount += waitingCharge;
-
-        // Add other charges
         hireAmount += otherCharges;
 
-        // Apply minimum hire amount only if calculated amount is less
-        // But always include waiting charges on top of minimum
         if (hireAmount < vehicleData.minimum_hire_amount) {
             hireAmount = vehicleData.minimum_hire_amount + waitingCharge;
         }
@@ -420,7 +477,9 @@ document.getElementById('hireRecordForm').addEventListener('submit', async (e) =
 
 async function loadHireRecords() {
     try {
-        const monthValue = document.getElementById('hireRecordsMonth').value;
+        const monthValue = document.getElementById('hireRecordsMonth')?.value;
+        const vehicleFilter = document.getElementById('hireRecordsVehicleFilter')?.value;
+        
         let query = supabase
             .from('hire_to_pay_records')
             .select('*, hire_to_pay_vehicles(lorry_number, price_0_100km, price_100_250km, price_250km_plus, minimum_hire_amount)')
@@ -433,16 +492,20 @@ async function loadHireRecords() {
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
+        if (vehicleFilter) {
+            query = query.eq('vehicle_id', vehicleFilter);
+        }
+
         const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#hireRecordsTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         data.forEach(record => {
             const row = document.createElement('tr');
             
-            // Calculate breakdown for display
             let distanceCharge = 0;
             const distance = record.distance;
             
@@ -465,16 +528,8 @@ async function loadHireRecords() {
                 <td>${record.to_location}</td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
-                <td>
-                    <small>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>
-                    Hrs: ${record.waiting_hours}</small>
-                </td>
-                <td>
-                    <small>Distance: LKR ${distanceCharge.toFixed(2)}<br>
-                    Wait: LKR ${record.waiting_charge.toFixed(2)}<br>
-                    Other: LKR ${record.other_charges.toFixed(2)}<br>
-                    <strong>Total: LKR ${record.hire_amount.toFixed(2)}</strong></small>
-                </td>
+                <td><small>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Hrs: ${record.waiting_hours}</small></td>
+                <td><small>Distance: LKR ${distanceCharge.toFixed(2)}<br>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Other: LKR ${record.other_charges.toFixed(2)}<br><strong>Total: LKR ${record.hire_amount.toFixed(2)}</strong></small></td>
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editHireRecord(${record.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteHireRecord(${record.id})">Delete</button>
@@ -482,8 +537,36 @@ async function loadHireRecords() {
             `;
             tbody.appendChild(row);
         });
+
+        updateHireRecordVehicleFilter();
     } catch (error) {
-        alert('Error loading hire records: ' + error.message);
+        console.error('Error loading hire records:', error.message);
+    }
+}
+
+async function updateHireRecordVehicleFilter() {
+    try {
+        const { data: hireVehicles } = await supabase
+            .from('hire_to_pay_vehicles')
+            .select('id, lorry_number, ownership')
+            .eq('user_id', currentUser.id);
+
+        const filterSelect = document.getElementById('hireRecordsVehicleFilter');
+        if (!filterSelect) return;
+        
+        const currentValue = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">All Vehicles</option>';
+        
+        hireVehicles?.forEach(v => {
+            const option = document.createElement('option');
+            option.value = v.id;
+            option.textContent = `${v.lorry_number} (${v.ownership})`;
+            filterSelect.appendChild(option);
+        });
+
+        filterSelect.value = currentValue;
+    } catch (error) {
+        console.error('Error updating hire vehicle filter:', error.message);
     }
 }
 
@@ -523,17 +606,17 @@ async function deleteHireRecord(id) {
 }
 
 // ============ COMMITMENT VEHICLES ============
-document.getElementById('addCommitmentVehicleBtn').addEventListener('click', () => {
+document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
     document.getElementById('commitmentVehicleForm').reset();
     document.getElementById('commitmentVehicleId').value = '';
     document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelCommitmentVehicleBtn').addEventListener('click', () => {
+document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click', () => {
     document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
 });
 
-document.getElementById('commitmentVehicleForm').addEventListener('submit', async (e) => {
+document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
@@ -569,6 +652,7 @@ async function loadCommitmentVehicles() {
         if (error) throw error;
         
         const tbody = document.querySelector('#commitmentVehiclesTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
         
         data.forEach(vehicle => {
@@ -589,7 +673,7 @@ async function loadCommitmentVehicles() {
         
         updateVehicleSelectors();
     } catch (error) {
-        alert('Error loading commitment vehicles: ' + error.message);
+        console.error('Error loading commitment vehicles:', error.message);
     }
 }
 
@@ -623,19 +707,20 @@ async function deleteCommitmentVehicle(id) {
 }
 
 // ============ COMMITMENT RECORDS ============
-document.getElementById('addCommitmentRecordBtn').addEventListener('click', () => {
+document.getElementById('addCommitmentRecordBtn')?.addEventListener('click', () => {
     document.getElementById('commitmentRecordForm').reset();
     document.getElementById('commitmentRecordId').value = '';
     document.getElementById('commitmentRecordFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelCommitmentRecordBtn').addEventListener('click', () => {
+document.getElementById('cancelCommitmentRecordBtn')?.addEventListener('click', () => {
     document.getElementById('commitmentRecordFormContainer').style.display = 'none';
 });
 
-document.getElementById('commitmentRecordsMonth').addEventListener('change', loadCommitmentRecords);
+document.getElementById('commitmentRecordsMonth')?.addEventListener('change', loadCommitmentRecords);
+document.getElementById('commitmentRecordsVehicleFilter')?.addEventListener('change', loadCommitmentRecords);
 
-document.getElementById('commitmentRecordForm').addEventListener('submit', async (e) => {
+document.getElementById('commitmentRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('commitmentRecordId').value;
     const fuelLitres = parseFloat(document.getElementById('commitmentFuel').value);
@@ -647,7 +732,6 @@ document.getElementById('commitmentRecordForm').addEventListener('submit', async
     const extraChargesInput = parseFloat(document.getElementById('commitmentExtraCharges').value) || 0;
 
     try {
-        // Get vehicle details
         const { data: vehicleData, error: vehicleError } = await supabase
             .from('commitment_vehicles')
             .select('*')
@@ -656,12 +740,10 @@ document.getElementById('commitmentRecordForm').addEventListener('submit', async
         
         if (vehicleError) throw vehicleError;
 
-        // Get the month and year from hire date
         const [year, month] = hireDate.split('-');
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-        // Get all commitment records for this vehicle in this month (excluding current record if editing)
         let query = supabase
             .from('commitment_records')
             .select('distance')
@@ -675,20 +757,17 @@ document.getElementById('commitmentRecordForm').addEventListener('submit', async
 
         const { data: existingRecords } = await query;
 
-        // Calculate total KM for the month
         let totalMonthlyKm = distance;
         if (existingRecords) {
             totalMonthlyKm += existingRecords.reduce((sum, r) => sum + r.distance, 0);
         }
 
-        // Calculate extra KM charges
         let extraKmCharge = 0;
         if (totalMonthlyKm > vehicleData.km_limit_per_month) {
             const extraKm = totalMonthlyKm - vehicleData.km_limit_per_month;
             extraKmCharge = extraKm * vehicleData.extra_km_charge;
         }
 
-        // Total extra charges = input extra charges + calculated extra KM charge
         const totalExtraCharges = extraChargesInput + extraKmCharge;
 
         const recordData = {
@@ -720,7 +799,9 @@ document.getElementById('commitmentRecordForm').addEventListener('submit', async
 
 async function loadCommitmentRecords() {
     try {
-        const monthValue = document.getElementById('commitmentRecordsMonth').value;
+        const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
+        const vehicleFilter = document.getElementById('commitmentRecordsVehicleFilter')?.value;
+        
         let query = supabase
             .from('commitment_records')
             .select('*, commitment_vehicles(vehicle_number, km_limit_per_month, extra_km_charge)')
@@ -733,13 +814,17 @@ async function loadCommitmentRecords() {
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
+        if (vehicleFilter) {
+            query = query.eq('vehicle_id', vehicleFilter);
+        }
+
         const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#commitmentRecordsTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
-        // Group by vehicle to calculate monthly totals
         const vehicleGroups = {};
         if (monthValue) {
             data.forEach(record => {
@@ -753,7 +838,6 @@ async function loadCommitmentRecords() {
         data.forEach(record => {
             const row = document.createElement('tr');
             
-            // Calculate total KM for the month for this vehicle
             let totalMonthlyKm = record.distance;
             let extraKmCharge = 0;
             
@@ -765,9 +849,6 @@ async function loadCommitmentRecords() {
                 }
             }
 
-            // Check if there are other charges (manual input)
-            const manualExtraCharges = record.extra_charges - extraKmCharge;
-
             row.innerHTML = `
                 <td>${record.job_number}</td>
                 <td>${record.hire_date}</td>
@@ -776,11 +857,7 @@ async function loadCommitmentRecords() {
                 <td>${record.to_location}</td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
-                <td>
-                    <small>Monthly KM: ${totalMonthlyKm} / ${record.commitment_vehicles.km_limit_per_month}<br>
-                    Extra KM: ${(totalMonthlyKm > record.commitment_vehicles.km_limit_per_month ? totalMonthlyKm - record.commitment_vehicles.km_limit_per_month : 0).toFixed(2)}<br>
-                    Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small>
-                </td>
+                <td><small>Monthly KM: ${totalMonthlyKm} / ${record.commitment_vehicles.km_limit_per_month}<br>Extra KM: ${(totalMonthlyKm > record.commitment_vehicles.km_limit_per_month ? totalMonthlyKm - record.commitment_vehicles.km_limit_per_month : 0).toFixed(2)}<br>Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small></td>
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editCommitmentRecord(${record.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteCommitmentRecord(${record.id})">Delete</button>
@@ -788,8 +865,36 @@ async function loadCommitmentRecords() {
             `;
             tbody.appendChild(row);
         });
+
+        updateCommitmentRecordVehicleFilter();
     } catch (error) {
-        alert('Error loading commitment records: ' + error.message);
+        console.error('Error loading commitment records:', error.message);
+    }
+}
+
+async function updateCommitmentRecordVehicleFilter() {
+    try {
+        const { data: commitmentVehicles } = await supabase
+            .from('commitment_vehicles')
+            .select('id, vehicle_number')
+            .eq('user_id', currentUser.id);
+
+        const filterSelect = document.getElementById('commitmentRecordsVehicleFilter');
+        if (!filterSelect) return;
+        
+        const currentValue = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">All Vehicles</option>';
+        
+        commitmentVehicles?.forEach(v => {
+            const option = document.createElement('option');
+            option.value = v.id;
+            option.textContent = v.vehicle_number;
+            filterSelect.appendChild(option);
+        });
+
+        filterSelect.value = currentValue;
+    } catch (error) {
+        console.error('Error updating commitment vehicle filter:', error.message);
     }
 }
 
@@ -827,26 +932,26 @@ async function deleteCommitmentRecord(id) {
 }
 
 // ============ DAY OFFS ============
-document.getElementById('addDayOffBtn').addEventListener('click', () => {
+document.getElementById('addDayOffBtn')?.addEventListener('click', () => {
     document.getElementById('dayOffForm').reset();
     document.getElementById('dayOffId').value = '';
     document.getElementById('dayOffFormContainer').style.display = 'block';
 });
 
-document.getElementById('cancelDayOffBtn').addEventListener('click', () => {
+document.getElementById('cancelDayOffBtn')?.addEventListener('click', () => {
     document.getElementById('dayOffFormContainer').style.display = 'none';
 });
 
-document.getElementById('dayOffMonth').addEventListener('change', loadDayOffs);
+document.getElementById('dayOffMonth')?.addEventListener('change', loadDayOffs);
+document.getElementById('dayOffVehicleFilter')?.addEventListener('change', loadDayOffs);
 
-document.getElementById('dayOffForm').addEventListener('submit', async (e) => {
+document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('dayOffId').value;
     const vehicleId = parseInt(document.getElementById('dayOffVehicle').value);
     const dayOffDate = document.getElementById('dayOffDate').value;
 
     try {
-        // Get vehicle to calculate deduction
         const { data: vehicleData } = await supabase
             .from('commitment_vehicles')
             .select('fixed_monthly_payment')
@@ -877,7 +982,9 @@ document.getElementById('dayOffForm').addEventListener('submit', async (e) => {
 
 async function loadDayOffs() {
     try {
-        const monthValue = document.getElementById('dayOffMonth').value;
+        const monthValue = document.getElementById('dayOffMonth')?.value;
+        const vehicleFilter = document.getElementById('dayOffVehicleFilter')?.value;
+        
         let query = supabase
             .from('commitment_day_offs')
             .select('*, commitment_vehicles(vehicle_number)')
@@ -890,10 +997,15 @@ async function loadDayOffs() {
             query = query.gte('day_off_date', startDate).lte('day_off_date', endDate);
         }
 
+        if (vehicleFilter) {
+            query = query.eq('vehicle_id', vehicleFilter);
+        }
+
         const { data, error } = await query.order('day_off_date', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#dayOffsTable tbody');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         data.forEach(dayOff => {
@@ -909,8 +1021,36 @@ async function loadDayOffs() {
             `;
             tbody.appendChild(row);
         });
+
+        updateDayOffVehicleFilter();
     } catch (error) {
-        alert('Error loading day offs: ' + error.message);
+        console.error('Error loading day offs:', error.message);
+    }
+}
+
+async function updateDayOffVehicleFilter() {
+    try {
+        const { data: commitmentVehicles } = await supabase
+            .from('commitment_vehicles')
+            .select('id, vehicle_number')
+            .eq('user_id', currentUser.id);
+
+        const filterSelect = document.getElementById('dayOffVehicleFilter');
+        if (!filterSelect) return;
+        
+        const currentValue = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">All Vehicles</option>';
+        
+        commitmentVehicles?.forEach(v => {
+            const option = document.createElement('option');
+            option.value = v.id;
+            option.textContent = v.vehicle_number;
+            filterSelect.appendChild(option);
+        });
+
+        filterSelect.value = currentValue;
+    } catch (error) {
+        console.error('Error updating day off vehicle filter:', error.message);
     }
 }
 
@@ -941,16 +1081,18 @@ async function deleteDayOff(id) {
 }
 
 // ============ DASHBOARD ============
+document.getElementById('dashboardMonth')?.addEventListener('change', loadDashboard);
+
 async function loadDashboard() {
     try {
-        const monthValue = document.getElementById('dashboardMonth').value || new Date().toISOString().substring(0, 7);
-        document.getElementById('dashboardMonth').value = monthValue;
+        const monthValue = document.getElementById('dashboardMonth')?.value || new Date().toISOString().substring(0, 7);
+        const el = document.getElementById('dashboardMonth');
+        if (el) el.value = monthValue;
         
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-        // Get hire-to-pay records
         const { data: hireRecords } = await supabase
             .from('hire_to_pay_records')
             .select('*')
@@ -958,7 +1100,6 @@ async function loadDashboard() {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        // Get commitment records
         const { data: commitmentRecords } = await supabase
             .from('commitment_records')
             .select('*')
@@ -966,7 +1107,6 @@ async function loadDashboard() {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        // Get commitment day offs
         const { data: dayOffs } = await supabase
             .from('commitment_day_offs')
             .select('*')
@@ -974,7 +1114,6 @@ async function loadDashboard() {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
-        // Get commitment vehicles that have hires in this month
         const commitmentVehicleIds = new Set();
         commitmentRecords?.forEach(record => {
             commitmentVehicleIds.add(record.vehicle_id);
@@ -986,24 +1125,19 @@ async function loadDashboard() {
             .eq('user_id', currentUser.id)
             .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
 
-        // Calculate metrics
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
 
-        // From hire-to-pay
         hireRecords?.forEach(record => {
             totalRevenue += record.hire_amount;
             totalFuelCost += record.fuel_cost;
             totalHires++;
         });
 
-        // From commitment vehicles (only if they have hires in this month)
         const commitmentPayment = commitmentVehicles?.reduce((sum, v) => sum + v.fixed_monthly_payment, 0) || 0;
         const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
         const commitmentFuelCost = commitmentRecords?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-        
-        // Add extra KM charges from commitment records
         const extraKmCharges = commitmentRecords?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
 
         totalRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
@@ -1012,16 +1146,19 @@ async function loadDashboard() {
 
         const netProfit = totalRevenue - totalFuelCost;
 
-        // Update dashboard
-        document.getElementById('totalRevenue').textContent = `LKR ${totalRevenue.toFixed(2)}`;
-        document.getElementById('fuelCost').textContent = `LKR ${totalFuelCost.toFixed(2)}`;
-        document.getElementById('totalHires').textContent = totalHires;
-        document.getElementById('netProfit').textContent = `LKR ${netProfit.toFixed(2)}`;
+        const revEl = document.getElementById('totalRevenue');
+        const fuelEl = document.getElementById('fuelCost');
+        const hiresEl = document.getElementById('totalHires');
+        const profitEl = document.getElementById('netProfit');
 
-        // Load vehicle performance
+        if (revEl) revEl.textContent = `LKR ${totalRevenue.toFixed(2)}`;
+        if (fuelEl) fuelEl.textContent = `LKR ${totalFuelCost.toFixed(2)}`;
+        if (hiresEl) hiresEl.textContent = totalHires;
+        if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
+
         loadVehiclePerformance(monthValue);
     } catch (error) {
-        alert('Error loading dashboard: ' + error.message);
+        console.error('Error loading dashboard:', error.message);
     }
 }
 
@@ -1031,13 +1168,11 @@ async function loadVehiclePerformance(monthValue) {
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-        // Get all hire-to-pay vehicles
         const { data: hireVehicles } = await supabase
             .from('hire_to_pay_vehicles')
             .select('*')
             .eq('user_id', currentUser.id);
 
-        // Get commitment records for this month
         const { data: commitmentRecordsMonth } = await supabase
             .from('commitment_records')
             .select('vehicle_id')
@@ -1045,13 +1180,11 @@ async function loadVehiclePerformance(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        // Get unique commitment vehicle IDs that have hires in this month
         const commitmentVehicleIdsWithHires = new Set();
         commitmentRecordsMonth?.forEach(record => {
             commitmentVehicleIdsWithHires.add(record.vehicle_id);
         });
 
-        // Get only commitment vehicles that have hires in this month
         let commitmentVehicles = [];
         if (commitmentVehicleIdsWithHires.size > 0) {
             const { data: vehicles } = await supabase
@@ -1062,9 +1195,8 @@ async function loadVehiclePerformance(monthValue) {
             commitmentVehicles = vehicles || [];
         }
 
-        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
+        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
 
-        // Hire-to-pay vehicles performance
         for (const vehicle of hireVehicles) {
             const { data: records } = await supabase
                 .from('hire_to_pay_records')
@@ -1077,11 +1209,11 @@ async function loadVehiclePerformance(monthValue) {
             const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
             const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
             const profit = totalRevenue - totalFuel;
+            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
 
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
         }
 
-        // Commitment vehicles performance (only those with hires in this month)
         for (const vehicle of commitmentVehicles) {
             const { data: records } = await supabase
                 .from('commitment_records')
@@ -1105,19 +1237,17 @@ async function loadVehiclePerformance(monthValue) {
             const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
             const profit = totalRevenue - totalFuel;
 
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
         }
 
         performanceHtml += '</tbody></table>';
-        document.getElementById('vehiclePerformance').innerHTML = performanceHtml;
+        const perfEl = document.getElementById('vehiclePerformance');
+        if (perfEl) perfEl.innerHTML = performanceHtml;
     } catch (error) {
         console.error('Error loading vehicle performance:', error.message);
     }
 }
 
-document.getElementById('dashboardMonth').addEventListener('change', loadDashboard);
-
-// ============ UPDATE VEHICLE SELECTORS ============
 async function updateVehicleSelectors() {
     try {
         const { data: hireVehicles } = await supabase
@@ -1134,43 +1264,36 @@ async function updateVehicleSelectors() {
         const commitmentSelect = document.getElementById('commitmentVehicleSelect');
         const dayOffSelect = document.getElementById('dayOffVehicle');
 
-        // Update hire vehicle selector
-        hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
-        hireVehicles?.forEach(v => {
-            const option = document.createElement('option');
-            option.value = v.id;
-            option.textContent = v.lorry_number;
-            hireSelect.appendChild(option);
-        });
+        if (hireSelect) {
+            hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            hireVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.lorry_number;
+                hireSelect.appendChild(option);
+            });
+        }
 
-        // Update commitment vehicle selector
-        commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
-        commitmentVehicles?.forEach(v => {
-            const option = document.createElement('option');
-            option.value = v.id;
-            option.textContent = v.vehicle_number;
-            commitmentSelect.appendChild(option);
-        });
+        if (commitmentSelect) {
+            commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                commitmentSelect.appendChild(option);
+            });
+        }
 
-        // Update day off selector
-        dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
-        commitmentVehicles?.forEach(v => {
-            const option = document.createElement('option');
-            option.value = v.id;
-            option.textContent = v.vehicle_number;
-            dayOffSelect.appendChild(option);
-        });
+        if (dayOffSelect) {
+            dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                dayOffSelect.appendChild(option);
+            });
+        }
     } catch (error) {
         console.error('Error updating vehicle selectors:', error.message);
     }
 }
-
-// Set current month as default
-document.addEventListener('DOMContentLoaded', () => {
-    const now = new Date();
-    const monthStr = now.toISOString().substring(0, 7);
-    document.getElementById('dashboardMonth').value = monthStr;
-    document.getElementById('hireRecordsMonth').value = monthStr;
-    document.getElementById('commitmentRecordsMonth').value = monthStr;
-    document.getElementById('dayOffMonth').value = monthStr;
-});
