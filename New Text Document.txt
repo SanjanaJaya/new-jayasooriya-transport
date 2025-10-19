@@ -1,0 +1,3 @@
+in dashboard need to display that hire to pay lorry rented or company.
+
+need to filter hire to pay records, commitment hire records, commitment vehicle day offs with lorry number too.
