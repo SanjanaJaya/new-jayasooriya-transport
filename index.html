@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jayasooriya Transport Management System">
+    <meta name="theme-color" content="#DC143C">
+    <title>Jayasooriya Transport - Management System</title>
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23DC143C' width='100' height='100'/><text x='50' y='60' font-size='60' fill='white' text-anchor='middle' font-weight='bold'>JT</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-section">
+                    <img src="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png" alt="Jayasooriya Transport Logo" class="logo">
+                    <h1 class="brand-name">JAYASOORIYA<br>TRANSPORT</h1>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-page="drivers">
+                    <span class="nav-icon">👤</span>
+                    <span>Drivers</span>
+                </button>
+                <button class="nav-item" data-page="hire-vehicles">
+                    <span class="nav-icon">🚚</span>
+                    <span>Hire-to-Pay Vehicles</span>
+                </button>
+                <button class="nav-item" data-page="hire-records">
+                    <span class="nav-icon">📋</span>
+                    <span>Hire-to-Pay Records</span>
+                </button>
+                <button class="nav-item" data-page="commitment-vehicles">
+                    <span class="nav-icon">🚛</span>
+                    <span>Commitment Vehicles</span>
+                </button>
+                <button class="nav-item" data-page="commitment-records">
+                    <span class="nav-icon">📝</span>
+                    <span>Commitment Records</span>
+                </button>
+                <button class="nav-item" data-page="commitment-dayoffs">
+                    <span class="nav-icon">📅</span>
+                    <span>Day Offs</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logoutBtn">
+                    <span>🚪</span> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h2 id="pageTitle">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <span id="userEmail" class="user-email"></span>
+                </div>
+            </header>
+
+            <!-- Pages Container -->
+            <div class="pages-container">
+
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page active">
+                    <div class="dashboard-controls">
+                        <div class="date-selector">
+                            <label>Select Month & Year:</label>
+                            <input type="month" id="dashboardMonth" value="">
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon">💰</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Revenue</div>
+                                <div class="metric-value" id="totalRevenue">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">⛽</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Fuel Cost</div>
+                                <div class="metric-value" id="fuelCost">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🎫</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Hires</div>
+                                <div class="metric-value" id="totalHires">0</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">📈</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Net Profit</div>
+                                <div class="metric-value profit" id="netProfit">LKR 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-section">
+                        <h3>Vehicle Performance</h3>
+                        <div id="vehiclePerformance" class="performance-table"></div>
+                    </div>
+                </div>
+
+                <!-- Drivers Page -->
+                <div id="drivers" class="page">
+                    <div class="page-header">
+                        <h3>Manage Drivers</h3>
+                        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
+                    </div>
+
+                    <div class="form-container" id="driverFormContainer" style="display:none;">
+                        <form id="driverForm">
+                            <div class="form-row">
+                                <input type="hidden" id="driverId">
+                                <input type="text" id="driverName" placeholder="Driver Name" required>
+                                <input type="tel" id="driverContact" placeholder="Contact Number" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="driverLicense" placeholder="License Number" required>
+                                <input type="number" id="driverAge" placeholder="Age" required>
+                            </div>
+                            <div class="form-row full">
+                                <input type="text" id="driverAddress" placeholder="Address" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Driver</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="driversTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>License</th>
+                                    <th>Age</th>
+                                    <th>Address</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Hire-to-Pay Vehicles Page -->
+                <div id="hire-vehicles" class="page">
+                    <div class="page-header">
+                        <h3>Hire-to-Pay Vehicles</h3>
+                        <button class="btn btn-primary" id="addHireVehicleBtn">+ Add Vehicle</button>
+                    </div>
+
+                    <div class="form-container" id="hireVehicleFormContainer" style="display:none;">
+                        <form id="hireVehicleForm">
+                            <div class="form-row">
+                                <input type="hidden" id="hireVehicleId">
+                                <input type="text" id="lorryNumber" placeholder="Lorry Number" required>
+                                <input type="number" id="lorryLength" placeholder="Length (ft)" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="price0To100" placeholder="0-100km Price (LKR)" required>
+                                <input type="number" id="price100To250" placeholder="100-250km Price (LKR)" required>
+                                <input type="number" id="price250Plus" placeholder="250km+ Price (LKR)" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="loadingCharge" placeholder="Loading Charge (LKR)" required>
+                                <input type="number" id="waitingCharge24" placeholder="Waiting Charge per hour (First 24hrs) (LKR)" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="waitingChargeExtra" placeholder="Waiting Charge per hour (24hrs+) (LKR)" required>
+                                <input type="number" id="minimumHireAmount" placeholder="Minimum Hire Amount (LKR)" required>
+                            </div>
+                            <div class="form-row full">
+                                <select id="ownership" required>
+                                    <option value="">Select Ownership</option>
+                                    <option value="company">Company</option>
+                                    <option value="rented">Rented</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Vehicle</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireVehicleBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="hireVehiclesTable">
+                            <thead>
+                                <tr>
+                                    <th>Lorry No</th>
+                                    <th>Length</th>
+                                    <th>0-100km</th>
+                                    <th>100-250km</th>
+                                    <th>250km+</th>
+                                    <th>Loading</th>
+                                    <th>Wait 24h</th>
+                                    <th>Wait 24h+</th>
+                                    <th>Min Hire</th>
+                                    <th>Ownership</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Hire-to-Pay Records Page -->
+                <div id="hire-records" class="page">
+                    <div class="page-header">
+                        <h3>Hire-to-Pay Records</h3>
+                        <button class="btn btn-primary" id="addHireRecordBtn">+ Add Hire Record</button>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <input type="month" id="hireRecordsMonth" value="">
+                    </div>
+
+                    <div class="form-container" id="hireRecordFormContainer" style="display:none;">
+                        <form id="hireRecordForm">
+                            <div class="form-row">
+                                <input type="hidden" id="hireRecordId">
+                                <input type="text" id="jobNumber" placeholder="Job Number" required>
+                                <input type="date" id="hireDate" required>
+                            </div>
+                            <div class="form-row">
+                                <select id="hireToPayVehicle" required>
+                                    <option value="">Select Vehicle</option>
+                                </select>
+                                <input type="text" id="hireFrom" placeholder="From Location" required>
+                                <input type="text" id="hireTo" placeholder="To Location" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="hireDistance" placeholder="Distance (km)" step="0.01" required>
+                                <input type="number" id="hireFuel" placeholder="Fuel (L)" step="0.01" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="hireFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
+                                <input type="number" id="hireWaitingHours" placeholder="Waiting Hours" step="0.5" value="0">
+                            </div>
+                            <div class="form-row">
+                                <input type="checkbox" id="hireLoading"> <label for="hireLoading">Include Loading Charge</label>
+                                <input type="number" id="hireOtherCharges" placeholder="Other Charges (LKR)" value="0">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Hire Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireRecordBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="hireRecordsTable">
+                            <thead>
+                                <tr>
+                                    <th>Job No</th>
+                                    <th>Date</th>
+                                    <th>Vehicle</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Distance</th>
+                                    <th>Fuel Cost</th>
+                                    <th>Waiting</th>
+                                    <th>Hire Amount Breakdown</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Commitment Vehicles Page -->
+                <div id="commitment-vehicles" class="page">
+                    <div class="page-header">
+                        <h3>Commitment Vehicles</h3>
+                        <button class="btn btn-primary" id="addCommitmentVehicleBtn">+ Add Vehicle</button>
+                    </div>
+
+                    <div class="form-container" id="commitmentVehicleFormContainer" style="display:none;">
+                        <form id="commitmentVehicleForm">
+                            <div class="form-row">
+                                <input type="hidden" id="commitmentVehicleId">
+                                <input type="text" id="commitmentVehicleNumber" placeholder="Vehicle Number" required>
+                                <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="kmLimit" placeholder="KM Limit per Month" required>
+                                <input type="number" id="extraKmCharge" placeholder="Extra KM Charge (LKR/km)" step="0.01" required>
+                                <input type="number" id="commitmentLoadingCharge" placeholder="Loading Charge (LKR)" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Vehicle</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="commitmentVehiclesTable">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle No</th>
+                                    <th>Fixed Payment</th>
+                                    <th>KM Limit</th>
+                                    <th>Extra KM Charge</th>
+                                    <th>Loading Charge</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Commitment Records Page -->
+                <div id="commitment-records" class="page">
+                    <div class="page-header">
+                        <h3>Commitment Vehicle Hires</h3>
+                        <button class="btn btn-primary" id="addCommitmentRecordBtn">+ Add Record</button>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <input type="month" id="commitmentRecordsMonth" value="">
+                    </div>
+
+                    <div class="form-container" id="commitmentRecordFormContainer" style="display:none;">
+                        <form id="commitmentRecordForm">
+                            <div class="form-row">
+                                <input type="hidden" id="commitmentRecordId">
+                                <input type="text" id="commitmentJobNumber" placeholder="Job Number" required>
+                                <input type="date" id="commitmentDate" required>
+                            </div>
+                            <div class="form-row">
+                                <select id="commitmentVehicleSelect" required>
+                                    <option value="">Select Vehicle</option>
+                                </select>
+                                <input type="text" id="commitmentFrom" placeholder="From" required>
+                                <input type="text" id="commitmentTo" placeholder="To" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="commitmentDistance" placeholder="Distance (km)" step="0.01" required>
+                                <input type="number" id="commitmentFuel" placeholder="Fuel (L)" step="0.01" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="commitmentFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
+                                <input type="number" id="commitmentExtraCharges" placeholder="Extra Charges (LKR)" value="0">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentRecordBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="commitmentRecordsTable">
+                            <thead>
+                                <tr>
+                                    <th>Job No</th>
+                                    <th>Date</th>
+                                    <th>Vehicle</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Distance</th>
+                                    <th>Fuel Cost</th>
+                                    <th>Extra KM & Charges</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Day Offs Page -->
+                <div id="commitment-dayoffs" class="page">
+                    <div class="page-header">
+                        <h3>Commitment Vehicle Day Offs</h3>
+                        <button class="btn btn-primary" id="addDayOffBtn">+ Add Day Off</button>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <input type="month" id="dayOffMonth" value="">
+                    </div>
+
+                    <div class="form-container" id="dayOffFormContainer" style="display:none;">
+                        <form id="dayOffForm">
+                            <div class="form-row">
+                                <input type="hidden" id="dayOffId">
+                                <select id="dayOffVehicle" required>
+                                    <option value="">Select Vehicle</option>
+                                </select>
+                                <input type="date" id="dayOffDate" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Save Day Off</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDayOffBtn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="dayOffsTable">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle</th>
+                                    <th>Date</th>
+                                    <th>Deduction Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content login-modal">
+            <div class="login-header">
+                <img src="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png" alt="Logo" class="login-logo">
+                <h1>JAYASOORIYA TRANSPORT</h1>
+                <p>Management System</p>
+            </div>
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary full-width">Login</button>
+                <p id="loginError" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
