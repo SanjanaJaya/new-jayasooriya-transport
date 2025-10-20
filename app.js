@@ -16,6 +16,7 @@ function initSupabase() {
 // Initialize App
 async function initializeApp() {
     initSupabase();
+    initHamburgerMenu();
     
     if (!supabase) {
         console.error('Supabase not initialized');
@@ -29,6 +30,7 @@ async function initializeApp() {
         if (session) {
             currentUser = session.user;
             showApp();
+            setDefaultMonths();
             loadDashboard();
         } else {
             showLogin();
@@ -125,6 +127,53 @@ function setDefaultMonths() {
     });
 }
 
+// ============ HAMBURGER MENU ============
+let hamburger = null;
+let sidebar = null;
+let mobileOverlay = null;
+
+function initHamburgerMenu() {
+    hamburger = document.getElementById('hamburgerMenu');
+    sidebar = document.querySelector('.sidebar');
+    mobileOverlay = document.getElementById('mobileOverlay');
+
+    if (!hamburger) return;
+
+    hamburger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (sidebar?.classList.contains('mobile-open')) {
+            closeMobileMenu();
+        } else {
+            openMobileMenu();
+        }
+    });
+
+    if (mobileOverlay) {
+        mobileOverlay.addEventListener('click', closeMobileMenu);
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (sidebar?.classList.contains('mobile-open') && 
+            !sidebar.contains(e.target) && 
+            !hamburger.contains(e.target)) {
+            closeMobileMenu();
+        }
+    });
+}
+
+function closeMobileMenu() {
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (hamburger) hamburger.classList.remove('active');
+    if (mobileOverlay) mobileOverlay.classList.remove('active');
+}
+
+function openMobileMenu() {
+    if (sidebar) sidebar.classList.add('mobile-open');
+    if (hamburger) hamburger.classList.add('active');
+    if (mobileOverlay) mobileOverlay.classList.add('active');
+}
+
 // Navigation
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -133,6 +182,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         
         currentPage = item.dataset.page;
         switchPage(currentPage);
+        closeMobileMenu();
     });
 });
 

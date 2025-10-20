@@ -39,9 +39,10 @@ html, body {
     color: var(--white);
     display: flex;
     flex-direction: column;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     overflow-y: auto;
+    transition: transform 0.3s ease;
 }
 
 .sidebar-header {
@@ -135,6 +136,50 @@ html, body {
     color: var(--primary-color);
 }
 
+/* HAMBURGER MENU */
+.hamburger-menu {
+    display: none;
+    flex-direction: column;
+    background: none;
+    border: none;
+    color: var(--white);
+    cursor: pointer;
+    padding: 12px 15px;
+    gap: 5px;
+    z-index: 1001;
+    width: 50px;
+    height: 50px;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.hamburger-menu:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.hamburger-menu span {
+    width: 24px;
+    height: 3px;
+    background: var(--white);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    display: block;
+}
+
+.hamburger-menu.active span:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+}
+
+.hamburger-menu.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(8px, -8px);
+}
+
 /* MAIN CONTENT */
 .main-content {
     flex: 1;
@@ -192,10 +237,31 @@ html, body {
 
 /* DASHBOARD */
 .dashboard-controls {
-    margin-bottom: 25px;
     display: flex;
     gap: 15px;
     align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    background: var(--white);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 150px;
+}
+
+.control-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .date-selector {
@@ -207,21 +273,43 @@ html, body {
 .date-selector label {
     font-weight: 600;
     color: var(--text-dark);
+    white-space: nowrap;
 }
 
 .date-selector input,
-.dashboard-controls input {
+.control-group input,
+.control-group select,
+.dashboard-controls input,
+.dashboard-controls select {
     padding: 10px 15px;
     border: 2px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
+    background: var(--white);
+    color: var(--text-dark);
+    font-weight: 500;
 }
 
 .date-selector input:focus,
-.dashboard-controls input:focus {
+.control-group input:focus,
+.control-group select:focus,
+.dashboard-controls input:focus,
+.dashboard-controls select:focus {
     outline: none;
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.1);
+}
+
+.control-group select,
+.dashboard-controls select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23DC143C' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 35px;
 }
 
 .metrics-grid {
@@ -303,62 +391,69 @@ html, body {
 .btn {
     padding: 10px 20px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     font-size: 14px;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     color: var(--white);
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #A01C2E 100%);
 }
 
 .btn-success {
-    background-color: var(--success);
+    background: linear-gradient(135deg, var(--success) 0%, #1E8449 100%);
     color: var(--white);
 }
 
 .btn-success:hover {
-    background-color: #229954;
+    background: linear-gradient(135deg, #1E8449 0%, #186A3B 100%);
 }
 
 .btn-secondary {
-    background-color: var(--text-light);
+    background: linear-gradient(135deg, var(--text-light) 0%, #566573 100%);
     color: var(--white);
 }
 
 .btn-secondary:hover {
-    background-color: #6c757d;
+    background: linear-gradient(135deg, #566573 0%, #34495E 100%);
 }
 
 .btn-danger {
-    background-color: var(--danger);
+    background: linear-gradient(135deg, var(--danger) 0%, #C0392B 100%);
     color: var(--white);
     padding: 6px 12px;
     font-size: 12px;
 }
 
 .btn-danger:hover {
-    background-color: #c0392b;
+    background: linear-gradient(135deg, #C0392B 0%, #A93226 100%);
 }
 
 .btn-edit {
-    background-color: var(--info);
+    background: linear-gradient(135deg, var(--info) 0%, #2980B9 100%);
     color: var(--white);
     padding: 6px 12px;
     font-size: 12px;
 }
 
 .btn-edit:hover {
-    background-color: #2980b9;
+    background: linear-gradient(135deg, #2980B9 0%, #1F618D 100%);
 }
 
 .full-width {
@@ -367,11 +462,12 @@ html, body {
 
 /* FORMS */
 .form-container {
-    background: var(--white);
-    padding: 20px;
-    border-radius: 10px;
+    background: linear-gradient(135deg, var(--white) 0%, #F5F7FA 100%);
+    padding: 25px;
+    border-radius: 12px;
     margin-bottom: 25px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid var(--primary-color);
 }
 
 .form-row {
@@ -388,12 +484,20 @@ html, body {
 .form-row input,
 .form-row select,
 .form-row textarea {
-    padding: 10px 12px;
+    padding: 12px 15px;
     border: 2px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
+    background: var(--white);
+    color: var(--text-dark);
+}
+
+.form-row input::placeholder,
+.form-row select::placeholder,
+.form-row textarea::placeholder {
+    color: #BDC3C7;
 }
 
 .form-row input:focus,
@@ -408,6 +512,7 @@ html, body {
     width: auto;
     margin-right: 8px;
     cursor: pointer;
+    accent-color: var(--primary-color);
 }
 
 .form-row label {
@@ -415,6 +520,8 @@ html, body {
     align-items: center;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dark);
 }
 
 .form-actions {
@@ -422,6 +529,17 @@ html, body {
     gap: 10px;
     justify-content: flex-start;
     margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.form-row select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23DC143C' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 35px;
+    cursor: pointer;
 }
 
 /* TABLES */
@@ -580,216 +698,239 @@ tbody tr:hover {
     color: var(--text-light);
 }
 
-.success-message {
-    background-color: #d4edda;
-    color: #155724;
-    padding: 12px 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    border-left: 4px solid var(--success);
+/* MOBILE OVERLAY */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
 }
 
-.error-alert {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 12px 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    border-left: 4px solid var(--danger);
+.mobile-overlay.active {
+    display: block;
 }
 
-/* EMPTY STATE */
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-light);
-}
-
-.empty-state-icon {
-    font-size: 60px;
-    margin-bottom: 15px;
-}
-
-.empty-state p {
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-/* RESPONSIVE - TABLET */
-@media (max-width: 1024px) {
-    .sidebar {
-        width: 200px;
-    }
-
-    .pages-container {
-        padding: 20px;
-    }
-
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    table {
-        font-size: 13px;
-    }
-
-    th, td {
-        padding: 12px;
-    }
-}
-
-/* RESPONSIVE - MOBILE LANDSCAPE/LARGE PHONE */
+/* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
+        height: 100vh;
+    }
+
+    .hamburger-menu {
+        display: flex !important;
     }
 
     .sidebar {
-        width: 100%;
-        height: auto;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0;
-        overflow-x: auto;
+        position: fixed;
+        width: 80vw;
+        height: 100vh;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        z-index: 999;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
     }
 
     .sidebar-header {
-        padding: 12px 10px;
-        border-bottom: none;
-        border-right: 2px solid rgba(255, 255, 255, 0.2);
-        flex-shrink: 0;
-        min-width: fit-content;
-    }
-
-    .logo-section {
-        flex-direction: row;
-        gap: 8px;
-        align-items: center;
+        padding: 15px 12px;
     }
 
     .logo {
-        width: 45px;
-        height: 45px;
+        width: 55px;
+        height: 55px;
     }
 
     .brand-name {
         font-size: 11px;
-        line-height: 1.1;
-        max-width: 80px;
     }
 
     .nav-menu {
-        flex-direction: row;
-        padding: 0 10px;
-        gap: 3px;
-        overflow-x: auto;
-        flex: 1;
-        align-items: center;
+        padding: 12px 0;
+        gap: 2px;
     }
 
     .nav-item {
-        padding: 10px 10px;
-        font-size: 11px;
-        border-left: none;
-        border-bottom: 3px solid transparent;
-        min-width: fit-content;
-        white-space: nowrap;
+        padding: 14px 16px;
+        font-size: 14px;
+        gap: 14px;
+        border-left: 4px solid transparent;
+        opacity: 0.8;
     }
 
-    .nav-item:hover,
+    .nav-item:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        opacity: 1;
+    }
+
     .nav-item.active {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-bottom-color: var(--white);
-        border-left: none;
+        background-color: rgba(255, 255, 255, 0.25);
+        border-left-color: var(--white);
+        opacity: 1;
     }
 
     .nav-icon {
-        font-size: 16px;
-        margin-right: 2px;
-    }
-
-    .sidebar-footer {
-        border-top: none;
-        border-left: 2px solid rgba(255, 255, 255, 0.2);
-        padding: 8px 10px;
-        flex-shrink: 0;
+        font-size: 20px;
+        min-width: 22px;
     }
 
     .logout-btn {
-        padding: 8px 10px;
-        font-size: 11px;
-        white-space: nowrap;
+        font-size: 12px;
+        padding: 11px;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
     }
 
     .top-header {
         padding: 12px 15px;
-        flex-wrap: wrap;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
         gap: 10px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        color: var(--white);
     }
 
-    .top-header h2 {
-        font-size: 20px;
+    .header-left {
         flex: 1;
     }
 
+    .top-header h2 {
+        font-size: 18px;
+        color: var(--white);
+    }
+
     .user-email {
-        font-size: 12px;
+        display: none;
     }
 
     .pages-container {
-        padding: 15px;
-    }
-
-    .page {
-        animation: fadeIn 0.2s ease;
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+        background: #f0f2f5;
     }
 
     .dashboard-controls {
         flex-direction: column;
         align-items: stretch;
+        gap: 8px;
+        padding: 12px;
+        background: linear-gradient(135deg, var(--white) 0%, #F8FBFF 100%);
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .control-group label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-transform: uppercase;
     }
 
     .date-selector {
         flex-direction: column;
+        gap: 6px;
     }
 
-    .date-selector input,
-    .dashboard-controls input {
-        width: 100%;
+    .date-selector label {
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .control-group input,
+    .control-group select,
+    .date-selector input {
+        width: 100% !important;
         padding: 12px;
-    }
-
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-
-    .metric-card {
-        padding: 12px;
-        gap: 8px;
-    }
-
-    .metric-icon {
-        font-size: 28px;
-        flex-shrink: 0;
-    }
-
-    .metric-label {
-        font-size: 11px;
-    }
-
-    .metric-value {
         font-size: 16px;
     }
 
-    .performance-section {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .metric-card {
         padding: 15px;
+        background: linear-gradient(135deg, var(--white) 0%, #F8FBFF 100%);
+        border-left: 5px solid var(--primary-color);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(220, 20, 60, 0.08);
+    }
+
+    .metric-card:hover {
+        transform: none;
+        box-shadow: 0 4px 12px rgba(220, 20, 60, 0.12);
+    }
+
+    .metric-icon {
+        font-size: 35px;
+        min-width: 50px;
+        text-align: center;
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-label {
+        font-size: 12px;
+        color: var(--text-light);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+        font-size: 21px;
+        font-weight: 700;
+        margin-top: 4px;
+        color: var(--primary-color);
+    }
+
+    .metric-value.profit {
+        color: var(--success);
+    }
+
+    .performance-section {
+        background: linear-gradient(135deg, var(--white) 0%, #F8FBFF 100%);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 5px solid var(--primary-color);
+        box-shadow: 0 2px 8px rgba(220, 20, 60, 0.08);
     }
 
     .performance-section h3 {
         font-size: 16px;
         margin-bottom: 12px;
+        color: var(--primary-color);
+        font-weight: 700;
     }
 
     .page-header {
@@ -801,31 +942,36 @@ tbody tr:hover {
 
     .page-header h3 {
         font-size: 18px;
+        color: var(--primary-color);
     }
 
     .page-header .btn {
         width: 100%;
+        justify-content: center;
     }
 
     .form-container {
         padding: 15px;
-        margin-bottom: 15px;
+        background: linear-gradient(135deg, var(--white) 0%, #F8FBFF 100%);
+        border-left: 5px solid var(--primary-color);
+        box-shadow: 0 2px 8px rgba(220, 20, 60, 0.08);
     }
 
     .form-row {
         grid-template-columns: 1fr;
-        gap: 12px;
     }
 
     .form-row input,
     .form-row select,
     .form-row textarea {
-        padding: 12px;
         font-size: 16px;
+        padding: 12px;
+        border: 2px solid #E8EAED;
     }
 
     .form-row label {
-        padding: 8px 0;
+        font-weight: 600;
+        color: var(--primary-color);
     }
 
     .form-actions {
@@ -835,30 +981,35 @@ tbody tr:hover {
 
     .form-actions .btn {
         width: 100%;
+        justify-content: center;
         padding: 12px;
     }
 
     .table-responsive {
+        background: var(--white);
         border-radius: 8px;
-        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid var(--primary-color);
     }
 
     table {
         font-size: 12px;
     }
 
-    thead {
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    }
-
     th {
         padding: 10px;
         font-size: 11px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     }
 
     td {
         padding: 8px 10px;
         font-size: 12px;
+        border-bottom: 1px solid #E8EAED;
+    }
+
+    tbody tr:hover {
+        background: #F8FBFF;
     }
 
     .action-buttons {
@@ -868,43 +1019,31 @@ tbody tr:hover {
 
     .btn-edit,
     .btn-danger {
-        padding: 6px 10px;
-        font-size: 11px;
         width: 100%;
-    }
-
-    .btn {
-        padding: 10px 15px;
-        font-size: 12px;
-    }
-
-    .btn-primary {
-        width: 100%;
+        justify-content: center;
+        padding: 8px;
     }
 
     .login-modal {
         width: 90%;
         max-width: 380px;
-        padding: 25px 20px;
+        padding: 30px 20px;
     }
 
     .login-header {
+        text-align: center;
         margin-bottom: 25px;
     }
 
     .login-logo {
         width: 70px;
         height: 70px;
-        margin-bottom: 12px;
+        margin-bottom: 15px;
     }
 
     .login-header h1 {
         font-size: 22px;
-        margin-bottom: 5px;
-    }
-
-    .login-header p {
-        font-size: 13px;
+        color: var(--primary-color);
     }
 
     #loginForm input {
@@ -914,68 +1053,47 @@ tbody tr:hover {
 
     #loginForm button {
         padding: 12px;
-        font-size: 14px;
-    }
-
-    .error-message {
-        font-size: 12px;
-        margin-top: 8px;
     }
 }
 
-/* RESPONSIVE - MOBILE PORTRAIT */
 @media (max-width: 640px) {
-    .container {
-        height: 100vh;
+    .sidebar {
+        width: 85vw;
     }
 
-    .sidebar {
-        width: 100%;
-        min-height: auto;
+    .hamburger-menu {
+        padding: 10px;
+        width: 45px;
+        height: 45px;
     }
 
     .sidebar-header {
-        padding: 10px 8px;
-        min-width: fit-content;
+        padding: 12px 10px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
     }
 
     .logo-section {
-        gap: 6px;
+        gap: 8px;
     }
 
     .logo {
-        width: 40px;
-        height: 40px;
+        width: 50px;
+        height: 50px;
     }
 
     .brand-name {
         font-size: 10px;
-        max-width: 70px;
-    }
-
-    .nav-menu {
-        padding: 0 5px;
-        gap: 2px;
-        flex: 1;
     }
 
     .nav-item {
-        padding: 8px 8px;
-        font-size: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        border-left: 3px solid transparent;
+        gap: 12px;
     }
 
     .nav-icon {
-        font-size: 15px;
-        margin-right: 1px;
-    }
-
-    .sidebar-footer {
-        padding: 6px 8px;
-    }
-
-    .logout-btn {
-        padding: 6px 8px;
-        font-size: 10px;
+        font-size: 16px;
     }
 
     .top-header {
@@ -983,39 +1101,45 @@ tbody tr:hover {
     }
 
     .top-header h2 {
-        font-size: 18px;
-    }
-
-    .user-email {
-        display: none;
+        font-size: 16px;
     }
 
     .pages-container {
-        padding: 12px;
-        max-height: calc(100vh - 120px);
-        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .dashboard-controls {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .date-selector input,
+    .dashboard-controls input,
+    .dashboard-controls select {
+        padding: 10px;
+        font-size: 14px;
     }
 
     .metrics-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 8px;
     }
 
     .metric-card {
-        padding: 10px;
+        padding: 12px;
         gap: 10px;
     }
 
     .metric-icon {
-        font-size: 24px;
+        font-size: 28px;
+        min-width: 45px;
     }
 
     .metric-label {
-        font-size: 10px;
+        font-size: 11px;
     }
 
     .metric-value {
-        font-size: 14px;
+        font-size: 18px;
     }
 
     .performance-section {
@@ -1023,46 +1147,21 @@ tbody tr:hover {
     }
 
     .performance-section h3 {
-        font-size: 14px;
-        margin-bottom: 10px;
-    }
-
-    .page-header {
-        gap: 10px;
+        font-size: 15px;
     }
 
     .page-header h3 {
         font-size: 16px;
     }
 
-    .page-header .btn {
-        width: 100%;
-        padding: 10px;
-    }
-
     .form-container {
         padding: 12px;
-        margin-bottom: 12px;
-    }
-
-    .form-row {
-        gap: 10px;
     }
 
     .form-row input,
     .form-row select {
-        padding: 11px;
-        font-size: 16px;
-    }
-
-    .form-actions {
-        gap: 8px;
-        margin-top: 12px;
-    }
-
-    .form-actions .btn {
         padding: 10px;
-        font-size: 12px;
+        font-size: 15px;
     }
 
     .table-responsive {
@@ -1071,8 +1170,8 @@ tbody tr:hover {
     }
 
     table {
+        min-width: 450px;
         font-size: 11px;
-        min-width: 550px;
     }
 
     th {
@@ -1085,96 +1184,45 @@ tbody tr:hover {
         font-size: 11px;
     }
 
-    tbody tr:hover {
-        background-color: transparent;
-    }
-
-    .action-buttons {
-        flex-direction: row;
-        gap: 4px;
-        flex-wrap: wrap;
-    }
-
-    .btn-edit,
-    .btn-danger {
-        padding: 5px 8px;
-        font-size: 10px;
-        flex: 1;
-        min-width: 50px;
-    }
-
-    .btn {
-        padding: 9px 12px;
-    }
-
-    .btn-primary {
-        width: 100%;
-    }
-
     .login-modal {
         width: 95%;
         max-width: 340px;
-        padding: 20px 15px;
-    }
-
-    .login-header {
-        margin-bottom: 20px;
+        padding: 25px 15px;
     }
 
     .login-logo {
         width: 60px;
         height: 60px;
-        margin-bottom: 10px;
     }
 
     .login-header h1 {
         font-size: 20px;
     }
-
-    .login-header p {
-        font-size: 12px;
-    }
-
-    #loginForm input {
-        padding: 11px;
-        font-size: 16px;
-    }
-
-    #loginForm button {
-        padding: 11px;
-    }
-
-    .empty-state {
-        padding: 20px;
-    }
-
-    .empty-state-icon {
-        font-size: 40px;
-    }
-
-    .empty-state p {
-        font-size: 12px;
-    }
-
-    small {
-        font-size: 9px;
-        line-height: 1.3;
-    }
 }
 
-/* RESPONSIVE - SMALL MOBILE */
 @media (max-width: 480px) {
     .sidebar {
-        min-height: 70px;
+        width: 100vw;
+    }
+
+    .hamburger-menu {
+        padding: 8px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .hamburger-menu span {
+        width: 22px;
+        height: 2.5px;
     }
 
     .sidebar-header {
-        padding: 8px 6px;
+        padding: 10px 8px;
     }
 
     .logo {
-        width: 35px;
-        height: 35px;
+        width: 40px;
+        height: 40px;
     }
 
     .brand-name {
@@ -1182,32 +1230,54 @@ tbody tr:hover {
         max-width: 60px;
     }
 
+    .nav-menu {
+        padding: 8px 0;
+    }
+
     .nav-item {
-        padding: 6px 6px;
-        font-size: 9px;
+        padding: 8px 10px;
+        font-size: 11px;
+        gap: 10px;
     }
 
     .nav-icon {
-        font-size: 14px;
+        font-size: 15px;
+        min-width: 18px;
     }
 
     .logout-btn {
-        padding: 5px 6px;
-        font-size: 9px;
+        font-size: 10px;
+        padding: 8px;
     }
 
     .top-header {
         padding: 8px 10px;
-        min-height: 40px;
+        gap: 5px;
     }
 
     .top-header h2 {
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .pages-container {
-        padding: 10px;
-        max-height: calc(100vh - 110px);
+        padding: 8px;
+    }
+
+    .dashboard-controls {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .control-group input,
+    .control-group select,
+    .date-selector input {
+        padding: 10px !important;
+        font-size: 14px;
+    }
+
+    .control-group label,
+    .date-selector label {
+        font-size: 11px;
     }
 
     .metrics-grid {
@@ -1215,43 +1285,95 @@ tbody tr:hover {
     }
 
     .metric-card {
-        padding: 8px;
+        padding: 10px;
+        gap: 8px;
     }
 
     .metric-icon {
-        font-size: 20px;
+        font-size: 28px;
+        min-width: 40px;
+    }
+
+    .metric-label {
+        font-size: 10px;
     }
 
     .metric-value {
-        font-size: 13px;
+        font-size: 16px;
+    }
+
+    .performance-section {
+        padding: 10px;
+    }
+
+    .performance-section h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .page-header {
+        gap: 8px;
     }
 
     .page-header h3 {
-        font-size: 15px;
+        font-size: 14px;
     }
 
     .page-header .btn {
-        padding: 8px;
-        font-size: 11px;
+        padding: 10px;
+        font-size: 12px;
     }
 
     .form-container {
         padding: 10px;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        gap: 8px;
+        margin-bottom: 8px;
+        grid-template-columns: 1fr;
     }
 
     .form-row input,
-    .form-row select {
+    .form-row select,
+    .form-row textarea {
         padding: 10px;
         font-size: 14px;
     }
 
+    .form-row label {
+        font-size: 12px;
+    }
+
+    .form-actions {
+        gap: 6px;
+        margin-top: 8px;
+    }
+
     .form-actions .btn {
-        padding: 9px;
-        font-size: 11px;
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .btn-edit,
+    .btn-danger {
+        padding: 6px;
+        font-size: 10px;
+    }
+
+    .action-buttons {
+        gap: 4px;
+        flex-direction: column;
     }
 
     table {
-        min-width: 450px;
+        min-width: 380px;
         font-size: 10px;
     }
 
@@ -1265,25 +1387,28 @@ tbody tr:hover {
         font-size: 10px;
     }
 
-    .btn-edit,
-    .btn-danger {
-        padding: 4px 6px;
-        font-size: 9px;
-    }
-
     .login-modal {
-        width: 98%;
         max-width: 300px;
-        padding: 15px 12px;
+        padding: 20px 12px;
     }
 
     .login-logo {
         width: 50px;
         height: 50px;
+        margin-bottom: 10px;
     }
 
     .login-header h1 {
         font-size: 18px;
+    }
+
+    .login-header p {
+        font-size: 12px;
+    }
+
+    small {
+        font-size: 8px;
+        line-height: 1.2;
     }
 
     #loginForm input {
@@ -1291,112 +1416,8 @@ tbody tr:hover {
         font-size: 14px;
     }
 
-    small {
-        font-size: 8px;
-    }
-}
-
-/* RESPONSIVE - EXTRA SMALL */
-@media (max-width: 380px) {
-    .container {
-        height: 100vh;
-        overflow: hidden;
-    }
-
-    .sidebar {
-        min-height: 65px;
-    }
-
-    .sidebar-header {
-        padding: 6px 4px;
-    }
-
-    .logo {
-        width: 32px;
-        height: 32px;
-    }
-
-    .brand-name {
-        font-size: 8px;
-        max-width: 50px;
-    }
-
-    .nav-menu {
-        padding: 0 2px;
-        gap: 1px;
-    }
-
-    .nav-item {
-        padding: 5px 5px;
-        font-size: 8px;
-    }
-
-    .nav-icon {
-        font-size: 13px;
-    }
-
-    .top-header h2 {
-        font-size: 14px;
-    }
-
-    .pages-container {
-        padding: 8px;
-        max-height: calc(100vh - 105px);
-    }
-
-    .metrics-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .metric-card {
-        padding: 6px;
-        gap: 8px;
-    }
-
-    .metric-label {
-        font-size: 9px;
-    }
-
-    .metric-value {
-        font-size: 12px;
-    }
-
-    .page-header h3 {
-        font-size: 14px;
-    }
-
-    .form-row input,
-    .form-row select {
-        padding: 9px;
-        font-size: 13px;
-    }
-
-    table {
-        min-width: 380px;
-        font-size: 9px;
-    }
-
-    th, td {
-        padding: 4px 5px;
-    }
-
-    .login-modal {
-        max-width: 280px;
-        padding: 12px 10px;
-    }
-
-    .login-logo {
-        width: 45px;
-        height: 45px;
-    }
-
-    .login-header h1 {
-        font-size: 16px;
-    }
-
-    #loginForm input {
-        padding: 9px;
+    #loginForm button {
+        padding: 10px;
         font-size: 13px;
     }
 }
