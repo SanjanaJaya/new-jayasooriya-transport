@@ -213,6 +213,44 @@ function switchPage(page) {
     if (page === 'commitment-dayoffs') loadDayOffs();
 }
 
+// app.js
+
+// ============ DASHBOARD ============
+async function loadDashboard() {
+    try {
+        let monthValue = document.getElementById('dashboardMonth')?.value;
+        
+        // Logic to determine the month and set default if needed
+        if (!monthValue) {
+            const now = new Date();
+            monthValue = now.toISOString().substring(0, 7);
+            const dashboardMonthEl = document.getElementById('dashboardMonth');
+            if (dashboardMonthEl) dashboardMonthEl.value = monthValue;
+        }
+
+        // Load core metrics
+        await loadDashboardData(monthValue);
+        
+        // FIX: Call the function to load the Vehicle Performance table
+        await loadVehiclePerformance(monthValue); 
+        
+        // Load charts
+        await loadDashboardCharts();
+    } catch (error) {
+        console.error('Error loading dashboard:', error.message);
+    }
+}
+
+// Initialize dashboard month selector
+document.getElementById('dashboardMonth')?.addEventListener('change', loadDashboard);
+
+// Chart instances
+let revenueChart = null;
+let profitChart = null;
+let fuelCostChart = null;
+let revenueBreakdownChart = null;
+let vehicleRevenueChart = null;
+
 // ============ DRIVERS ============
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverForm').reset();
@@ -248,6 +286,142 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         alert('Error saving driver: ' + error.message);
     }
 });
+
+async function loadVehiclePerformance(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const startDate = `${year}-${month}-01`;
+        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+        const { data: hireVehicles } = await supabase
+            .from('hire_to_pay_vehicles')
+            .select('*')
+            .eq('user_id', currentUser.id);
+
+        const { data: commitmentRecordsMonth } = await supabase
+            .from('commitment_records')
+            .select('vehicle_id')
+            .eq('user_id', currentUser.id)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const commitmentVehicleIdsWithHires = new Set();
+        commitmentRecordsMonth?.forEach(record => {
+            commitmentVehicleIdsWithHires.add(record.vehicle_id);
+        });
+
+        let commitmentVehicles = [];
+        if (commitmentVehicleIdsWithHires.size > 0) {
+            const { data: vehicles } = await supabase
+                .from('commitment_vehicles')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .in('id', Array.from(commitmentVehicleIdsWithHires));
+            commitmentVehicles = vehicles || [];
+        }
+
+        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
+
+        for (const vehicle of hireVehicles) {
+            const { data: records } = await supabase
+                .from('hire_to_pay_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+
+            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
+            const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
+            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+            const profit = totalRevenue - totalFuel;
+            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
+
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+        }
+
+        for (const vehicle of commitmentVehicles) {
+            const { data: records } = await supabase
+                .from('commitment_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+
+            const { data: dayOffs } = await supabase
+                .from('commitment_day_offs')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('day_off_date', startDate)
+                .lte('day_off_date', endDate);
+
+            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
+            const basePay = vehicle.fixed_monthly_payment;
+            const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
+            const extraKmCharges = records?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+            const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
+            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+            const profit = totalRevenue - totalFuel;
+
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+        }
+
+        performanceHtml += '</tbody></table>';
+        const perfEl = document.getElementById('vehiclePerformance');
+        if (perfEl) perfEl.innerHTML = performanceHtml;
+    } catch (error) {
+        console.error('Error loading vehicle performance:', error.message);
+    }
+}
+
+async function updateVehicleSelectors() {
+    try {
+        const { data: hireVehicles } = await supabase
+            .from('hire_to_pay_vehicles')
+            .select('id, lorry_number')
+            .eq('user_id', currentUser.id);
+
+        const { data: commitmentVehicles } = await supabase
+            .from('commitment_vehicles')
+            .select('id, vehicle_number')
+            .eq('user_id', currentUser.id);
+
+        const hireSelect = document.getElementById('hireToPayVehicle');
+        const commitmentSelect = document.getElementById('commitmentVehicleSelect');
+        const dayOffSelect = document.getElementById('dayOffVehicle');
+
+        if (hireSelect) {
+            hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            hireVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.lorry_number;
+                hireSelect.appendChild(option);
+            });
+        }
+
+        if (commitmentSelect) {
+            commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                commitmentSelect.appendChild(option);
+            });
+        }
+
+        if (dayOffSelect) {
+            dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                dayOffSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error updating vehicle selectors:', error.message);
+    }
+}
 
 async function loadDrivers() {
     try {
@@ -1130,19 +1304,15 @@ async function deleteDayOff(id) {
     }
 }
 
-// ============ DASHBOARD ============
-document.getElementById('dashboardMonth')?.addEventListener('change', loadDashboard);
-
-async function loadDashboard() {
+// ============ DASHBOARD FUNCTIONS ============
+async function loadDashboardData(monthValue) {
     try {
-        const monthValue = document.getElementById('dashboardMonth')?.value || new Date().toISOString().substring(0, 7);
-        const el = document.getElementById('dashboardMonth');
-        if (el) el.value = monthValue;
-        
+        // --- Parse selected month ---
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
+        // --- Fetch all required data ---
         const { data: hireRecords } = await supabase
             .from('hire_to_pay_records')
             .select('*')
@@ -1164,6 +1334,7 @@ async function loadDashboard() {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
+        // --- Get related vehicles ---
         const commitmentVehicleIds = new Set();
         commitmentRecords?.forEach(record => {
             commitmentVehicleIds.add(record.vehicle_id);
@@ -1173,29 +1344,40 @@ async function loadDashboard() {
             .from('commitment_vehicles')
             .select('*')
             .eq('user_id', currentUser.id)
-            .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
+            .in(
+                'id',
+                Array.from(commitmentVehicleIds).length > 0
+                    ? Array.from(commitmentVehicleIds)
+                    : [0]
+            );
 
+        // --- Calculate totals ---
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
 
         hireRecords?.forEach(record => {
-            totalRevenue += record.hire_amount;
-            totalFuelCost += record.fuel_cost;
+            totalRevenue += record.hire_amount || 0;
+            totalFuelCost += record.fuel_cost || 0;
             totalHires++;
         });
 
-        const commitmentPayment = commitmentVehicles?.reduce((sum, v) => sum + v.fixed_monthly_payment, 0) || 0;
-        const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
-        const commitmentFuelCost = commitmentRecords?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-        const extraKmCharges = commitmentRecords?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+        const commitmentPayment =
+            commitmentVehicles?.reduce((sum, v) => sum + (v.fixed_monthly_payment || 0), 0) || 0;
+        const dayOffDeductions =
+            dayOffs?.reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
+        const commitmentFuelCost =
+            commitmentRecords?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
+        const extraKmCharges =
+            commitmentRecords?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
 
-        totalRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
+        totalRevenue += commitmentPayment - dayOffDeductions + extraKmCharges;
         totalFuelCost += commitmentFuelCost;
-        totalHires += (commitmentRecords?.length || 0);
+        totalHires += commitmentRecords?.length || 0;
 
         const netProfit = totalRevenue - totalFuelCost;
 
+        // --- Update dashboard UI ---
         const revEl = document.getElementById('totalRevenue');
         const fuelEl = document.getElementById('fuelCost');
         const hiresEl = document.getElementById('totalHires');
@@ -1206,144 +1388,249 @@ async function loadDashboard() {
         if (hiresEl) hiresEl.textContent = totalHires;
         if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
 
-        loadVehiclePerformance(monthValue);
+        // --- Load vehicle revenue chart for this month ---
+        await loadVehicleRevenueChart(monthValue);
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
 }
 
-async function loadVehiclePerformance(monthValue) {
+async function loadDashboardCharts() {
     try {
-        const [year, month] = monthValue.split('-');
-        const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        // Get last 6 months data
+        const months = [];
+        const revenues = [];
+        const profits = [];
+        const fuelCosts = [];
+        let totalRevenue6M = 0;
+        let totalProfit6M = 0;
+        let totalHires6M = 0;
 
-        const { data: hireVehicles } = await supabase
-            .from('hire_to_pay_vehicles')
-            .select('*')
-            .eq('user_id', currentUser.id);
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            
+            const startDate = `${year}-${month}-01`;
+            const endDate = new Date(year, date.getMonth() + 1, 0).toISOString().split('T')[0];
 
-        const { data: commitmentRecordsMonth } = await supabase
-            .from('commitment_records')
-            .select('vehicle_id')
-            .eq('user_id', currentUser.id)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        const commitmentVehicleIdsWithHires = new Set();
-        commitmentRecordsMonth?.forEach(record => {
-            commitmentVehicleIdsWithHires.add(record.vehicle_id);
-        });
-
-        let commitmentVehicles = [];
-        if (commitmentVehicleIdsWithHires.size > 0) {
-            const { data: vehicles } = await supabase
-                .from('commitment_vehicles')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .in('id', Array.from(commitmentVehicleIdsWithHires));
-            commitmentVehicles = vehicles || [];
-        }
-
-        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
-
-        for (const vehicle of hireVehicles) {
-            const { data: records } = await supabase
+            const { data: hireRecords } = await supabase
                 .from('hire_to_pay_records')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
+                .eq('user_id', currentUser.id)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
-            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
-
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
-        }
-
-        for (const vehicle of commitmentVehicles) {
-            const { data: records } = await supabase
+            const { data: commitmentRecords } = await supabase
                 .from('commitment_records')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
+                .eq('user_id', currentUser.id)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
             const { data: dayOffs } = await supabase
                 .from('commitment_day_offs')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
+                .eq('user_id', currentUser.id)
                 .gte('day_off_date', startDate)
                 .lte('day_off_date', endDate);
 
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const basePay = vehicle.fixed_monthly_payment;
+            const commitmentVehicleIds = new Set();
+            commitmentRecords?.forEach(record => {
+                commitmentVehicleIds.add(record.vehicle_id);
+            });
+
+            const { data: commitmentVehicles } = await supabase
+                .from('commitment_vehicles')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
+
+            let monthRevenue = 0;
+            let monthFuelCost = 0;
+
+            hireRecords?.forEach(record => {
+                monthRevenue += record.hire_amount;
+                monthFuelCost += record.fuel_cost;
+            });
+
+            const commitmentPayment = commitmentVehicles?.reduce((sum, v) => sum + v.fixed_monthly_payment, 0) || 0;
             const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
-            const extraKmCharges = records?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
-            const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
+            const commitmentFuelCost = commitmentRecords?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+            const extraKmCharges = commitmentRecords?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
 
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+            monthRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
+            monthFuelCost += commitmentFuelCost;
+
+            const monthProfit = monthRevenue - monthFuelCost;
+
+            months.push(monthLabel);
+            revenues.push(monthRevenue);
+            profits.push(monthProfit);
+            fuelCosts.push(monthFuelCost);
+            totalRevenue6M += monthRevenue;
+            totalProfit6M += monthProfit;
+            totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0);
         }
 
-        performanceHtml += '</tbody></table>';
-        const perfEl = document.getElementById('vehiclePerformance');
-        if (perfEl) perfEl.innerHTML = performanceHtml;
+        // Update detailed metrics
+        const avgRevenue = totalRevenue6M / 6;
+        const avgProfit = totalProfit6M / 6;
+        const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
+
+        document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toFixed(2)}`;
+        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toFixed(2)}`;
+        document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
+        document.getElementById('sixMonthHires').textContent = totalHires6M;
+
+        // Destroy existing charts
+        if (revenueChart) revenueChart.destroy();
+        if (profitChart) profitChart.destroy();
+        if (fuelCostChart) fuelCostChart.destroy();
+        if (revenueBreakdownChart) revenueBreakdownChart.destroy();
+        if (vehicleRevenueChart) vehicleRevenueChart.destroy();
+
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
+        if (revenueCtx) {
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Monthly Revenue',
+                        data: revenues,
+                        borderColor: '#DC143C',
+                        backgroundColor: 'rgba(220, 20, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#DC143C',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Profit Chart
+        const profitCtx = document.getElementById('profitChart')?.getContext('2d');
+        if (profitCtx) {
+            profitChart = new Chart(profitCtx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Monthly Profit',
+                        data: profits,
+                        borderColor: '#27AE60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#27AE60',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fuel Cost Chart
+        const fuelCtx = document.getElementById('fuelCostChart')?.getContext('2d');
+        if (fuelCtx) {
+            fuelCostChart = new Chart(fuelCtx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Fuel Cost',
+                        data: fuelCosts,
+                        backgroundColor: 'rgba(230, 126, 34, 0.7)',
+                        borderColor: '#E67E22',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Revenue Breakdown Chart (Doughnut)
+        const breakdownCtx = document.getElementById('revenueBreakdownChart')?.getContext('2d');
+        if (breakdownCtx) {
+            const currentRevenue = revenues[revenues.length - 1];
+            const currentFuel = fuelCosts[fuelCosts.length - 1];
+            const currentProfit = profits[profits.length - 1];
+
+            revenueBreakdownChart = new Chart(breakdownCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Profit', 'Fuel Cost'],
+                    datasets: [{
+                        data: [currentProfit, currentFuel],
+                        backgroundColor: ['#27AE60', '#E67E22'],
+                        borderColor: ['#fff', '#fff'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // Vehicle Revenue Chart
+        await loadVehicleRevenueChart(document.getElementById('dashboardMonth')?.value);
     } catch (error) {
-        console.error('Error loading vehicle performance:', error.message);
-    }
-}
-
-async function updateVehicleSelectors() {
-    try {
-        const { data: hireVehicles } = await supabase
-            .from('hire_to_pay_vehicles')
-            .select('id, lorry_number')
-            .eq('user_id', currentUser.id);
-
-        const { data: commitmentVehicles } = await supabase
-            .from('commitment_vehicles')
-            .select('id, vehicle_number')
-            .eq('user_id', currentUser.id);
-
-        const hireSelect = document.getElementById('hireToPayVehicle');
-        const commitmentSelect = document.getElementById('commitmentVehicleSelect');
-        const dayOffSelect = document.getElementById('dayOffVehicle');
-
-        if (hireSelect) {
-            hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            hireVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.lorry_number;
-                hireSelect.appendChild(option);
-            });
-        }
-
-        if (commitmentSelect) {
-            commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            commitmentVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.vehicle_number;
-                commitmentSelect.appendChild(option);
-            });
-        }
-
-        if (dayOffSelect) {
-            dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            commitmentVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.vehicle_number;
-                dayOffSelect.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error updating vehicle selectors:', error.message);
+        console.error('Error loading charts:', error.message);
     }
 }

@@ -128,6 +128,51 @@
                         <h3>Vehicle Performance</h3>
                         <div id="vehiclePerformance" class="performance-table"></div>
                     </div>
+
+                    <div class="performance-section">
+                        <h3>📈 Monthly Financial Trends</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="profitChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-section">
+                        <h3>⛽ Fuel & Operational Analysis</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="fuelCostChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="performance-section">
+                        <h3>📊 Business Performance Metrics</h3>
+                        <div class="metrics-detailed">
+                            <div class="detail-metric">
+                                <span class="detail-label">Last 6 Months Average Revenue</span>
+                                <span class="detail-value" id="avgRevenue">LKR 0.00</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Last 6 Months Average Profit</span>
+                                <span class="detail-value profit" id="avgProfit">LKR 0.00</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Profit Margin</span>
+                                <span class="detail-value" id="profitMargin">0%</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Total Hires (6 months)</span>
+                                <span class="detail-value" id="sixMonthHires">0</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Drivers Page -->
@@ -497,6 +542,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
