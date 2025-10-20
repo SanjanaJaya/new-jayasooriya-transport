@@ -924,6 +924,8 @@ tbody tr:hover {
         border-radius: 8px;
         border-left: 5px solid var(--primary-color);
         box-shadow: 0 2px 8px rgba(220, 20, 60, 0.08);
+        /* FIX: Add horizontal scrolling for content that may exceed screen width, such as a table */
+        overflow-x: auto;
     }
 
     .performance-section h3 {
@@ -1144,6 +1146,7 @@ tbody tr:hover {
 
     .performance-section {
         padding: 12px;
+        overflow-x: auto; /* Ensure horizontal scroll on smaller tablet view too */
     }
 
     .performance-section h3 {
@@ -1304,6 +1307,8 @@ tbody tr:hover {
 
     .performance-section {
         padding: 10px;
+        /* Inheriting from 768px, but ensuring explicitly for smallest view */
+        overflow-x: auto;
     }
 
     .performance-section h3 {
