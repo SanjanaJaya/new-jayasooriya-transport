@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="Jayasooriya Transport Management System">
-    <meta name="theme-color" content="#DC143C">
+    <meta name="theme-color" content="#FF0000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Jayasooriya Transport">
@@ -88,7 +88,7 @@
                 <div id="dashboard" class="page active">
                     <div class="dashboard-controls">
                         <div class="date-selector">
-                            <label for="dashboardMonth">Select Month & Year:</label>
+                            <label for="dashboardMonth">📆 Select Month & Year</label>
                             <input type="month" id="dashboardMonth" title="Select Month and Year" value="">
                         </div>
                     </div>
@@ -125,7 +125,7 @@
                     </div>
 
                     <div class="performance-section">
-                        <h3>Vehicle Performance</h3>
+                        <h3>🚗 Vehicle Performance</h3>
                         <div id="vehiclePerformance" class="performance-table"></div>
                     </div>
 
@@ -150,17 +150,15 @@
                         </div>
                     </div>
 
-                    
-
                     <div class="performance-section">
                         <h3>📊 Business Performance Metrics</h3>
                         <div class="metrics-detailed">
                             <div class="detail-metric">
-                                <span class="detail-label">Last 6 Months Average Revenue</span>
+                                <span class="detail-label">Last 6 Months Avg Revenue</span>
                                 <span class="detail-value" id="avgRevenue">LKR 0.00</span>
                             </div>
                             <div class="detail-metric">
-                                <span class="detail-label">Last 6 Months Average Profit</span>
+                                <span class="detail-label">Last 6 Months Avg Profit</span>
                                 <span class="detail-value profit" id="avgProfit">LKR 0.00</span>
                             </div>
                             <div class="detail-metric">
@@ -178,7 +176,7 @@
                 <!-- Drivers Page -->
                 <div id="drivers" class="page">
                     <div class="page-header">
-                        <h3>Manage Drivers</h3>
+                        <h3>👤 Manage Drivers</h3>
                         <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
                     </div>
 
@@ -197,8 +195,8 @@
                                 <input type="text" id="driverAddress" placeholder="Address" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Driver</button>
-                                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Driver</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -223,7 +221,7 @@
                 <!-- Hire-to-Pay Vehicles Page -->
                 <div id="hire-vehicles" class="page">
                     <div class="page-header">
-                        <h3>Hire-to-Pay Vehicles</h3>
+                        <h3>🚚 Hire-to-Pay Vehicles</h3>
                         <button class="btn btn-primary" id="addHireVehicleBtn">+ Add Vehicle</button>
                     </div>
 
@@ -255,8 +253,8 @@
                                 </select>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Vehicle</button>
-                                <button type="button" class="btn btn-secondary" id="cancelHireVehicleBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Vehicle</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireVehicleBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -286,17 +284,17 @@
                 <!-- Hire-to-Pay Records Page -->
                 <div id="hire-records" class="page">
                     <div class="page-header">
-                        <h3>Hire-to-Pay Records</h3>
-                        <button class="btn btn-primary" id="addHireRecordBtn">+ Add Hire Record</button>
+                        <h3>📋 Hire-to-Pay Records</h3>
+                        <button class="btn btn-primary" id="addHireRecordBtn">+ Add Record</button>
                     </div>
 
                     <div class="dashboard-controls">
                         <div class="control-group">
-                            <label for="hireRecordsMonth">Month:</label>
+                            <label for="hireRecordsMonth">📆 Month</label>
                             <input type="month" id="hireRecordsMonth" title="Select Month and Year" value="">
                         </div>
                         <div class="control-group">
-                            <label for="hireRecordsVehicleFilter">Vehicle:</label>
+                            <label for="hireRecordsVehicleFilter">🚚 Vehicle</label>
                             <select id="hireRecordsVehicleFilter" title="Filter by Vehicle">
                                 <option value="">All Vehicles</option>
                             </select>
@@ -326,12 +324,12 @@
                                 <input type="number" id="hireWaitingHours" placeholder="Waiting Hours" step="0.5" value="0">
                             </div>
                             <div class="form-row">
-                                <input type="checkbox" id="hireLoading"> <label for="hireLoading">Include Loading Charge</label>
+                                <label><input type="checkbox" id="hireLoading"> Include Loading Charge</label>
                                 <input type="number" id="hireOtherCharges" placeholder="Other Charges (LKR)" value="0">
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Hire Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelHireRecordBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireRecordBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -360,7 +358,7 @@
                 <!-- Commitment Vehicles Page -->
                 <div id="commitment-vehicles" class="page">
                     <div class="page-header">
-                        <h3>Commitment Vehicles</h3>
+                        <h3>🚛 Commitment Vehicles</h3>
                         <button class="btn btn-primary" id="addCommitmentVehicleBtn">+ Add Vehicle</button>
                     </div>
 
@@ -377,8 +375,8 @@
                                 <input type="number" id="commitmentLoadingCharge" placeholder="Loading Charge (LKR)" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Vehicle</button>
-                                <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Vehicle</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -403,17 +401,17 @@
                 <!-- Commitment Records Page -->
                 <div id="commitment-records" class="page">
                     <div class="page-header">
-                        <h3>Commitment Vehicle Hires</h3>
+                        <h3>📝 Commitment Vehicle Hires</h3>
                         <button class="btn btn-primary" id="addCommitmentRecordBtn">+ Add Record</button>
                     </div>
 
                     <div class="dashboard-controls">
                         <div class="control-group">
-                            <label for="commitmentRecordsMonth">Month:</label>
+                            <label for="commitmentRecordsMonth">📆 Month</label>
                             <input type="month" id="commitmentRecordsMonth" title="Select Month and Year" value="">
                         </div>
                         <div class="control-group">
-                            <label for="commitmentRecordsVehicleFilter">Vehicle:</label>
+                            <label for="commitmentRecordsVehicleFilter">🚛 Vehicle</label>
                             <select id="commitmentRecordsVehicleFilter" title="Filter by Vehicle">
                                 <option value="">All Vehicles</option>
                             </select>
@@ -443,8 +441,8 @@
                                 <input type="number" id="commitmentExtraCharges" placeholder="Extra Charges (LKR)" value="0">
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelCommitmentRecordBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentRecordBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -472,17 +470,17 @@
                 <!-- Day Offs Page -->
                 <div id="commitment-dayoffs" class="page">
                     <div class="page-header">
-                        <h3>Commitment Vehicle Day Offs</h3>
+                        <h3>📅 Commitment Vehicle Day Offs</h3>
                         <button class="btn btn-primary" id="addDayOffBtn">+ Add Day Off</button>
                     </div>
 
                     <div class="dashboard-controls">
                         <div class="control-group">
-                            <label for="dayOffMonth">Month:</label>
+                            <label for="dayOffMonth">📆 Month</label>
                             <input type="month" id="dayOffMonth" title="Select Month and Year" value="">
                         </div>
                         <div class="control-group">
-                            <label for="dayOffVehicleFilter">Vehicle:</label>
+                            <label for="dayOffVehicleFilter">🚛 Vehicle</label>
                             <select id="dayOffVehicleFilter" title="Filter by Vehicle">
                                 <option value="">All Vehicles</option>
                             </select>
@@ -499,8 +497,8 @@
                                 <input type="date" id="dayOffDate" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Day Off</button>
-                                <button type="button" class="btn btn-secondary" id="cancelDayOffBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success">💾 Save Day Off</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDayOffBtn">✖ Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -533,9 +531,9 @@
                 <p>Management System</p>
             </div>
             <form id="loginForm">
-                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="email" id="loginEmail" placeholder="Email Address" required>
                 <input type="password" id="loginPassword" placeholder="Password" required>
-                <button type="submit" class="btn btn-primary full-width">Login</button>
+                <button type="submit" class="btn btn-primary full-width">🔐 Login</button>
                 <p id="loginError" class="error-message"></p>
             </form>
         </div>
@@ -543,6 +541,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
