@@ -663,7 +663,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
         hireAmount += otherCharges;
 
         if (hireAmount < vehicleData.minimum_hire_amount) {
-            hireAmount = vehicleData.minimum_hire_amount + waitingCharge;
+            hireAmount = vehicleData.minimum_hire_amount + waitingCharge + otherCharges;
         }
 
         const fuelCost = fuelLitres * fuelPrice;
