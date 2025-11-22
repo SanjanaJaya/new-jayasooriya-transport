@@ -1848,3 +1848,13 @@ async function deleteAdvance(id) {
         }
     }
 }
+
+// ============ REPORT GENERATION ============
+document.getElementById('generateReportBtn')?.addEventListener('click', async () => {
+    const monthValue = document.getElementById('dashboardMonth')?.value;
+    if (!monthValue) {
+        alert('Please select a month first');
+        return;
+    }
+    await generateMonthlyReport(monthValue);
+});
