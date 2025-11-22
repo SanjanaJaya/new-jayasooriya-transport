@@ -118,7 +118,8 @@ function setDefaultMonths() {
         'dashboardMonth',
         'hireRecordsMonth',
         'commitmentRecordsMonth',
-        'dayOffMonth'
+        'dayOffMonth',
+        'advanceMonth'
     ];
     
     elements.forEach(id => {
@@ -192,25 +193,28 @@ function switchPage(page) {
     if (pageEl) pageEl.classList.add('active');
     
     const titles = {
-        'dashboard': 'Dashboard',
-        'drivers': 'Manage Drivers',
-        'hire-vehicles': 'Hire-to-Pay Vehicles',
-        'hire-records': 'Hire-to-Pay Records',
-        'commitment-vehicles': 'Commitment Vehicles',
-        'commitment-records': 'Commitment Vehicle Hires',
-        'commitment-dayoffs': 'Day Offs'
-    };
+    'dashboard': 'Dashboard',
+    'drivers': 'Manage Drivers',
+    'driver-advances': 'Driver Salary Advances',
+    'hire-vehicles': 'Hire-to-Pay Vehicles',
+    'hire-records': 'Hire-to-Pay Records',
+    'commitment-vehicles': 'Commitment Vehicles',
+    'commitment-records': 'Commitment Vehicle Hires',
+    'commitment-dayoffs': 'Day Offs'
+};
     
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
     
     if (page === 'dashboard') loadDashboard();
-    if (page === 'drivers') loadDrivers();
-    if (page === 'hire-vehicles') loadHireVehicles();
-    if (page === 'hire-records') loadHireRecords();
-    if (page === 'commitment-vehicles') loadCommitmentVehicles();
-    if (page === 'commitment-records') loadCommitmentRecords();
-    if (page === 'commitment-dayoffs') loadDayOffs();
+if (page === 'drivers') loadDrivers();
+if (page === 'driver-advances') loadDriverAdvances();
+if (page === 'hire-vehicles') loadHireVehicles();
+if (page === 'hire-records') loadHireRecords();
+if (page === 'commitment-vehicles') loadCommitmentVehicles();
+if (page === 'commitment-records') loadCommitmentRecords();
+if (page === 'commitment-dayoffs') loadDayOffs();
+
 }
 
 // app.js
@@ -271,6 +275,9 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         license_number: document.getElementById('driverLicense').value,
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
+        basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
+        km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
+        extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
         user_id: currentUser.id
     };
 
@@ -438,20 +445,23 @@ async function loadDrivers() {
         tbody.innerHTML = '';
         
         data.forEach(driver => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${driver.name}</td>
-                <td>${driver.contact}</td>
-                <td>${driver.license_number}</td>
-                <td>${driver.age}</td>
-                <td>${driver.address}</td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${driver.name}</td>
+        <td>${driver.contact}</td>
+        <td>${driver.license_number}</td>
+        <td>${driver.age}</td>
+        <td>${driver.address}</td>
+        <td>${driver.basic_salary ? 'LKR ' + driver.basic_salary.toFixed(2) : '-'}</td>
+        <td>${driver.km_limit ? driver.km_limit + ' km' : '-'}</td>
+        <td>${driver.extra_km_rate ? 'LKR ' + driver.extra_km_rate.toFixed(2) : '-'}</td>
+        <td class="action-buttons">
+            <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
+        </td>
+    `;
+    tbody.appendChild(row);
+});
     } catch (error) {
         console.error('Error loading drivers:', error.message);
     }
@@ -468,6 +478,9 @@ async function editDriver(id) {
         document.getElementById('driverLicense').value = data.license_number;
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
+        document.getElementById('driverBasicSalary').value = data.basic_salary || '';
+        document.getElementById('driverKmLimit').value = data.km_limit || '';
+        document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
         document.getElementById('driverFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -1632,5 +1645,206 @@ async function loadDashboardCharts() {
         await loadVehicleRevenueChart(document.getElementById('dashboardMonth')?.value);
     } catch (error) {
         console.error('Error loading charts:', error.message);
+    }
+}
+
+// ============ DRIVER ADVANCES ============
+document.getElementById('addAdvanceBtn')?.addEventListener('click', () => {
+    document.getElementById('advanceForm').reset();
+    document.getElementById('advanceId').value = '';
+    document.getElementById('advanceFormContainer').style.display = 'block';
+});
+
+document.getElementById('cancelAdvanceBtn')?.addEventListener('click', () => {
+    document.getElementById('advanceFormContainer').style.display = 'none';
+});
+
+document.getElementById('advanceMonth')?.addEventListener('change', loadDriverAdvances);
+document.getElementById('advanceDriverFilter')?.addEventListener('change', loadDriverAdvances);
+
+document.getElementById('advanceForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('advanceId').value;
+    const data = {
+        driver_id: parseInt(document.getElementById('advanceDriver').value),
+        advance_date: document.getElementById('advanceDate').value,
+        amount: parseFloat(document.getElementById('advanceAmount').value),
+        notes: document.getElementById('advanceNotes').value || null,
+        user_id: currentUser.id
+    };
+
+    try {
+        if (id) {
+            await supabase.from('driver_advances').update(data).eq('id', id);
+        } else {
+            await supabase.from('driver_advances').insert([data]);
+        }
+        loadDriverAdvances();
+        document.getElementById('advanceFormContainer').style.display = 'none';
+    } catch (error) {
+        alert('Error saving advance: ' + error.message);
+    }
+});
+
+async function loadDriverAdvances() {
+    try {
+        const monthValue = document.getElementById('advanceMonth')?.value;
+        const driverFilter = document.getElementById('advanceDriverFilter')?.value;
+        
+        // Load advance summary
+        await loadAdvanceSummary();
+        
+        let query = supabase
+            .from('driver_advances')
+            .select('*, drivers(name)')
+            .eq('user_id', currentUser.id);
+        
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            query = query.gte('advance_date', startDate).lte('advance_date', endDate);
+        }
+
+        if (driverFilter) {
+            query = query.eq('driver_id', driverFilter);
+        }
+
+        const { data, error } = await query.order('advance_date', { ascending: false });
+        if (error) throw error;
+
+        const tbody = document.querySelector('#advancesTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        data.forEach(advance => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${advance.drivers.name}</td>
+                <td>${advance.advance_date}</td>
+                <td>LKR ${advance.amount.toFixed(2)}</td>
+                <td>${advance.notes || '-'}</td>
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteAdvance(${advance.id})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        await updateAdvanceDriverSelectors();
+    } catch (error) {
+        console.error('Error loading advances:', error.message);
+    }
+}
+
+async function loadAdvanceSummary() {
+    try {
+        const { data: drivers } = await supabase
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', currentUser.id);
+
+        const { data: advances } = await supabase
+            .from('driver_advances')
+            .select('driver_id, amount')
+            .eq('user_id', currentUser.id);
+
+        const advancesByDriver = {};
+        advances?.forEach(adv => {
+            if (!advancesByDriver[adv.driver_id]) {
+                advancesByDriver[adv.driver_id] = 0;
+            }
+            advancesByDriver[adv.driver_id] += adv.amount;
+        });
+
+        const summaryEl = document.getElementById('advanceSummary');
+        if (!summaryEl) return;
+        summaryEl.innerHTML = '';
+
+        if (drivers && drivers.length > 0) {
+            drivers.forEach(driver => {
+                const totalAdvance = advancesByDriver[driver.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'advance-card';
+                card.innerHTML = `
+                    <div class="advance-card-icon">👤</div>
+                    <div class="advance-card-content">
+                        <div class="advance-card-name">${driver.name}</div>
+                        <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
+                        <div class="advance-card-label">Total Advances</div>
+                    </div>
+                `;
+                summaryEl.appendChild(card);
+            });
+        } else {
+            summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No drivers found. Add drivers first.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading advance summary:', error.message);
+    }
+}
+
+async function updateAdvanceDriverSelectors() {
+    try {
+        const { data: drivers } = await supabase
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', currentUser.id);
+
+        const advanceDriverSelect = document.getElementById('advanceDriver');
+        const filterSelect = document.getElementById('advanceDriverFilter');
+
+        if (advanceDriverSelect) {
+            advanceDriverSelect.innerHTML = '<option value="">Select Driver</option>';
+            drivers?.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                advanceDriverSelect.appendChild(option);
+            });
+        }
+
+        if (filterSelect) {
+            const currentValue = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">All Drivers</option>';
+            drivers?.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                filterSelect.appendChild(option);
+            });
+            filterSelect.value = currentValue;
+        }
+    } catch (error) {
+        console.error('Error updating driver selectors:', error.message);
+    }
+}
+
+async function editAdvance(id) {
+    try {
+        const { data, error } = await supabase.from('driver_advances').select('*').eq('id', id).single();
+        if (error) throw error;
+        
+        document.getElementById('advanceId').value = data.id;
+        document.getElementById('advanceDriver').value = data.driver_id;
+        document.getElementById('advanceDate').value = data.advance_date;
+        document.getElementById('advanceAmount').value = data.amount;
+        document.getElementById('advanceNotes').value = data.notes || '';
+        document.getElementById('advanceFormContainer').style.display = 'block';
+        window.scrollTo(0, 0);
+    } catch (error) {
+        alert('Error loading advance: ' + error.message);
+    }
+}
+
+async function deleteAdvance(id) {
+    if (confirm('Are you sure you want to delete this advance record?')) {
+        try {
+            await supabase.from('driver_advances').delete().eq('id', id);
+            loadDriverAdvances();
+        } catch (error) {
+            alert('Error deleting advance: ' + error.message);
+        }
     }
 }

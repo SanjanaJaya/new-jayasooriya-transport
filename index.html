@@ -39,6 +39,10 @@
                     <span class="nav-icon">👤</span>
                     <span>Drivers</span>
                 </button>
+                <button class="nav-item" data-page="driver-advances">
+                    <span class="nav-icon">💵</span>
+                    <span>Driver Advances</span>
+                </button>
                 <button class="nav-item" data-page="hire-vehicles">
                     <span class="nav-icon">🚚</span>
                     <span>Hire-to-Pay Vehicles</span>
@@ -180,49 +184,123 @@
                 </div>
 
                 <!-- Drivers Page -->
-                <div id="drivers" class="page">
-                    <div class="page-header">
-                        <h3>👤 Manage Drivers</h3>
-                        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
-                    </div>
+<div id="drivers" class="page">
+    <div class="page-header">
+        <h3>👤 Manage Drivers</h3>
+        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
+    </div>
 
-                    <div class="form-container" id="driverFormContainer" style="display:none;">
-                        <form id="driverForm">
-                            <div class="form-row">
-                                <input type="hidden" id="driverId">
-                                <input type="text" id="driverName" placeholder="Driver Name" required>
-                                <input type="tel" id="driverContact" placeholder="Contact Number" required>
-                            </div>
-                            <div class="form-row">
-                                <input type="text" id="driverLicense" placeholder="License Number" required>
-                                <input type="number" id="driverAge" placeholder="Age" required>
-                            </div>
-                            <div class="form-row full">
-                                <input type="text" id="driverAddress" placeholder="Address" required>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-success">💾 Save Driver</button>
-                                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">✖ Cancel</button>
-                            </div>
-                        </form>
-                    </div>
+    <div class="form-container" id="driverFormContainer" style="display:none;">
+        <form id="driverForm">
+            <div class="form-row">
+                <input type="hidden" id="driverId">
+                <input type="text" id="driverName" placeholder="Driver Name" required>
+                <input type="tel" id="driverContact" placeholder="Contact Number" required>
+            </div>
+            <div class="form-row">
+                <input type="text" id="driverLicense" placeholder="License Number" required>
+                <input type="number" id="driverAge" placeholder="Age" required>
+            </div>
+            <div class="form-row full">
+                <input type="text" id="driverAddress" placeholder="Address" required>
+            </div>
+            <div class="form-row">
+                <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
+                <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
+            </div>
+            <div class="form-row">
+                <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">💾 Save Driver</button>
+                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">✖ Cancel</button>
+            </div>
+        </form>
+    </div>
 
-                    <div class="table-responsive">
-                        <table id="driversTable">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Contact</th>
-                                    <th>License</th>
-                                    <th>Age</th>
-                                    <th>Address</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
+    <div class="table-responsive"> <!-- Added table-responsive wrapper -->
+        <table id="driversTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>License</th>
+                    <th>Age</th>
+                    <th>Address</th>
+                    <th>Basic Salary</th>
+                    <th>KM Limit</th>
+                    <th>Extra KM Rate</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div> <!-- This closes the drivers page div -->
+
+                <!-- Driver Advances Page -->
+<div id="driver-advances" class="page">
+    <div class="page-header">
+        <h3>💵 Driver Salary Advances</h3>
+        <button class="btn btn-primary" id="addAdvanceBtn">+ Add Advance</button>
+    </div>
+
+    <div class="form-container" id="advanceFormContainer" style="display:none;">
+        <form id="advanceForm">
+            <div class="form-row">
+                <input type="hidden" id="advanceId">
+                <select id="advanceDriver" required>
+                    <option value="">Select Driver</option>
+                </select>
+                <input type="date" id="advanceDate" required>
+            </div>
+            <div class="form-row">
+                <input type="number" id="advanceAmount" placeholder="Advance Amount (LKR)" step="0.01" required>
+                <input type="text" id="advanceNotes" placeholder="Notes (Optional)">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">💾 Save Advance</button>
+                <button type="button" class="btn btn-secondary" id="cancelAdvanceBtn">✖ Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Advance Summary Widget -->
+    <div class="performance-section">
+        <h3>📊 Driver Advance Summary</h3>
+        <div id="advanceSummary" class="advance-summary-grid">
+            <!-- Will be populated dynamically -->
+        </div>
+    </div>
+
+    <div class="dashboard-controls">
+        <div class="control-group">
+            <label for="advanceMonth">📆 Month</label>
+            <input type="month" id="advanceMonth" title="Select Month and Year" value="">
+        </div>
+        <div class="control-group">
+            <label for="advanceDriverFilter">👤 Driver</label>
+            <select id="advanceDriverFilter" title="Filter by Driver">
+                <option value="">All Drivers</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table id="advancesTable">
+            <thead>
+                <tr>
+                    <th>Driver</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
 
                 <!-- Hire-to-Pay Vehicles Page -->
                 <div id="hire-vehicles" class="page">
