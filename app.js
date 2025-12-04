@@ -1,9 +1,13 @@
+// app.js - Fully Updated with Admin ID & Role-Based Access Control
+
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsbXFqcWtwZ2RocmRjb2VtcGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTg4NzUsImV4cCI6MjA3NjM3NDg3NX0.mXDMuhn0K5sOKhwykhf9OcomUzSVkCGnN5jr60A-TSw';
 
 let supabase = null;
 let currentUser = null;
+let userRole = null; // 'admin' or 'viewer'
+let adminUserId = null; // Store the admin user ID for data filtering
 let currentPage = 'dashboard';
 
 // Initialize Supabase
@@ -11,6 +15,94 @@ function initSupabase() {
     if (window.supabase) {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
+}
+
+// Check user role and get admin ID
+async function checkUserRole() {
+    try {
+        // We still use currentUser.id here to find out who is logged in
+        const { data, error } = await supabase
+            .from('user_roles')
+            .select('role, admin_id')
+            .eq('user_id', currentUser.id)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching user role:', error);
+            userRole = 'admin';
+            adminUserId = currentUser.id; // Fallback: User is their own admin
+        } else {
+            userRole = data.role;
+            // If admin_id is null (common for the main admin), use their own ID
+            adminUserId = data.admin_id || currentUser.id;
+        }
+        
+        console.log('User role:', userRole, 'Admin ID:', adminUserId);
+        
+        // Update UI based on role
+        updateUIForRole();
+    } catch (error) {
+        console.error('Error checking user role:', error);
+        userRole = 'admin';
+        adminUserId = currentUser.id;
+    }
+}
+
+// Get the user ID to use for queries (admin's ID for viewers, own ID for admins)
+function getQueryUserId() {
+    return adminUserId;
+}
+
+// Update UI based on user role
+function updateUIForRole() {
+    const isViewer = userRole === 'viewer';
+    
+    // Hide/disable all add buttons
+    const addButtons = document.querySelectorAll('[id$="Btn"]:not(#logoutBtn)');
+    addButtons.forEach(btn => {
+        if (isViewer) {
+            btn.style.display = 'none';
+        } else {
+            btn.style.display = '';
+        }
+    });
+    
+    // Handle CSS for viewer mode (hiding actions/forms)
+    if (isViewer) {
+        const style = document.createElement('style');
+        style.id = 'viewer-mode-style';
+        style.textContent = `
+            .action-buttons { display: none !important; }
+            .form-container { display: none !important; }
+        `;
+        document.head.appendChild(style);
+    } else {
+        const existingStyle = document.getElementById('viewer-mode-style');
+        if (existingStyle) {
+            existingStyle.remove();
+        }
+    }
+    
+    // Add viewer indicator if viewer role
+    if (isViewer) {
+        const header = document.querySelector('.header-right');
+        if (header && !document.getElementById('viewerBadge')) {
+            const badge = document.createElement('span');
+            badge.id = 'viewerBadge';
+            badge.style.cssText = 'background: #3498db; color: white; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 12px;';
+            badge.textContent = '👁️ Read-Only Mode';
+            header.insertBefore(badge, header.firstChild);
+        }
+    }
+}
+
+// Helper to check admin access for operations
+function checkAdminAccess(action = 'modify') {
+    if (userRole === 'viewer') {
+        alert(`You don't have permission to ${action} data. Contact the administrator for access.`);
+        return false;
+    }
+    return true;
 }
 
 // Initialize App
@@ -29,6 +121,7 @@ async function initializeApp() {
         
         if (session) {
             currentUser = session.user;
+            await checkUserRole(); // Check user role and get admin ID
             showApp();
             setDefaultMonths();
             loadDashboard();
@@ -90,6 +183,7 @@ if (loginForm) {
             if (error) throw error;
             
             currentUser = data.user;
+            await checkUserRole(); // Check role after login
             showApp();
             setDefaultMonths();
             loadDashboard();
@@ -105,6 +199,8 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         await supabase.auth.signOut();
         currentUser = null;
+        userRole = null;
+        adminUserId = null;
         showLogin();
     });
 }
@@ -193,31 +289,28 @@ function switchPage(page) {
     if (pageEl) pageEl.classList.add('active');
     
     const titles = {
-    'dashboard': 'Dashboard',
-    'drivers': 'Manage Drivers',
-    'driver-advances': 'Driver Salary Advances',
-    'hire-vehicles': 'Hire-to-Pay Vehicles',
-    'hire-records': 'Hire-to-Pay Records',
-    'commitment-vehicles': 'Commitment Vehicles',
-    'commitment-records': 'Commitment Vehicle Hires',
-    'commitment-dayoffs': 'Day Offs'
-};
+        'dashboard': 'Dashboard',
+        'drivers': 'Manage Drivers',
+        'driver-advances': 'Driver Salary Advances',
+        'hire-vehicles': 'Hire-to-Pay Vehicles',
+        'hire-records': 'Hire-to-Pay Records',
+        'commitment-vehicles': 'Commitment Vehicles',
+        'commitment-records': 'Commitment Vehicle Hires',
+        'commitment-dayoffs': 'Day Offs'
+    };
     
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
     
     if (page === 'dashboard') loadDashboard();
-if (page === 'drivers') loadDrivers();
-if (page === 'driver-advances') loadDriverAdvances();
-if (page === 'hire-vehicles') loadHireVehicles();
-if (page === 'hire-records') loadHireRecords();
-if (page === 'commitment-vehicles') loadCommitmentVehicles();
-if (page === 'commitment-records') loadCommitmentRecords();
-if (page === 'commitment-dayoffs') loadDayOffs();
-
+    if (page === 'drivers') loadDrivers();
+    if (page === 'driver-advances') loadDriverAdvances();
+    if (page === 'hire-vehicles') loadHireVehicles();
+    if (page === 'hire-records') loadHireRecords();
+    if (page === 'commitment-vehicles') loadCommitmentVehicles();
+    if (page === 'commitment-records') loadCommitmentRecords();
+    if (page === 'commitment-dayoffs') loadDayOffs();
 }
-
-// app.js
 
 // ============ DASHBOARD ============
 async function loadDashboard() {
@@ -235,7 +328,7 @@ async function loadDashboard() {
         // Load core metrics
         await loadDashboardData(monthValue);
         
-        // FIX: Call the function to load the Vehicle Performance table
+        // Load the Vehicle Performance table
         await loadVehiclePerformance(monthValue); 
         
         // Load charts
@@ -257,6 +350,7 @@ let vehicleRevenueChart = null;
 
 // ============ DRIVERS ============
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('driverForm').reset();
     document.getElementById('driverId').value = '';
     document.getElementById('driverFormContainer').style.display = 'block';
@@ -268,6 +362,8 @@ document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
 
 document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('driverId').value;
     const data = {
         name: document.getElementById('driverName').value,
@@ -278,7 +374,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
         km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
         extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
-        user_id: currentUser.id
+        user_id: adminUserId // Use admin's ID for data ownership
     };
 
     try {
@@ -294,148 +390,13 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     }
 });
 
-async function loadVehiclePerformance(monthValue) {
-    try {
-        const [year, month] = monthValue.split('-');
-        const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-
-        const { data: hireVehicles } = await supabase
-            .from('hire_to_pay_vehicles')
-            .select('*')
-            .eq('user_id', currentUser.id);
-
-        const { data: commitmentRecordsMonth } = await supabase
-            .from('commitment_records')
-            .select('vehicle_id')
-            .eq('user_id', currentUser.id)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        const commitmentVehicleIdsWithHires = new Set();
-        commitmentRecordsMonth?.forEach(record => {
-            commitmentVehicleIdsWithHires.add(record.vehicle_id);
-        });
-
-        let commitmentVehicles = [];
-        if (commitmentVehicleIdsWithHires.size > 0) {
-            const { data: vehicles } = await supabase
-                .from('commitment_vehicles')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .in('id', Array.from(commitmentVehicleIdsWithHires));
-            commitmentVehicles = vehicles || [];
-        }
-
-        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
-
-        for (const vehicle of hireVehicles) {
-            const { data: records } = await supabase
-                .from('hire_to_pay_records')
-                .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('hire_date', startDate)
-                .lte('hire_date', endDate);
-
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
-            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
-
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
-        }
-
-        for (const vehicle of commitmentVehicles) {
-            const { data: records } = await supabase
-                .from('commitment_records')
-                .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('hire_date', startDate)
-                .lte('hire_date', endDate);
-
-            const { data: dayOffs } = await supabase
-                .from('commitment_day_offs')
-                .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('day_off_date', startDate)
-                .lte('day_off_date', endDate);
-
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const basePay = vehicle.fixed_monthly_payment;
-            const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
-            const extraKmCharges = records?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
-            const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
-
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
-        }
-
-        performanceHtml += '</tbody></table>';
-        const perfEl = document.getElementById('vehiclePerformance');
-        if (perfEl) perfEl.innerHTML = performanceHtml;
-    } catch (error) {
-        console.error('Error loading vehicle performance:', error.message);
-    }
-}
-
-async function updateVehicleSelectors() {
-    try {
-        const { data: hireVehicles } = await supabase
-            .from('hire_to_pay_vehicles')
-            .select('id, lorry_number')
-            .eq('user_id', currentUser.id);
-
-        const { data: commitmentVehicles } = await supabase
-            .from('commitment_vehicles')
-            .select('id, vehicle_number')
-            .eq('user_id', currentUser.id);
-
-        const hireSelect = document.getElementById('hireToPayVehicle');
-        const commitmentSelect = document.getElementById('commitmentVehicleSelect');
-        const dayOffSelect = document.getElementById('dayOffVehicle');
-
-        if (hireSelect) {
-            hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            hireVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.lorry_number;
-                hireSelect.appendChild(option);
-            });
-        }
-
-        if (commitmentSelect) {
-            commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            commitmentVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.vehicle_number;
-                commitmentSelect.appendChild(option);
-            });
-        }
-
-        if (dayOffSelect) {
-            dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
-            commitmentVehicles?.forEach(v => {
-                const option = document.createElement('option');
-                option.value = v.id;
-                option.textContent = v.vehicle_number;
-                dayOffSelect.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error updating vehicle selectors:', error.message);
-    }
-}
-
 async function loadDrivers() {
     try {
+        // Use getQueryUserId() for filtering data
         const { data, error } = await supabase
             .from('drivers')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', getQueryUserId())
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -444,30 +405,41 @@ async function loadDrivers() {
         if (!tbody) return;
         tbody.innerHTML = '';
         
+        if (!data || data.length === 0) {
+             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #7F8C8D;">No drivers found</td></tr>';
+             return;
+        }
+
         data.forEach(driver => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>${driver.name}</td>
-        <td>${driver.contact}</td>
-        <td>${driver.license_number}</td>
-        <td>${driver.age}</td>
-        <td>${driver.address}</td>
-        <td>${driver.basic_salary ? 'LKR ' + driver.basic_salary.toFixed(2) : '-'}</td>
-        <td>${driver.km_limit ? driver.km_limit + ' km' : '-'}</td>
-        <td>${driver.extra_km_rate ? 'LKR ' + driver.extra_km_rate.toFixed(2) : '-'}</td>
-        <td class="action-buttons">
-            <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
-        </td>
-    `;
-    tbody.appendChild(row);
-});
+            const row = document.createElement('tr');
+            // Check role to conditionally render action buttons
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
+                </td>
+            `;
+
+            row.innerHTML = `
+                <td>${driver.name}</td>
+                <td>${driver.contact}</td>
+                <td>${driver.license_number}</td>
+                <td>${driver.age}</td>
+                <td>${driver.address}</td>
+                <td>${driver.basic_salary ? 'LKR ' + driver.basic_salary.toFixed(2) : '-'}</td>
+                <td>${driver.km_limit ? driver.km_limit + ' km' : '-'}</td>
+                <td>${driver.extra_km_rate ? 'LKR ' + driver.extra_km_rate.toFixed(2) : '-'}</td>
+                ${actionButtons}
+            `;
+            tbody.appendChild(row);
+        });
     } catch (error) {
         console.error('Error loading drivers:', error.message);
     }
 }
 
 async function editDriver(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('drivers').select('*').eq('id', id).single();
         if (error) throw error;
@@ -489,6 +461,7 @@ async function editDriver(id) {
 }
 
 async function deleteDriver(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this driver?')) {
         try {
             await supabase.from('drivers').delete().eq('id', id);
@@ -501,6 +474,7 @@ async function deleteDriver(id) {
 
 // ============ HIRE-TO-PAY VEHICLES ============
 document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('hireVehicleForm').reset();
     document.getElementById('hireVehicleId').value = '';
     document.getElementById('hireVehicleFormContainer').style.display = 'block';
@@ -512,6 +486,8 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
 
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('hireVehicleId').value;
     const data = {
         lorry_number: document.getElementById('lorryNumber').value,
@@ -524,7 +500,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         waiting_charge_extra: parseFloat(document.getElementById('waitingChargeExtra').value),
         minimum_hire_amount: parseFloat(document.getElementById('minimumHireAmount').value),
         ownership: document.getElementById('ownership').value,
-        user_id: currentUser.id
+        user_id: adminUserId // Use admin's ID
     };
 
     try {
@@ -545,7 +521,7 @@ async function loadHireVehicles() {
         const { data, error } = await supabase
             .from('hire_to_pay_vehicles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', getQueryUserId())
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -554,8 +530,20 @@ async function loadHireVehicles() {
         if (!tbody) return;
         tbody.innerHTML = '';
         
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            return;
+        }
+
         data.forEach(vehicle => {
             const row = document.createElement('tr');
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editHireVehicle(${vehicle.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteHireVehicle(${vehicle.id})">Delete</button>
+                </td>
+            `;
+
             row.innerHTML = `
                 <td>${vehicle.lorry_number}</td>
                 <td>${vehicle.length}</td>
@@ -567,10 +555,7 @@ async function loadHireVehicles() {
                 <td>LKR ${vehicle.waiting_charge_extra}</td>
                 <td>LKR ${vehicle.minimum_hire_amount}</td>
                 <td>${vehicle.ownership}</td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editHireVehicle(${vehicle.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteHireVehicle(${vehicle.id})">Delete</button>
-                </td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -582,6 +567,7 @@ async function loadHireVehicles() {
 }
 
 async function editHireVehicle(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('hire_to_pay_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
@@ -605,6 +591,7 @@ async function editHireVehicle(id) {
 }
 
 async function deleteHireVehicle(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this vehicle?')) {
         try {
             await supabase.from('hire_to_pay_vehicles').delete().eq('id', id);
@@ -617,6 +604,7 @@ async function deleteHireVehicle(id) {
 
 // ============ HIRE-TO-PAY RECORDS ============
 document.getElementById('addHireRecordBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('hireRecordForm').reset();
     document.getElementById('hireRecordId').value = '';
     document.getElementById('hireRecordFormContainer').style.display = 'block';
@@ -631,6 +619,8 @@ document.getElementById('hireRecordsVehicleFilter')?.addEventListener('change', 
 
 document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('hireRecordId').value;
     const distance = parseFloat(document.getElementById('hireDistance').value);
     const vehicleId = parseInt(document.getElementById('hireToPayVehicle').value);
@@ -696,7 +686,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             loading_applied: hasLoading,
             other_charges: otherCharges,
             hire_amount: hireAmount,
-            user_id: currentUser.id
+            user_id: adminUserId // Use admin's ID
         };
 
         if (id) {
@@ -720,7 +710,7 @@ async function loadHireRecords() {
         let query = supabase
             .from('hire_to_pay_records')
             .select('*, hire_to_pay_vehicles(lorry_number, price_0_100km, price_100_250km, price_250km_plus, minimum_hire_amount)')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId()); // Use helper
         
         if (monthValue) {
             const [year, month] = monthValue.split('-');
@@ -757,6 +747,13 @@ async function loadHireRecords() {
                                 ((distance - 250) * record.hire_to_pay_vehicles.price_250km_plus);
             }
 
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editHireRecord(${record.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteHireRecord(${record.id})">Delete</button>
+                </td>
+            `;
+
             row.innerHTML = `
                 <td>${record.job_number}</td>
                 <td>${record.hire_date}</td>
@@ -767,10 +764,7 @@ async function loadHireRecords() {
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
                 <td><small>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Hrs: ${record.waiting_hours}</small></td>
                 <td><small>Distance: LKR ${distanceCharge.toFixed(2)}<br>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Other: LKR ${record.other_charges.toFixed(2)}<br><strong>Total: LKR ${record.hire_amount.toFixed(2)}</strong></small></td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editHireRecord(${record.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteHireRecord(${record.id})">Delete</button>
-                </td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -786,7 +780,7 @@ async function updateHireRecordVehicleFilter() {
         const { data: hireVehicles } = await supabase
             .from('hire_to_pay_vehicles')
             .select('id, lorry_number, ownership')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
 
         const filterSelect = document.getElementById('hireRecordsVehicleFilter');
         if (!filterSelect) return;
@@ -808,6 +802,7 @@ async function updateHireRecordVehicleFilter() {
 }
 
 async function editHireRecord(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('hire_to_pay_records').select('*').eq('id', id).single();
         if (error) throw error;
@@ -832,6 +827,7 @@ async function editHireRecord(id) {
 }
 
 async function deleteHireRecord(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this hire record?')) {
         try {
             await supabase.from('hire_to_pay_records').delete().eq('id', id);
@@ -844,6 +840,7 @@ async function deleteHireRecord(id) {
 
 // ============ COMMITMENT VEHICLES ============
 document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentVehicleForm').reset();
     document.getElementById('commitmentVehicleId').value = '';
     document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
@@ -855,6 +852,8 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
 
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
@@ -862,7 +861,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
-        user_id: currentUser.id
+        user_id: adminUserId // Use admin's ID
     };
 
     try {
@@ -883,7 +882,7 @@ async function loadCommitmentVehicles() {
         const { data, error } = await supabase
             .from('commitment_vehicles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', getQueryUserId())
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -894,16 +893,20 @@ async function loadCommitmentVehicles() {
         
         data.forEach(vehicle => {
             const row = document.createElement('tr');
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editCommitmentVehicle(${vehicle.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteCommitmentVehicle(${vehicle.id})">Delete</button>
+                </td>
+            `;
+
             row.innerHTML = `
                 <td>${vehicle.vehicle_number}</td>
                 <td>LKR ${vehicle.fixed_monthly_payment}</td>
                 <td>${vehicle.km_limit_per_month} km</td>
                 <td>LKR ${vehicle.extra_km_charge}/km</td>
                 <td>LKR ${vehicle.loading_charge}</td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editCommitmentVehicle(${vehicle.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteCommitmentVehicle(${vehicle.id})">Delete</button>
-                </td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -915,6 +918,7 @@ async function loadCommitmentVehicles() {
 }
 
 async function editCommitmentVehicle(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('commitment_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
@@ -933,6 +937,7 @@ async function editCommitmentVehicle(id) {
 }
 
 async function deleteCommitmentVehicle(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this vehicle?')) {
         try {
             await supabase.from('commitment_vehicles').delete().eq('id', id);
@@ -945,6 +950,7 @@ async function deleteCommitmentVehicle(id) {
 
 // ============ COMMITMENT RECORDS ============
 document.getElementById('addCommitmentRecordBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentRecordForm').reset();
     document.getElementById('commitmentRecordId').value = '';
     document.getElementById('commitmentRecordFormContainer').style.display = 'block';
@@ -959,6 +965,8 @@ document.getElementById('commitmentRecordsVehicleFilter')?.addEventListener('cha
 
 document.getElementById('commitmentRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('commitmentRecordId').value;
     const fuelLitres = parseFloat(document.getElementById('commitmentFuel').value);
     const fuelPrice = parseFloat(document.getElementById('commitmentFuelPrice').value);
@@ -1018,7 +1026,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             fuel_price_per_litre: fuelPrice,
             fuel_cost: fuelCost,
             extra_charges: totalExtraCharges,
-            user_id: currentUser.id
+            user_id: adminUserId // Use admin's ID
         };
 
         if (id) {
@@ -1042,7 +1050,7 @@ async function loadCommitmentRecords() {
         let query = supabase
             .from('commitment_records')
             .select('*, commitment_vehicles(vehicle_number, km_limit_per_month, extra_km_charge)')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
         
         if (monthValue) {
             const [year, month] = monthValue.split('-');
@@ -1086,6 +1094,13 @@ async function loadCommitmentRecords() {
                 }
             }
 
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editCommitmentRecord(${record.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteCommitmentRecord(${record.id})">Delete</button>
+                </td>
+            `;
+
             row.innerHTML = `
                 <td>${record.job_number}</td>
                 <td>${record.hire_date}</td>
@@ -1095,10 +1110,7 @@ async function loadCommitmentRecords() {
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
                 <td><small>Monthly KM: ${totalMonthlyKm} / ${record.commitment_vehicles.km_limit_per_month}<br>Extra KM: ${(totalMonthlyKm > record.commitment_vehicles.km_limit_per_month ? totalMonthlyKm - record.commitment_vehicles.km_limit_per_month : 0).toFixed(2)}<br>Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small></td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editCommitmentRecord(${record.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteCommitmentRecord(${record.id})">Delete</button>
-                </td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -1114,7 +1126,7 @@ async function updateCommitmentRecordVehicleFilter() {
         const { data: commitmentVehicles } = await supabase
             .from('commitment_vehicles')
             .select('id, vehicle_number')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
 
         const filterSelect = document.getElementById('commitmentRecordsVehicleFilter');
         if (!filterSelect) return;
@@ -1136,6 +1148,7 @@ async function updateCommitmentRecordVehicleFilter() {
 }
 
 async function editCommitmentRecord(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('commitment_records').select('*').eq('id', id).single();
         if (error) throw error;
@@ -1158,6 +1171,7 @@ async function editCommitmentRecord(id) {
 }
 
 async function deleteCommitmentRecord(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this commitment record?')) {
         try {
             await supabase.from('commitment_records').delete().eq('id', id);
@@ -1170,6 +1184,7 @@ async function deleteCommitmentRecord(id) {
 
 // ============ DAY OFFS ============
 document.getElementById('addDayOffBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('dayOffForm').reset();
     document.getElementById('dayOffId').value = '';
     document.getElementById('dayOffFormContainer').style.display = 'block';
@@ -1184,6 +1199,8 @@ document.getElementById('dayOffVehicleFilter')?.addEventListener('change', loadD
 
 document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('dayOffId').value;
     const vehicleId = parseInt(document.getElementById('dayOffVehicle').value);
     const dayOffDate = document.getElementById('dayOffDate').value;
@@ -1201,7 +1218,7 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
             vehicle_id: vehicleId,
             day_off_date: dayOffDate,
             deduction_amount: deductionAmount,
-            user_id: currentUser.id
+            user_id: adminUserId // Use admin's ID
         };
 
         if (id) {
@@ -1225,7 +1242,7 @@ async function loadDayOffs() {
         let query = supabase
             .from('commitment_day_offs')
             .select('*, commitment_vehicles(vehicle_number)')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
         
         if (monthValue) {
             const [year, month] = monthValue.split('-');
@@ -1247,14 +1264,18 @@ async function loadDayOffs() {
 
         data.forEach(dayOff => {
             const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${dayOff.commitment_vehicles.vehicle_number}</td>
-                <td>${dayOff.day_off_date}</td>
-                <td>LKR ${dayOff.deduction_amount.toFixed(2)}</td>
+            const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editDayOff(${dayOff.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteDayOff(${dayOff.id})">Delete</button>
                 </td>
+            `;
+
+            row.innerHTML = `
+                <td>${dayOff.commitment_vehicles.vehicle_number}</td>
+                <td>${dayOff.day_off_date}</td>
+                <td>LKR ${dayOff.deduction_amount.toFixed(2)}</td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -1270,7 +1291,7 @@ async function updateDayOffVehicleFilter() {
         const { data: commitmentVehicles } = await supabase
             .from('commitment_vehicles')
             .select('id, vehicle_number')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
 
         const filterSelect = document.getElementById('dayOffVehicleFilter');
         if (!filterSelect) return;
@@ -1292,6 +1313,7 @@ async function updateDayOffVehicleFilter() {
 }
 
 async function editDayOff(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('commitment_day_offs').select('*').eq('id', id).single();
         if (error) throw error;
@@ -1307,6 +1329,7 @@ async function editDayOff(id) {
 }
 
 async function deleteDayOff(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this day off?')) {
         try {
             await supabase.from('commitment_day_offs').delete().eq('id', id);
@@ -1324,26 +1347,27 @@ async function loadDashboardData(monthValue) {
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const currentQueryUserId = getQueryUserId();
 
         // --- Fetch all required data ---
         const { data: hireRecords } = await supabase
             .from('hire_to_pay_records')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
         const { data: commitmentRecords } = await supabase
             .from('commitment_records')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
         const { data: dayOffs } = await supabase
             .from('commitment_day_offs')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', currentQueryUserId)
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
@@ -1356,7 +1380,7 @@ async function loadDashboardData(monthValue) {
         const { data: commitmentVehicles } = await supabase
             .from('commitment_vehicles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', currentQueryUserId)
             .in(
                 'id',
                 Array.from(commitmentVehicleIds).length > 0
@@ -1402,14 +1426,157 @@ async function loadDashboardData(monthValue) {
         if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
 
         // --- Load vehicle revenue chart for this month ---
-        await loadVehicleRevenueChart(monthValue);
+        // (If you have this function defined elsewhere, it's called here)
+        if (typeof loadVehicleRevenueChart === 'function') {
+             await loadVehicleRevenueChart(monthValue);
+        }
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
 }
 
+async function loadVehiclePerformance(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const startDate = `${year}-${month}-01`;
+        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const currentQueryUserId = getQueryUserId();
+
+        const { data: hireVehicles } = await supabase
+            .from('hire_to_pay_vehicles')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: commitmentRecordsMonth } = await supabase
+            .from('commitment_records')
+            .select('vehicle_id')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const commitmentVehicleIdsWithHires = new Set();
+        commitmentRecordsMonth?.forEach(record => {
+            commitmentVehicleIdsWithHires.add(record.vehicle_id);
+        });
+
+        let commitmentVehicles = [];
+        if (commitmentVehicleIdsWithHires.size > 0) {
+            const { data: vehicles } = await supabase
+                .from('commitment_vehicles')
+                .select('*')
+                .eq('user_id', currentQueryUserId)
+                .in('id', Array.from(commitmentVehicleIdsWithHires));
+            commitmentVehicles = vehicles || [];
+        }
+
+        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
+
+        for (const vehicle of hireVehicles) {
+            const { data: records } = await supabase
+                .from('hire_to_pay_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+
+            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
+            const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
+            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+            const profit = totalRevenue - totalFuel;
+            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
+
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+        }
+
+        for (const vehicle of commitmentVehicles) {
+            const { data: records } = await supabase
+                .from('commitment_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+
+            const { data: dayOffs } = await supabase
+                .from('commitment_day_offs')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('day_off_date', startDate)
+                .lte('day_off_date', endDate);
+
+            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
+            const basePay = vehicle.fixed_monthly_payment;
+            const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
+            const extraKmCharges = records?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+            const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
+            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+            const profit = totalRevenue - totalFuel;
+
+            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+        }
+
+        performanceHtml += '</tbody></table>';
+        const perfEl = document.getElementById('vehiclePerformance');
+        if (perfEl) perfEl.innerHTML = performanceHtml;
+    } catch (error) {
+        console.error('Error loading vehicle performance:', error.message);
+    }
+}
+
+async function updateVehicleSelectors() {
+    try {
+        const currentQueryUserId = getQueryUserId();
+        
+        const { data: hireVehicles } = await supabase
+            .from('hire_to_pay_vehicles')
+            .select('id, lorry_number')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: commitmentVehicles } = await supabase
+            .from('commitment_vehicles')
+            .select('id, vehicle_number')
+            .eq('user_id', currentQueryUserId);
+
+        const hireSelect = document.getElementById('hireToPayVehicle');
+        const commitmentSelect = document.getElementById('commitmentVehicleSelect');
+        const dayOffSelect = document.getElementById('dayOffVehicle');
+
+        if (hireSelect) {
+            hireSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            hireVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.lorry_number;
+                hireSelect.appendChild(option);
+            });
+        }
+
+        if (commitmentSelect) {
+            commitmentSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                commitmentSelect.appendChild(option);
+            });
+        }
+
+        if (dayOffSelect) {
+            dayOffSelect.innerHTML = '<option value="">Select Vehicle</option>';
+            commitmentVehicles?.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.vehicle_number;
+                dayOffSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error updating vehicle selectors:', error.message);
+    }
+}
+
 async function loadDashboardCharts() {
     try {
+        const currentQueryUserId = getQueryUserId();
         // Get last 6 months data
         const months = [];
         const revenues = [];
@@ -1432,21 +1599,21 @@ async function loadDashboardCharts() {
             const { data: hireRecords } = await supabase
                 .from('hire_to_pay_records')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', currentQueryUserId)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
             const { data: commitmentRecords } = await supabase
                 .from('commitment_records')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', currentQueryUserId)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
             const { data: dayOffs } = await supabase
                 .from('commitment_day_offs')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', currentQueryUserId)
                 .gte('day_off_date', startDate)
                 .lte('day_off_date', endDate);
 
@@ -1458,7 +1625,7 @@ async function loadDashboardCharts() {
             const { data: commitmentVehicles } = await supabase
                 .from('commitment_vehicles')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', currentQueryUserId)
                 .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
 
             let monthRevenue = 0;
@@ -1641,8 +1808,10 @@ async function loadDashboardCharts() {
             });
         }
 
-        // Vehicle Revenue Chart
-        await loadVehicleRevenueChart(document.getElementById('dashboardMonth')?.value);
+        // Vehicle Revenue Chart (Placeholder or external function call)
+        if (typeof loadVehicleRevenueChart === 'function') {
+            await loadVehicleRevenueChart(document.getElementById('dashboardMonth')?.value);
+        }
     } catch (error) {
         console.error('Error loading charts:', error.message);
     }
@@ -1650,6 +1819,7 @@ async function loadDashboardCharts() {
 
 // ============ DRIVER ADVANCES ============
 document.getElementById('addAdvanceBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
     document.getElementById('advanceForm').reset();
     document.getElementById('advanceId').value = '';
     document.getElementById('advanceFormContainer').style.display = 'block';
@@ -1664,13 +1834,15 @@ document.getElementById('advanceDriverFilter')?.addEventListener('change', loadD
 
 document.getElementById('advanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
     const id = document.getElementById('advanceId').value;
     const data = {
         driver_id: parseInt(document.getElementById('advanceDriver').value),
         advance_date: document.getElementById('advanceDate').value,
         amount: parseFloat(document.getElementById('advanceAmount').value),
         notes: document.getElementById('advanceNotes').value || null,
-        user_id: currentUser.id
+        user_id: adminUserId // Use admin's ID
     };
 
     try {
@@ -1697,7 +1869,7 @@ async function loadDriverAdvances() {
         let query = supabase
             .from('driver_advances')
             .select('*, drivers(name)')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
         
         if (monthValue) {
             const [year, month] = monthValue.split('-');
@@ -1719,15 +1891,19 @@ async function loadDriverAdvances() {
 
         data.forEach(advance => {
             const row = document.createElement('tr');
+            const actionButtons = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteAdvance(${advance.id})">Delete</button>
+                </td>
+            `;
+
             row.innerHTML = `
                 <td>${advance.drivers.name}</td>
                 <td>${advance.advance_date}</td>
                 <td>LKR ${advance.amount.toFixed(2)}</td>
                 <td>${advance.notes || '-'}</td>
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteAdvance(${advance.id})">Delete</button>
-                </td>
+                ${actionButtons}
             `;
             tbody.appendChild(row);
         });
@@ -1740,15 +1916,17 @@ async function loadDriverAdvances() {
 
 async function loadAdvanceSummary() {
     try {
+        const currentQueryUserId = getQueryUserId();
+
         const { data: drivers } = await supabase
             .from('drivers')
             .select('id, name')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', currentQueryUserId);
 
         const { data: advances } = await supabase
             .from('driver_advances')
             .select('driver_id, amount')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', currentQueryUserId);
 
         const advancesByDriver = {};
         advances?.forEach(adv => {
@@ -1768,7 +1946,7 @@ async function loadAdvanceSummary() {
                 const card = document.createElement('div');
                 card.className = 'advance-card';
                 card.innerHTML = `
-                    <div class="advance-card-icon">👤</div>
+                    <div class="advance-card-icon">💸</div>
                     <div class="advance-card-content">
                         <div class="advance-card-name">${driver.name}</div>
                         <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
@@ -1790,7 +1968,7 @@ async function updateAdvanceDriverSelectors() {
         const { data: drivers } = await supabase
             .from('drivers')
             .select('id, name')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', getQueryUserId());
 
         const advanceDriverSelect = document.getElementById('advanceDriver');
         const filterSelect = document.getElementById('advanceDriverFilter');
@@ -1822,6 +2000,7 @@ async function updateAdvanceDriverSelectors() {
 }
 
 async function editAdvance(id) {
+    if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabase.from('driver_advances').select('*').eq('id', id).single();
         if (error) throw error;
@@ -1839,6 +2018,7 @@ async function editAdvance(id) {
 }
 
 async function deleteAdvance(id) {
+    if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this advance record?')) {
         try {
             await supabase.from('driver_advances').delete().eq('id', id);
@@ -1856,7 +2036,10 @@ document.getElementById('generateReportBtn')?.addEventListener('click', async ()
         alert('Please select a month first');
         return;
     }
-    await generateMonthlyReport(monthValue);
+    // Assuming generateMonthlyReport is defined elsewhere or in this file
+    if (typeof generateMonthlyReport === 'function') {
+        await generateMonthlyReport(monthValue);
+    }
 });
 
 // Prevent default touch behaviors
