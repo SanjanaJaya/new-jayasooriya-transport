@@ -1,4 +1,4 @@
-// app.js - Fully Updated with Admin ID & Role-Based Access Control
+// app.js - Fully Updated with Admin ID, Role-Based Access Control & Photo Features
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -20,7 +20,6 @@ function initSupabase() {
 // Check user role and get admin ID
 async function checkUserRole() {
     try {
-        // We still use currentUser.id here to find out who is logged in
         const { data, error } = await supabase
             .from('user_roles')
             .select('role, admin_id')
@@ -38,8 +37,6 @@ async function checkUserRole() {
         }
         
         console.log('User role:', userRole, 'Admin ID:', adminUserId);
-        
-        // Update UI based on role
         updateUIForRole();
     } catch (error) {
         console.error('Error checking user role:', error);
@@ -67,7 +64,7 @@ function updateUIForRole() {
         }
     });
     
-    // Handle CSS for viewer mode (hiding actions/forms)
+    // Handle CSS for viewer mode
     if (isViewer) {
         const style = document.createElement('style');
         style.id = 'viewer-mode-style';
@@ -83,14 +80,14 @@ function updateUIForRole() {
         }
     }
     
-    // Add viewer indicator if viewer role
+    // Add viewer indicator
     if (isViewer) {
         const header = document.querySelector('.header-right');
         if (header && !document.getElementById('viewerBadge')) {
             const badge = document.createElement('span');
             badge.id = 'viewerBadge';
             badge.style.cssText = 'background: #3498db; color: white; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 12px;';
-            badge.textContent = '👁️ Read-Only Mode';
+            badge.textContent = '🔒 Read-Only Mode';
             header.insertBefore(badge, header.firstChild);
         }
     }
@@ -121,7 +118,7 @@ async function initializeApp() {
         
         if (session) {
             currentUser = session.user;
-            await checkUserRole(); // Check user role and get admin ID
+            await checkUserRole();
             showApp();
             setDefaultMonths();
             loadDashboard();
@@ -134,7 +131,7 @@ async function initializeApp() {
     }
 }
 
-// Wait for DOM and Supabase script to load
+// Wait for DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
@@ -183,7 +180,7 @@ if (loginForm) {
             if (error) throw error;
             
             currentUser = data.user;
-            await checkUserRole(); // Check role after login
+            await checkUserRole();
             showApp();
             setDefaultMonths();
             loadDashboard();
@@ -249,7 +246,6 @@ function initHamburgerMenu() {
         mobileOverlay.addEventListener('click', closeMobileMenu);
     }
 
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
         if (sidebar?.classList.contains('mobile-open') && 
             !sidebar.contains(e.target) && 
@@ -316,8 +312,6 @@ function switchPage(page) {
 async function loadDashboard() {
     try {
         let monthValue = document.getElementById('dashboardMonth')?.value;
-        
-        // Logic to determine the month and set default if needed
         if (!monthValue) {
             const now = new Date();
             monthValue = now.toISOString().substring(0, 7);
@@ -325,30 +319,23 @@ async function loadDashboard() {
             if (dashboardMonthEl) dashboardMonthEl.value = monthValue;
         }
 
-        // Load core metrics
         await loadDashboardData(monthValue);
-        
-        // Load the Vehicle Performance table
         await loadVehiclePerformance(monthValue); 
-        
-        // Load charts
         await loadDashboardCharts();
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
 }
 
-// Initialize dashboard month selector
 document.getElementById('dashboardMonth')?.addEventListener('change', loadDashboard);
 
-// Chart instances
 let revenueChart = null;
 let profitChart = null;
 let fuelCostChart = null;
 let revenueBreakdownChart = null;
 let vehicleRevenueChart = null;
 
-// ============ DRIVERS ============
+// ============ DRIVERS (UPDATED) ============
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('driverForm').reset();
@@ -360,6 +347,7 @@ document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverFormContainer').style.display = 'none';
 });
 
+// Updated Driver Form Submit
 document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -371,10 +359,11 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         license_number: document.getElementById('driverLicense').value,
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
+        photo_url: document.getElementById('driverPhoto').value || null, // Included photo_url
         basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
         km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
         extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
-        user_id: adminUserId // Use admin's ID for data ownership
+        user_id: adminUserId
     };
 
     try {
@@ -390,9 +379,9 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     }
 });
 
+// Updated Load Drivers
 async function loadDrivers() {
     try {
-        // Use getQueryUserId() for filtering data
         const { data, error } = await supabase
             .from('drivers')
             .select('*')
@@ -406,13 +395,12 @@ async function loadDrivers() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #7F8C8D;">No drivers found</td></tr>';
+             tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No drivers found</td></tr>';
              return;
         }
 
         data.forEach(driver => {
             const row = document.createElement('tr');
-            // Check role to conditionally render action buttons
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
@@ -420,7 +408,17 @@ async function loadDrivers() {
                 </td>
             `;
 
+            // Photo display logic with lightbox
+            const photoHTML = driver.photo_url ? 
+                `<img src="${driver.photo_url}" 
+                      alt="${driver.name}" 
+                      class="profile-photo" 
+                      onclick="openPhotoLightbox('${driver.photo_url}')"
+                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` : 
+                `<div class="no-photo">📷</div>`;
+
             row.innerHTML = `
+                <td>${photoHTML}</td>
                 <td>${driver.name}</td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number}</td>
@@ -438,6 +436,7 @@ async function loadDrivers() {
     }
 }
 
+// Updated Edit Driver
 async function editDriver(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -450,6 +449,7 @@ async function editDriver(id) {
         document.getElementById('driverLicense').value = data.license_number;
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
+        document.getElementById('driverPhoto').value = data.photo_url || ''; // Populate photo field
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
@@ -472,7 +472,7 @@ async function deleteDriver(id) {
     }
 }
 
-// ============ HIRE-TO-PAY VEHICLES ============
+// ============ HIRE-TO-PAY VEHICLES (UPDATED) ============
 document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('hireVehicleForm').reset();
@@ -484,6 +484,7 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
     document.getElementById('hireVehicleFormContainer').style.display = 'none';
 });
 
+// Updated Hire Vehicle Form Submit
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -492,6 +493,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     const data = {
         lorry_number: document.getElementById('lorryNumber').value,
         length: parseFloat(document.getElementById('lorryLength').value),
+        photo_url: document.getElementById('hireVehiclePhoto').value || null, // Included photo_url
         price_0_100km: parseFloat(document.getElementById('price0To100').value),
         price_100_250km: parseFloat(document.getElementById('price100To250').value),
         price_250km_plus: parseFloat(document.getElementById('price250Plus').value),
@@ -500,7 +502,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         waiting_charge_extra: parseFloat(document.getElementById('waitingChargeExtra').value),
         minimum_hire_amount: parseFloat(document.getElementById('minimumHireAmount').value),
         ownership: document.getElementById('ownership').value,
-        user_id: adminUserId // Use admin's ID
+        user_id: adminUserId
     };
 
     try {
@@ -516,6 +518,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     }
 });
 
+// Updated Load Hire Vehicles
 async function loadHireVehicles() {
     try {
         const { data, error } = await supabase
@@ -531,7 +534,7 @@ async function loadHireVehicles() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
         }
 
@@ -544,7 +547,17 @@ async function loadHireVehicles() {
                 </td>
             `;
 
+            // Vehicle photo display
+            const photoHTML = vehicle.photo_url ? 
+                `<img src="${vehicle.photo_url}" 
+                      alt="${vehicle.lorry_number}" 
+                      class="vehicle-photo" 
+                      onclick="openPhotoLightbox('${vehicle.photo_url}')"
+                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚚</div>';">` : 
+                `<div class="no-vehicle-photo">🚚</div>`;
+
             row.innerHTML = `
+                <td>${photoHTML}</td>
                 <td>${vehicle.lorry_number}</td>
                 <td>${vehicle.length}</td>
                 <td>LKR ${vehicle.price_0_100km}</td>
@@ -566,6 +579,7 @@ async function loadHireVehicles() {
     }
 }
 
+// Updated Edit Hire Vehicle
 async function editHireVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -575,6 +589,7 @@ async function editHireVehicle(id) {
         document.getElementById('hireVehicleId').value = data.id;
         document.getElementById('lorryNumber').value = data.lorry_number;
         document.getElementById('lorryLength').value = data.length;
+        document.getElementById('hireVehiclePhoto').value = data.photo_url || ''; // Populate photo field
         document.getElementById('price0To100').value = data.price_0_100km;
         document.getElementById('price100To250').value = data.price_100_250km;
         document.getElementById('price250Plus').value = data.price_250km_plus;
@@ -686,7 +701,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             loading_applied: hasLoading,
             other_charges: otherCharges,
             hire_amount: hireAmount,
-            user_id: adminUserId // Use admin's ID
+            user_id: adminUserId
         };
 
         if (id) {
@@ -710,7 +725,7 @@ async function loadHireRecords() {
         let query = supabase
             .from('hire_to_pay_records')
             .select('*, hire_to_pay_vehicles(lorry_number, price_0_100km, price_100_250km, price_250km_plus, minimum_hire_amount)')
-            .eq('user_id', getQueryUserId()); // Use helper
+            .eq('user_id', getQueryUserId());
         
         if (monthValue) {
             const [year, month] = monthValue.split('-');
@@ -838,7 +853,7 @@ async function deleteHireRecord(id) {
     }
 }
 
-// ============ COMMITMENT VEHICLES ============
+// ============ COMMITMENT VEHICLES (UPDATED) ============
 document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentVehicleForm').reset();
@@ -850,6 +865,7 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
     document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
 });
 
+// Updated Commitment Vehicle Form Submit
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -858,10 +874,11 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
+        photo_url: document.getElementById('commitmentVehiclePhoto').value || null, // Included photo_url
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
-        user_id: adminUserId // Use admin's ID
+        user_id: adminUserId
     };
 
     try {
@@ -877,6 +894,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     }
 });
 
+// Updated Load Commitment Vehicles
 async function loadCommitmentVehicles() {
     try {
         const { data, error } = await supabase
@@ -900,7 +918,17 @@ async function loadCommitmentVehicles() {
                 </td>
             `;
 
+            // Vehicle photo display
+            const photoHTML = vehicle.photo_url ? 
+                `<img src="${vehicle.photo_url}" 
+                      alt="${vehicle.vehicle_number}" 
+                      class="vehicle-photo" 
+                      onclick="openPhotoLightbox('${vehicle.photo_url}')"
+                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚛</div>';">` : 
+                `<div class="no-vehicle-photo">🚛</div>`;
+
             row.innerHTML = `
+                <td>${photoHTML}</td>
                 <td>${vehicle.vehicle_number}</td>
                 <td>LKR ${vehicle.fixed_monthly_payment}</td>
                 <td>${vehicle.km_limit_per_month} km</td>
@@ -917,6 +945,7 @@ async function loadCommitmentVehicles() {
     }
 }
 
+// Updated Edit Commitment Vehicle
 async function editCommitmentVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -926,6 +955,7 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentVehicleId').value = data.id;
         document.getElementById('commitmentVehicleNumber').value = data.vehicle_number;
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
+        document.getElementById('commitmentVehiclePhoto').value = data.photo_url || ''; // Populate photo field
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;
@@ -1026,7 +1056,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             fuel_price_per_litre: fuelPrice,
             fuel_cost: fuelCost,
             extra_charges: totalExtraCharges,
-            user_id: adminUserId // Use admin's ID
+            user_id: adminUserId
         };
 
         if (id) {
@@ -1218,7 +1248,7 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
             vehicle_id: vehicleId,
             day_off_date: dayOffDate,
             deduction_amount: deductionAmount,
-            user_id: adminUserId // Use admin's ID
+            user_id: adminUserId
         };
 
         if (id) {
@@ -1343,13 +1373,11 @@ async function deleteDayOff(id) {
 // ============ DASHBOARD FUNCTIONS ============
 async function loadDashboardData(monthValue) {
     try {
-        // --- Parse selected month ---
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
         const currentQueryUserId = getQueryUserId();
 
-        // --- Fetch all required data ---
         const { data: hireRecords } = await supabase
             .from('hire_to_pay_records')
             .select('*')
@@ -1371,7 +1399,6 @@ async function loadDashboardData(monthValue) {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
-        // --- Get related vehicles ---
         const commitmentVehicleIds = new Set();
         commitmentRecords?.forEach(record => {
             commitmentVehicleIds.add(record.vehicle_id);
@@ -1388,7 +1415,6 @@ async function loadDashboardData(monthValue) {
                     : [0]
             );
 
-        // --- Calculate totals ---
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
@@ -1414,7 +1440,6 @@ async function loadDashboardData(monthValue) {
 
         const netProfit = totalRevenue - totalFuelCost;
 
-        // --- Update dashboard UI ---
         const revEl = document.getElementById('totalRevenue');
         const fuelEl = document.getElementById('fuelCost');
         const hiresEl = document.getElementById('totalHires');
@@ -1425,8 +1450,6 @@ async function loadDashboardData(monthValue) {
         if (hiresEl) hiresEl.textContent = totalHires;
         if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
 
-        // --- Load vehicle revenue chart for this month ---
-        // (If you have this function defined elsewhere, it's called here)
         if (typeof loadVehicleRevenueChart === 'function') {
              await loadVehicleRevenueChart(monthValue);
         }
@@ -1483,7 +1506,7 @@ async function loadVehiclePerformance(monthValue) {
             const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
             const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
             const profit = totalRevenue - totalFuel;
-            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚗 Rented';
+            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
             performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
         }
@@ -1577,7 +1600,6 @@ async function updateVehicleSelectors() {
 async function loadDashboardCharts() {
     try {
         const currentQueryUserId = getQueryUserId();
-        // Get last 6 months data
         const months = [];
         const revenues = [];
         const profits = [];
@@ -1655,7 +1677,6 @@ async function loadDashboardCharts() {
             totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0);
         }
 
-        // Update detailed metrics
         const avgRevenue = totalRevenue6M / 6;
         const avgProfit = totalProfit6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
@@ -1665,14 +1686,12 @@ async function loadDashboardCharts() {
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
 
-        // Destroy existing charts
         if (revenueChart) revenueChart.destroy();
         if (profitChart) profitChart.destroy();
         if (fuelCostChart) fuelCostChart.destroy();
         if (revenueBreakdownChart) revenueBreakdownChart.destroy();
         if (vehicleRevenueChart) vehicleRevenueChart.destroy();
 
-        // Revenue Chart
         const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
         if (revenueCtx) {
             revenueChart = new Chart(revenueCtx, {
@@ -1710,7 +1729,6 @@ async function loadDashboardCharts() {
             });
         }
 
-        // Profit Chart
         const profitCtx = document.getElementById('profitChart')?.getContext('2d');
         if (profitCtx) {
             profitChart = new Chart(profitCtx, {
@@ -1748,7 +1766,6 @@ async function loadDashboardCharts() {
             });
         }
 
-        // Fuel Cost Chart
         const fuelCtx = document.getElementById('fuelCostChart')?.getContext('2d');
         if (fuelCtx) {
             fuelCostChart = new Chart(fuelCtx, {
@@ -1780,7 +1797,6 @@ async function loadDashboardCharts() {
             });
         }
 
-        // Revenue Breakdown Chart (Doughnut)
         const breakdownCtx = document.getElementById('revenueBreakdownChart')?.getContext('2d');
         if (breakdownCtx) {
             const currentRevenue = revenues[revenues.length - 1];
@@ -1808,7 +1824,6 @@ async function loadDashboardCharts() {
             });
         }
 
-        // Vehicle Revenue Chart (Placeholder or external function call)
         if (typeof loadVehicleRevenueChart === 'function') {
             await loadVehicleRevenueChart(document.getElementById('dashboardMonth')?.value);
         }
@@ -1842,7 +1857,7 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
         advance_date: document.getElementById('advanceDate').value,
         amount: parseFloat(document.getElementById('advanceAmount').value),
         notes: document.getElementById('advanceNotes').value || null,
-        user_id: adminUserId // Use admin's ID
+        user_id: adminUserId
     };
 
     try {
@@ -1863,7 +1878,6 @@ async function loadDriverAdvances() {
         const monthValue = document.getElementById('advanceMonth')?.value;
         const driverFilter = document.getElementById('advanceDriverFilter')?.value;
         
-        // Load advance summary
         await loadAdvanceSummary();
         
         let query = supabase
@@ -1946,7 +1960,7 @@ async function loadAdvanceSummary() {
                 const card = document.createElement('div');
                 card.className = 'advance-card';
                 card.innerHTML = `
-                    <div class="advance-card-icon">💸</div>
+                    <div class="advance-card-icon">💰</div>
                     <div class="advance-card-content">
                         <div class="advance-card-name">${driver.name}</div>
                         <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
@@ -2036,9 +2050,33 @@ document.getElementById('generateReportBtn')?.addEventListener('click', async ()
         alert('Please select a month first');
         return;
     }
-    // Assuming generateMonthlyReport is defined elsewhere or in this file
     if (typeof generateMonthlyReport === 'function') {
         await generateMonthlyReport(monthValue);
+    }
+});
+
+// ============ HELPER FUNCTIONS (LIGHTBOX) ============
+
+function openPhotoLightbox(photoUrl) {
+    const lightbox = document.getElementById('photoLightbox');
+    const lightboxImg = document.getElementById('lightboxImage');
+    if (lightbox && lightboxImg) {
+        lightboxImg.src = photoUrl;
+        lightbox.classList.add('active');
+    }
+}
+
+function closePhotoLightbox() {
+    const lightbox = document.getElementById('photoLightbox');
+    if (lightbox) {
+        lightbox.classList.remove('active');
+    }
+}
+
+// Close lightbox on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePhotoLightbox();
     }
 });
 

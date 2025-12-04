@@ -2,36 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- In your index.html head section -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Jayasooriya Transport">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#d1001f">
-<meta name="msapplication-TileColor" content="#d1001f">
-<meta name="msapplication-tap-highlight" content="no">
-    <meta name="description" content="Jayasooriya Transport Management System">
-    <meta name="theme-color" content="#FF0000">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Jayasooriya Transport">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#d1001f">
+    <meta name="msapplication-TileColor" content="#d1001f">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="description" content="Jayasooriya Transport Management System">
+    
     <title>Jayasooriya Transport - Management System</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
-    <!-- Web App Manifest -->
-<link rel="manifest" href="manifest.json">
-    <!-- iPhone & iPad Home Screen Icons -->
-<link rel="apple-touch-icon" sizes="120x120" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
-<link rel="apple-touch-icon" sizes="152x152" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
-<link rel="apple-touch-icon" sizes="167x167" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
-<link rel="apple-touch-icon" sizes="180x180" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
-
+    
+    <link rel="manifest" href="manifest.json">
+    
+    <link rel="apple-touch-icon" sizes="120x120" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png">
+    
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo-section">
@@ -82,9 +77,7 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Header -->
             <header class="top-header">
                 <button class="hamburger-menu" id="hamburgerMenu" title="Toggle Navigation Menu" aria-label="Toggle Navigation Menu">
                     <span></span>
@@ -101,10 +94,8 @@
 
             <div class="mobile-overlay" id="mobileOverlay"></div>
 
-            <!-- Pages Container -->
             <div class="pages-container">
 
-                <!-- Dashboard Page -->
                 <div id="dashboard" class="page active">
                     <div class="dashboard-controls">
                         <div class="date-selector">
@@ -145,8 +136,8 @@
                     </div>
 
                     <div class="report-controls">
-    <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
-</div>
+                        <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
+                    </div>
 
                     <div class="performance-section">
                         <h3>🚗 Vehicle Performance</h3>
@@ -197,126 +188,130 @@
                     </div>
                 </div>
 
-                <!-- Drivers Page -->
-<div id="drivers" class="page">
-    <div class="page-header">
-        <h3>👤 Manage Drivers</h3>
-        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
-    </div>
+                <div id="drivers" class="page">
+                    <div class="page-header">
+                        <h3>👤 Manage Drivers</h3>
+                        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
+                    </div>
 
-    <div class="form-container" id="driverFormContainer" style="display:none;">
-        <form id="driverForm">
-            <div class="form-row">
-                <input type="hidden" id="driverId">
-                <input type="text" id="driverName" placeholder="Driver Name" required>
-                <input type="tel" id="driverContact" placeholder="Contact Number" required>
-            </div>
-            <div class="form-row">
-                <input type="text" id="driverLicense" placeholder="License Number" required>
-                <input type="number" id="driverAge" placeholder="Age" required>
-            </div>
-            <div class="form-row full">
-                <input type="text" id="driverAddress" placeholder="Address" required>
-            </div>
-            <div class="form-row">
-                <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
-                <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
-            </div>
-            <div class="form-row">
-                <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-success">💾 Save Driver</button>
-                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">✖ Cancel</button>
-            </div>
-        </form>
-    </div>
+                    <div class="form-container" id="driverFormContainer" style="display:none;">
+                        <form id="driverForm">
+                            <div class="form-row">
+                                <input type="hidden" id="driverId">
+                                <input type="text" id="driverName" placeholder="Driver Name" required>
+                                <input type="tel" id="driverContact" placeholder="Contact Number" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="driverLicense" placeholder="License Number" required>
+                                <input type="number" id="driverAge" placeholder="Age" required>
+                            </div>
+                            <div class="form-row full">
+                                <input type="url" 
+                                       id="driverPhoto" 
+                                       placeholder="Driver Photo URL (e.g., https://i.postimg.cc/... or https://imgur.com/...)"
+                                       title="Enter direct image URL">
+                                <small style="color: #666; font-size: 12px; margin-top: 5px;">
+                                    📸 Tip: Upload photo to postimg.cc or imgur.com and paste the direct image link (must end with .jpg, .png, etc.)
+                                </small>
+                            </div>
+                            <div class="form-row full">
+                                <input type="text" id="driverAddress" placeholder="Address" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
+                                <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Driver</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDriverBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
 
-    <div class="table-responsive"> <!-- Added table-responsive wrapper -->
-        <table id="driversTable">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Contact</th>
-                    <th>License</th>
-                    <th>Age</th>
-                    <th>Address</th>
-                    <th>Basic Salary</th>
-                    <th>KM Limit</th>
-                    <th>Extra KM Rate</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div> <!-- This closes the drivers page div -->
+                    <div class="table-responsive">
+                        <table id="driversTable">
+                            <thead>
+                                <tr>
+                                    <th>Photo</th> <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>License</th>
+                                    <th>Age</th>
+                                    <th>Address</th>
+                                    <th>Basic Salary</th>
+                                    <th>KM Limit</th>
+                                    <th>Extra KM Rate</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
 
-                <!-- Driver Advances Page -->
-<div id="driver-advances" class="page">
-    <div class="page-header">
-        <h3>💵 Driver Salary Advances</h3>
-        <button class="btn btn-primary" id="addAdvanceBtn">+ Add Advance</button>
-    </div>
+                <div id="driver-advances" class="page">
+                    <div class="page-header">
+                        <h3>💵 Driver Salary Advances</h3>
+                        <button class="btn btn-primary" id="addAdvanceBtn">+ Add Advance</button>
+                    </div>
 
-    <div class="form-container" id="advanceFormContainer" style="display:none;">
-        <form id="advanceForm">
-            <div class="form-row">
-                <input type="hidden" id="advanceId">
-                <select id="advanceDriver" required>
-                    <option value="">Select Driver</option>
-                </select>
-                <input type="date" id="advanceDate" required>
-            </div>
-            <div class="form-row">
-                <input type="number" id="advanceAmount" placeholder="Advance Amount (LKR)" step="0.01" required>
-                <input type="text" id="advanceNotes" placeholder="Notes (Optional)">
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-success">💾 Save Advance</button>
-                <button type="button" class="btn btn-secondary" id="cancelAdvanceBtn">✖ Cancel</button>
-            </div>
-        </form>
-    </div>
+                    <div class="form-container" id="advanceFormContainer" style="display:none;">
+                        <form id="advanceForm">
+                            <div class="form-row">
+                                <input type="hidden" id="advanceId">
+                                <select id="advanceDriver" required>
+                                    <option value="">Select Driver</option>
+                                </select>
+                                <input type="date" id="advanceDate" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="advanceAmount" placeholder="Advance Amount (LKR)" step="0.01" required>
+                                <input type="text" id="advanceNotes" placeholder="Notes (Optional)">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Advance</button>
+                                <button type="button" class="btn btn-secondary" id="cancelAdvanceBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
 
-    <!-- Advance Summary Widget -->
-    <div class="performance-section">
-        <h3>📊 Driver Advance Summary</h3>
-        <div id="advanceSummary" class="advance-summary-grid">
-            <!-- Will be populated dynamically -->
-        </div>
-    </div>
+                    <div class="performance-section">
+                        <h3>📊 Driver Advance Summary</h3>
+                        <div id="advanceSummary" class="advance-summary-grid">
+                            </div>
+                    </div>
 
-    <div class="dashboard-controls">
-        <div class="control-group">
-            <label for="advanceMonth">📆 Month</label>
-            <input type="month" id="advanceMonth" title="Select Month and Year" value="">
-        </div>
-        <div class="control-group">
-            <label for="advanceDriverFilter">👤 Driver</label>
-            <select id="advanceDriverFilter" title="Filter by Driver">
-                <option value="">All Drivers</option>
-            </select>
-        </div>
-    </div>
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="advanceMonth">📆 Month</label>
+                            <input type="month" id="advanceMonth" title="Select Month and Year" value="">
+                        </div>
+                        <div class="control-group">
+                            <label for="advanceDriverFilter">👤 Driver</label>
+                            <select id="advanceDriverFilter" title="Filter by Driver">
+                                <option value="">All Drivers</option>
+                            </select>
+                        </div>
+                    </div>
 
-    <div class="table-responsive">
-        <table id="advancesTable">
-            <thead>
-                <tr>
-                    <th>Driver</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Notes</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
+                    <div class="table-responsive">
+                        <table id="advancesTable">
+                            <thead>
+                                <tr>
+                                    <th>Driver</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
 
-                <!-- Hire-to-Pay Vehicles Page -->
                 <div id="hire-vehicles" class="page">
                     <div class="page-header">
                         <h3>🚚 Hire-to-Pay Vehicles</h3>
@@ -329,6 +324,15 @@
                                 <input type="hidden" id="hireVehicleId">
                                 <input type="text" id="lorryNumber" placeholder="Lorry Number" required>
                                 <input type="number" id="lorryLength" placeholder="Length (ft)" required>
+                            </div>
+                            <div class="form-row full">
+                                <input type="url" 
+                                       id="hireVehiclePhoto" 
+                                       placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
+                                       title="Enter direct image URL">
+                                <small style="color: #666; font-size: 12px; margin-top: 5px;">
+                                    🚚 Tip: Upload vehicle photo to postimg.cc and paste the direct image link
+                                </small>
                             </div>
                             <div class="form-row">
                                 <input type="number" id="price0To100" placeholder="0-100km Price (LKR)" required>
@@ -361,7 +365,7 @@
                         <table id="hireVehiclesTable">
                             <thead>
                                 <tr>
-                                    <th>Lorry No</th>
+                                    <th>Photo</th> <th>Lorry No</th>
                                     <th>Length</th>
                                     <th>0-100km</th>
                                     <th>100-250km</th>
@@ -379,7 +383,6 @@
                     </div>
                 </div>
 
-                <!-- Hire-to-Pay Records Page -->
                 <div id="hire-records" class="page">
                     <div class="page-header">
                         <h3>📋 Hire-to-Pay Records</h3>
@@ -453,7 +456,6 @@
                     </div>
                 </div>
 
-                <!-- Commitment Vehicles Page -->
                 <div id="commitment-vehicles" class="page">
                     <div class="page-header">
                         <h3>🚛 Commitment Vehicles</h3>
@@ -466,6 +468,15 @@
                                 <input type="hidden" id="commitmentVehicleId">
                                 <input type="text" id="commitmentVehicleNumber" placeholder="Vehicle Number" required>
                                 <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)" required>
+                            </div>
+                            <div class="form-row full">
+                                <input type="url" 
+                                       id="commitmentVehiclePhoto" 
+                                       placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
+                                       title="Enter direct image URL">
+                                <small style="color: #666; font-size: 12px; margin-top: 5px;">
+                                    🚛 Tip: Upload vehicle photo to postimg.cc and paste the direct image link
+                                </small>
                             </div>
                             <div class="form-row">
                                 <input type="number" id="kmLimit" placeholder="KM Limit per Month" required>
@@ -483,7 +494,7 @@
                         <table id="commitmentVehiclesTable">
                             <thead>
                                 <tr>
-                                    <th>Vehicle No</th>
+                                    <th>Photo</th> <th>Vehicle No</th>
                                     <th>Fixed Payment</th>
                                     <th>KM Limit</th>
                                     <th>Extra KM Charge</th>
@@ -496,7 +507,6 @@
                     </div>
                 </div>
 
-                <!-- Commitment Records Page -->
                 <div id="commitment-records" class="page">
                     <div class="page-header">
                         <h3>📝 Commitment Vehicle Hires</h3>
@@ -565,7 +575,6 @@
                     </div>
                 </div>
 
-                <!-- Day Offs Page -->
                 <div id="commitment-dayoffs" class="page">
                     <div class="page-header">
                         <h3>📅 Commitment Vehicle Day Offs</h3>
@@ -620,7 +629,6 @@
         </main>
     </div>
 
-    <!-- Login Modal -->
     <div id="loginModal" class="modal">
         <div class="modal-content login-modal">
             <div class="login-header">
@@ -636,6 +644,31 @@
             </form>
         </div>
     </div>
+
+    <div id="photoLightbox" class="photo-lightbox" onclick="closePhotoLightbox()">
+        <img id="lightboxImage" src="" alt="Full size photo">
+    </div>
+
+    <script>
+    function openPhotoLightbox(photoUrl) {
+        const lightbox = document.getElementById('photoLightbox');
+        const lightboxImg = document.getElementById('lightboxImage');
+        lightboxImg.src = photoUrl;
+        lightbox.classList.add('active');
+    }
+
+    function closePhotoLightbox() {
+        const lightbox = document.getElementById('photoLightbox');
+        lightbox.classList.remove('active');
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closePhotoLightbox();
+        }
+    });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>

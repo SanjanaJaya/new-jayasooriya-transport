@@ -1716,3 +1716,267 @@ html {
         overflow-y: auto;
     }
 }
+
+/* ====== PHOTO DISPLAY STYLES ====== */
+
+/* Driver Profile Photos */
+.profile-photo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-red);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.profile-photo:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(220, 20, 60, 0.3);
+}
+
+/* Vehicle Photos */
+.vehicle-photo {
+    width: 80px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid var(--primary-red);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.vehicle-photo:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(220, 20, 60, 0.3);
+}
+
+/* Placeholder when no photo */
+.no-photo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--text-light);
+    border: 2px dashed var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.no-photo:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: scale(1.1);
+}
+
+.no-vehicle-photo {
+    width: 80px;
+    height: 60px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--text-light);
+    border: 2px dashed var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.no-vehicle-photo:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: scale(1.05);
+}
+
+/* Photo Preview in Forms */
+.photo-preview-container {
+    margin-top: 15px;
+    text-align: center;
+    padding: 15px;
+    background: var(--light-bg);
+    border-radius: 12px;
+    border: 2px dashed var(--border-color);
+}
+
+.photo-preview {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 12px;
+    border: 3px solid var(--primary-red);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin: 10px auto;
+    display: block;
+    object-fit: cover;
+}
+
+/* Photo input field helper text */
+.form-row small {
+    display: block;
+    color: var(--text-light);
+    font-size: 12px;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Photo column in tables */
+td .profile-photo,
+td .vehicle-photo,
+td .no-photo,
+td .no-vehicle-photo {
+    margin: 0 auto;
+    display: block;
+}
+
+/* Lightbox effect on click (optional enhancement) */
+.photo-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease;
+}
+
+.photo-lightbox.active {
+    display: flex;
+}
+
+.photo-lightbox img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: zoomIn 0.3s ease;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Photo upload tips styling */
+.photo-upload-tip {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #856404;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.photo-upload-tip::before {
+    content: "💡";
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-width: 2px;
+    }
+    
+    .vehicle-photo {
+        width: 60px;
+        height: 45px;
+    }
+    
+    .no-photo {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        border-width: 2px;
+    }
+    
+    .no-vehicle-photo {
+        width: 60px;
+        height: 45px;
+        font-size: 24px;
+    }
+    
+    .photo-preview {
+        max-width: 150px;
+        max-height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-photo {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .vehicle-photo {
+        width: 50px;
+        height: 38px;
+    }
+    
+    .no-photo {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+    
+    .no-vehicle-photo {
+        width: 50px;
+        height: 38px;
+        font-size: 20px;
+    }
+}
+
+/* Loading state for photos */
+.photo-loading {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Photo error state */
+.photo-error {
+    color: var(--primary-red);
+    font-size: 12px;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.photo-error::before {
+    content: "⚠️";
+}
