@@ -1,4 +1,4 @@
-// app.js - Fully Updated with Admin ID, Role-Based Access Control & Photo Features
+// app.js - Fully Updated with Admin ID, Role-Based Access Control & Photo Features & Vehicle Models
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -335,7 +335,7 @@ let fuelCostChart = null;
 let revenueBreakdownChart = null;
 let vehicleRevenueChart = null;
 
-// ============ DRIVERS (UPDATED) ============
+// ============ DRIVERS ============
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('driverForm').reset();
@@ -347,7 +347,7 @@ document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverFormContainer').style.display = 'none';
 });
 
-// Updated Driver Form Submit
+// Driver Form Submit
 document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -379,7 +379,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     }
 });
 
-// Updated Load Drivers
+// Load Drivers
 async function loadDrivers() {
     try {
         const { data, error } = await supabase
@@ -436,7 +436,7 @@ async function loadDrivers() {
     }
 }
 
-// Updated Edit Driver
+// Edit Driver
 async function editDriver(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -484,7 +484,7 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
     document.getElementById('hireVehicleFormContainer').style.display = 'none';
 });
 
-// Updated Hire Vehicle Form Submit
+// Updated Hire Vehicle Form Submit (Included vehicle_model)
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -492,8 +492,9 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     const id = document.getElementById('hireVehicleId').value;
     const data = {
         lorry_number: document.getElementById('lorryNumber').value,
+        vehicle_model: document.getElementById('hireVehicleModel').value, // NEW FIELD
         length: parseFloat(document.getElementById('lorryLength').value),
-        photo_url: document.getElementById('hireVehiclePhoto').value || null, // Included photo_url
+        photo_url: document.getElementById('hireVehiclePhoto').value || null,
         price_0_100km: parseFloat(document.getElementById('price0To100').value),
         price_100_250km: parseFloat(document.getElementById('price100To250').value),
         price_250km_plus: parseFloat(document.getElementById('price250Plus').value),
@@ -518,7 +519,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     }
 });
 
-// Updated Load Hire Vehicles
+// Updated Load Hire Vehicles (Included vehicle_model)
 async function loadHireVehicles() {
     try {
         const { data, error } = await supabase
@@ -534,7 +535,8 @@ async function loadHireVehicles() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            // Updated colspan to 13
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
         }
 
@@ -559,6 +561,7 @@ async function loadHireVehicles() {
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${vehicle.lorry_number}</td>
+                <td>${vehicle.vehicle_model || '-'}</td>
                 <td>${vehicle.length}</td>
                 <td>LKR ${vehicle.price_0_100km}</td>
                 <td>LKR ${vehicle.price_100_250km}</td>
@@ -579,7 +582,7 @@ async function loadHireVehicles() {
     }
 }
 
-// Updated Edit Hire Vehicle
+// Updated Edit Hire Vehicle (Included vehicle_model)
 async function editHireVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -588,8 +591,9 @@ async function editHireVehicle(id) {
         
         document.getElementById('hireVehicleId').value = data.id;
         document.getElementById('lorryNumber').value = data.lorry_number;
+        document.getElementById('hireVehicleModel').value = data.vehicle_model || ''; // NEW FIELD
         document.getElementById('lorryLength').value = data.length;
-        document.getElementById('hireVehiclePhoto').value = data.photo_url || ''; // Populate photo field
+        document.getElementById('hireVehiclePhoto').value = data.photo_url || '';
         document.getElementById('price0To100').value = data.price_0_100km;
         document.getElementById('price100To250').value = data.price_100_250km;
         document.getElementById('price250Plus').value = data.price_250km_plus;
@@ -865,7 +869,7 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
     document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
 });
 
-// Updated Commitment Vehicle Form Submit
+// Updated Commitment Vehicle Form Submit (Included vehicle_model)
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -873,8 +877,9 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
+        vehicle_model: document.getElementById('commitmentVehicleModel').value, // NEW FIELD
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
-        photo_url: document.getElementById('commitmentVehiclePhoto').value || null, // Included photo_url
+        photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
@@ -894,7 +899,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     }
 });
 
-// Updated Load Commitment Vehicles
+// Updated Load Commitment Vehicles (Included vehicle_model)
 async function loadCommitmentVehicles() {
     try {
         const { data, error } = await supabase
@@ -930,6 +935,7 @@ async function loadCommitmentVehicles() {
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${vehicle.vehicle_number}</td>
+                <td>${vehicle.vehicle_model || '-'}</td>
                 <td>LKR ${vehicle.fixed_monthly_payment}</td>
                 <td>${vehicle.km_limit_per_month} km</td>
                 <td>LKR ${vehicle.extra_km_charge}/km</td>
@@ -945,7 +951,7 @@ async function loadCommitmentVehicles() {
     }
 }
 
-// Updated Edit Commitment Vehicle
+// Updated Edit Commitment Vehicle (Included vehicle_model)
 async function editCommitmentVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
@@ -954,8 +960,9 @@ async function editCommitmentVehicle(id) {
         
         document.getElementById('commitmentVehicleId').value = data.id;
         document.getElementById('commitmentVehicleNumber').value = data.vehicle_number;
+        document.getElementById('commitmentVehicleModel').value = data.vehicle_model || ''; // NEW FIELD
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
-        document.getElementById('commitmentVehiclePhoto').value = data.photo_url || ''; // Populate photo field
+        document.getElementById('commitmentVehiclePhoto').value = data.photo_url || '';
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;

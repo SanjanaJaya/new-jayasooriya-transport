@@ -323,6 +323,9 @@
                             <div class="form-row">
                                 <input type="hidden" id="hireVehicleId">
                                 <input type="text" id="lorryNumber" placeholder="Lorry Number" required>
+                                <input type="text" id="hireVehicleModel" placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
+                            </div>
+                            <div class="form-row">
                                 <input type="number" id="lorryLength" placeholder="Length (ft)" required>
                             </div>
                             <div class="form-row full">
@@ -365,7 +368,9 @@
                         <table id="hireVehiclesTable">
                             <thead>
                                 <tr>
-                                    <th>Photo</th> <th>Lorry No</th>
+                                    <th>Photo</th>
+                                    <th>Lorry No</th>
+                                    <th>Model</th>
                                     <th>Length</th>
                                     <th>0-100km</th>
                                     <th>100-250km</th>
@@ -467,6 +472,9 @@
                             <div class="form-row">
                                 <input type="hidden" id="commitmentVehicleId">
                                 <input type="text" id="commitmentVehicleNumber" placeholder="Vehicle Number" required>
+                                <input type="text" id="commitmentVehicleModel" placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
+                            </div>
+                            <div class="form-row">
                                 <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)" required>
                             </div>
                             <div class="form-row full">
@@ -494,7 +502,9 @@
                         <table id="commitmentVehiclesTable">
                             <thead>
                                 <tr>
-                                    <th>Photo</th> <th>Vehicle No</th>
+                                    <th>Photo</th>
+                                    <th>Vehicle No</th>
+                                    <th>Model</th>
                                     <th>Fixed Payment</th>
                                     <th>KM Limit</th>
                                     <th>Extra KM Charge</th>
