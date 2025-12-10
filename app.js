@@ -1,4 +1,4 @@
-// app.js - Fully Updated with Admin ID, Role-Based Access Control & Photo Features & Vehicle Models
+// app.js - Fully Updated with Admin ID, Role-Based Access Control, Photo Features, Vehicle Models & Receipt Uploads
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -1839,43 +1839,207 @@ async function loadDashboardCharts() {
     }
 }
 
-// ============ DRIVER ADVANCES ============
+// ============ DRIVER ADVANCES WITH RECEIPT UPLOAD ============
+
+let currentReceiptFile = null;
+let existingReceiptUrl = null;
+
 document.getElementById('addAdvanceBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('advanceForm').reset();
     document.getElementById('advanceId').value = '';
+    currentReceiptFile = null;
+    existingReceiptUrl = null;
+    document.getElementById('currentReceipt').style.display = 'none';
+    document.getElementById('uploadProgress').style.display = 'none';
     document.getElementById('advanceFormContainer').style.display = 'block';
 });
 
 document.getElementById('cancelAdvanceBtn')?.addEventListener('click', () => {
     document.getElementById('advanceFormContainer').style.display = 'none';
+    currentReceiptFile = null;
+    existingReceiptUrl = null;
 });
 
 document.getElementById('advanceMonth')?.addEventListener('change', loadDriverAdvances);
 document.getElementById('advanceDriverFilter')?.addEventListener('change', loadDriverAdvances);
+
+// Handle file selection
+document.getElementById('advanceReceipt')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        // Validate file type
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file only');
+            e.target.value = '';
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB');
+            e.target.value = '';
+            return;
+        }
+        
+        currentReceiptFile = file;
+        console.log('Receipt file selected:', file.name);
+    }
+});
+
+// Remove existing receipt
+document.getElementById('removeReceiptBtn')?.addEventListener('click', async () => {
+    if (confirm('Are you sure you want to remove this receipt?')) {
+        existingReceiptUrl = null;
+        document.getElementById('currentReceipt').style.display = 'none';
+        document.getElementById('advanceReceipt').value = '';
+        currentReceiptFile = null;
+    }
+});
+
+// Upload receipt to Supabase Storage
+async function uploadReceipt(file, advanceId) {
+    if (!file) return null;
+    
+    try {
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const progressText = document.getElementById('uploadProgressText');
+        
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '30%';
+        progressText.textContent = 'Uploading receipt...';
+        
+        // Create unique filename: userId/advanceId_timestamp_originalname.pdf
+        const timestamp = Date.now();
+        const filename = `${adminUserId}/${advanceId}_${timestamp}_${file.name}`;
+        
+        progressBar.style.width = '60%';
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+            .from('advance-receipts')
+            .upload(filename, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (error) throw error;
+        
+        progressBar.style.width = '90%';
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage
+            .from('advance-receipts')
+            .getPublicUrl(filename);
+        
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Upload complete!';
+        
+        setTimeout(() => {
+            progressDiv.style.display = 'none';
+            progressBar.style.width = '0%';
+        }, 1000);
+        
+        return urlData.publicUrl;
+    } catch (error) {
+        console.error('Error uploading receipt:', error);
+        document.getElementById('uploadProgress').style.display = 'none';
+        alert('Failed to upload receipt: ' + error.message);
+        return null;
+    }
+}
+
+// Delete receipt from storage
+async function deleteReceipt(receiptUrl) {
+    if (!receiptUrl) return;
+    
+    try {
+        // Extract filename from URL
+        const urlParts = receiptUrl.split('/');
+        const bucketIndex = urlParts.findIndex(part => part === 'advance-receipts');
+        if (bucketIndex === -1) return;
+        
+        const filename = urlParts.slice(bucketIndex + 1).join('/');
+        
+        await supabase.storage
+            .from('advance-receipts')
+            .remove([filename]);
+    } catch (error) {
+        console.error('Error deleting receipt:', error);
+    }
+}
 
 document.getElementById('advanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
 
     const id = document.getElementById('advanceId').value;
-    const data = {
-        driver_id: parseInt(document.getElementById('advanceDriver').value),
-        advance_date: document.getElementById('advanceDate').value,
-        amount: parseFloat(document.getElementById('advanceAmount').value),
-        notes: document.getElementById('advanceNotes').value || null,
-        user_id: adminUserId
-    };
+    const driverId = parseInt(document.getElementById('advanceDriver').value);
+    const advanceDate = document.getElementById('advanceDate').value;
+    const amount = parseFloat(document.getElementById('advanceAmount').value);
+    const notes = document.getElementById('advanceNotes').value || null;
 
     try {
-        if (id) {
-            await supabase.from('driver_advances').update(data).eq('id', id);
-        } else {
-            await supabase.from('driver_advances').insert([data]);
+        let receiptUrl = existingReceiptUrl;
+        
+        // If editing and removing old receipt, delete it
+        if (id && existingReceiptUrl && !currentReceiptFile) {
+            await deleteReceipt(existingReceiptUrl);
+            receiptUrl = null;
         }
+        
+        let savedAdvanceId = id;
+        
+        // First save/update the advance record to get an ID
+        const advanceData = {
+            driver_id: driverId,
+            advance_date: advanceDate,
+            amount: amount,
+            notes: notes,
+            user_id: adminUserId
+        };
+
+        if (id) {
+            // Update existing
+            await supabase.from('driver_advances').update(advanceData).eq('id', id);
+        } else {
+            // Insert new
+            const { data: newAdvance, error: insertError } = await supabase
+                .from('driver_advances')
+                .insert([advanceData])
+                .select()
+                .single();
+            
+            if (insertError) throw insertError;
+            savedAdvanceId = newAdvance.id;
+        }
+        
+        // If there's a new receipt file, upload it
+        if (currentReceiptFile) {
+            // Delete old receipt if exists
+            if (existingReceiptUrl) {
+                await deleteReceipt(existingReceiptUrl);
+            }
+            
+            // Upload new receipt
+            receiptUrl = await uploadReceipt(currentReceiptFile, savedAdvanceId);
+            
+            if (receiptUrl) {
+                // Update the record with receipt URL
+                await supabase
+                    .from('driver_advances')
+                    .update({ receipt_url: receiptUrl })
+                    .eq('id', savedAdvanceId);
+            }
+        }
+        
         loadDriverAdvances();
         document.getElementById('advanceFormContainer').style.display = 'none';
+        currentReceiptFile = null;
+        existingReceiptUrl = null;
     } catch (error) {
+        console.error('Error saving advance:', error);
         alert('Error saving advance: ' + error.message);
     }
 });
@@ -1912,6 +2076,14 @@ async function loadDriverAdvances() {
 
         data.forEach(advance => {
             const row = document.createElement('tr');
+            
+            // Receipt column
+            const receiptColumn = advance.receipt_url ? 
+                `<a href="${advance.receipt_url}" target="_blank" class="receipt-link" title="View Receipt">
+                    📄 View PDF
+                </a>` : 
+                '<span style="color: #95A5A6;">No receipt</span>';
+            
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
@@ -1924,6 +2096,7 @@ async function loadDriverAdvances() {
                 <td>${advance.advance_date}</td>
                 <td>LKR ${advance.amount.toFixed(2)}</td>
                 <td>${advance.notes || '-'}</td>
+                <td>${receiptColumn}</td>
                 ${actionButtons}
             `;
             tbody.appendChild(row);
@@ -2031,6 +2204,20 @@ async function editAdvance(id) {
         document.getElementById('advanceDate').value = data.advance_date;
         document.getElementById('advanceAmount').value = data.amount;
         document.getElementById('advanceNotes').value = data.notes || '';
+        
+        // Handle existing receipt
+        existingReceiptUrl = data.receipt_url;
+        currentReceiptFile = null;
+        
+        if (data.receipt_url) {
+            document.getElementById('currentReceipt').style.display = 'block';
+            document.getElementById('currentReceiptLink').href = data.receipt_url;
+        } else {
+            document.getElementById('currentReceipt').style.display = 'none';
+        }
+        
+        document.getElementById('advanceReceipt').value = '';
+        document.getElementById('uploadProgress').style.display = 'none';
         document.getElementById('advanceFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -2042,6 +2229,19 @@ async function deleteAdvance(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this advance record?')) {
         try {
+            // Get the advance to check if it has a receipt
+            const { data: advance } = await supabase
+                .from('driver_advances')
+                .select('receipt_url')
+                .eq('id', id)
+                .single();
+            
+            // Delete the receipt from storage if exists
+            if (advance?.receipt_url) {
+                await deleteReceipt(advance.receipt_url);
+            }
+            
+            // Delete the advance record
             await supabase.from('driver_advances').delete().eq('id', id);
             loadDriverAdvances();
         } catch (error) {
