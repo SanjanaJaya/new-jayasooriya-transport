@@ -2,21 +2,25 @@
     "name": "Jayasooriya Transport",
     "short_name": "Jayasooriya",
     "description": "Transport Management System",
+    "id": "/",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#d1001f",
     "theme_color": "#d1001f",
-    "orientation": "portrait-primary",
+    "orientation": "portrait",
     "icons": [
         {
             "src": "https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "https://i.postimg.cc/x19FXbdR/New-Transport-Logo.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 }

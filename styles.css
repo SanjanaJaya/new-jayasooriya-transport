@@ -393,6 +393,8 @@ html, body {
     overflow-y: auto;
     padding: 30px;
     animation: fadeInUp 0.5s ease;
+    height: calc(100vh - 80px); /* Adjust based on header height */
+    padding-bottom: 50px; /* Extra space for bottom */
 }
 
 @keyframes fadeInUp {
@@ -421,6 +423,8 @@ html, body {
 
 .page {
     display: none;
+    height: 100%;
+    /* Remove overflow-y: auto from here to let pages-container handle scrolling */
 }
 
 .page.active {
@@ -621,6 +625,8 @@ html, body {
     margin-bottom: 25px;
     border: 1px solid var(--border-color);
     animation: slideInUp 0.5s ease;
+    max-width: 100%;
+    overflow-x: hidden; /* Fix unwanted scroll */
 }
 
 @keyframes slideInUp {
@@ -755,6 +761,8 @@ html, body {
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--primary-red);
     animation: slideInRight 0.5s ease;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 @keyframes slideInRight {
@@ -851,6 +859,7 @@ html, body {
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     animation: fadeIn 0.6s ease;
+    max-width: 100%;
 }
 
 .table-responsive::-webkit-scrollbar {
@@ -1052,17 +1061,28 @@ tbody tr:hover {
     gap: 20px;
 }
 
+/* Chart fix for mobile to prevent overflow */
 .chart-wrapper {
     padding: 20px;
     background: var(--off-white);
     border-radius: 12px;
     border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden; 
+    position: relative;
+}
+
+.chart-wrapper canvas {
+    max-width: 100% !important;
+    height: auto !important;
 }
 
 .metrics-detailed {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
+    margin-top: 15px;
 }
 
 .detail-metric {
@@ -1074,6 +1094,8 @@ tbody tr:hover {
     border-radius: 12px;
     border-left: 4px solid var(--primary-red);
     transition: all var(--transition-smooth);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .detail-metric:hover {
@@ -1082,15 +1104,20 @@ tbody tr:hover {
 }
 
 .detail-label {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 8px;
 }
 
 .detail-value {
     font-size: 20px;
     font-weight: 800;
     color: var(--primary-red);
+    display: block;
 }
 
 .detail-value.profit {
@@ -1124,6 +1151,10 @@ tbody tr:hover {
         color: var(--pure-white);
         padding: 15px 20px;
         gap: 15px;
+        /* Ensure header stays at top */
+        position: sticky;
+        top: 0;
+        z-index: 100;
     }
 
     .top-header h2 {
@@ -1137,6 +1168,10 @@ tbody tr:hover {
 
     .pages-container {
         padding: 15px;
+        /* Add more padding top so content doesn't feel stuck */
+        padding-top: 25px;
+        height: 100%; /* Use 100% instead of calc to avoid scroll issues on mobile browsers */
+        padding-bottom: 80px; /* Space for scroll */
     }
 
     .dashboard-controls {
@@ -1258,9 +1293,81 @@ tbody tr:hover {
     .metrics-detailed {
         grid-template-columns: 1fr;
     }
+
+    /* Fix vehicle stats grid on tablet/mobile */
+    .vehicle-stats {
+        grid-template-columns: 1fr 1fr; 
+    }
+    
+    .top-vehicles-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .advance-summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .advance-card {
+        padding: 15px;
+    }
+    
+    .advance-card-icon {
+        font-size: 36px;
+        width: 60px;
+        height: 60px;
+    }
+    
+    .advance-card-amount {
+        font-size: 20px;
+    }
+
+    .report-controls {
+        text-align: center;
+    }
+    
+    .btn-report {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .report-notification {
+        left: 20px;
+        right: 20px;
+        top: 70px;
+    }
+
+    .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-width: 2px;
+    }
+    
+    .vehicle-photo {
+        width: 60px;
+        height: 45px;
+    }
+    
+    .no-photo {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        border-width: 2px;
+    }
+    
+    .no-vehicle-photo {
+        width: 60px;
+        height: 45px;
+        font-size: 24px;
+    }
+    
+    .photo-preview {
+        max-width: 150px;
+        max-height: 150px;
+    }
 }
 
-@media (max-width: 480px) {
+/* ====== SPECIFIC iPHONE MINI & SMALL SCREEN FIXES (375px width) ====== */
+@media screen and (max-width: 390px) {
     .sidebar {
         width: 100vw;
         max-width: 100vw;
@@ -1305,24 +1412,33 @@ tbody tr:hover {
         width: 24px;
     }
 
+    /* Fix: Increase padding on sides for small screens to prevent edge-touching */
     .pages-container {
-        padding: 12px;
+        padding: 15px 12px;
+        padding-top: 20px; 
+        /* Safe area handling for iPhone notch/bottom bar */
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }
 
     .dashboard-controls {
-        padding: 12px;
+        padding: 15px 12px;
     }
 
     .metrics-grid {
-        gap: 12px;
+        gap: 15px;
+        /* Ensure grid items don't overflow */
+        grid-template-columns: 100%;
     }
 
     .metric-card {
         padding: 16px;
+        /* Prevent flex wrap issues */
+        flex-wrap: nowrap; 
     }
 
     .metric-icon {
-        font-size: 36px;
+        font-size: 32px;
+        min-width: 32px; /* Prevent icon shrinking */
     }
 
     .metric-label {
@@ -1330,15 +1446,24 @@ tbody tr:hover {
     }
 
     .metric-value {
-        font-size: 20px;
+        font-size: 22px; /* Slightly smaller to prevent wrap */
+        word-break: break-word;
     }
 
     .performance-section {
-        padding: 16px;
+        padding: 15px;
+        width: 100%;
     }
 
     .performance-section h3 {
         font-size: 16px;
+    }
+
+    /* Fix chart wrapper to prevent swipeable behavior */
+    .chart-wrapper {
+        padding: 10px;
+        width: 100%;
+        overflow-x: hidden;
     }
 
     .page-header h3 {
@@ -1346,7 +1471,7 @@ tbody tr:hover {
     }
 
     .form-container {
-        padding: 16px;
+        padding: 15px;
     }
 
     .form-row input,
@@ -1356,8 +1481,10 @@ tbody tr:hover {
     }
 
     .btn {
-        padding: 11px 20px;
+        padding: 11px 16px;
         font-size: 14px;
+        width: 100%; /* Full width buttons on small screens usually look better */
+        justify-content: center;
     }
 
     table {
@@ -1391,6 +1518,15 @@ tbody tr:hover {
     #loginForm input {
         padding: 14px 16px;
         font-size: 15px;
+    }
+
+    /* Toast adjustment */
+    .toast {
+        bottom: 20px;
+        right: 15px;
+        left: 15px;
+        max-width: unset;
+        font-size: 13px;
     }
 }
 
@@ -1433,6 +1569,7 @@ html {
 /* ====== PERFORMANCE TABLE ====== */
 .performance-table {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .performance-table table {
@@ -1484,48 +1621,6 @@ html {
 
 .toast.error {
     border-left-color: var(--primary-red);
-}
-
-@media (max-width: 480px) {
-    .toast {
-        bottom: 20px;
-        right: 20px;
-        left: 20px;
-        max-width: unset;
-    }
-}
-
-/* Add this to your existing CSS */
-.pages-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 30px;
-    animation: fadeInUp 0.5s ease;
-    height: calc(100vh - 80px); /* Adjust based on your header height */
-}
-
-.page {
-    display: none;
-    height: 100%;
-    overflow-y: auto;
-}
-
-.page.active {
-    display: block;
-    animation: pageSlide 0.4s ease;
-}
-
-/* Ensure tables are scrollable on mobile */
-.table-responsive {
-    overflow-x: auto;
-    max-width: 100%;
-}
-
-/* Fix for very long content */
-.performance-section,
-.form-container {
-    max-width: 100%;
-    overflow-x: hidden;
 }
 
 /* Driver Advance Summary Grid */
@@ -1588,27 +1683,6 @@ html {
     opacity: 0.9;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .advance-summary-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .advance-card {
-        padding: 15px;
-    }
-    
-    .advance-card-icon {
-        font-size: 36px;
-        width: 60px;
-        height: 60px;
-    }
-    
-    .advance-card-amount {
-        font-size: 20px;
-    }
 }
 
 /* Report Button Styles */
@@ -1683,38 +1757,6 @@ html {
 .report-notification.show {
     opacity: 1;
     transform: translateX(0);
-}
-
-@media (max-width: 768px) {
-    .report-controls {
-        text-align: center;
-    }
-    
-    .btn-report {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .report-notification {
-        left: 20px;
-        right: 20px;
-        top: 70px;
-    }
-}
-
-@media (max-width: 768px) {
-    body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-    }
-    
-    .pages-container {
-        -webkit-overflow-scrolling: touch;
-        height: calc(100vh - 80px);
-        overflow-y: auto;
-    }
 }
 
 /* ====== PHOTO DISPLAY STYLES ====== */
@@ -1888,62 +1930,6 @@ td .no-vehicle-photo {
     content: "💡";
     font-size: 18px;
     flex-shrink: 0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .profile-photo {
-        width: 40px;
-        height: 40px;
-        border-width: 2px;
-    }
-    
-    .vehicle-photo {
-        width: 60px;
-        height: 45px;
-    }
-    
-    .no-photo {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-        border-width: 2px;
-    }
-    
-    .no-vehicle-photo {
-        width: 60px;
-        height: 45px;
-        font-size: 24px;
-    }
-    
-    .photo-preview {
-        max-width: 150px;
-        max-height: 150px;
-    }
-}
-
-@media (max-width: 480px) {
-    .profile-photo {
-        width: 35px;
-        height: 35px;
-    }
-    
-    .vehicle-photo {
-        width: 50px;
-        height: 38px;
-    }
-    
-    .no-photo {
-        width: 35px;
-        height: 35px;
-        font-size: 18px;
-    }
-    
-    .no-vehicle-photo {
-        width: 50px;
-        height: 38px;
-        font-size: 20px;
-    }
 }
 
 /* Loading state for photos */
@@ -2142,76 +2128,4 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 .stat-value.profit {
     color: #27AE60;
-}
-
-/* Enhanced metrics-detailed for better visual hierarchy */
-.metrics-detailed {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.detail-metric {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    padding: 20px;
-    border-radius: 10px;
-    border-left: 4px solid #DC143C;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-}
-
-.detail-metric:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(220, 20, 60, 0.15);
-}
-
-.detail-label {
-    display: block;
-    font-size: 12px;
-    color: #7F8C8D;
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-}
-
-.detail-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 700;
-    color: #2C3E50;
-}
-
-.detail-value.profit {
-    color: #27AE60;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .top-vehicles-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .metrics-detailed {
-        grid-template-columns: 1fr;
-    }
-    
-    .vehicle-stats {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Performance section enhancements */
-.performance-section {
-    margin-bottom: 30px;
-}
-
-.performance-section h3 {
-    color: #2C3E50;
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 3px solid #DC143C;
 }
