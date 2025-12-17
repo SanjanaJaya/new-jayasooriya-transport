@@ -1,10 +1,11 @@
-// app.js - Fully Updated with Admin ID, Role-Based Access Control, Photo Features, Vehicle Models & Receipt Uploads
+// app.js - FIXED: Renamed 'supabase' to 'supabaseClient' to fix SyntaxError
+// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads & New Dashboard Stats
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsbXFqcWtwZ2RocmRjb2VtcGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTg4NzUsImV4cCI6MjA3NjM3NDg3NX0.mXDMuhn0K5sOKhwykhf9OcomUzSVkCGnN5jr60A-TSw';
 
-let supabase = null;
+let supabaseClient = null; // Renamed variable to avoid conflict
 let currentUser = null;
 let userRole = null; // 'admin' or 'viewer'
 let adminUserId = null; // Store the admin user ID for data filtering
@@ -13,14 +14,15 @@ let currentPage = 'dashboard';
 // Initialize Supabase
 function initSupabase() {
     if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Use the global window.supabase to create our client
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
 }
 
 // Check user role and get admin ID
 async function checkUserRole() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('user_roles')
             .select('role, admin_id')
             .eq('user_id', currentUser.id)
@@ -107,14 +109,14 @@ async function initializeApp() {
     initSupabase();
     initHamburgerMenu();
     
-    if (!supabase) {
+    if (!supabaseClient) {
         console.error('Supabase not initialized');
         showLogin();
         return;
     }
 
     try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         
         if (session) {
             currentUser = session.user;
@@ -175,7 +177,7 @@ if (loginForm) {
 
         try {
             errorEl.textContent = '';
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
             
             if (error) throw error;
             
@@ -194,7 +196,7 @@ if (loginForm) {
 const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
         currentUser = null;
         userRole = null;
         adminUserId = null;
@@ -322,6 +324,11 @@ async function loadDashboard() {
         await loadDashboardData(monthValue);
         await loadVehiclePerformance(monthValue); 
         await loadDashboardCharts();
+        
+        // NEW DASHBOARD FUNCTIONS
+        await loadAllTimeStatistics();
+        await loadFleetOverview();
+        await loadTopPerformingVehicles();
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
@@ -359,7 +366,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         license_number: document.getElementById('driverLicense').value,
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
-        photo_url: document.getElementById('driverPhoto').value || null, // Included photo_url
+        photo_url: document.getElementById('driverPhoto').value || null,
         basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
         km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
         extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
@@ -368,9 +375,9 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 
     try {
         if (id) {
-            await supabase.from('drivers').update(data).eq('id', id);
+            await supabaseClient.from('drivers').update(data).eq('id', id);
         } else {
-            await supabase.from('drivers').insert([data]);
+            await supabaseClient.from('drivers').insert([data]);
         }
         loadDrivers();
         document.getElementById('driverFormContainer').style.display = 'none';
@@ -382,7 +389,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 // Load Drivers
 async function loadDrivers() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('drivers')
             .select('*')
             .eq('user_id', getQueryUserId())
@@ -408,7 +415,6 @@ async function loadDrivers() {
                 </td>
             `;
 
-            // Photo display logic with lightbox
             const photoHTML = driver.photo_url ? 
                 `<img src="${driver.photo_url}" 
                       alt="${driver.name}" 
@@ -440,7 +446,7 @@ async function loadDrivers() {
 async function editDriver(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('drivers').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('drivers').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('driverId').value = data.id;
@@ -449,7 +455,7 @@ async function editDriver(id) {
         document.getElementById('driverLicense').value = data.license_number;
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
-        document.getElementById('driverPhoto').value = data.photo_url || ''; // Populate photo field
+        document.getElementById('driverPhoto').value = data.photo_url || '';
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
@@ -464,7 +470,7 @@ async function deleteDriver(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this driver?')) {
         try {
-            await supabase.from('drivers').delete().eq('id', id);
+            await supabaseClient.from('drivers').delete().eq('id', id);
             loadDrivers();
         } catch (error) {
             alert('Error deleting driver: ' + error.message);
@@ -472,7 +478,7 @@ async function deleteDriver(id) {
     }
 }
 
-// ============ HIRE-TO-PAY VEHICLES (UPDATED) ============
+// ============ HIRE-TO-PAY VEHICLES ============
 document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('hireVehicleForm').reset();
@@ -484,7 +490,6 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
     document.getElementById('hireVehicleFormContainer').style.display = 'none';
 });
 
-// Updated Hire Vehicle Form Submit (Included vehicle_model)
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -492,7 +497,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     const id = document.getElementById('hireVehicleId').value;
     const data = {
         lorry_number: document.getElementById('lorryNumber').value,
-        vehicle_model: document.getElementById('hireVehicleModel').value, // NEW FIELD
+        vehicle_model: document.getElementById('hireVehicleModel').value,
         length: parseFloat(document.getElementById('lorryLength').value),
         photo_url: document.getElementById('hireVehiclePhoto').value || null,
         price_0_100km: parseFloat(document.getElementById('price0To100').value),
@@ -508,9 +513,9 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
 
     try {
         if (id) {
-            await supabase.from('hire_to_pay_vehicles').update(data).eq('id', id);
+            await supabaseClient.from('hire_to_pay_vehicles').update(data).eq('id', id);
         } else {
-            await supabase.from('hire_to_pay_vehicles').insert([data]);
+            await supabaseClient.from('hire_to_pay_vehicles').insert([data]);
         }
         loadHireVehicles();
         document.getElementById('hireVehicleFormContainer').style.display = 'none';
@@ -519,10 +524,9 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     }
 });
 
-// Updated Load Hire Vehicles (Included vehicle_model)
 async function loadHireVehicles() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('*')
             .eq('user_id', getQueryUserId())
@@ -535,7 +539,6 @@ async function loadHireVehicles() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-            // Updated colspan to 13
             tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
         }
@@ -549,7 +552,6 @@ async function loadHireVehicles() {
                 </td>
             `;
 
-            // Vehicle photo display
             const photoHTML = vehicle.photo_url ? 
                 `<img src="${vehicle.photo_url}" 
                       alt="${vehicle.lorry_number}" 
@@ -582,16 +584,15 @@ async function loadHireVehicles() {
     }
 }
 
-// Updated Edit Hire Vehicle (Included vehicle_model)
 async function editHireVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('hire_to_pay_vehicles').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('hire_to_pay_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('hireVehicleId').value = data.id;
         document.getElementById('lorryNumber').value = data.lorry_number;
-        document.getElementById('hireVehicleModel').value = data.vehicle_model || ''; // NEW FIELD
+        document.getElementById('hireVehicleModel').value = data.vehicle_model || '';
         document.getElementById('lorryLength').value = data.length;
         document.getElementById('hireVehiclePhoto').value = data.photo_url || '';
         document.getElementById('price0To100').value = data.price_0_100km;
@@ -613,7 +614,7 @@ async function deleteHireVehicle(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this vehicle?')) {
         try {
-            await supabase.from('hire_to_pay_vehicles').delete().eq('id', id);
+            await supabaseClient.from('hire_to_pay_vehicles').delete().eq('id', id);
             loadHireVehicles();
         } catch (error) {
             alert('Error deleting vehicle: ' + error.message);
@@ -650,7 +651,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
     const otherCharges = parseFloat(document.getElementById('hireOtherCharges').value) || 0;
 
     try {
-        const { data: vehicleData, error: vehicleError } = await supabase
+        const { data: vehicleData, error: vehicleError } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('*')
             .eq('id', vehicleId)
@@ -709,9 +710,9 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
         };
 
         if (id) {
-            await supabase.from('hire_to_pay_records').update(recordData).eq('id', id);
+            await supabaseClient.from('hire_to_pay_records').update(recordData).eq('id', id);
         } else {
-            await supabase.from('hire_to_pay_records').insert([recordData]);
+            await supabaseClient.from('hire_to_pay_records').insert([recordData]);
         }
         
         loadHireRecords();
@@ -726,7 +727,7 @@ async function loadHireRecords() {
         const monthValue = document.getElementById('hireRecordsMonth')?.value;
         const vehicleFilter = document.getElementById('hireRecordsVehicleFilter')?.value;
         
-        let query = supabase
+        let query = supabaseClient
             .from('hire_to_pay_records')
             .select('*, hire_to_pay_vehicles(lorry_number, price_0_100km, price_100_250km, price_250km_plus, minimum_hire_amount)')
             .eq('user_id', getQueryUserId());
@@ -796,7 +797,7 @@ async function loadHireRecords() {
 
 async function updateHireRecordVehicleFilter() {
     try {
-        const { data: hireVehicles } = await supabase
+        const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('id, lorry_number, ownership')
             .eq('user_id', getQueryUserId());
@@ -823,7 +824,7 @@ async function updateHireRecordVehicleFilter() {
 async function editHireRecord(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('hire_to_pay_records').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('hire_to_pay_records').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('hireRecordId').value = data.id;
@@ -849,7 +850,7 @@ async function deleteHireRecord(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this hire record?')) {
         try {
-            await supabase.from('hire_to_pay_records').delete().eq('id', id);
+            await supabaseClient.from('hire_to_pay_records').delete().eq('id', id);
             loadHireRecords();
         } catch (error) {
             alert('Error deleting hire record: ' + error.message);
@@ -857,7 +858,7 @@ async function deleteHireRecord(id) {
     }
 }
 
-// ============ COMMITMENT VEHICLES (UPDATED) ============
+// ============ COMMITMENT VEHICLES ============
 document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentVehicleForm').reset();
@@ -869,7 +870,6 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
     document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
 });
 
-// Updated Commitment Vehicle Form Submit (Included vehicle_model)
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -877,7 +877,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
-        vehicle_model: document.getElementById('commitmentVehicleModel').value, // NEW FIELD
+        vehicle_model: document.getElementById('commitmentVehicleModel').value,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
         photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
@@ -888,9 +888,9 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
 
     try {
         if (id) {
-            await supabase.from('commitment_vehicles').update(data).eq('id', id);
+            await supabaseClient.from('commitment_vehicles').update(data).eq('id', id);
         } else {
-            await supabase.from('commitment_vehicles').insert([data]);
+            await supabaseClient.from('commitment_vehicles').insert([data]);
         }
         loadCommitmentVehicles();
         document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
@@ -899,10 +899,9 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     }
 });
 
-// Updated Load Commitment Vehicles (Included vehicle_model)
 async function loadCommitmentVehicles() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('commitment_vehicles')
             .select('*')
             .eq('user_id', getQueryUserId())
@@ -923,7 +922,6 @@ async function loadCommitmentVehicles() {
                 </td>
             `;
 
-            // Vehicle photo display
             const photoHTML = vehicle.photo_url ? 
                 `<img src="${vehicle.photo_url}" 
                       alt="${vehicle.vehicle_number}" 
@@ -951,16 +949,15 @@ async function loadCommitmentVehicles() {
     }
 }
 
-// Updated Edit Commitment Vehicle (Included vehicle_model)
 async function editCommitmentVehicle(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('commitment_vehicles').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('commitment_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('commitmentVehicleId').value = data.id;
         document.getElementById('commitmentVehicleNumber').value = data.vehicle_number;
-        document.getElementById('commitmentVehicleModel').value = data.vehicle_model || ''; // NEW FIELD
+        document.getElementById('commitmentVehicleModel').value = data.vehicle_model || '';
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
         document.getElementById('commitmentVehiclePhoto').value = data.photo_url || '';
         document.getElementById('kmLimit').value = data.km_limit_per_month;
@@ -977,7 +974,7 @@ async function deleteCommitmentVehicle(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this vehicle?')) {
         try {
-            await supabase.from('commitment_vehicles').delete().eq('id', id);
+            await supabaseClient.from('commitment_vehicles').delete().eq('id', id);
             loadCommitmentVehicles();
         } catch (error) {
             alert('Error deleting commitment vehicle: ' + error.message);
@@ -1014,7 +1011,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
     const extraChargesInput = parseFloat(document.getElementById('commitmentExtraCharges').value) || 0;
 
     try {
-        const { data: vehicleData, error: vehicleError } = await supabase
+        const { data: vehicleData, error: vehicleError } = await supabaseClient
             .from('commitment_vehicles')
             .select('*')
             .eq('id', vehicleId)
@@ -1026,7 +1023,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
         const startDate = `${year}-${month}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-        let query = supabase
+        let query = supabaseClient
             .from('commitment_records')
             .select('distance')
             .eq('vehicle_id', vehicleId)
@@ -1067,9 +1064,9 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
         };
 
         if (id) {
-            await supabase.from('commitment_records').update(recordData).eq('id', id);
+            await supabaseClient.from('commitment_records').update(recordData).eq('id', id);
         } else {
-            await supabase.from('commitment_records').insert([recordData]);
+            await supabaseClient.from('commitment_records').insert([recordData]);
         }
         
         loadCommitmentRecords();
@@ -1084,7 +1081,7 @@ async function loadCommitmentRecords() {
         const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
         const vehicleFilter = document.getElementById('commitmentRecordsVehicleFilter')?.value;
         
-        let query = supabase
+        let query = supabaseClient
             .from('commitment_records')
             .select('*, commitment_vehicles(vehicle_number, km_limit_per_month, extra_km_charge)')
             .eq('user_id', getQueryUserId());
@@ -1160,7 +1157,7 @@ async function loadCommitmentRecords() {
 
 async function updateCommitmentRecordVehicleFilter() {
     try {
-        const { data: commitmentVehicles } = await supabase
+        const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
             .select('id, vehicle_number')
             .eq('user_id', getQueryUserId());
@@ -1187,7 +1184,7 @@ async function updateCommitmentRecordVehicleFilter() {
 async function editCommitmentRecord(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('commitment_records').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('commitment_records').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('commitmentRecordId').value = data.id;
@@ -1211,7 +1208,7 @@ async function deleteCommitmentRecord(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this commitment record?')) {
         try {
-            await supabase.from('commitment_records').delete().eq('id', id);
+            await supabaseClient.from('commitment_records').delete().eq('id', id);
             loadCommitmentRecords();
         } catch (error) {
             alert('Error deleting commitment record: ' + error.message);
@@ -1243,7 +1240,7 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
     const dayOffDate = document.getElementById('dayOffDate').value;
 
     try {
-        const { data: vehicleData } = await supabase
+        const { data: vehicleData } = await supabaseClient
             .from('commitment_vehicles')
             .select('fixed_monthly_payment')
             .eq('id', vehicleId)
@@ -1259,9 +1256,9 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
         };
 
         if (id) {
-            await supabase.from('commitment_day_offs').update(dayOffData).eq('id', id);
+            await supabaseClient.from('commitment_day_offs').update(dayOffData).eq('id', id);
         } else {
-            await supabase.from('commitment_day_offs').insert([dayOffData]);
+            await supabaseClient.from('commitment_day_offs').insert([dayOffData]);
         }
         
         loadDayOffs();
@@ -1276,7 +1273,7 @@ async function loadDayOffs() {
         const monthValue = document.getElementById('dayOffMonth')?.value;
         const vehicleFilter = document.getElementById('dayOffVehicleFilter')?.value;
         
-        let query = supabase
+        let query = supabaseClient
             .from('commitment_day_offs')
             .select('*, commitment_vehicles(vehicle_number)')
             .eq('user_id', getQueryUserId());
@@ -1325,7 +1322,7 @@ async function loadDayOffs() {
 
 async function updateDayOffVehicleFilter() {
     try {
-        const { data: commitmentVehicles } = await supabase
+        const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
             .select('id, vehicle_number')
             .eq('user_id', getQueryUserId());
@@ -1352,7 +1349,7 @@ async function updateDayOffVehicleFilter() {
 async function editDayOff(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('commitment_day_offs').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('commitment_day_offs').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('dayOffId').value = data.id;
@@ -1369,7 +1366,7 @@ async function deleteDayOff(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this day off?')) {
         try {
-            await supabase.from('commitment_day_offs').delete().eq('id', id);
+            await supabaseClient.from('commitment_day_offs').delete().eq('id', id);
             loadDayOffs();
         } catch (error) {
             alert('Error deleting day off: ' + error.message);
@@ -1385,21 +1382,21 @@ async function loadDashboardData(monthValue) {
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
         const currentQueryUserId = getQueryUserId();
 
-        const { data: hireRecords } = await supabase
+        const { data: hireRecords } = await supabaseClient
             .from('hire_to_pay_records')
             .select('*')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        const { data: commitmentRecords } = await supabase
+        const { data: commitmentRecords } = await supabaseClient
             .from('commitment_records')
             .select('*')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        const { data: dayOffs } = await supabase
+        const { data: dayOffs } = await supabaseClient
             .from('commitment_day_offs')
             .select('*')
             .eq('user_id', currentQueryUserId)
@@ -1411,7 +1408,7 @@ async function loadDashboardData(monthValue) {
             commitmentVehicleIds.add(record.vehicle_id);
         });
 
-        const { data: commitmentVehicles } = await supabase
+        const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
             .select('*')
             .eq('user_id', currentQueryUserId)
@@ -1472,12 +1469,12 @@ async function loadVehiclePerformance(monthValue) {
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
         const currentQueryUserId = getQueryUserId();
 
-        const { data: hireVehicles } = await supabase
+        const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('*')
             .eq('user_id', currentQueryUserId);
 
-        const { data: commitmentRecordsMonth } = await supabase
+        const { data: commitmentRecordsMonth } = await supabaseClient
             .from('commitment_records')
             .select('vehicle_id')
             .eq('user_id', currentQueryUserId)
@@ -1491,7 +1488,7 @@ async function loadVehiclePerformance(monthValue) {
 
         let commitmentVehicles = [];
         if (commitmentVehicleIdsWithHires.size > 0) {
-            const { data: vehicles } = await supabase
+            const { data: vehicles } = await supabaseClient
                 .from('commitment_vehicles')
                 .select('*')
                 .eq('user_id', currentQueryUserId)
@@ -1502,7 +1499,7 @@ async function loadVehiclePerformance(monthValue) {
         let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
 
         for (const vehicle of hireVehicles) {
-            const { data: records } = await supabase
+            const { data: records } = await supabaseClient
                 .from('hire_to_pay_records')
                 .select('*')
                 .eq('vehicle_id', vehicle.id)
@@ -1519,14 +1516,14 @@ async function loadVehiclePerformance(monthValue) {
         }
 
         for (const vehicle of commitmentVehicles) {
-            const { data: records } = await supabase
+            const { data: records } = await supabaseClient
                 .from('commitment_records')
                 .select('*')
                 .eq('vehicle_id', vehicle.id)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
-            const { data: dayOffs } = await supabase
+            const { data: dayOffs } = await supabaseClient
                 .from('commitment_day_offs')
                 .select('*')
                 .eq('vehicle_id', vehicle.id)
@@ -1556,12 +1553,12 @@ async function updateVehicleSelectors() {
     try {
         const currentQueryUserId = getQueryUserId();
         
-        const { data: hireVehicles } = await supabase
+        const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('id, lorry_number')
             .eq('user_id', currentQueryUserId);
 
-        const { data: commitmentVehicles } = await supabase
+        const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
             .select('id, vehicle_number')
             .eq('user_id', currentQueryUserId);
@@ -1625,21 +1622,21 @@ async function loadDashboardCharts() {
             const startDate = `${year}-${month}-01`;
             const endDate = new Date(year, date.getMonth() + 1, 0).toISOString().split('T')[0];
 
-            const { data: hireRecords } = await supabase
+            const { data: hireRecords } = await supabaseClient
                 .from('hire_to_pay_records')
                 .select('*')
                 .eq('user_id', currentQueryUserId)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
-            const { data: commitmentRecords } = await supabase
+            const { data: commitmentRecords } = await supabaseClient
                 .from('commitment_records')
                 .select('*')
                 .eq('user_id', currentQueryUserId)
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
-            const { data: dayOffs } = await supabase
+            const { data: dayOffs } = await supabaseClient
                 .from('commitment_day_offs')
                 .select('*')
                 .eq('user_id', currentQueryUserId)
@@ -1651,7 +1648,7 @@ async function loadDashboardCharts() {
                 commitmentVehicleIds.add(record.vehicle_id);
             });
 
-            const { data: commitmentVehicles } = await supabase
+            const { data: commitmentVehicles } = await supabaseClient
                 .from('commitment_vehicles')
                 .select('*')
                 .eq('user_id', currentQueryUserId)
@@ -1839,6 +1836,268 @@ async function loadDashboardCharts() {
     }
 }
 
+// ============ ALL-TIME STATISTICS ============
+async function loadAllTimeStatistics() {
+    try {
+        const currentQueryUserId = getQueryUserId();
+        
+        const { data: allHireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: allCommitmentRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: allCommitmentVehicles } = await supabaseClient
+            .from('commitment_vehicles')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: allDayOffs } = await supabaseClient
+            .from('commitment_day_offs')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        let totalRevenue = 0;
+        let totalFuelCost = 0;
+        let totalHires = 0;
+
+        // Calculate from hire records
+        allHireRecords?.forEach(record => {
+            totalRevenue += record.hire_amount || 0;
+            totalFuelCost += record.fuel_cost || 0;
+            totalHires++;
+        });
+
+        // Calculate months for commitment vehicles
+        const commitmentMonths = new Set();
+        allCommitmentRecords?.forEach(record => {
+            const month = record.hire_date.substring(0, 7);
+            commitmentMonths.add(`${record.vehicle_id}-${month}`);
+            totalFuelCost += record.fuel_cost || 0;
+            totalHires++;
+        });
+
+        // Calculate commitment payments
+        const vehicleMonths = {};
+        allCommitmentRecords?.forEach(record => {
+            const vehicleId = record.vehicle_id;
+            const month = record.hire_date.substring(0, 7);
+            const key = `${vehicleId}-${month}`;
+            if (!vehicleMonths[key]) {
+                vehicleMonths[key] = { vehicleId, month };
+            }
+        });
+
+        for (const key in vehicleMonths) {
+            const { vehicleId, month } = vehicleMonths[key];
+            const vehicle = allCommitmentVehicles?.find(v => v.id === vehicleId);
+            if (vehicle) {
+                totalRevenue += vehicle.fixed_monthly_payment;
+            }
+        }
+
+        // Subtract day off deductions
+        const dayOffDeductions = allDayOffs?.reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
+        totalRevenue -= dayOffDeductions;
+
+        // Add extra KM charges
+        const extraKmCharges = allCommitmentRecords?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
+        totalRevenue += extraKmCharges;
+
+        const totalProfit = totalRevenue - totalFuelCost;
+
+        document.getElementById('allTimeRevenue').textContent = `LKR ${totalRevenue.toFixed(2)}`;
+        document.getElementById('allTimeProfit').textContent = `LKR ${totalProfit.toFixed(2)}`;
+        document.getElementById('allTimeFuelCost').textContent = `LKR ${totalFuelCost.toFixed(2)}`;
+        document.getElementById('allTimeHires').textContent = totalHires;
+    } catch (error) {
+        console.error('Error loading all-time statistics:', error.message);
+    }
+}
+
+// ============ FLEET OVERVIEW ============
+async function loadFleetOverview() {
+    try {
+        const currentQueryUserId = getQueryUserId();
+
+        const { data: hireVehicles } = await supabaseClient
+            .from('hire_to_pay_vehicles')
+            .select('id')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: commitmentVehicles } = await supabaseClient
+            .from('commitment_vehicles')
+            .select('id')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id')
+            .eq('user_id', currentQueryUserId);
+
+        const hireCount = hireVehicles?.length || 0;
+        const commitmentCount = commitmentVehicles?.length || 0;
+        const totalVehicles = hireCount + commitmentCount;
+        const driverCount = drivers?.length || 0;
+
+        document.getElementById('totalVehicles').textContent = totalVehicles;
+        document.getElementById('hireVehicleCount').textContent = hireCount;
+        document.getElementById('commitmentVehicleCount').textContent = commitmentCount;
+        document.getElementById('totalDrivers').textContent = driverCount;
+    } catch (error) {
+        console.error('Error loading fleet overview:', error.message);
+    }
+}
+
+// ============ TOP PERFORMING VEHICLES ============
+async function loadTopPerformingVehicles() {
+    try {
+        const currentQueryUserId = getQueryUserId();
+        
+        // Get last 6 months date range
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 6);
+        
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+
+        // Get all vehicles
+        const { data: hireVehicles } = await supabaseClient
+            .from('hire_to_pay_vehicles')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const { data: commitmentVehicles } = await supabaseClient
+            .from('commitment_vehicles')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        const vehiclePerformance = [];
+
+        // Calculate performance for hire vehicles
+        for (const vehicle of hireVehicles || []) {
+            const { data: records } = await supabaseClient
+                .from('hire_to_pay_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDateStr)
+                .lte('hire_date', endDateStr);
+
+            const totalRevenue = records?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
+            const totalFuel = records?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
+            const profit = totalRevenue - totalFuel;
+            const totalKm = records?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
+            const hireCount = records?.length || 0;
+
+            if (totalRevenue > 0) {
+                vehiclePerformance.push({
+                    name: vehicle.lorry_number,
+                    type: 'Hire-to-Pay',
+                    revenue: totalRevenue,
+                    profit: profit,
+                    km: totalKm,
+                    hires: hireCount,
+                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0
+                });
+            }
+        }
+
+        // Calculate performance for commitment vehicles
+        for (const vehicle of commitmentVehicles || []) {
+            const { data: records } = await supabaseClient
+                .from('commitment_records')
+                .select('*')
+                .eq('vehicle_id', vehicle.id)
+                .gte('hire_date', startDateStr)
+                .lte('hire_date', endDateStr);
+
+            // Count unique months
+            const months = new Set();
+            records?.forEach(r => {
+                months.add(r.hire_date.substring(0, 7));
+            });
+
+            const monthCount = months.size;
+            const baseRevenue = vehicle.fixed_monthly_payment * monthCount;
+            const extraCharges = records?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
+            const totalFuel = records?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
+            const totalRevenue = baseRevenue + extraCharges;
+            const profit = totalRevenue - totalFuel;
+            const totalKm = records?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
+            const hireCount = records?.length || 0;
+
+            if (totalRevenue > 0) {
+                vehiclePerformance.push({
+                    name: vehicle.vehicle_number,
+                    type: 'Commitment',
+                    revenue: totalRevenue,
+                    profit: profit,
+                    km: totalKm,
+                    hires: hireCount,
+                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0
+                });
+            }
+        }
+
+        // Sort by profit (highest first) and take top 5
+        vehiclePerformance.sort((a, b) => b.profit - a.profit);
+        const topVehicles = vehiclePerformance.slice(0, 5);
+
+        const container = document.getElementById('topVehicles');
+        if (!container) return;
+
+        if (topVehicles.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No vehicle data available for the last 6 months</p>';
+            return;
+        }
+
+        container.innerHTML = topVehicles.map((vehicle, index) => {
+            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+            const typeIcon = vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛';
+            
+            return `
+                <div class="top-vehicle-card">
+                    <div class="rank-badge">${rankEmoji}</div>
+                    <div class="vehicle-info">
+                        <div class="vehicle-name">${typeIcon} ${vehicle.name}</div>
+                        <div class="vehicle-type">${vehicle.type}</div>
+                    </div>
+                    <div class="vehicle-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Profit</span>
+                            <span class="stat-value profit">LKR ${vehicle.profit.toFixed(2)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Revenue</span>
+                            <span class="stat-value">LKR ${vehicle.revenue.toFixed(2)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total KM</span>
+                            <span class="stat-value">${vehicle.km.toFixed(0)} km</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Hires</span>
+                            <span class="stat-value">${vehicle.hires}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Margin</span>
+                            <span class="stat-value">${vehicle.profitMargin.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading top performing vehicles:', error.message);
+    }
+}
+
 // ============ DRIVER ADVANCES WITH RECEIPT UPLOAD ============
 
 let currentReceiptFile = null;
@@ -1868,20 +2127,16 @@ document.getElementById('advanceDriverFilter')?.addEventListener('change', loadD
 document.getElementById('advanceReceipt')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        // Validate file type
         if (file.type !== 'application/pdf') {
             alert('Please upload a PDF file only');
             e.target.value = '';
             return;
         }
-        
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             alert('File size must be less than 5MB');
             e.target.value = '';
             return;
         }
-        
         currentReceiptFile = file;
         console.log('Receipt file selected:', file.name);
     }
@@ -1910,14 +2165,12 @@ async function uploadReceipt(file, advanceId) {
         progressBar.style.width = '30%';
         progressText.textContent = 'Uploading receipt...';
         
-        // Create unique filename: userId/advanceId_timestamp_originalname.pdf
         const timestamp = Date.now();
         const filename = `${adminUserId}/${advanceId}_${timestamp}_${file.name}`;
         
         progressBar.style.width = '60%';
         
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
+        const { data, error } = await supabaseClient.storage
             .from('advance-receipts')
             .upload(filename, file, {
                 cacheControl: '3600',
@@ -1928,8 +2181,7 @@ async function uploadReceipt(file, advanceId) {
         
         progressBar.style.width = '90%';
         
-        // Get public URL
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = supabaseClient.storage
             .from('advance-receipts')
             .getPublicUrl(filename);
         
@@ -1955,14 +2207,13 @@ async function deleteReceipt(receiptUrl) {
     if (!receiptUrl) return;
     
     try {
-        // Extract filename from URL
         const urlParts = receiptUrl.split('/');
         const bucketIndex = urlParts.findIndex(part => part === 'advance-receipts');
         if (bucketIndex === -1) return;
         
         const filename = urlParts.slice(bucketIndex + 1).join('/');
         
-        await supabase.storage
+        await supabaseClient.storage
             .from('advance-receipts')
             .remove([filename]);
     } catch (error) {
@@ -1991,7 +2242,6 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
         
         let savedAdvanceId = id;
         
-        // First save/update the advance record to get an ID
         const advanceData = {
             driver_id: driverId,
             advance_date: advanceDate,
@@ -2001,11 +2251,9 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
         };
 
         if (id) {
-            // Update existing
-            await supabase.from('driver_advances').update(advanceData).eq('id', id);
+            await supabaseClient.from('driver_advances').update(advanceData).eq('id', id);
         } else {
-            // Insert new
-            const { data: newAdvance, error: insertError } = await supabase
+            const { data: newAdvance, error: insertError } = await supabaseClient
                 .from('driver_advances')
                 .insert([advanceData])
                 .select()
@@ -2015,19 +2263,15 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
             savedAdvanceId = newAdvance.id;
         }
         
-        // If there's a new receipt file, upload it
         if (currentReceiptFile) {
-            // Delete old receipt if exists
             if (existingReceiptUrl) {
                 await deleteReceipt(existingReceiptUrl);
             }
             
-            // Upload new receipt
             receiptUrl = await uploadReceipt(currentReceiptFile, savedAdvanceId);
             
             if (receiptUrl) {
-                // Update the record with receipt URL
-                await supabase
+                await supabaseClient
                     .from('driver_advances')
                     .update({ receipt_url: receiptUrl })
                     .eq('id', savedAdvanceId);
@@ -2051,7 +2295,7 @@ async function loadDriverAdvances() {
         
         await loadAdvanceSummary();
         
-        let query = supabase
+        let query = supabaseClient
             .from('driver_advances')
             .select('*, drivers(name)')
             .eq('user_id', getQueryUserId());
@@ -2077,7 +2321,6 @@ async function loadDriverAdvances() {
         data.forEach(advance => {
             const row = document.createElement('tr');
             
-            // Receipt column
             const receiptColumn = advance.receipt_url ? 
                 `<a href="${advance.receipt_url}" target="_blank" class="receipt-link" title="View Receipt">
                     📄 View PDF
@@ -2112,12 +2355,12 @@ async function loadAdvanceSummary() {
     try {
         const currentQueryUserId = getQueryUserId();
 
-        const { data: drivers } = await supabase
+        const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
             .eq('user_id', currentQueryUserId);
 
-        const { data: advances } = await supabase
+        const { data: advances } = await supabaseClient
             .from('driver_advances')
             .select('driver_id, amount')
             .eq('user_id', currentQueryUserId);
@@ -2159,7 +2402,7 @@ async function loadAdvanceSummary() {
 
 async function updateAdvanceDriverSelectors() {
     try {
-        const { data: drivers } = await supabase
+        const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
             .eq('user_id', getQueryUserId());
@@ -2196,7 +2439,7 @@ async function updateAdvanceDriverSelectors() {
 async function editAdvance(id) {
     if (!checkAdminAccess('edit')) return;
     try {
-        const { data, error } = await supabase.from('driver_advances').select('*').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('driver_advances').select('*').eq('id', id).single();
         if (error) throw error;
         
         document.getElementById('advanceId').value = data.id;
@@ -2205,7 +2448,6 @@ async function editAdvance(id) {
         document.getElementById('advanceAmount').value = data.amount;
         document.getElementById('advanceNotes').value = data.notes || '';
         
-        // Handle existing receipt
         existingReceiptUrl = data.receipt_url;
         currentReceiptFile = null;
         
@@ -2229,20 +2471,17 @@ async function deleteAdvance(id) {
     if (!checkAdminAccess('delete')) return;
     if (confirm('Are you sure you want to delete this advance record?')) {
         try {
-            // Get the advance to check if it has a receipt
-            const { data: advance } = await supabase
+            const { data: advance } = await supabaseClient
                 .from('driver_advances')
                 .select('receipt_url')
                 .eq('id', id)
                 .single();
             
-            // Delete the receipt from storage if exists
             if (advance?.receipt_url) {
                 await deleteReceipt(advance.receipt_url);
             }
             
-            // Delete the advance record
-            await supabase.from('driver_advances').delete().eq('id', id);
+            await supabaseClient.from('driver_advances').delete().eq('id', id);
             loadDriverAdvances();
         } catch (error) {
             alert('Error deleting advance: ' + error.message);
@@ -2280,14 +2519,12 @@ function closePhotoLightbox() {
     }
 }
 
-// Close lightbox on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closePhotoLightbox();
     }
 });
 
-// Prevent default touch behaviors
 document.addEventListener('touchstart', function(e) {
     if (e.touches.length > 1) {
         e.preventDefault();
@@ -2306,7 +2543,6 @@ document.addEventListener('touchend', function(e) {
     }
 }, { passive: false });
 
-// Prevent double-tap zoom
 let lastTouchEnd = 0;
 document.addEventListener('touchend', function(event) {
     const now = (new Date()).getTime();
@@ -2316,7 +2552,6 @@ document.addEventListener('touchend', function(event) {
     lastTouchEnd = now;
 }, false);
 
-// Prevent context menu
 document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     return false;
