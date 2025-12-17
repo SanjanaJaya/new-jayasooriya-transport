@@ -136,6 +136,8 @@ html, body {
     z-index: 1000;
     overflow-y: auto;
     transition: transform var(--transition-smooth);
+    /* Safe area for sidebar top */
+    padding-top: env(safe-area-inset-top);
 }
 
 .sidebar::-webkit-scrollbar {
@@ -269,6 +271,8 @@ html, body {
 .sidebar-footer {
     padding: 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.15);
+    /* Safe area for bottom */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
 .logout-btn {
@@ -351,12 +355,15 @@ html, body {
 .top-header {
     background: var(--pure-white);
     padding: 20px 30px;
+    /* FIX: Add safe area padding for notch */
+    padding-top: calc(20px + env(safe-area-inset-top));
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
     animation: slideInDown 0.4s ease;
+    z-index: 100;
 }
 
 @keyframes slideInDown {
@@ -393,8 +400,10 @@ html, body {
     overflow-y: auto;
     padding: 30px;
     animation: fadeInUp 0.5s ease;
-    height: calc(100vh - 80px); /* Adjust based on header height */
-    padding-bottom: 50px; /* Extra space for bottom */
+    /* Height calculation needs to respect safe areas, but 100% works best with flex parent */
+    height: 100%;
+    /* Extra space for bottom + safe area */
+    padding-bottom: calc(50px + env(safe-area-inset-bottom));
 }
 
 @keyframes fadeInUp {
@@ -424,7 +433,6 @@ html, body {
 .page {
     display: none;
     height: 100%;
-    /* Remove overflow-y: auto from here to let pages-container handle scrolling */
 }
 
 .page.active {
@@ -456,6 +464,9 @@ html, body {
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     animation: slideInLeft 0.5s ease;
+    /* FIX: Prevent overflow */
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 @keyframes slideInLeft {
@@ -506,6 +517,9 @@ html, body {
     transition: all var(--transition-smooth);
     background: var(--pure-white);
     color: var(--text-dark);
+    /* FIX: Ensure inputs don't overflow container */
+    max-width: 100%;
+    width: 100%;
 }
 
 .control-group input:focus,
@@ -626,7 +640,7 @@ html, body {
     border: 1px solid var(--border-color);
     animation: slideInUp 0.5s ease;
     max-width: 100%;
-    overflow-x: hidden; /* Fix unwanted scroll */
+    overflow-x: hidden;
 }
 
 @keyframes slideInUp {
@@ -1150,11 +1164,14 @@ tbody tr:hover {
         background: linear-gradient(135deg, var(--primary-red) 0%, var(--dark-red) 100%);
         color: var(--pure-white);
         padding: 15px 20px;
+        /* FIX: Ensure notch safe area */
+        padding-top: calc(15px + env(safe-area-inset-top));
         gap: 15px;
         /* Ensure header stays at top */
         position: sticky;
         top: 0;
         z-index: 100;
+        height: auto;
     }
 
     .top-header h2 {
@@ -1168,28 +1185,30 @@ tbody tr:hover {
 
     .pages-container {
         padding: 15px;
-        /* Add more padding top so content doesn't feel stuck */
         padding-top: 25px;
-        height: 100%; /* Use 100% instead of calc to avoid scroll issues on mobile browsers */
-        padding-bottom: 80px; /* Space for scroll */
+        height: 100%;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }
 
     .dashboard-controls {
         flex-direction: column;
         padding: 15px;
         gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .control-group,
     .date-selector {
         width: 100%;
-        min-width: unset;
+        min-width: 0; /* FIX: Remove fixed min-width to stop swipe issues */
     }
 
     .control-group input,
     .control-group select,
     .date-selector input {
         width: 100%;
+        max-width: 100%; /* FIX: Ensure input fits container */
         font-size: 16px;
     }
 
@@ -1294,7 +1313,6 @@ tbody tr:hover {
         grid-template-columns: 1fr;
     }
 
-    /* Fix vehicle stats grid on tablet/mobile */
     .vehicle-stats {
         grid-template-columns: 1fr 1fr; 
     }
@@ -1333,7 +1351,7 @@ tbody tr:hover {
     .report-notification {
         left: 20px;
         right: 20px;
-        top: 70px;
+        top: calc(70px + env(safe-area-inset-top));
     }
 
     .profile-photo {
@@ -1397,6 +1415,8 @@ tbody tr:hover {
 
     .top-header {
         padding: 12px 15px;
+        /* FIX: Extra adjustment for Mini notches */
+        padding-top: calc(12px + env(safe-area-inset-top));
     }
 
     .top-header h2 {
@@ -1412,33 +1432,46 @@ tbody tr:hover {
         width: 24px;
     }
 
-    /* Fix: Increase padding on sides for small screens to prevent edge-touching */
     .pages-container {
         padding: 15px 12px;
         padding-top: 20px; 
-        /* Safe area handling for iPhone notch/bottom bar */
         padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }
 
     .dashboard-controls {
         padding: 15px 12px;
+        /* FIX: Ensure container clips overflow */
+        overflow: hidden;
+    }
+    
+    /* FIX: Force date selector to stay within bounds */
+    .date-selector, 
+    .control-group {
+        min-width: 0;
+        width: 100%;
+    }
+    
+    .date-selector input,
+    .control-group input {
+        width: 100%;
+        max-width: 100%;
+        /* Prevent font scaling causing zoom */
+        font-size: 16px; 
     }
 
     .metrics-grid {
         gap: 15px;
-        /* Ensure grid items don't overflow */
         grid-template-columns: 100%;
     }
 
     .metric-card {
         padding: 16px;
-        /* Prevent flex wrap issues */
         flex-wrap: nowrap; 
     }
 
     .metric-icon {
         font-size: 32px;
-        min-width: 32px; /* Prevent icon shrinking */
+        min-width: 32px;
     }
 
     .metric-label {
@@ -1446,7 +1479,7 @@ tbody tr:hover {
     }
 
     .metric-value {
-        font-size: 22px; /* Slightly smaller to prevent wrap */
+        font-size: 22px; 
         word-break: break-word;
     }
 
@@ -1459,7 +1492,6 @@ tbody tr:hover {
         font-size: 16px;
     }
 
-    /* Fix chart wrapper to prevent swipeable behavior */
     .chart-wrapper {
         padding: 10px;
         width: 100%;
@@ -1483,7 +1515,7 @@ tbody tr:hover {
     .btn {
         padding: 11px 16px;
         font-size: 14px;
-        width: 100%; /* Full width buttons on small screens usually look better */
+        width: 100%;
         justify-content: center;
     }
 
@@ -1520,9 +1552,8 @@ tbody tr:hover {
         font-size: 15px;
     }
 
-    /* Toast adjustment */
     .toast {
-        bottom: 20px;
+        bottom: calc(20px + env(safe-area-inset-bottom));
         right: 15px;
         left: 15px;
         max-width: unset;
@@ -1532,12 +1563,8 @@ tbody tr:hover {
 
 /* ====== LOADING ANIMATIONS ====== */
 @keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .loading {
@@ -1945,12 +1972,8 @@ td .no-vehicle-photo {
 }
 
 @keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* Photo error state */
