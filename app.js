@@ -1502,6 +1502,7 @@ async function loadDashboardData(monthValue) {
     }
 }
 
+// ============ DASHBOARD FUNCTIONS ============
 async function loadVehiclePerformance(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
@@ -1521,23 +1522,10 @@ async function loadVehiclePerformance(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        const commitmentVehicleIdsWithHires = new Set();
-        commitmentRecordsMonth?.forEach(record => {
-            commitmentVehicleIdsWithHires.add(record.vehicle_id);
-        });
+        // Get hire vehicles with at least one record this month
+        const vehiclesWithData = [];
 
-        let commitmentVehicles = [];
-        if (commitmentVehicleIdsWithHires.size > 0) {
-            const { data: vehicles } = await supabaseClient
-                .from('commitment_vehicles')
-                .select('*')
-                .eq('user_id', currentQueryUserId)
-                .in('id', Array.from(commitmentVehicleIdsWithHires));
-            commitmentVehicles = vehicles || [];
-        }
-
-        let performanceHtml = '<table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #DC143C; color: white;"><th style="padding: 10px; text-align: left;">Vehicle</th><th style="padding: 10px; text-align: left;">Type</th><th style="padding: 10px; text-align: left;">Ownership</th><th style="padding: 10px; text-align: left;">Total KM</th><th style="padding: 10px; text-align: left;">Total Revenue</th><th style="padding: 10px; text-align: left;">Fuel Cost</th><th style="padding: 10px; text-align: left;">Profit</th></tr></thead><tbody>';
-
+        // Check hire-to-pay vehicles
         for (const vehicle of hireVehicles) {
             const { data: records } = await supabaseClient
                 .from('hire_to_pay_records')
@@ -1546,46 +1534,157 @@ async function loadVehiclePerformance(monthValue) {
                 .gte('hire_date', startDate)
                 .lte('hire_date', endDate);
 
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const totalRevenue = records?.reduce((sum, r) => sum + r.hire_amount, 0) || 0;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
-            const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
+            // Only include if there's at least one hire record
+            if (records && records.length > 0) {
+                const totalKm = records.reduce((sum, r) => sum + r.distance, 0);
+                const totalRevenue = records.reduce((sum, r) => sum + r.hire_amount, 0);
+                const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0);
+                const profit = totalRevenue - totalFuel;
+                const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.lorry_number}</td><td style="padding: 10px;">Hire-to-Pay</td><td style="padding: 10px;"><strong>${ownershipLabel}</strong></td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+                vehiclesWithData.push({
+                    type: 'Hire-to-Pay',
+                    number: vehicle.lorry_number,
+                    model: vehicle.vehicle_model || '-',
+                    ownership: ownershipLabel,
+                    totalKm,
+                    totalRevenue,
+                    totalFuel,
+                    profit,
+                    recordsCount: records.length
+                });
+            }
         }
 
-        for (const vehicle of commitmentVehicles) {
-            const { data: records } = await supabaseClient
-                .from('commitment_records')
+        // Check commitment vehicles with hires this month
+        const commitmentVehicleIdsWithHires = new Set();
+        commitmentRecordsMonth?.forEach(record => {
+            commitmentVehicleIdsWithHires.add(record.vehicle_id);
+        });
+
+        if (commitmentVehicleIdsWithHires.size > 0) {
+            const { data: commitmentVehicles } = await supabaseClient
+                .from('commitment_vehicles')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('hire_date', startDate)
-                .lte('hire_date', endDate);
+                .eq('user_id', currentQueryUserId)
+                .in('id', Array.from(commitmentVehicleIdsWithHires));
 
-            const { data: dayOffs } = await supabaseClient
-                .from('commitment_day_offs')
-                .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('day_off_date', startDate)
-                .lte('day_off_date', endDate);
+            for (const vehicle of commitmentVehicles || []) {
+                const { data: records } = await supabaseClient
+                    .from('commitment_records')
+                    .select('*')
+                    .eq('vehicle_id', vehicle.id)
+                    .gte('hire_date', startDate)
+                    .lte('hire_date', endDate);
 
-            const totalKm = records?.reduce((sum, r) => sum + r.distance, 0) || 0;
-            const basePay = vehicle.fixed_monthly_payment;
-            const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
-            const extraKmCharges = records?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
-            const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
-            const totalFuel = records?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const profit = totalRevenue - totalFuel;
+                const { data: dayOffs } = await supabaseClient
+                    .from('commitment_day_offs')
+                    .select('*')
+                    .eq('vehicle_id', vehicle.id)
+                    .gte('day_off_date', startDate)
+                    .lte('day_off_date', endDate);
 
-            performanceHtml += `<tr style="border-bottom: 1px solid #ECF0F1;"><td style="padding: 10px;">${vehicle.vehicle_number}</td><td style="padding: 10px;">Commitment</td><td style="padding: 10px;">-</td><td style="padding: 10px;">${totalKm}</td><td style="padding: 10px;">LKR ${totalRevenue.toFixed(2)}</td><td style="padding: 10px;">LKR ${totalFuel.toFixed(2)}</td><td style="padding: 10px; color: #27AE60; font-weight: bold;">LKR ${profit.toFixed(2)}</td></tr>`;
+                // Only include if there's at least one commitment record
+                if (records && records.length > 0) {
+                    const totalKm = records.reduce((sum, r) => sum + r.distance, 0) || 0;
+                    const basePay = vehicle.fixed_monthly_payment;
+                    const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
+                    const extraKmCharges = records.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+                    const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
+                    const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+                    const profit = totalRevenue - totalFuel;
+
+                    vehiclesWithData.push({
+                        type: 'Commitment',
+                        number: vehicle.vehicle_number,
+                        model: vehicle.vehicle_model || '-',
+                        ownership: '-',
+                        totalKm,
+                        totalRevenue,
+                        totalFuel,
+                        profit,
+                        recordsCount: records.length
+                    });
+                }
+            }
         }
 
-        performanceHtml += '</tbody></table>';
+        // Sort by profit (highest first)
+        vehiclesWithData.sort((a, b) => b.profit - a.profit);
+
+        // Generate HTML
+        let performanceHtml = '';
+        
+        if (vehiclesWithData.length === 0) {
+            performanceHtml = `
+                <div style="text-align: center; padding: 40px; color: #7F8C8D; background: #F8F9FA; border-radius: 10px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                    <h3 style="margin-bottom: 10px;">No Vehicle Activity This Month</h3>
+                    <p>No hires recorded for any vehicle in ${monthValue}.</p>
+                </div>
+            `;
+        } else {
+            performanceHtml = `
+                <table style="width:100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="background: #DC143C; color: white;">
+                            <th style="padding: 12px; text-align: left;">Vehicle</th>
+                            <th style="padding: 12px; text-align: left;">Type</th>
+                            <th style="padding: 12px; text-align: left;">Model</th>
+                            <th style="padding: 12px; text-align: left;">Ownership</th>
+                            <th style="padding: 12px; text-align: left;">Total KM</th>
+                            <th style="padding: 12px; text-align: left;">Hires</th>
+                            <th style="padding: 12px; text-align: left;">Total Revenue</th>
+                            <th style="padding: 12px; text-align: left;">Fuel Cost</th>
+                            <th style="padding: 12px; text-align: left;">Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            vehiclesWithData.forEach(vehicle => {
+                const profitColor = vehicle.profit >= 0 ? '#27AE60' : '#E74C3C';
+                
+                performanceHtml += `
+                    <tr style="border-bottom: 1px solid #ECF0F1; background: ${vehicle.recordsCount > 0 ? '#FFF' : '#F9F9F9'};">
+                        <td style="padding: 12px; font-weight: bold;">${vehicle.number}</td>
+                        <td style="padding: 12px;">${vehicle.type}</td>
+                        <td style="padding: 12px;">${vehicle.model}</td>
+                        <td style="padding: 12px;">${vehicle.ownership}</td>
+                        <td style="padding: 12px; text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span style="background: #3498db; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                ${vehicle.recordsCount}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
+                        <td style="padding: 12px; text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                        <td style="padding: 12px; text-align: right; color: ${profitColor}; font-weight: bold;">
+                            LKR ${vehicle.profit.toFixed(2)}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            performanceHtml += `
+                    </tbody>
+                </table>
+                <div style="margin-top: 15px; font-size: 12px; color: #7F8C8D; text-align: center;">
+                    Showing ${vehiclesWithData.length} vehicle(s) with hire activity in ${monthValue}
+                </div>
+            `;
+        }
+
         const perfEl = document.getElementById('vehiclePerformance');
         if (perfEl) perfEl.innerHTML = performanceHtml;
     } catch (error) {
         console.error('Error loading vehicle performance:', error.message);
+        const perfEl = document.getElementById('vehiclePerformance');
+        if (perfEl) perfEl.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #E74C3C;">
+                Error loading vehicle performance data
+            </div>
+        `;
     }
 }
 
