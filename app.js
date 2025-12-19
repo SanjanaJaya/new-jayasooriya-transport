@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient' to fix SyntaxError
-// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads & New Dashboard Stats
+// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats & Vehicle Termination Logic
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -483,6 +483,10 @@ document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('hireVehicleForm').reset();
     document.getElementById('hireVehicleId').value = '';
+    // Reset terminated checkbox
+    if(document.getElementById('hireVehicleTerminated')) {
+        document.getElementById('hireVehicleTerminated').checked = false;
+    }
     document.getElementById('hireVehicleFormContainer').style.display = 'block';
 });
 
@@ -508,6 +512,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         waiting_charge_extra: parseFloat(document.getElementById('waitingChargeExtra').value),
         minimum_hire_amount: parseFloat(document.getElementById('minimumHireAmount').value),
         ownership: document.getElementById('ownership').value,
+        terminated: document.getElementById('hireVehicleTerminated') ? document.getElementById('hireVehicleTerminated').checked : false, // NEW
         user_id: adminUserId
     };
 
@@ -545,6 +550,13 @@ async function loadHireVehicles() {
 
         data.forEach(vehicle => {
             const row = document.createElement('tr');
+            
+            // Add visual styling for terminated vehicles
+            if (vehicle.terminated) {
+                row.style.backgroundColor = '#FADBD8';
+                row.style.opacity = '0.7';
+            }
+
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editHireVehicle(${vehicle.id})">Edit</button>
@@ -560,9 +572,13 @@ async function loadHireVehicles() {
                       onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚚</div>';">` : 
                 `<div class="no-vehicle-photo">🚚</div>`;
 
+            const statusBadge = vehicle.terminated
+                ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
+                : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
+
             row.innerHTML = `
                 <td>${photoHTML}</td>
-                <td>${vehicle.lorry_number}</td>
+                <td>${vehicle.lorry_number}<br>${statusBadge}</td>
                 <td>${vehicle.vehicle_model || '-'}</td>
                 <td>${vehicle.length}</td>
                 <td>LKR ${vehicle.price_0_100km}</td>
@@ -603,6 +619,10 @@ async function editHireVehicle(id) {
         document.getElementById('waitingChargeExtra').value = data.waiting_charge_extra;
         document.getElementById('minimumHireAmount').value = data.minimum_hire_amount;
         document.getElementById('ownership').value = data.ownership;
+        if(document.getElementById('hireVehicleTerminated')) {
+            document.getElementById('hireVehicleTerminated').checked = data.terminated || false; // NEW
+        }
+        
         document.getElementById('hireVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -863,6 +883,10 @@ document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', ()
     if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentVehicleForm').reset();
     document.getElementById('commitmentVehicleId').value = '';
+    // Reset terminated checkbox
+    if(document.getElementById('commitmentVehicleTerminated')) {
+        document.getElementById('commitmentVehicleTerminated').checked = false;
+    }
     document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
 });
 
@@ -883,6 +907,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
+        terminated: document.getElementById('commitmentVehicleTerminated') ? document.getElementById('commitmentVehicleTerminated').checked : false, // NEW
         user_id: adminUserId
     };
 
@@ -915,6 +940,13 @@ async function loadCommitmentVehicles() {
         
         data.forEach(vehicle => {
             const row = document.createElement('tr');
+            
+            // Add visual styling for terminated vehicles
+            if (vehicle.terminated) {
+                row.style.backgroundColor = '#FADBD8';
+                row.style.opacity = '0.7';
+            }
+
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editCommitmentVehicle(${vehicle.id})">Edit</button>
@@ -929,10 +961,14 @@ async function loadCommitmentVehicles() {
                       onclick="openPhotoLightbox('${vehicle.photo_url}')"
                       onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚛</div>';">` : 
                 `<div class="no-vehicle-photo">🚛</div>`;
+            
+            const statusBadge = vehicle.terminated
+                ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
+                : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
 
             row.innerHTML = `
                 <td>${photoHTML}</td>
-                <td>${vehicle.vehicle_number}</td>
+                <td>${vehicle.vehicle_number}<br>${statusBadge}</td>
                 <td>${vehicle.vehicle_model || '-'}</td>
                 <td>LKR ${vehicle.fixed_monthly_payment}</td>
                 <td>${vehicle.km_limit_per_month} km</td>
@@ -963,6 +999,10 @@ async function editCommitmentVehicle(id) {
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;
+        if(document.getElementById('commitmentVehicleTerminated')) {
+            document.getElementById('commitmentVehicleTerminated').checked = data.terminated || false; // NEW
+        }
+        
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -1553,15 +1593,18 @@ async function updateVehicleSelectors() {
     try {
         const currentQueryUserId = getQueryUserId();
         
+        // Filter out terminated vehicles for selectors
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
-            .select('id, lorry_number')
-            .eq('user_id', currentQueryUserId);
+            .select('id, lorry_number, terminated')
+            .eq('user_id', currentQueryUserId)
+            .eq('terminated', false); // NEW: Only show active vehicles
 
         const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
-            .select('id, vehicle_number')
-            .eq('user_id', currentQueryUserId);
+            .select('id, vehicle_number, terminated')
+            .eq('user_id', currentQueryUserId)
+            .eq('terminated', false); // NEW: Only show active vehicles
 
         const hireSelect = document.getElementById('hireToPayVehicle');
         const commitmentSelect = document.getElementById('commitmentVehicleSelect');

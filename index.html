@@ -423,6 +423,14 @@
                                 <input type="number" id="waitingChargeExtra" placeholder="Waiting Charge per hour (24hrs+) (LKR)" required>
                                 <input type="number" id="minimumHireAmount" placeholder="Minimum Hire Amount (LKR)" required>
                             </div>
+                            
+                            <div class="form-row full">
+                                <label>
+                                    <input type="checkbox" id="hireVehicleTerminated">
+                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new hires)</span>
+                                </label>
+                            </div>
+
                             <div class="form-row full">
                                 <select id="ownership" required>
                                     <option value="">Select Ownership</option>
@@ -564,6 +572,14 @@
                                 <input type="number" id="extraKmCharge" placeholder="Extra KM Charge (LKR/km)" step="0.01" required>
                                 <input type="number" id="commitmentLoadingCharge" placeholder="Loading Charge (LKR)" required>
                             </div>
+                            
+                            <div class="form-row full">
+                                <label>
+                                    <input type="checkbox" id="commitmentVehicleTerminated">
+                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new hires)</span>
+                                </label>
+                            </div>
+
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Vehicle</button>
                                 <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">✖ Cancel</button>
