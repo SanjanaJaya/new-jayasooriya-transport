@@ -48,6 +48,10 @@
                     <span class="nav-icon">💵</span>
                     <span>Driver Advances</span>
                 </button>
+                <button class="nav-item" data-page="driver-salary">
+                    <span class="nav-icon">💼</span>
+                    <span>Driver Salary</span>
+                </button>
                 <button class="nav-item" data-page="hire-vehicles">
                     <span class="nav-icon">🚚</span>
                     <span>Hire-to-Pay Vehicles</span>
@@ -745,6 +749,152 @@
                         </table>
                     </div>
                 </div>
+                
+                <div id="driver-salary" class="page">
+                    <div class="page-header">
+                        <h3>💼 Driver Salary Calculator & Salary Slips</h3>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="salaryDriverSelect">👤 Select Driver</label>
+                            <select id="salaryDriverSelect" title="Select Driver">
+                                <option value="">Select Driver</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="salaryMonth">📆 Salary Month</label>
+                            <input type="month" id="salaryMonth" title="Select Month and Year" value="">
+                        </div>
+                        <div class="control-group">
+                            <button class="btn btn-primary" id="loadSalaryDataBtn">📊 Load Salary Data</button>
+                        </div>
+                    </div>
+
+                    <div class="form-container" id="salaryFormContainer" style="display:none;">
+                        <form id="salaryForm">
+                            <div class="form-section">
+                                <h4>📋 Basic Information</h4>
+                                <div class="form-row">
+                                    <input type="hidden" id="salaryId">
+                                    <div class="form-group">
+                                        <label for="driverNameDisplay">Driver Name</label>
+                                        <input type="text" id="driverNameDisplay" readonly style="background: #f5f5f5;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="salaryMonthDisplay">Salary Month</label>
+                                        <input type="text" id="salaryMonthDisplay" readonly style="background: #f5f5f5;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>🚗 Distance & KM Details</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="totalKm">Total KM This Month</label>
+                                        <input type="number" id="totalKm" placeholder="Total KM" step="0.01" required>
+                                        <small>Total kilometers driven this month</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="kmLimitDisplay">KM Limit in Salary</label>
+                                        <input type="number" id="kmLimitDisplay" readonly style="background: #f5f5f5;">
+                                        <small>From driver profile</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extraKmRateDisplay">Extra KM Rate</label>
+                                        <input type="text" id="extraKmRateDisplay" readonly style="background: #f5f5f5;">
+                                        <small>LKR per extra KM</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>💰 Salary Components</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="basicSalaryDisplay">Basic Salary</label>
+                                        <input type="number" id="basicSalaryDisplay" readonly style="background: #f5f5f5;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extraKmSalary">Extra KM Salary</label>
+                                        <input type="number" id="extraKmSalary" readonly style="background: #f5f5f5;">
+                                        <small>Automatically calculated</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="additionalAllowance">Additional Allowance</label>
+                                        <input type="number" id="additionalAllowance" placeholder="Additional Allowance (LKR)" step="0.01" value="0">
+                                        <small>Any extra allowances (bonus, overtime, etc.)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>💵 Advances & Deductions</h4>
+                                <div id="advancesList" style="margin-bottom: 20px; padding: 15px; background: #FFF5F5; border-radius: 8px;">
+                                    <h5 style="color: #DC143C; margin-bottom: 10px;">Advances This Month:</h5>
+                                    <div id="advancesDetails"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="otherDeductions">Other Deductions</label>
+                                        <input type="number" id="otherDeductions" placeholder="Other Deductions (LKR)" step="0.01" value="0">
+                                        <small>Any other deductions (tax, insurance, etc.)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section total-section">
+                                <h4>🧾 Salary Summary</h4>
+                                <div class="summary-grid">
+                                    <div class="summary-item">
+                                        <span class="summary-label">Gross Salary:</span>
+                                        <span class="summary-value" id="grossSalaryDisplay">LKR 0.00</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">Total Advances:</span>
+                                        <span class="summary-value" id="totalAdvancesDisplay">LKR 0.00</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">Other Deductions:</span>
+                                        <span class="summary-value" id="otherDeductionsDisplay">LKR 0.00</span>
+                                    </div>
+                                    <div class="summary-item total">
+                                        <span class="summary-label">Net Salary:</span>
+                                        <span class="summary-value" id="netSalaryDisplay">LKR 0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-success" id="calculateSalaryBtn">🧮 Calculate Salary</button>
+                                <button type="button" class="btn btn-primary" id="generateSalarySlipBtn">📄 Generate Salary Slip</button>
+                                <button type="button" class="btn btn-secondary" id="cancelSalaryBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="performance-section" style="margin-top: 30px;">
+                        <h3>📊 Recent Salary Records</h3>
+                        <div class="table-responsive">
+                            <table id="salaryHistoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Driver</th>
+                                        <th>Month</th>
+                                        <th>Total KM</th>
+                                        <th>Gross Salary</th>
+                                        <th>Advances</th>
+                                        <th>Net Salary</th>
+                                        <th>Generated On</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </main>
@@ -796,5 +946,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
     <script src="report-generator.js"></script>
+    <script src="salary-slip.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient' to fix SyntaxError
-// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats, Vehicle Termination & Vector Art Support
+// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats, Vehicle Termination & Vector Art Support & Driver Salary
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -281,6 +281,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     });
 });
 
+// ============ UPDATED PAGE SWITCHER ============
 function switchPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pageEl = document.getElementById(page);
@@ -290,6 +291,7 @@ function switchPage(page) {
         'dashboard': 'Dashboard',
         'drivers': 'Manage Drivers',
         'driver-advances': 'Driver Salary Advances',
+        'driver-salary': 'Driver Salary Calculator & Salary Slips', // NEW PAGE TITLE
         'hire-vehicles': 'Hire-to-Pay Vehicles',
         'hire-records': 'Hire-to-Pay Records',
         'commitment-vehicles': 'Commitment Vehicles',
@@ -303,6 +305,14 @@ function switchPage(page) {
     if (page === 'dashboard') loadDashboard();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
+    
+    // NEW SALARY PAGE LOGIC
+    if (page === 'driver-salary') {
+        // Load salary drivers and history if functions exist
+        if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
+        if (typeof loadSalaryHistory === 'function') loadSalaryHistory();
+    }
+    
     if (page === 'hire-vehicles') loadHireVehicles();
     if (page === 'hire-records') loadHireRecords();
     if (page === 'commitment-vehicles') loadCommitmentVehicles();
