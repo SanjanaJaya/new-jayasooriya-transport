@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient' to fix SyntaxError
-// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats & Vehicle Termination Logic
+// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats, Vehicle Termination & Vector Art Support
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -504,6 +504,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         vehicle_model: document.getElementById('hireVehicleModel').value,
         length: parseFloat(document.getElementById('lorryLength').value),
         photo_url: document.getElementById('hireVehiclePhoto').value || null,
+        vector_art_url: document.getElementById('hireVehicleVectorArt').value || null, // NEW: Vector Art
         price_0_100km: parseFloat(document.getElementById('price0To100').value),
         price_100_250km: parseFloat(document.getElementById('price100To250').value),
         price_250km_plus: parseFloat(document.getElementById('price250Plus').value),
@@ -512,7 +513,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         waiting_charge_extra: parseFloat(document.getElementById('waitingChargeExtra').value),
         minimum_hire_amount: parseFloat(document.getElementById('minimumHireAmount').value),
         ownership: document.getElementById('ownership').value,
-        terminated: document.getElementById('hireVehicleTerminated') ? document.getElementById('hireVehicleTerminated').checked : false, // NEW
+        terminated: document.getElementById('hireVehicleTerminated') ? document.getElementById('hireVehicleTerminated').checked : false,
         user_id: adminUserId
     };
 
@@ -611,6 +612,7 @@ async function editHireVehicle(id) {
         document.getElementById('hireVehicleModel').value = data.vehicle_model || '';
         document.getElementById('lorryLength').value = data.length;
         document.getElementById('hireVehiclePhoto').value = data.photo_url || '';
+        document.getElementById('hireVehicleVectorArt').value = data.vector_art_url || ''; // NEW: Vector Art
         document.getElementById('price0To100').value = data.price_0_100km;
         document.getElementById('price100To250').value = data.price_100_250km;
         document.getElementById('price250Plus').value = data.price_250km_plus;
@@ -620,7 +622,7 @@ async function editHireVehicle(id) {
         document.getElementById('minimumHireAmount').value = data.minimum_hire_amount;
         document.getElementById('ownership').value = data.ownership;
         if(document.getElementById('hireVehicleTerminated')) {
-            document.getElementById('hireVehicleTerminated').checked = data.terminated || false; // NEW
+            document.getElementById('hireVehicleTerminated').checked = data.terminated || false;
         }
         
         document.getElementById('hireVehicleFormContainer').style.display = 'block';
@@ -904,10 +906,11 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
         vehicle_model: document.getElementById('commitmentVehicleModel').value,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
         photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
+        vector_art_url: document.getElementById('commitmentVehicleVectorArt').value || null, // NEW: Vector Art
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
-        terminated: document.getElementById('commitmentVehicleTerminated') ? document.getElementById('commitmentVehicleTerminated').checked : false, // NEW
+        terminated: document.getElementById('commitmentVehicleTerminated') ? document.getElementById('commitmentVehicleTerminated').checked : false,
         user_id: adminUserId
     };
 
@@ -996,11 +999,12 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentVehicleModel').value = data.vehicle_model || '';
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
         document.getElementById('commitmentVehiclePhoto').value = data.photo_url || '';
+        document.getElementById('commitmentVehicleVectorArt').value = data.vector_art_url || ''; // NEW: Vector Art
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;
         if(document.getElementById('commitmentVehicleTerminated')) {
-            document.getElementById('commitmentVehicleTerminated').checked = data.terminated || false; // NEW
+            document.getElementById('commitmentVehicleTerminated').checked = data.terminated || false;
         }
         
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
@@ -2144,7 +2148,8 @@ async function loadTopPerformingVehicles() {
                     profit: profit,
                     km: totalKm,
                     hires: hireCount,
-                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0
+                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
+                    vectorArt: vehicle.vector_art_url // NEW: Vector Art
                 });
             }
         }
@@ -2181,7 +2186,8 @@ async function loadTopPerformingVehicles() {
                     profit: profit,
                     km: totalKm,
                     hires: hireCount,
-                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0
+                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
+                    vectorArt: vehicle.vector_art_url // NEW: Vector Art
                 });
             }
         }
@@ -2193,47 +2199,81 @@ async function loadTopPerformingVehicles() {
         const container = document.getElementById('topVehicles');
         if (!container) return;
 
-        if (topVehicles.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No vehicle data available for the last 6 months</p>';
-            return;
-        }
-
         container.innerHTML = topVehicles.map((vehicle, index) => {
             const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-            const typeIcon = vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛';
+            
+            // Vector art or default icon
+            const vehicleIcon = vehicle.vectorArt 
+                ? `<img src="${vehicle.vectorArt}" class="vector-art-large" alt="${vehicle.name}">`
+                : `<div class="default-vehicle-icon">${vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛'}</div>`;
+            
+            // Determine profit/loss color
+            const profitClass = vehicle.profit >= 0 ? 'profit' : 'loss';
+            const profitText = vehicle.profit >= 0 ? `+LKR ${vehicle.profit.toFixed(2)}` : `-LKR ${Math.abs(vehicle.profit).toFixed(2)}`;
+            
+            // Profit margin percentage
+            const marginPercentage = vehicle.profitMargin.toFixed(1);
             
             return `
                 <div class="top-vehicle-card">
                     <div class="rank-badge">${rankEmoji}</div>
-                    <div class="vehicle-info">
-                        <div class="vehicle-name">${typeIcon} ${vehicle.name}</div>
-                        <div class="vehicle-type">${vehicle.type}</div>
-                    </div>
-                    <div class="vehicle-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Profit</span>
-                            <span class="stat-value profit">LKR ${vehicle.profit.toFixed(2)}</span>
+                    
+                    <div class="vehicle-header">
+                        ${vehicleIcon}
+                        <div class="vehicle-title">
+                            <div class="vehicle-main-name">
+                                <span>${vehicle.name}</span>
+                            </div>
+                            <div class="vehicle-type-badge">
+                                ${vehicle.type} • ${vehicle.hires} Hires
+                            </div>
                         </div>
-                        <div class="stat-item">
+                    </div>
+                    
+                    <div class="vehicle-stats-grid">
+                        <div class="stat-card">
                             <span class="stat-label">Revenue</span>
                             <span class="stat-value">LKR ${vehicle.revenue.toFixed(2)}</span>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-card">
+                            <span class="stat-label">Profit</span>
+                            <span class="stat-value ${profitClass}">${profitText}</span>
+                        </div>
+                        <div class="stat-card">
                             <span class="stat-label">Total KM</span>
                             <span class="stat-value">${vehicle.km.toFixed(0)} km</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Hires</span>
-                            <span class="stat-value">${vehicle.hires}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Margin</span>
-                            <span class="stat-value">${vehicle.profitMargin.toFixed(1)}%</span>
+                        <div class="stat-card">
+                            <span class="stat-label">Per Hire Avg</span>
+                            <span class="stat-value">LKR ${(vehicle.revenue / vehicle.hires).toFixed(2)}</span>
                         </div>
                     </div>
+                    
+                    <div class="profit-margin-indicator">
+                        <div class="meter-container">
+                            <div class="meter-fill" style="width: ${Math.min(vehicle.profitMargin, 100)}%"></div>
+                        </div>
+                        <div class="meter-label">
+                            <span>Profit Margin</span>
+                            <span>${marginPercentage}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="performance-indicator" style="background: ${vehicle.profit >= 0 ? '#27AE60' : '#E74C3C'}"></div>
                 </div>
             `;
         }).join('');
+
+        // If no vehicles
+        if (topVehicles.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.08);">
+                    <div style="font-size: 60px; margin-bottom: 20px; color: #BDC3C7;">🚚</div>
+                    <h3 style="color: #7F8C8D; margin-bottom: 10px;">No Vehicle Performance Data</h3>
+                    <p style="color: #95A5A6;">Start adding hire records to see performance metrics here.</p>
+                </div>
+            `;
+        }
 
     } catch (error) {
         console.error('Error loading top performing vehicles:', error.message);
