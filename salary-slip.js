@@ -1,12 +1,16 @@
 // salary-slip.js - Driver Salary Slip Generator with Transport Logo & Red Theme
-// UPDATED: Added full CRUD operations (Edit & Delete)
+// UPDATED: Added full CRUD operations & PDF Receipt Upload
 
-// Global variable to store salary data for PDF generation
+// Global variables
 let currentSalaryData = null;
 let isEditMode = false;
+// Global variables for salary receipt upload
+let currentSalaryReceiptFile = null;
+let existingSalaryReceiptUrl = null;
 
 // Initialize salary section
 function initSalarySection() {
+    // Existing event listeners
     document.getElementById('loadSalaryDataBtn')?.addEventListener('click', loadDriverSalaryData);
     document.getElementById('calculateSalaryBtn')?.addEventListener('click', calculateSalary);
     document.getElementById('generateSalarySlipBtn')?.addEventListener('click', generateSalarySlip);
@@ -14,6 +18,12 @@ function initSalarySection() {
     document.getElementById('totalKm')?.addEventListener('input', recalculateExtraKmSalary);
     document.getElementById('additionalAllowance')?.addEventListener('input', recalculateSalary);
     document.getElementById('otherDeductions')?.addEventListener('input', recalculateSalary);
+    
+    // New: Handle salary receipt file selection
+    document.getElementById('salaryReceipt')?.addEventListener('change', handleSalaryReceiptChange);
+    
+    // New: Handle remove receipt button
+    document.getElementById('removeSalaryReceiptBtn')?.addEventListener('click', removeSalaryReceipt);
     
     // Set default month
     const now = new Date();
@@ -25,6 +35,104 @@ function initSalarySection() {
     loadSalaryDrivers();
     // Load salary history
     loadSalaryHistory();
+}
+
+// Handle salary receipt file selection
+function handleSalaryReceiptChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file only');
+            e.target.value = '';
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB');
+            e.target.value = '';
+            return;
+        }
+        currentSalaryReceiptFile = file;
+        console.log('Salary receipt file selected:', file.name);
+    }
+}
+
+// Remove existing salary receipt
+function removeSalaryReceipt() {
+    if (confirm('Are you sure you want to remove this receipt?')) {
+        existingSalaryReceiptUrl = null;
+        document.getElementById('currentSalaryReceipt').style.display = 'none';
+        document.getElementById('salaryReceipt').value = '';
+        currentSalaryReceiptFile = null;
+    }
+}
+
+// Upload salary receipt to Supabase Storage
+async function uploadSalaryReceipt(file, salaryId) {
+    if (!file) return null;
+    
+    try {
+        const progressDiv = document.getElementById('salaryUploadProgress');
+        const progressBar = document.getElementById('salaryUploadProgressBar');
+        const progressText = document.getElementById('salaryUploadProgressText');
+        
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '30%';
+        progressText.textContent = 'Uploading salary receipt...';
+        
+        const timestamp = Date.now();
+        const filename = `${getQueryUserId()}/salary/${salaryId}_${timestamp}_${file.name}`;
+        
+        progressBar.style.width = '60%';
+        
+        const { data, error } = await supabaseClient.storage
+            .from('salary-receipts')
+            .upload(filename, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (error) throw error;
+        
+        progressBar.style.width = '90%';
+        
+        const { data: urlData } = supabaseClient.storage
+            .from('salary-receipts')
+            .getPublicUrl(filename);
+        
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Upload complete!';
+        
+        setTimeout(() => {
+            progressDiv.style.display = 'none';
+            progressBar.style.width = '0%';
+        }, 1000);
+        
+        return urlData.publicUrl;
+    } catch (error) {
+        console.error('Error uploading salary receipt:', error);
+        document.getElementById('salaryUploadProgress').style.display = 'none';
+        alert('Failed to upload salary receipt: ' + error.message);
+        return null;
+    }
+}
+
+// Delete salary receipt from storage
+async function deleteSalaryReceipt(receiptUrl) {
+    if (!receiptUrl) return;
+    
+    try {
+        const urlParts = receiptUrl.split('/');
+        const bucketIndex = urlParts.findIndex(part => part === 'salary-receipts');
+        if (bucketIndex === -1) return;
+        
+        const filename = urlParts.slice(bucketIndex + 1).join('/');
+        
+        await supabaseClient.storage
+            .from('salary-receipts')
+            .remove([filename]);
+    } catch (error) {
+        console.error('Error deleting salary receipt:', error);
+    }
 }
 
 // Load drivers for salary calculation
@@ -57,7 +165,7 @@ async function loadSalaryDrivers() {
     }
 }
 
-// Load driver salary data
+// Load driver salary data (Updated to handle receipt display)
 async function loadDriverSalaryData() {
     const driverId = document.getElementById('salaryDriverSelect').value;
     const monthValue = document.getElementById('salaryMonth').value;
@@ -111,13 +219,24 @@ async function loadDriverSalaryData() {
         // Display advances
         displayAdvances(advances);
         
-        // If existing salary found, populate the form
+        // Reset receipt upload
+        resetSalaryReceiptUpload();
+        
+        // If existing salary found, populate the form and receipt
         if (existingSalary) {
             isEditMode = true;
             document.getElementById('salaryId').value = existingSalary.id;
             document.getElementById('totalKm').value = existingSalary.total_km || 0;
             document.getElementById('additionalAllowance').value = existingSalary.additional_allowance || 0;
             document.getElementById('otherDeductions').value = existingSalary.other_deductions || 0;
+            
+            // Display existing receipt if any
+            if (existingSalary.receipt_url) {
+                existingSalaryReceiptUrl = existingSalary.receipt_url;
+                document.getElementById('currentSalaryReceipt').style.display = 'block';
+                document.getElementById('currentSalaryReceiptLink').href = existingSalary.receipt_url;
+                document.getElementById('currentSalaryReceiptLink').textContent = 'View Receipt';
+            }
             
             // Update button text for edit mode
             const generateBtn = document.getElementById('generateSalarySlipBtn');
@@ -151,6 +270,15 @@ async function loadDriverSalaryData() {
         console.error('Error loading salary data:', error.message);
         alert('Error loading salary data: ' + error.message);
     }
+}
+
+// Reset salary receipt upload UI
+function resetSalaryReceiptUpload() {
+    document.getElementById('salaryReceipt').value = '';
+    document.getElementById('salaryUploadProgress').style.display = 'none';
+    document.getElementById('currentSalaryReceipt').style.display = 'none';
+    currentSalaryReceiptFile = null;
+    existingSalaryReceiptUrl = null;
 }
 
 // Display advances in the form
@@ -258,7 +386,7 @@ async function calculateSalary() {
     alert('Salary calculated successfully! Click "Generate Salary Slip" to create/update PDF.');
 }
 
-// Generate salary slip PDF
+// Generate salary slip PDF (Updated to handle receipt upload)
 async function generateSalarySlip() {
     const driverId = document.getElementById('salaryDriverSelect').value;
     const monthValue = document.getElementById('salaryMonth').value;
@@ -341,8 +469,8 @@ async function generateSalarySlip() {
         // Create PDF
         createSalarySlipPDF();
         
-        // Save/update salary record to database
-        await saveSalaryRecord(driverId, monthValue, currentSalaryData);
+        // Save/update salary record to database with receipt
+        const salaryId = await saveSalaryRecordWithReceipt(driverId, monthValue, currentSalaryData);
         
         // Show success message
         alert(isEditMode ? 'Salary slip updated successfully!' : 'Salary slip generated successfully!');
@@ -359,9 +487,21 @@ async function generateSalarySlip() {
     }
 }
 
-// Save salary record to database
-async function saveSalaryRecord(driverId, monthValue, salaryData) {
+// Save salary record with receipt URL (Replaces old saveSalaryRecord)
+async function saveSalaryRecordWithReceipt(driverId, monthValue, salaryData) {
     try {
+        const existingId = document.getElementById('salaryId').value;
+        
+        let receiptUrl = existingSalaryReceiptUrl;
+        
+        // If editing and removing old receipt, delete it
+        if (existingId && existingSalaryReceiptUrl && !currentSalaryReceiptFile) {
+            await deleteSalaryReceipt(existingSalaryReceiptUrl);
+            receiptUrl = null;
+        }
+        
+        let savedSalaryId = existingId;
+        
         const salaryRecord = {
             driver_id: driverId,
             salary_month: monthValue,
@@ -378,18 +518,46 @@ async function saveSalaryRecord(driverId, monthValue, salaryData) {
             updated_at: new Date().toISOString()
         };
         
-        const existingId = document.getElementById('salaryId').value;
+        // Upload new receipt if selected
+        if (currentSalaryReceiptFile) {
+            if (existingSalaryReceiptUrl) {
+                await deleteSalaryReceipt(existingSalaryReceiptUrl);
+            }
+            
+            // If no salary ID yet (new record), create it first
+            if (!existingId) {
+                const { data: newSalary, error: insertError } = await supabaseClient
+                    .from('driver_salary')
+                    .insert([salaryRecord])
+                    .select()
+                    .single();
+                
+                if (insertError) throw insertError;
+                savedSalaryId = newSalary.id;
+            }
+            
+            receiptUrl = await uploadSalaryReceipt(currentSalaryReceiptFile, savedSalaryId);
+        }
         
+        // Add receipt URL to record
+        if (receiptUrl) {
+            salaryRecord.receipt_url = receiptUrl;
+        }
+        
+        // Update or insert record
         if (existingId) {
             await supabaseClient
                 .from('driver_salary')
                 .update(salaryRecord)
                 .eq('id', existingId);
-        } else {
+        } else if (!currentSalaryReceiptFile) {
+            // Insert without receipt (only if not already created above in file upload step)
             await supabaseClient
                 .from('driver_salary')
                 .insert([salaryRecord]);
         }
+        
+        return savedSalaryId;
         
     } catch (error) {
         console.error('Error saving salary record:', error.message);
@@ -397,7 +565,7 @@ async function saveSalaryRecord(driverId, monthValue, salaryData) {
     }
 }
 
-// Load salary history
+// Load salary history (Updated with Receipt Column)
 async function loadSalaryHistory() {
     try {
         const { data: salaryRecords, error } = await supabaseClient
@@ -411,12 +579,25 @@ async function loadSalaryHistory() {
         
         const tbody = document.querySelector('#salaryHistoryTable tbody');
         if (!tbody) return;
+        
+        // Update table header to include receipt column if not present
+        const table = document.querySelector('#salaryHistoryTable');
+        if (table) {
+            const headerRow = table.querySelector('thead tr');
+            if (headerRow && !headerRow.innerHTML.includes('Receipt')) {
+                const receiptHeader = document.createElement('th');
+                receiptHeader.textContent = 'Receipt';
+                // Insert before the actions column (last child)
+                headerRow.insertBefore(receiptHeader, headerRow.lastElementChild);
+            }
+        }
+        
         tbody.innerHTML = '';
         
         if (!salaryRecords || salaryRecords.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 30px; color: #7F8C8D;">
+                    <td colspan="9" style="text-align: center; padding: 30px; color: #7F8C8D;">
                         No salary records found. Generate salary slips to see them here.
                     </td>
                 </tr>
@@ -435,6 +616,13 @@ async function loadSalaryHistory() {
                 day: 'numeric'
             });
             
+            // Receipt column
+            const receiptColumn = record.receipt_url 
+                ? `<a href="${record.receipt_url}" target="_blank" class="receipt-link" title="View Receipt">
+                    📄 PDF
+                   </a>`
+                : '<span style="color: #95A5A6;">No receipt</span>';
+            
             row.innerHTML = `
                 <td>${record.drivers.name}</td>
                 <td>${record.salary_month}</td>
@@ -443,6 +631,7 @@ async function loadSalaryHistory() {
                 <td>LKR ${record.total_advances.toFixed(2)}</td>
                 <td style="font-weight: bold; color: #27AE60;">LKR ${record.net_salary.toFixed(2)}</td>
                 <td>${formattedDate}</td>
+                <td>${receiptColumn}</td>
                 <td>
                     <button class="btn btn-sm btn-view" onclick="viewSalarySlip(${record.id})" title="View Salary Slip">
                         👁️ View
@@ -463,7 +652,7 @@ async function loadSalaryHistory() {
     }
 }
 
-// Edit salary record
+// Edit salary record (Updated to handle receipts)
 async function editSalaryRecord(salaryId) {
     try {
         const { data: salaryRecord, error } = await supabaseClient
@@ -500,6 +689,16 @@ async function editSalaryRecord(salaryId) {
         document.getElementById('additionalAllowance').value = salaryRecord.additional_allowance || 0;
         document.getElementById('otherDeductions').value = salaryRecord.other_deductions || 0;
         
+        // Display existing receipt if any
+        if (salaryRecord.receipt_url) {
+            existingSalaryReceiptUrl = salaryRecord.receipt_url;
+            document.getElementById('currentSalaryReceipt').style.display = 'block';
+            document.getElementById('currentSalaryReceiptLink').href = salaryRecord.receipt_url;
+            document.getElementById('currentSalaryReceiptLink').textContent = 'View Receipt';
+        } else {
+            resetSalaryReceiptUpload();
+        }
+        
         // Display advances
         displayAdvances(advances);
         
@@ -524,7 +723,7 @@ async function editSalaryRecord(salaryId) {
     }
 }
 
-// Delete salary record
+// Delete salary record (Updated to delete receipt)
 async function deleteSalaryRecord(salaryId) {
     if (!confirm('Are you sure you want to delete this salary record? This action cannot be undone.')) {
         return;
@@ -532,11 +731,27 @@ async function deleteSalaryRecord(salaryId) {
     
     try {
         // Check admin access
-        if (userRole === 'viewer') {
+        if (typeof userRole !== 'undefined' && userRole === 'viewer') {
             alert('You do not have permission to delete salary records.');
             return;
         }
         
+        // Get the record first to check for receipt
+        const { data: salaryRecord, error: fetchError } = await supabaseClient
+            .from('driver_salary')
+            .select('receipt_url')
+            .eq('id', salaryId)
+            .eq('user_id', getQueryUserId())
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Delete receipt if exists
+        if (salaryRecord?.receipt_url) {
+            await deleteSalaryReceipt(salaryRecord.receipt_url);
+        }
+        
+        // Delete salary record
         const { error } = await supabaseClient
             .from('driver_salary')
             .delete()
@@ -563,7 +778,7 @@ async function deleteSalaryRecord(salaryId) {
     }
 }
 
-// View existing salary slip
+// View existing salary slip (Updated to include receipt data)
 async function viewSalarySlip(salaryId) {
     try {
         const { data: salaryRecord, error } = await supabaseClient
@@ -577,6 +792,12 @@ async function viewSalarySlip(salaryId) {
         
         // Set current salary data and generate PDF
         currentSalaryData = salaryRecord.salary_data;
+        
+        // Add receipt URL to data if exists
+        if (salaryRecord.receipt_url) {
+            currentSalaryData.receipt_url = salaryRecord.receipt_url;
+        }
+        
         createSalarySlipPDF();
         
     } catch (error) {
@@ -590,13 +811,16 @@ async function reprintSalarySlip(salaryId) {
     await viewSalarySlip(salaryId);
 }
 
-// Cancel salary form
+// Cancel salary form (Updated to reset receipt)
 function cancelSalaryForm() {
     document.getElementById('salaryFormContainer').style.display = 'none';
     document.getElementById('salaryForm').reset();
     document.getElementById('salaryId').value = '';
     currentSalaryData = null;
     isEditMode = false;
+    
+    // Reset receipt upload
+    resetSalaryReceiptUpload();
     
     // Reset button text
     const generateBtn = document.getElementById('generateSalarySlipBtn');
@@ -807,6 +1031,15 @@ function createSalarySlipPDF() {
         pdf.line(margin + 100, yPos, pageWidth - margin, yPos);
         pdf.setFontSize(10);
         pdf.text('Authorized Signature', margin + 100, yPos + 8, { align: 'center' });
+        
+        // New: Add Receipt Note if URL exists
+        if (currentSalaryData.receipt_url) {
+            yPos += 15;
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            pdf.text('Payment Receipt: Available online', margin, yPos);
+        }
         
         // Save PDF with appropriate name
         const fileName = `Salary_Slip_${currentSalaryData.driver.name.replace(/\s+/g, '_')}_${currentSalaryData.salaryMonth}.pdf`;
