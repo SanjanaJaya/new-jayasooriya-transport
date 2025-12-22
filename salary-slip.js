@@ -686,7 +686,7 @@ function createSalarySlipPDF() {
             ['Total KM Driven', `${currentSalaryData.totalKm.toFixed(2)} km`, '-'],
             ['KM Limit in Salary', `${currentSalaryData.kmLimit.toFixed(2)} km`, '-'],
             ['Extra KM', `${currentSalaryData.extraKm.toFixed(2)} km @ LKR ${currentSalaryData.extraKmRate}/km`, currentSalaryData.extraKmSalary.toFixed(2)],
-            ['Additional Allowance', 'Bonus/Overtime', currentSalaryData.additionalAllowance.toFixed(2)],
+            ['Additional Allowance', 'Bonus', currentSalaryData.additionalAllowance.toFixed(2)],
             ['', '', ''],
             ['GROSS SALARY', '', currentSalaryData.grossSalary.toFixed(2)]
         ];

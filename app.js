@@ -1,5 +1,5 @@
-// app.js - FIXED: Renamed 'supabase' to 'supabaseClient' to fix SyntaxError
-// Includes: Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, New Dashboard Stats, Vehicle Termination & Vector Art Support & Driver Salary
+// app.js - FIXED: Renamed 'supabase' to 'supabaseClient'
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -17,6 +17,88 @@ function initSupabase() {
         // Use the global window.supabase to create our client
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
+}
+
+// ============ DARK MODE TOGGLE ============
+function initDarkMode() {
+    // Inject CSS for the toggle button position and appearance
+    const style = document.createElement('style');
+    style.textContent = `
+        .dark-mode-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .dark-mode-toggle button {
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .dark-mode-toggle button:hover {
+            transform: scale(1.1);
+        }
+        /* Hide light icon in light mode, hide dark icon in dark mode */
+        body:not(.dark-mode) .light-icon { display: none; }
+        body:not(.dark-mode) .dark-icon { display: block; }
+        body.dark-mode .light-icon { display: block; }
+        body.dark-mode .dark-icon { display: none; }
+    `;
+    document.head.appendChild(style);
+
+    // Create dark mode toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.innerHTML = `
+        <span class="light-icon">🌙</span>
+        <span class="dark-icon">☀️</span>
+    `;
+    toggleBtn.title = 'Toggle Dark Mode';
+    toggleBtn.ariaLabel = 'Toggle Dark Mode';
+    
+    // Create container
+    const toggleContainer = document.createElement('div');
+    toggleContainer.className = 'dark-mode-toggle';
+    toggleContainer.appendChild(toggleBtn);
+    document.body.appendChild(toggleContainer);
+    
+    // Check for saved theme or prefer-color-scheme
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme');
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.body.classList.add('dark-mode');
+    }
+    
+    // Toggle function
+    toggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('theme', 'dark');
+        } else {
+            localStorage.setItem('theme', 'light');
+        }
+    });
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            if (e.matches) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+    });
 }
 
 // Check user role and get admin ID
@@ -108,6 +190,7 @@ function checkAdminAccess(action = 'modify') {
 async function initializeApp() {
     initSupabase();
     initHamburgerMenu();
+    initDarkMode(); // Initialize Dark Mode
     
     if (!supabaseClient) {
         console.error('Supabase not initialized');
@@ -200,6 +283,7 @@ if (logoutBtn) {
         currentUser = null;
         userRole = null;
         adminUserId = null;
+        // Don't clear theme preference on logout
         showLogin();
     });
 }
@@ -291,7 +375,7 @@ function switchPage(page) {
         'dashboard': 'Dashboard',
         'drivers': 'Manage Drivers',
         'driver-advances': 'Driver Salary Advances',
-        'driver-salary': 'Driver Salary Calculator & Salary Slips', // NEW PAGE TITLE
+        'driver-salary': 'Driver Salary Calculator & Salary Slips', 
         'hire-vehicles': 'Hire-to-Pay Vehicles',
         'hire-records': 'Hire-to-Pay Records',
         'commitment-vehicles': 'Commitment Vehicles',
@@ -306,9 +390,7 @@ function switchPage(page) {
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
     
-    // NEW SALARY PAGE LOGIC
     if (page === 'driver-salary') {
-        // Load salary drivers and history if functions exist
         if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
         if (typeof loadSalaryHistory === 'function') loadSalaryHistory();
     }
@@ -335,7 +417,6 @@ async function loadDashboard() {
         await loadVehiclePerformance(monthValue); 
         await loadDashboardCharts();
         
-        // NEW DASHBOARD FUNCTIONS
         await loadAllTimeStatistics();
         await loadFleetOverview();
         await loadTopPerformingVehicles();
@@ -514,7 +595,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         vehicle_model: document.getElementById('hireVehicleModel').value,
         length: parseFloat(document.getElementById('lorryLength').value),
         photo_url: document.getElementById('hireVehiclePhoto').value || null,
-        vector_art_url: document.getElementById('hireVehicleVectorArt').value || null, // NEW: Vector Art
+        vector_art_url: document.getElementById('hireVehicleVectorArt').value || null,
         price_0_100km: parseFloat(document.getElementById('price0To100').value),
         price_100_250km: parseFloat(document.getElementById('price100To250').value),
         price_250km_plus: parseFloat(document.getElementById('price250Plus').value),
@@ -622,7 +703,7 @@ async function editHireVehicle(id) {
         document.getElementById('hireVehicleModel').value = data.vehicle_model || '';
         document.getElementById('lorryLength').value = data.length;
         document.getElementById('hireVehiclePhoto').value = data.photo_url || '';
-        document.getElementById('hireVehicleVectorArt').value = data.vector_art_url || ''; // NEW: Vector Art
+        document.getElementById('hireVehicleVectorArt').value = data.vector_art_url || '';
         document.getElementById('price0To100').value = data.price_0_100km;
         document.getElementById('price100To250').value = data.price_100_250km;
         document.getElementById('price250Plus').value = data.price_250km_plus;
@@ -916,7 +997,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
         vehicle_model: document.getElementById('commitmentVehicleModel').value,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
         photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
-        vector_art_url: document.getElementById('commitmentVehicleVectorArt').value || null, // NEW: Vector Art
+        vector_art_url: document.getElementById('commitmentVehicleVectorArt').value || null,
         km_limit_per_month: parseFloat(document.getElementById('kmLimit').value),
         extra_km_charge: parseFloat(document.getElementById('extraKmCharge').value),
         loading_charge: parseFloat(document.getElementById('commitmentLoadingCharge').value),
@@ -1009,7 +1090,7 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentVehicleModel').value = data.vehicle_model || '';
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
         document.getElementById('commitmentVehiclePhoto').value = data.photo_url || '';
-        document.getElementById('commitmentVehicleVectorArt').value = data.vector_art_url || ''; // NEW: Vector Art
+        document.getElementById('commitmentVehicleVectorArt').value = data.vector_art_url || '';
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;
@@ -1626,54 +1707,58 @@ async function loadVehiclePerformance(monthValue) {
         // Sort by profit (highest first)
         vehiclesWithData.sort((a, b) => b.profit - a.profit);
 
-        // Generate HTML
+        // Generate HTML with Classes instead of Inline Styles
         let performanceHtml = '';
         
         if (vehiclesWithData.length === 0) {
             performanceHtml = `
-                <div style="text-align: center; padding: 40px; color: #7F8C8D; background: #F8F9FA; border-radius: 10px;">
-                    <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
-                    <h3 style="margin-bottom: 10px;">No Vehicle Activity This Month</h3>
-                    <p>No hires recorded for any vehicle in ${monthValue}.</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <h3 class="empty-state-text">No Vehicle Activity This Month</h3>
+                    <p class="empty-state-subtext">No hires recorded for any vehicle in ${monthValue}.</p>
                 </div>
             `;
         } else {
+            // Using 'table-responsive' class wrapper ensures dark mode background applies correctly
             performanceHtml = `
-                <table style="width:100%; border-collapse: collapse; margin-top: 15px;">
-                    <thead>
-                        <tr style="background: #DC143C; color: white;">
-                            <th style="padding: 12px; text-align: left;">Vehicle</th>
-                            <th style="padding: 12px; text-align: left;">Type</th>
-                            <th style="padding: 12px; text-align: left;">Model</th>
-                            <th style="padding: 12px; text-align: left;">Ownership</th>
-                            <th style="padding: 12px; text-align: left;">Total KM</th>
-                            <th style="padding: 12px; text-align: left;">Hires</th>
-                            <th style="padding: 12px; text-align: left;">Total Revenue</th>
-                            <th style="padding: 12px; text-align: left;">Fuel Cost</th>
-                            <th style="padding: 12px; text-align: left;">Profit</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="table-responsive">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Vehicle</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Ownership</th>
+                                <th style="text-align: right;">Total KM</th>
+                                <th style="text-align: center;">Hires</th>
+                                <th style="text-align: right;">Total Revenue</th>
+                                <th style="text-align: right;">Fuel Cost</th>
+                                <th style="text-align: right;">Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             vehiclesWithData.forEach(vehicle => {
-                const profitColor = vehicle.profit >= 0 ? '#27AE60' : '#E74C3C';
+                // Adjust profit color for dark/light mode visibility if needed, 
+                // but standard colors usually work on both.
+                const profitColor = vehicle.profit >= 0 ? 'var(--success-green)' : 'var(--primary-red)';
                 
                 performanceHtml += `
-                    <tr style="border-bottom: 1px solid #ECF0F1; background: ${vehicle.recordsCount > 0 ? '#FFF' : '#F9F9F9'};">
-                        <td style="padding: 12px; font-weight: bold;">${vehicle.number}</td>
-                        <td style="padding: 12px;">${vehicle.type}</td>
-                        <td style="padding: 12px;">${vehicle.model}</td>
-                        <td style="padding: 12px;">${vehicle.ownership}</td>
-                        <td style="padding: 12px; text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
-                        <td style="padding: 12px; text-align: center;">
+                    <tr>
+                        <td style="font-weight: bold;">${vehicle.number}</td>
+                        <td>${vehicle.type}</td>
+                        <td>${vehicle.model}</td>
+                        <td>${vehicle.ownership}</td>
+                        <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                        <td style="text-align: center;">
                             <span style="background: #3498db; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                 ${vehicle.recordsCount}
                             </span>
                         </td>
-                        <td style="padding: 12px; text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
-                        <td style="padding: 12px; text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
-                        <td style="padding: 12px; text-align: right; color: ${profitColor}; font-weight: bold;">
+                        <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
+                        <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                        <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
                             LKR ${vehicle.profit.toFixed(2)}
                         </td>
                     </tr>
@@ -1681,9 +1766,10 @@ async function loadVehiclePerformance(monthValue) {
             });
 
             performanceHtml += `
-                    </tbody>
-                </table>
-                <div style="margin-top: 15px; font-size: 12px; color: #7F8C8D; text-align: center;">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-muted text-center" style="margin-top: 15px; font-size: 12px; text-align: center;">
                     Showing ${vehiclesWithData.length} vehicle(s) with hire activity in ${monthValue}
                 </div>
             `;
@@ -1695,7 +1781,7 @@ async function loadVehiclePerformance(monthValue) {
         console.error('Error loading vehicle performance:', error.message);
         const perfEl = document.getElementById('vehiclePerformance');
         if (perfEl) perfEl.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #E74C3C;">
+            <div style="text-align: center; padding: 20px; color: var(--primary-red);">
                 Error loading vehicle performance data
             </div>
         `;
@@ -1711,13 +1797,13 @@ async function updateVehicleSelectors() {
             .from('hire_to_pay_vehicles')
             .select('id, lorry_number, terminated')
             .eq('user_id', currentQueryUserId)
-            .eq('terminated', false); // NEW: Only show active vehicles
+            .eq('terminated', false);
 
         const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
             .select('id, vehicle_number, terminated')
             .eq('user_id', currentQueryUserId)
-            .eq('terminated', false); // NEW: Only show active vehicles
+            .eq('terminated', false);
 
         const hireSelect = document.getElementById('hireToPayVehicle');
         const commitmentSelect = document.getElementById('commitmentVehicleSelect');
@@ -2159,7 +2245,7 @@ async function loadTopPerformingVehicles() {
                     km: totalKm,
                     hires: hireCount,
                     profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
-                    vectorArt: vehicle.vector_art_url // NEW: Vector Art
+                    vectorArt: vehicle.vector_art_url
                 });
             }
         }
@@ -2197,7 +2283,7 @@ async function loadTopPerformingVehicles() {
                     km: totalKm,
                     hires: hireCount,
                     profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
-                    vectorArt: vehicle.vector_art_url // NEW: Vector Art
+                    vectorArt: vehicle.vector_art_url
                 });
             }
         }
