@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient'
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Animation Reflow
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -206,8 +206,7 @@ async function initializeApp() {
             await checkUserRole();
             showApp();
             setDefaultMonths();
-            // Instead of loadDashboard(), we use switchPage to ensure animations and setup
-            switchPage('dashboard');
+            loadDashboard();
         } else {
             showLogin();
         }
@@ -269,7 +268,7 @@ if (loginForm) {
             await checkUserRole();
             showApp();
             setDefaultMonths();
-            switchPage('dashboard');
+            loadDashboard();
         } catch (error) {
             errorEl.textContent = error.message || 'Login failed';
         }
@@ -354,103 +353,53 @@ function openMobileMenu() {
     if (mobileOverlay) mobileOverlay.classList.add('active');
 }
 
-// Navigation Event Listeners
+// Navigation
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        
         currentPage = item.dataset.page;
         switchPage(currentPage);
+        closeMobileMenu();
     });
 });
 
-// ============ UPDATED PAGE SWITCHER WITH ANIMATIONS ============
-
-// Force reflow to trigger animations
-function triggerReflow(element) {
-    element.offsetHeight;
-}
-
-// When switching pages, ensure animations play
-function switchPage(pageId) {
-    const pages = document.querySelectorAll('.page');
-    const navItems = document.querySelectorAll('.nav-item');
+// ============ UPDATED PAGE SWITCHER ============
+function switchPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pageEl = document.getElementById(page);
+    if (pageEl) pageEl.classList.add('active');
     
-    // Hide all pages
-    pages.forEach(page => {
-        page.style.display = 'none';
-        page.classList.remove('active');
-    });
+    const titles = {
+        'dashboard': 'Dashboard',
+        'drivers': 'Manage Drivers',
+        'driver-advances': 'Driver Salary Advances',
+        'driver-salary': 'Driver Salary Calculator & Salary Slips', 
+        'hire-vehicles': 'Hire-to-Pay Vehicles',
+        'hire-records': 'Hire-to-Pay Records',
+        'commitment-vehicles': 'Commitment Vehicles',
+        'commitment-records': 'Commitment Vehicle Hires',
+        'commitment-dayoffs': 'Day Offs'
+    };
     
-    // Show selected page with animation
-    const selectedPage = document.getElementById(pageId);
-    if (selectedPage) {
-        selectedPage.style.display = 'block';
-        triggerReflow(selectedPage); // Force reflow
-        selectedPage.classList.add('active');
-        
-        // Update page title based on Navigation Item Text
-        const pageTitle = document.getElementById('pageTitle');
-        const activeNav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-        if (activeNav && pageTitle) {
-            // Try to find the text span, otherwise fallback to textContent
-            const textSpan = activeNav.querySelector('span:not(.nav-icon)');
-            if (textSpan) {
-                pageTitle.textContent = textSpan.textContent;
-            } else {
-                pageTitle.textContent = activeNav.textContent.trim();
-            }
-        } else if (pageTitle) {
-            // Fallback for hardcoded titles if nav lookup fails
-            const titles = {
-                'dashboard': 'Dashboard',
-                'drivers': 'Manage Drivers',
-                'driver-advances': 'Driver Salary Advances',
-                'driver-salary': 'Driver Salary Calculator & Salary Slips', 
-                'hire-vehicles': 'Hire-to-Pay Vehicles',
-                'hire-records': 'Hire-to-Pay Records',
-                'commitment-vehicles': 'Commitment Vehicles',
-                'commitment-records': 'Commitment Vehicle Hires',
-                'commitment-dayoffs': 'Day Offs'
-            };
-            pageTitle.textContent = titles[pageId] || 'Dashboard';
-        }
-    }
+    const titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
     
-    // Update active nav item
-    navItems.forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.page === pageId) {
-            item.classList.add('active');
-        }
-    });
+    if (page === 'dashboard') loadDashboard();
+    if (page === 'drivers') loadDrivers();
+    if (page === 'driver-advances') loadDriverAdvances();
     
-    // Close mobile sidebar if open
-    const sidebar = document.querySelector('.sidebar');
-    const mobileOverlay = document.getElementById('mobileOverlay');
-    const hamburgerMenu = document.getElementById('hamburgerMenu');
-    
-    if (sidebar && sidebar.classList.contains('mobile-open')) {
-        sidebar.classList.remove('mobile-open');
-        if (mobileOverlay) mobileOverlay.classList.remove('active');
-        if (hamburgerMenu) hamburgerMenu.classList.remove('active');
-    }
-    
-    // Data Loading Logic (Preserved from original file)
-    currentPage = pageId;
-
-    if (pageId === 'dashboard') loadDashboard();
-    if (pageId === 'drivers') loadDrivers();
-    if (pageId === 'driver-advances') loadDriverAdvances();
-    
-    if (pageId === 'driver-salary') {
+    if (page === 'driver-salary') {
         if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
         if (typeof loadSalaryHistory === 'function') loadSalaryHistory();
     }
     
-    if (pageId === 'hire-vehicles') loadHireVehicles();
-    if (pageId === 'hire-records') loadHireRecords();
-    if (pageId === 'commitment-vehicles') loadCommitmentVehicles();
-    if (pageId === 'commitment-records') loadCommitmentRecords();
-    if (pageId === 'commitment-dayoffs') loadDayOffs();
+    if (page === 'hire-vehicles') loadHireVehicles();
+    if (page === 'hire-records') loadHireRecords();
+    if (page === 'commitment-vehicles') loadCommitmentVehicles();
+    if (page === 'commitment-records') loadCommitmentRecords();
+    if (page === 'commitment-dayoffs') loadDayOffs();
 }
 
 // ============ DASHBOARD ============
