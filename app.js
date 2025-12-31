@@ -1871,6 +1871,7 @@ async function loadDashboardCharts() {
 
         for (let i = 5; i >= 0; i--) {
             const date = new Date();
+            date.setDate(1); // FIX: Set to 1st of month to avoid month skipping
             date.setMonth(date.getMonth() - i);
             const year = date.getFullYear();
             
@@ -2224,6 +2225,7 @@ async function loadTopPerformingVehicles() {
         // Get last 6 months date range
         const endDate = new Date();
         const startDate = new Date();
+        startDate.setDate(1); // FIX: Set to 1st of month to avoid skipping months
         startDate.setMonth(startDate.getMonth() - 6);
         
         const startDateStr = startDate.toISOString().split('T')[0];
