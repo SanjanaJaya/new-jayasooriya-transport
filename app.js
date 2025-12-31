@@ -2225,21 +2225,180 @@ async function loadFleetOverview() {
     }
 }
 
-// ============ TOP PERFORMING VEHICLES ============
+// ============ TOP PERFORMING VEHICLES (ENHANCED) ============
 async function loadTopPerformingVehicles() {
     try {
         const currentQueryUserId = getQueryUserId();
         
-        // Get last 6 months date range
+        // 1. Inject Custom CSS for the "Great Vehicle Card"
+        // We add this dynamically so we don't need to edit styles.css
+        if (!document.getElementById('vehicle-card-styles')) {
+            const style = document.createElement('style');
+            style.id = 'vehicle-card-styles';
+            style.textContent = `
+                .top-vehicles-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+                    gap: 20px;
+                    margin-top: 20px;
+                }
+                .premium-vehicle-card {
+                    background: var(--card-bg, #ffffff);
+                    border-radius: 16px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                    overflow: hidden;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    border: 1px solid rgba(0,0,0,0.05);
+                    position: relative;
+                }
+                .premium-vehicle-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+                }
+                .card-header-section {
+                    padding: 20px;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border-bottom: 1px solid rgba(0,0,0,0.05);
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                }
+                .dark-mode .card-header-section {
+                    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                }
+                .rank-badge-overlay {
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: #fff;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-radius: 50%;
+                    width: 35px;
+                    height: 35px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    z-index: 2;
+                }
+                .vehicle-icon-large {
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 12px;
+                    background: #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 30px;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+                }
+                .vehicle-icon-large img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+                .vehicle-info-block h4 {
+                    margin: 0 0 5px 0;
+                    font-size: 1.2rem;
+                    color: var(--text-color, #333);
+                }
+                .vehicle-type-pill {
+                    font-size: 0.75rem;
+                    padding: 3px 10px;
+                    border-radius: 20px;
+                    background: rgba(52, 152, 219, 0.15);
+                    color: #2980b9;
+                    font-weight: 600;
+                    display: inline-block;
+                }
+                .card-body-section {
+                    padding: 20px;
+                }
+                .metrics-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 15px;
+                    padding-bottom: 15px;
+                    border-bottom: 1px dashed rgba(0,0,0,0.1);
+                }
+                .metrics-row:last-child {
+                    margin-bottom: 0;
+                    padding-bottom: 0;
+                    border-bottom: none;
+                }
+                .metric-box {
+                    text-align: center;
+                    flex: 1;
+                }
+                .metric-box.align-left { text-align: left; }
+                .metric-box.align-right { text-align: right; }
+                .metric-label {
+                    display: block;
+                    font-size: 0.75rem;
+                    color: #7f8c8d;
+                    margin-bottom: 4px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .metric-value {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: var(--text-color, #2c3e50);
+                }
+                .metric-value.highlight { color: #27AE60; }
+                .metric-value.danger { color: #E74C3C; }
+                
+                .efficiency-section {
+                    margin-top: 15px;
+                    background: rgba(39, 174, 96, 0.05);
+                    border-radius: 10px;
+                    padding: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border: 1px solid rgba(39, 174, 96, 0.1);
+                }
+                .efficiency-label {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-weight: 600;
+                    color: #27AE60;
+                    font-size: 0.9rem;
+                }
+                .efficiency-value {
+                    font-size: 1.2rem;
+                    font-weight: 800;
+                    color: #27AE60;
+                }
+                .all-time-tag {
+                    font-size: 0.65rem;
+                    background: #27AE60;
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    margin-left: 5px;
+                    vertical-align: middle;
+                }
+                .section-title {
+                    font-size: 0.7rem;
+                    color: #95a5a6;
+                    margin-bottom: 10px;
+                    font-weight: 700;
+                    display: block;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // 2. Prepare Date Ranges
         const endDate = new Date();
         const startDate = new Date();
-        startDate.setDate(1); // FIX: Set to 1st of month to avoid skipping months
+        startDate.setDate(1); 
         startDate.setMonth(startDate.getMonth() - 6);
-        
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
+        const startDate6M = startDate.toISOString().split('T')[0];
 
-        // Get all vehicles
+        // 3. Fetch Basic Vehicle Data
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('*')
@@ -2252,155 +2411,190 @@ async function loadTopPerformingVehicles() {
 
         const vehiclePerformance = [];
 
-        // Calculate performance for hire vehicles
+        // 4. Process Hire Vehicles (Fetch ALL records then filter)
         for (const vehicle of hireVehicles || []) {
-            const { data: records } = await supabaseClient
+            // Fetch ALL-TIME records for efficiency calculation
+            const { data: allRecords } = await supabaseClient
                 .from('hire_to_pay_records')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('hire_date', startDateStr)
-                .lte('hire_date', endDateStr);
+                .eq('vehicle_id', vehicle.id);
+            
+            if (!allRecords || allRecords.length === 0) continue;
 
-            const totalRevenue = records?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
-            const totalFuel = records?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
-            const profit = totalRevenue - totalFuel;
-            const totalKm = records?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
-            const hireCount = records?.length || 0;
+            // --- All-Time Metrics ---
+            const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0); // Assuming litres is tracked
+            const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
+            const allTimeHires = allRecords.length;
 
-            if (totalRevenue > 0) {
+            // --- 6-Month Metrics (Filtering in Memory) ---
+            const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
+            
+            const rev6m = recentRecords.reduce((sum, r) => sum + (r.hire_amount || 0), 0);
+            const fuelCost6m = recentRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
+            const profit6m = rev6m - fuelCost6m;
+            const km6m = recentRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            const hires6m = recentRecords.length;
+
+            if (rev6m > 0) {
                 vehiclePerformance.push({
                     name: vehicle.lorry_number,
                     type: 'Hire-to-Pay',
-                    revenue: totalRevenue,
-                    profit: profit,
-                    km: totalKm,
-                    hires: hireCount,
-                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
+                    // 6 Month Stats
+                    revenue: rev6m,
+                    profit: profit6m,
+                    km: km6m,
+                    hires: hires6m,
+                    profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
+                    // All Time Stats
+                    allTimeEfficiency: allTimeEff,
+                    allTimeKm: allTimeDist,
+                    allTimeHiresTotal: allTimeHires,
+                    // Meta
                     vectorArt: vehicle.vector_art_url
                 });
             }
         }
 
-        // Calculate performance for commitment vehicles
+        // 5. Process Commitment Vehicles
         for (const vehicle of commitmentVehicles || []) {
-            const { data: records } = await supabaseClient
+            // Fetch ALL-TIME records
+            const { data: allRecords } = await supabaseClient
                 .from('commitment_records')
                 .select('*')
-                .eq('vehicle_id', vehicle.id)
-                .gte('hire_date', startDateStr)
-                .lte('hire_date', endDateStr);
+                .eq('vehicle_id', vehicle.id);
 
-            // Count unique months
-            const months = new Set();
-            records?.forEach(r => {
-                months.add(r.hire_date.substring(0, 7));
-            });
+            if (!allRecords || allRecords.length === 0) continue;
 
-            const monthCount = months.size;
-            const baseRevenue = vehicle.fixed_monthly_payment * monthCount;
-            const extraCharges = records?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
-            const totalFuel = records?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
-            const totalRevenue = baseRevenue + extraCharges;
-            const profit = totalRevenue - totalFuel;
-            const totalKm = records?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
-            const hireCount = records?.length || 0;
+            // --- All-Time Metrics ---
+            const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
+            const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
+            const allTimeHires = allRecords.length;
 
-            if (totalRevenue > 0) {
+            // --- 6-Month Metrics ---
+            const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
+
+            // Calculate Revenue (Fixed Pay * Months + Extra Charges)
+            const uniqueMonths = new Set(recentRecords.map(r => r.hire_date.substring(0, 7)));
+            const baseRevenue = vehicle.fixed_monthly_payment * uniqueMonths.size;
+            const extraCharges = recentRecords.reduce((sum, r) => sum + (r.extra_charges || 0), 0);
+            
+            const rev6m = baseRevenue + extraCharges;
+            const fuelCost6m = recentRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
+            const profit6m = rev6m - fuelCost6m;
+            const km6m = recentRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            const hires6m = recentRecords.length;
+
+            if (rev6m > 0) {
                 vehiclePerformance.push({
                     name: vehicle.vehicle_number,
                     type: 'Commitment',
-                    revenue: totalRevenue,
-                    profit: profit,
-                    km: totalKm,
-                    hires: hireCount,
-                    profitMargin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0,
+                    // 6 Month Stats
+                    revenue: rev6m,
+                    profit: profit6m,
+                    km: km6m,
+                    hires: hires6m,
+                    profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
+                    // All Time Stats
+                    allTimeEfficiency: allTimeEff,
+                    allTimeKm: allTimeDist,
+                    allTimeHiresTotal: allTimeHires,
+                    // Meta
                     vectorArt: vehicle.vector_art_url
                 });
             }
         }
 
-        // Sort by profit (highest first) and take top 5
+        // 6. Sort and Slice
         vehiclePerformance.sort((a, b) => b.profit - a.profit);
-        const topVehicles = vehiclePerformance.slice(0, 5);
+        const topVehicles = vehiclePerformance.slice(0, 5); // Top 5
 
+        // 7. Render "Great Vehicle Cards"
         const container = document.getElementById('topVehicles');
         if (!container) return;
 
+        if (topVehicles.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--card-bg, white); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <div style="font-size: 50px; margin-bottom: 15px; opacity: 0.5;">📉</div>
+                    <h3 style="color: var(--text-color); margin-bottom: 10px;">No Data Available</h3>
+                    <p style="color: #95a5a6;">Add hire records to generate performance insights.</p>
+                </div>
+            `;
+            return;
+        }
+
         container.innerHTML = topVehicles.map((vehicle, index) => {
-            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
             
-            // Vector art or default icon
-            const vehicleIcon = vehicle.vectorArt 
-                ? `<img src="${vehicle.vectorArt}" class="vector-art-large" alt="${vehicle.name}">`
-                : `<div class="default-vehicle-icon">${vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛'}</div>`;
-            
-            // Determine profit/loss color
-            const profitClass = vehicle.profit >= 0 ? 'profit' : 'loss';
-            const profitText = vehicle.profit >= 0 ? `+LKR ${vehicle.profit.toFixed(2)}` : `-LKR ${Math.abs(vehicle.profit).toFixed(2)}`;
-            
-            // Profit margin percentage
-            const marginPercentage = vehicle.profitMargin.toFixed(1);
-            
+            const iconHtml = vehicle.vectorArt 
+                ? `<img src="${vehicle.vectorArt}" alt="Vehicle Art">`
+                : (vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛');
+
+            const profitClass = vehicle.profit >= 0 ? 'highlight' : 'danger';
+            const profitSign = vehicle.profit >= 0 ? '+' : '-';
+
             return `
-                <div class="top-vehicle-card">
-                    <div class="rank-badge">${rankEmoji}</div>
+                <div class="premium-vehicle-card">
+                    <div class="rank-badge-overlay">${rankEmoji}</div>
                     
-                    <div class="vehicle-header">
-                        ${vehicleIcon}
-                        <div class="vehicle-title">
-                            <div class="vehicle-main-name">
-                                <span>${vehicle.name}</span>
+                    <div class="card-header-section">
+                        <div class="vehicle-icon-large">
+                            ${iconHtml}
+                        </div>
+                        <div class="vehicle-info-block">
+                            <h4>${vehicle.name}</h4>
+                            <span class="vehicle-type-pill">${vehicle.type}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body-section">
+                        <span class="section-title">RECENT PERFORMANCE (LAST 6 MONTHS)</span>
+                        
+                        <div class="metrics-row">
+                            <div class="metric-box align-left">
+                                <span class="metric-label">Revenue</span>
+                                <span class="metric-value">LKR ${(vehicle.revenue/1000).toFixed(1)}K</span>
                             </div>
-                            <div class="vehicle-type-badge">
-                                ${vehicle.type} • ${vehicle.hires} Hires
+                            <div class="metric-box">
+                                <span class="metric-label">Profit</span>
+                                <span class="metric-value ${profitClass}">LKR ${(vehicle.profit/1000).toFixed(1)}K</span>
+                            </div>
+                            <div class="metric-box align-right">
+                                <span class="metric-label">Margin</span>
+                                <span class="metric-value">${vehicle.profitMargin.toFixed(0)}%</span>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="vehicle-stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-label">Revenue</span>
-                            <span class="stat-value">LKR ${vehicle.revenue.toFixed(2)}</span>
+
+                        <div class="metrics-row">
+                             <div class="metric-box align-left">
+                                <span class="metric-label">Total KM (6m)</span>
+                                <span class="metric-value">${vehicle.km.toLocaleString()} km</span>
+                            </div>
+                            <div class="metric-box align-right">
+                                <span class="metric-label">Total Hires (6m)</span>
+                                <span class="metric-value">${vehicle.hires}</span>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Profit</span>
-                            <span class="stat-value ${profitClass}">${profitText}</span>
+
+                        <div class="efficiency-section">
+                            <div class="efficiency-label">
+                                <span>⛽ All-Time Efficiency</span>
+                            </div>
+                            <div class="efficiency-value">
+                                ${vehicle.allTimeEfficiency.toFixed(2)} <span style="font-size: 0.8em; font-weight: normal; color: #7f8c8d;">Km/L</span>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Total KM</span>
-                            <span class="stat-value">${vehicle.km.toFixed(0)} km</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Per Hire Avg</span>
-                            <span class="stat-value">LKR ${(vehicle.revenue / vehicle.hires).toFixed(2)}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="profit-margin-indicator">
-                        <div class="meter-container">
-                            <div class="meter-fill" style="width: ${Math.min(vehicle.profitMargin, 100)}%"></div>
-                        </div>
-                        <div class="meter-label">
-                            <span>Profit Margin</span>
-                            <span>${marginPercentage}%</span>
+                        
+                        <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.75rem; color: #95a5a6; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
+                            <span>Lifetime KM: <strong>${vehicle.allTimeKm.toLocaleString()}</strong></span>
+                            <span>Lifetime Hires: <strong>${vehicle.allTimeHiresTotal}</strong></span>
                         </div>
                     </div>
-                    
-                    <div class="performance-indicator" style="background: ${vehicle.profit >= 0 ? '#27AE60' : '#E74C3C'}"></div>
                 </div>
             `;
         }).join('');
-
-        // If no vehicles
-        if (topVehicles.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.08);">
-                    <div style="font-size: 60px; margin-bottom: 20px; color: #BDC3C7;">🚚</div>
-                    <h3 style="color: #7F8C8D; margin-bottom: 10px;">No Vehicle Performance Data</h3>
-                    <p style="color: #95A5A6;">Start adding hire records to see performance metrics here.</p>
-                </div>
-            `;
-        }
 
     } catch (error) {
         console.error('Error loading top performing vehicles:', error.message);
