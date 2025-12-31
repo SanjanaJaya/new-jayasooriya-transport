@@ -1,11 +1,11 @@
-// app.js - FIXED: Removed inline CSS from loadTopPerformingVehicles
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes, Advanced Metrics & Charts, Enhanced Top Vehicles
+// app.js - FIXED: Date handling uses Local Time instead of UTC
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Advanced Metrics & Charts
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsbXFqcWtwZ2RocmRjb2VtcGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTg4NzUsImV4cCI6MjA3NjM3NDg3NX0.mXDMuhn0K5sOKhwykhf9OcomUzSVkCGnN5jr60A-TSw';
 
-let supabaseClient = null; // Renamed variable to avoid conflict
+let supabaseClient = null;
 let currentUser = null;
 let userRole = null; // 'admin' or 'viewer'
 let adminUserId = null; // Store the admin user ID for data filtering
@@ -298,17 +298,21 @@ if (logoutBtn) {
     });
 }
 
-// Set Default Months
+// ============ FIX: UPDATED DEFAULT MONTHS TO LOCAL TIME ============
 function setDefaultMonths() {
     const now = new Date();
-    const monthStr = now.toISOString().substring(0, 7);
+    // Get year and month from local time, not UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // +1 because months are 0-indexed
+    const monthStr = `${year}-${month}`;
     
     const elements = [
         'dashboardMonth',
         'hireRecordsMonth',
         'commitmentRecordsMonth',
         'dayOffMonth',
-        'advanceMonth'
+        'advanceMonth',
+        'salaryMonth' // Added for consistency
     ];
     
     elements.forEach(id => {
@@ -412,13 +416,18 @@ function switchPage(page) {
     if (page === 'commitment-dayoffs') loadDayOffs();
 }
 
-// ============ DASHBOARD ============
+// ============ FIX: UPDATED LOAD DASHBOARD WITH LOCAL TIME FALLBACK ============
 async function loadDashboard() {
     try {
         let monthValue = document.getElementById('dashboardMonth')?.value;
+        
+        // FIXED: Use Local Time for fallback
         if (!monthValue) {
             const now = new Date();
-            monthValue = now.toISOString().substring(0, 7);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            monthValue = `${year}-${month}`;
+            
             const dashboardMonthEl = document.getElementById('dashboardMonth');
             if (dashboardMonthEl) dashboardMonthEl.value = monthValue;
         }
