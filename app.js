@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient'
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes, Advanced Metrics & Charts
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes, Advanced Metrics & Charts, Enhanced Top Vehicles
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -2225,13 +2225,13 @@ async function loadFleetOverview() {
     }
 }
 
-// ============ TOP PERFORMING VEHICLES (ENHANCED) ============
+// ============ TOP PERFORMING VEHICLES (ENHANCED & DARK MODE FIXED) ============
 async function loadTopPerformingVehicles() {
     try {
         const currentQueryUserId = getQueryUserId();
         
         // 1. Inject Custom CSS for the "Great Vehicle Card"
-        // We add this dynamically so we don't need to edit styles.css
+        // FIXED: Added robust Dark Mode support matching styles.css variables
         if (!document.getElementById('vehicle-card-styles')) {
             const style = document.createElement('style');
             style.id = 'vehicle-card-styles';
@@ -2243,11 +2243,11 @@ async function loadTopPerformingVehicles() {
                     margin-top: 20px;
                 }
                 .premium-vehicle-card {
-                    background: var(--card-bg, #ffffff);
+                    background: var(--pure-white, #ffffff);
                     border-radius: 16px;
                     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
                     overflow: hidden;
-                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
                     border: 1px solid rgba(0,0,0,0.05);
                     position: relative;
                 }
@@ -2262,9 +2262,7 @@ async function loadTopPerformingVehicles() {
                     display: flex;
                     align-items: center;
                     gap: 15px;
-                }
-                .dark-mode .card-header-section {
-                    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                    transition: background 0.3s ease, border-color 0.3s ease;
                 }
                 .rank-badge-overlay {
                     position: absolute;
@@ -2280,6 +2278,7 @@ async function loadTopPerformingVehicles() {
                     justify-content: center;
                     font-size: 18px;
                     z-index: 2;
+                    transition: background-color 0.3s ease;
                 }
                 .vehicle-icon-large {
                     width: 60px;
@@ -2291,6 +2290,7 @@ async function loadTopPerformingVehicles() {
                     justify-content: center;
                     font-size: 30px;
                     box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+                    transition: background-color 0.3s ease;
                 }
                 .vehicle-icon-large img {
                     width: 100%;
@@ -2300,7 +2300,8 @@ async function loadTopPerformingVehicles() {
                 .vehicle-info-block h4 {
                     margin: 0 0 5px 0;
                     font-size: 1.2rem;
-                    color: var(--text-color, #333);
+                    color: var(--text-dark, #333);
+                    transition: color 0.3s ease;
                 }
                 .vehicle-type-pill {
                     font-size: 0.75rem;
@@ -2320,6 +2321,7 @@ async function loadTopPerformingVehicles() {
                     margin-bottom: 15px;
                     padding-bottom: 15px;
                     border-bottom: 1px dashed rgba(0,0,0,0.1);
+                    transition: border-color 0.3s ease;
                 }
                 .metrics-row:last-child {
                     margin-bottom: 0;
@@ -2343,7 +2345,8 @@ async function loadTopPerformingVehicles() {
                 .metric-value {
                     font-size: 1rem;
                     font-weight: 700;
-                    color: var(--text-color, #2c3e50);
+                    color: var(--text-dark, #2c3e50);
+                    transition: color 0.3s ease;
                 }
                 .metric-value.highlight { color: #27AE60; }
                 .metric-value.danger { color: #E74C3C; }
@@ -2371,21 +2374,51 @@ async function loadTopPerformingVehicles() {
                     font-weight: 800;
                     color: #27AE60;
                 }
-                .all-time-tag {
-                    font-size: 0.65rem;
-                    background: #27AE60;
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    margin-left: 5px;
-                    vertical-align: middle;
-                }
                 .section-title {
                     font-size: 0.7rem;
                     color: #95a5a6;
                     margin-bottom: 10px;
                     font-weight: 700;
                     display: block;
+                }
+
+                /* ========= DARK MODE OVERRIDES ========= */
+                body.dark-mode .premium-vehicle-card {
+                    background: var(--dark-bg-card, #1a1a1a);
+                    border-color: var(--dark-border, #2a2a2a);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                }
+                body.dark-mode .card-header-section {
+                    background: linear-gradient(135deg, var(--dark-bg-secondary, #141414) 0%, #000000 100%);
+                    border-bottom-color: var(--dark-border, #2a2a2a);
+                }
+                body.dark-mode .rank-badge-overlay {
+                    background: var(--dark-bg-secondary, #2a2a2a);
+                    color: var(--dark-text-primary, #f8f9fa);
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                }
+                body.dark-mode .vehicle-icon-large {
+                    background: var(--dark-bg-secondary, #2a2a2a);
+                }
+                body.dark-mode .vehicle-info-block h4 {
+                    color: var(--dark-text-primary, #f8f9fa);
+                }
+                body.dark-mode .metric-value {
+                    color: var(--dark-text-primary, #f8f9fa);
+                }
+                body.dark-mode .metric-value.highlight { color: #2ecc71; } /* Brighter green for dark mode */
+                body.dark-mode .metric-value.danger { color: #ff6b6b; }   /* Brighter red for dark mode */
+                
+                body.dark-mode .metric-label,
+                body.dark-mode .section-title {
+                    color: var(--dark-text-secondary, #adb5bd);
+                }
+                body.dark-mode .metrics-row {
+                    border-bottom-color: rgba(255,255,255,0.1);
+                }
+                body.dark-mode .efficiency-section {
+                    background: rgba(39, 174, 96, 0.15);
+                    border-color: rgba(39, 174, 96, 0.3);
                 }
             `;
             document.head.appendChild(style);
@@ -2423,7 +2456,7 @@ async function loadTopPerformingVehicles() {
 
             // --- All-Time Metrics ---
             const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
-            const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0); // Assuming litres is tracked
+            const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
             const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
             const allTimeHires = allRecords.length;
 
@@ -2440,17 +2473,14 @@ async function loadTopPerformingVehicles() {
                 vehiclePerformance.push({
                     name: vehicle.lorry_number,
                     type: 'Hire-to-Pay',
-                    // 6 Month Stats
                     revenue: rev6m,
                     profit: profit6m,
                     km: km6m,
                     hires: hires6m,
                     profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
-                    // All Time Stats
                     allTimeEfficiency: allTimeEff,
                     allTimeKm: allTimeDist,
                     allTimeHiresTotal: allTimeHires,
-                    // Meta
                     vectorArt: vehicle.vector_art_url
                 });
             }
@@ -2458,7 +2488,6 @@ async function loadTopPerformingVehicles() {
 
         // 5. Process Commitment Vehicles
         for (const vehicle of commitmentVehicles || []) {
-            // Fetch ALL-TIME records
             const { data: allRecords } = await supabaseClient
                 .from('commitment_records')
                 .select('*')
@@ -2466,16 +2495,13 @@ async function loadTopPerformingVehicles() {
 
             if (!allRecords || allRecords.length === 0) continue;
 
-            // --- All-Time Metrics ---
             const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
             const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
             const allTimeHires = allRecords.length;
 
-            // --- 6-Month Metrics ---
             const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
 
-            // Calculate Revenue (Fixed Pay * Months + Extra Charges)
             const uniqueMonths = new Set(recentRecords.map(r => r.hire_date.substring(0, 7)));
             const baseRevenue = vehicle.fixed_monthly_payment * uniqueMonths.size;
             const extraCharges = recentRecords.reduce((sum, r) => sum + (r.extra_charges || 0), 0);
@@ -2490,17 +2516,14 @@ async function loadTopPerformingVehicles() {
                 vehiclePerformance.push({
                     name: vehicle.vehicle_number,
                     type: 'Commitment',
-                    // 6 Month Stats
                     revenue: rev6m,
                     profit: profit6m,
                     km: km6m,
                     hires: hires6m,
                     profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
-                    // All Time Stats
                     allTimeEfficiency: allTimeEff,
                     allTimeKm: allTimeDist,
                     allTimeHiresTotal: allTimeHires,
-                    // Meta
                     vectorArt: vehicle.vector_art_url
                 });
             }
@@ -2516,12 +2539,18 @@ async function loadTopPerformingVehicles() {
 
         if (topVehicles.length === 0) {
             container.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--card-bg, white); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--pure-white, white); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
                     <div style="font-size: 50px; margin-bottom: 15px; opacity: 0.5;">📉</div>
-                    <h3 style="color: var(--text-color); margin-bottom: 10px;">No Data Available</h3>
+                    <h3 style="color: var(--text-dark, #333); margin-bottom: 10px;">No Data Available</h3>
                     <p style="color: #95a5a6;">Add hire records to generate performance insights.</p>
                 </div>
             `;
+            // Add dark mode style for empty state manually here as fallback
+            if (document.body.classList.contains('dark-mode')) {
+                const emptyCard = container.querySelector('div');
+                emptyCard.style.background = 'var(--dark-bg-card, #1a1a1a)';
+                emptyCard.querySelector('h3').style.color = 'var(--dark-text-primary, #f8f9fa)';
+            }
             return;
         }
 
@@ -2533,7 +2562,6 @@ async function loadTopPerformingVehicles() {
                 : (vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛');
 
             const profitClass = vehicle.profit >= 0 ? 'highlight' : 'danger';
-            const profitSign = vehicle.profit >= 0 ? '+' : '-';
 
             return `
                 <div class="premium-vehicle-card">
