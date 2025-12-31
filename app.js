@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient'
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes, Advanced Metrics & Charts
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -10,6 +10,16 @@ let currentUser = null;
 let userRole = null; // 'admin' or 'viewer'
 let adminUserId = null; // Store the admin user ID for data filtering
 let currentPage = 'dashboard';
+
+// Chart Variables
+let revenueChart = null;
+let profitChart = null;
+let fuelCostChart = null;
+// NEW CHART VARIABLES
+let revenueBreakdownChart = null;
+let vehicleRevenueChart = null;
+let distanceDistChart = null;
+let fuelTrendChart = null;
 
 // Initialize Supabase
 function initSupabase() {
@@ -420,18 +430,16 @@ async function loadDashboard() {
         await loadAllTimeStatistics();
         await loadFleetOverview();
         await loadTopPerformingVehicles();
+        
+        // NEW: Load Advanced Stats
+        await loadAdvancedDashboardStats(monthValue);
+
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
 }
 
 document.getElementById('dashboardMonth')?.addEventListener('change', loadDashboard);
-
-let revenueChart = null;
-let profitChart = null;
-let fuelCostChart = null;
-let revenueBreakdownChart = null;
-let vehicleRevenueChart = null;
 
 // ============ DRIVERS ============
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
@@ -2859,3 +2867,230 @@ document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     return false;
 });
+
+// ============ NEW: ADVANCED METRICS & CHARTS ============
+async function loadAdvancedDashboardStats(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // 1. Fetch Data
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const { data: commitmentRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const { data: allVehicles } = await supabaseClient
+            .from('hire_to_pay_vehicles')
+            .select('id, lorry_number')
+            .eq('user_id', currentQueryUserId)
+            .eq('terminated', false); // Only active vehicles for utilization
+
+        const { data: allCommitVehicles } = await supabaseClient
+            .from('commitment_vehicles')
+            .select('id, vehicle_number')
+            .eq('user_id', currentQueryUserId)
+            .eq('terminated', false);
+
+        // Combine Active Vehicles count
+        const totalActiveVehicles = (allVehicles?.length || 0) + (allCommitVehicles?.length || 0);
+
+        // Combine Records
+        let combinedRecords = [];
+        if (hireRecords) combinedRecords = [...combinedRecords, ...hireRecords];
+        if (commitmentRecords) combinedRecords = [...combinedRecords, ...commitmentRecords];
+
+        // --- CALCULATIONS ---
+
+        let totalRevenue = 0;
+        let totalProfit = 0;
+        let totalFuelCost = 0;
+        let totalDistance = 0;
+        let totalWaitingRev = 0;
+        let totalJobs = combinedRecords.length;
+        let totalFuelLitres = 0;
+        
+        // Utilization Set: Store "VehicleID-Date" strings
+        const activeVehicleDays = new Set();
+
+        combinedRecords.forEach(r => {
+            // Financials
+            const revenue = r.hire_amount || 0; 
+            
+            // Operational totals:
+            totalDistance += (r.distance || 0);
+            totalFuelCost += (r.fuel_cost || 0);
+            totalFuelLitres += (r.fuel_litres || 0);
+            
+            if (r.waiting_charge) totalWaitingRev += r.waiting_charge;
+            
+            // Utilization
+            activeVehicleDays.add(`${r.vehicle_id}-${r.hire_date}`);
+        });
+
+        // Get Totals from the DOM (calculated in loadDashboardData) to ensure consistency with base pay
+        const domRevenue = parseFloat(document.getElementById('totalRevenue').textContent.replace(/[^\d.-]/g, '')) || 0;
+        const domProfit = parseFloat(document.getElementById('netProfit').textContent.replace(/[^\d.-]/g, '')) || 0;
+
+        // 1. Profit per KM
+        const profitPerKm = totalDistance > 0 ? (domProfit / totalDistance) : 0;
+
+        // 2. Vehicle Utilization Rate
+        // (Total Active Vehicle Days) / (Total Vehicles * Days in Month)
+        const totalPossibleDays = totalActiveVehicles * daysInMonth;
+        const utilizationRate = totalPossibleDays > 0 ? (activeVehicleDays.size / totalPossibleDays) * 100 : 0;
+
+        // 3. Revenue per Vehicle per Day
+        const revPerVehDay = totalPossibleDays > 0 ? (domRevenue / totalPossibleDays) : 0;
+
+        // 4. Avg Fuel Efficiency
+        const avgEfficiency = totalFuelLitres > 0 ? (totalDistance / totalFuelLitres) : 0;
+
+        // 5. Avg Trip Distance
+        const avgTripDist = totalJobs > 0 ? (totalDistance / totalJobs) : 0;
+
+        // 6. Jobs per Vehicle
+        const jobsPerVeh = totalActiveVehicles > 0 ? (totalJobs / totalActiveVehicles) : 0;
+        
+        // 7. Distance per Vehicle
+        const distPerVeh = totalActiveVehicles > 0 ? (totalDistance / totalActiveVehicles) : 0;
+
+        // --- UPDATE UI ---
+        
+        const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+
+        setText('profitPerKm', `LKR ${profitPerKm.toFixed(2)}`);
+        setText('utilizationRate', `${utilizationRate.toFixed(1)}%`);
+        setText('revPerVehicleDay', `LKR ${revPerVehDay.toFixed(2)}`);
+        setText('avgFuelEfficiency', `${avgEfficiency.toFixed(2)} Km/L`);
+        
+        setText('avgTripDistance', `${avgTripDist.toFixed(1)} km`);
+        setText('waitingRevenue', `LKR ${totalWaitingRev.toFixed(2)}`);
+        setText('jobsPerVehicle', jobsPerVeh.toFixed(1));
+        setText('distPerVehicle', `${distPerVeh.toFixed(0)} km`);
+
+
+        // --- CHARTS GENERATION ---
+        
+        // Chart 1: Distance Distribution (Histogram bucket logic)
+        const buckets = { '0-50km': 0, '51-100km': 0, '101-200km': 0, '200km+': 0 };
+        
+        combinedRecords.forEach(r => {
+            const d = r.distance || 0;
+            if (d <= 50) buckets['0-50km']++;
+            else if (d <= 100) buckets['51-100km']++;
+            else if (d <= 200) buckets['101-200km']++;
+            else buckets['200km+']++;
+        });
+
+        // Render Distance Chart
+        if (distanceDistChart) distanceDistChart.destroy();
+        const distCtx = document.getElementById('distanceDistChart')?.getContext('2d');
+        if (distCtx) {
+            distanceDistChart = new Chart(distCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(buckets),
+                    datasets: [{
+                        label: 'Number of Jobs',
+                        data: Object.values(buckets),
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderColor: '#2980b9',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { 
+                        title: { display: true, text: 'Jobs by Distance' },
+                        legend: { display: false }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // Chart 2: Fuel Efficiency Trend (Last 6 Months)
+        // We need to fetch 6 months of data aggregated
+        const months = [];
+        const efficiencyData = [];
+        
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(1); 
+            date.setMonth(date.getMonth() - i);
+            const mYear = date.getFullYear();
+            const mRaw = date.getMonth() + 1;
+            const mStr = String(mRaw).padStart(2, '0');
+            const mLabel = date.toLocaleDateString('en-US', { month: 'short' });
+            
+            const startD = `${mYear}-${mStr}-01`;
+            const endD = `${mYear}-${mStr}-${new Date(mYear, mRaw, 0).getDate()}`;
+
+            // Fetch specific month sums
+            const { data: hRecs } = await supabaseClient.from('hire_to_pay_records')
+                .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
+                .gte('hire_date', startD).lte('hire_date', endD);
+                
+            const { data: cRecs } = await supabaseClient.from('commitment_records')
+                .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
+                .gte('hire_date', startD).lte('hire_date', endD);
+
+            let mDist = 0; 
+            let mFuel = 0;
+            
+            [...(hRecs||[]), ...(cRecs||[])].forEach(r => {
+                mDist += (r.distance || 0);
+                mFuel += (r.fuel_litres || 0);
+            });
+
+            months.push(mLabel);
+            efficiencyData.push(mFuel > 0 ? (mDist / mFuel) : 0);
+        }
+
+        // Render Fuel Trend Chart
+        if (fuelTrendChart) fuelTrendChart.destroy();
+        const fuelCtx = document.getElementById('fuelTrendChart')?.getContext('2d');
+        if (fuelCtx) {
+            fuelTrendChart = new Chart(fuelCtx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Fleet Avg Efficiency (Km/L)',
+                        data: efficiencyData,
+                        borderColor: '#27AE60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#27AE60'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { 
+                        title: { display: true, text: 'Fuel Efficiency Trend (Last 6 Months)' }
+                    },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading advanced stats:', error.message);
+    }
+}

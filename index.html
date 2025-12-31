@@ -236,10 +236,65 @@
                     </div>
 
                     <div class="performance-section">
+                        <h3>⚡ Profitability & Efficiency Metrics</h3>
+                        <div class="metrics-detailed">
+                            <div class="detail-metric">
+                                <span class="detail-label">Profit per KM</span>
+                                <span class="detail-value profit" id="profitPerKm">LKR 0.00</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Vehicle Utilization Rate</span>
+                                <span class="detail-value" id="utilizationRate">0%</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Rev. per Vehicle / Day</span>
+                                <span class="detail-value" id="revPerVehicleDay">LKR 0.00</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Fuel Efficiency (Avg)</span>
+                                <span class="detail-value" id="avgFuelEfficiency">0.00 Km/L</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-section">
+                        <h3>⚙️ Operational Insights</h3>
+                        <div class="metrics-detailed">
+                            <div class="detail-metric">
+                                <span class="detail-label">Avg Trip Distance</span>
+                                <span class="detail-value" id="avgTripDistance">0 km</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Waiting Time Revenue</span>
+                                <span class="detail-value" id="waitingRevenue">LKR 0.00</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Avg Jobs / Vehicle</span>
+                                <span class="detail-value" id="jobsPerVehicle">0</span>
+                            </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Distance / Vehicle</span>
+                                <span class="detail-value" id="distPerVehicle">0 km</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-section">
+                        <h3>📊 Advanced Analysis</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="distanceDistChart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="fuelTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="performance-section">
                         <h3>📈 Top Performing Vehicles (Last 6 Months)</h3>
                         <div id="topVehicles" class="top-vehicles-grid"></div>
                     </div>
-                    </div>
+                </div>
 
                 <div id="drivers" class="page">
                     <div class="page-header">
