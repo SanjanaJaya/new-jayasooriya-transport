@@ -1,5 +1,5 @@
 // app.js - FIXED: Renamed 'supabase' to 'supabaseClient'
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Date Calculation Fixes
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -848,7 +848,10 @@ async function loadHireRecords() {
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            // FIXED:
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
@@ -1224,7 +1227,9 @@ async function loadCommitmentRecords() {
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            // FIXED:
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
@@ -1416,7 +1421,9 @@ async function loadDayOffs() {
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            // FIXED:
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
             query = query.gte('day_off_date', startDate).lte('day_off_date', endDate);
         }
 
@@ -1514,7 +1521,11 @@ async function loadDashboardData(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        // FIXED: Get last day correctly without timezone shift
+        const lastDay = new Date(year, month, 0).getDate(); 
+        const endDate = `${year}-${month}-${lastDay}`;
+
         const currentQueryUserId = getQueryUserId();
 
         const { data: hireRecords } = await supabaseClient
@@ -1602,7 +1613,11 @@ async function loadVehiclePerformance(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        // FIXED:
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${month}-${lastDay}`;
+        
         const currentQueryUserId = getQueryUserId();
 
         const { data: hireVehicles } = await supabaseClient
@@ -1858,11 +1873,17 @@ async function loadDashboardCharts() {
             const date = new Date();
             date.setMonth(date.getMonth() - i);
             const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
+            
+            // Ensure month is 2 digits for the string
+            const monthRaw = date.getMonth() + 1;
+            const month = String(monthRaw).padStart(2, '0');
             const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
             
             const startDate = `${year}-${month}-01`;
-            const endDate = new Date(year, date.getMonth() + 1, 0).toISOString().split('T')[0];
+            
+            // FIXED:
+            const lastDay = new Date(year, monthRaw, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
 
             const { data: hireRecords } = await supabaseClient
                 .from('hire_to_pay_records')
@@ -2581,7 +2602,9 @@ async function loadDriverAdvances() {
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            // FIXED:
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
             query = query.gte('advance_date', startDate).lte('advance_date', endDate);
         }
 
