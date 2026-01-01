@@ -2702,16 +2702,38 @@ async function loadDriverAdvances() {
 async function loadAdvanceSummary() {
     try {
         const currentQueryUserId = getQueryUserId();
+        
+        // 1. Get current filter values
+        const monthValue = document.getElementById('advanceMonth')?.value;
+        const driverFilter = document.getElementById('advanceDriverFilter')?.value;
 
         const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
             .eq('user_id', currentQueryUserId);
 
-        const { data: advances } = await supabaseClient
+        // 2. Start the query for advances
+        let query = supabaseClient
             .from('driver_advances')
             .select('driver_id, amount')
             .eq('user_id', currentQueryUserId);
+
+        // 3. Apply Date Filter if a month is selected
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            
+            query = query.gte('advance_date', startDate).lte('advance_date', endDate);
+        }
+
+        // 4. Apply Driver Filter if selected (keeps numbers consistent with the table)
+        if (driverFilter) {
+            query = query.eq('driver_id', driverFilter);
+        }
+
+        const { data: advances } = await query;
 
         const advancesByDriver = {};
         advances?.forEach(adv => {
@@ -2726,8 +2748,21 @@ async function loadAdvanceSummary() {
         summaryEl.innerHTML = '';
 
         if (drivers && drivers.length > 0) {
-            drivers.forEach(driver => {
+            // Filter drivers list if a specific driver is selected
+            const driversToDisplay = driverFilter 
+                ? drivers.filter(d => d.id == driverFilter) 
+                : drivers;
+
+            if (driversToDisplay.length === 0) {
+                 summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; width: 100%;">No drivers match the filter.</p>';
+                 return;
+            }
+
+            driversToDisplay.forEach(driver => {
                 const totalAdvance = advancesByDriver[driver.id] || 0;
+                
+                // Only show card if there is an advance OR if showing all drivers is preferred.
+                // Currently showing all drivers even with 0 advance to match your UI style.
                 const card = document.createElement('div');
                 card.className = 'advance-card';
                 card.innerHTML = `
@@ -2735,7 +2770,7 @@ async function loadAdvanceSummary() {
                     <div class="advance-card-content">
                         <div class="advance-card-name">${driver.name}</div>
                         <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
-                        <div class="advance-card-label">Total Advances</div>
+                        <div class="advance-card-label">Total Advances (${monthValue ? monthValue : 'All Time'})</div>
                     </div>
                 `;
                 summaryEl.appendChild(card);
