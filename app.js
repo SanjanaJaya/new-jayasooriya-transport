@@ -1,5 +1,5 @@
 // app.js - FIXED: Date handling uses Local Time instead of UTC
-// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Advanced Metrics & Charts
+// Includes: Dark Mode, Admin ID, Role-Based Access, Photo Features, Vehicle Models, Receipt Uploads, Dashboard Stats, Vector Art & Driver Salary, Advanced Metrics & Charts, Driver Day Offs
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://slmqjqkpgdhrdcoempdv.supabase.co';
@@ -312,7 +312,8 @@ function setDefaultMonths() {
         'commitmentRecordsMonth',
         'dayOffMonth',
         'advanceMonth',
-        'salaryMonth' // Added for consistency
+        'salaryMonth',
+        'driverDayOffMonth' // ADDED: New Driver Day Off filter
     ];
     
     elements.forEach(id => {
@@ -394,7 +395,8 @@ function switchPage(page) {
         'hire-records': 'Hire-to-Pay Records',
         'commitment-vehicles': 'Commitment Vehicles',
         'commitment-records': 'Commitment Vehicle Hires',
-        'commitment-dayoffs': 'Day Offs'
+        'commitment-dayoffs': 'Day Offs',
+        'driver-dayoffs': 'Driver Day Offs' // ADDED: New Page Title
     };
     
     const titleEl = document.getElementById('pageTitle');
@@ -414,6 +416,7 @@ function switchPage(page) {
     if (page === 'commitment-vehicles') loadCommitmentVehicles();
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
+    if (page === 'driver-dayoffs') loadDriverDayOffs(); // ADDED: Load function call
 }
 
 // ============ FIX: UPDATED LOAD DASHBOARD WITH LOCAL TIME FALLBACK ============
@@ -1987,7 +1990,7 @@ async function loadDashboardCharts() {
                         label: 'Monthly Revenue',
                         data: revenues,
                         borderColor: '#DC143C',
-                        backgroundColor: 'rgba(220, 20, 60, 0.1)',
+                        backgroundColor: 'rgba(220, 14, 60, 0.1)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
@@ -3164,5 +3167,223 @@ async function loadAdvancedDashboardStats(monthValue) {
 
     } catch (error) {
         console.error('Error loading advanced stats:', error.message);
+    }
+}
+
+// ============ DRIVER DAY OFFS ============
+// 1. Event Listeners for Buttons
+document.getElementById('addDriverDayOffBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
+    document.getElementById('driverDayOffForm').reset();
+    document.getElementById('driverDayOffId').value = '';
+    document.getElementById('suggestedDeduction').textContent = '';
+    document.getElementById('driverDayOffFormContainer').style.display = 'block';
+    
+    // Populate the dropdown inside the form
+    updateDriverDayOffSelectors(); 
+});
+
+document.getElementById('cancelDriverDayOffBtn')?.addEventListener('click', () => {
+    document.getElementById('driverDayOffFormContainer').style.display = 'none';
+});
+
+// 2. Event Listeners for Filters
+document.getElementById('driverDayOffMonth')?.addEventListener('change', loadDriverDayOffs);
+document.getElementById('driverDayOffFilter')?.addEventListener('change', loadDriverDayOffs);
+
+// 3. Auto-Calculate Deduction when Driver is selected
+document.getElementById('driverDayOffDriver')?.addEventListener('change', async (e) => {
+    const driverId = e.target.value;
+    const amountInput = document.getElementById('driverDayOffAmount');
+    const suggestionText = document.getElementById('suggestedDeduction');
+    
+    if (!driverId) return;
+
+    try {
+        const { data: driver } = await supabaseClient
+            .from('drivers')
+            .select('basic_salary')
+            .eq('id', driverId)
+            .single();
+
+        if (driver && driver.basic_salary) {
+            const dailyRate = driver.basic_salary / 30;
+            amountInput.value = dailyRate.toFixed(2);
+            suggestionText.textContent = `Auto-calculated: (Basic ${driver.basic_salary} / 30)`;
+        } else {
+            amountInput.value = '';
+            suggestionText.textContent = 'No basic salary set for this driver.';
+        }
+    } catch (error) {
+        console.error('Error fetching driver salary:', error);
+    }
+});
+
+// 4. Form Submit (Save/Update)
+document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
+    const id = document.getElementById('driverDayOffId').value;
+    
+    const data = {
+        driver_id: document.getElementById('driverDayOffDriver').value,
+        day_off_date: document.getElementById('driverDayOffDate').value,
+        deduction_amount: parseFloat(document.getElementById('driverDayOffAmount').value) || 0,
+        notes: document.getElementById('driverDayOffNotes').value || null,
+        user_id: adminUserId
+    };
+
+    try {
+        if (id) {
+            await supabaseClient.from('driver_day_offs').update(data).eq('id', id);
+        } else {
+            await supabaseClient.from('driver_day_offs').insert([data]);
+        }
+        
+        loadDriverDayOffs();
+        document.getElementById('driverDayOffFormContainer').style.display = 'none';
+    } catch (error) {
+        alert('Error saving driver day off: ' + error.message);
+    }
+});
+
+// 5. Load Data
+async function loadDriverDayOffs() {
+    try {
+        const monthValue = document.getElementById('driverDayOffMonth')?.value;
+        const driverFilter = document.getElementById('driverDayOffFilter')?.value;
+        
+        let query = supabaseClient
+            .from('driver_day_offs')
+            .select('*, drivers(name)')
+            .eq('user_id', getQueryUserId());
+        
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            query = query.gte('day_off_date', startDate).lte('day_off_date', endDate);
+        }
+
+        if (driverFilter) {
+            query = query.eq('driver_id', driverFilter);
+        }
+
+        const { data, error } = await query.order('day_off_date', { ascending: false });
+        if (error) throw error;
+
+        const tbody = document.querySelector('#driverDayOffsTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #7F8C8D; padding: 20px;">No day offs found.</td></tr>';
+        } else {
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                const actionButtons = userRole === 'viewer' ? '' : `
+                    <td class="action-buttons">
+                        <button class="btn btn-edit" onclick="editDriverDayOff(${item.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteDriverDayOff(${item.id})">Delete</button>
+                    </td>
+                `;
+
+                row.innerHTML = `
+                    <td>${item.drivers?.name || 'Unknown'}</td>
+                    <td>${item.day_off_date}</td>
+                    <td style="color: #E74C3C; font-weight: bold;">LKR ${item.deduction_amount.toFixed(2)}</td>
+                    <td>${item.notes || '-'}</td>
+                    ${actionButtons}
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        updateDriverDayOffSelectors();
+    } catch (error) {
+        console.error('Error loading driver day offs:', error.message);
+    }
+}
+
+// 6. Helper: Update Selectors
+async function updateDriverDayOffSelectors() {
+    try {
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', getQueryUserId());
+
+        const formSelect = document.getElementById('driverDayOffDriver');
+        const filterSelect = document.getElementById('driverDayOffFilter');
+
+        // Update Filter (preserve selection)
+        if (filterSelect) {
+            const currentFilter = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">All Drivers</option>';
+            drivers?.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                filterSelect.appendChild(option);
+            });
+            filterSelect.value = currentFilter;
+        }
+
+        // Update Form Select (only if form is closed or we want fresh list)
+        if (formSelect && formSelect.options.length <= 1) {
+            formSelect.innerHTML = '<option value="">Select Driver</option>';
+            drivers?.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                formSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error updating driver selectors:', error.message);
+    }
+}
+
+// 7. Edit Function
+async function editDriverDayOff(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('driver_day_offs')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
+        if (error) throw error;
+        
+        // Ensure selectors are loaded before setting value
+        await updateDriverDayOffSelectors();
+
+        document.getElementById('driverDayOffId').value = data.id;
+        document.getElementById('driverDayOffDriver').value = data.driver_id;
+        document.getElementById('driverDayOffDate').value = data.day_off_date;
+        document.getElementById('driverDayOffAmount').value = data.deduction_amount;
+        document.getElementById('driverDayOffNotes').value = data.notes || '';
+        document.getElementById('suggestedDeduction').textContent = ''; // Clear auto-suggest text on edit
+
+        document.getElementById('driverDayOffFormContainer').style.display = 'block';
+        window.scrollTo(0, 0);
+    } catch (error) {
+        alert('Error loading day off: ' + error.message);
+    }
+}
+
+// 8. Delete Function
+async function deleteDriverDayOff(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (confirm('Are you sure you want to delete this day off record?')) {
+        try {
+            await supabaseClient.from('driver_day_offs').delete().eq('id', id);
+            loadDriverDayOffs();
+        } catch (error) {
+            alert('Error deleting record: ' + error.message);
+        }
     }
 }

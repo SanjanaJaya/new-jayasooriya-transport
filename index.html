@@ -48,6 +48,10 @@
                     <span class="nav-icon">💵</span>
                     <span>Driver Advances</span>
                 </button>
+                <button class="nav-item" data-page="driver-dayoffs">
+                    <span class="nav-icon">⛔</span>
+                    <span>Driver Day Offs</span>
+                </button>
                 <button class="nav-item" data-page="driver-salary">
                     <span class="nav-icon">💼</span>
                     <span>Driver Salary</span>
@@ -444,6 +448,67 @@
                     </div>
                 </div>
 
+                <div id="driver-dayoffs" class="page">
+                    <div class="page-header">
+                        <h3>⛔ Driver Day Offs</h3>
+                        <button class="btn btn-primary" id="addDriverDayOffBtn">+ Add Day Off</button>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="driverDayOffMonth">📆 Month</label>
+                            <input type="month" id="driverDayOffMonth" title="Select Month and Year">
+                        </div>
+                        <div class="control-group">
+                            <label for="driverDayOffFilter">👤 Driver</label>
+                            <select id="driverDayOffFilter" title="Filter by Driver">
+                                <option value="">All Drivers</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-container" id="driverDayOffFormContainer" style="display:none;">
+                        <form id="driverDayOffForm">
+                            <div class="form-row">
+                                <input type="hidden" id="driverDayOffId">
+                                <select id="driverDayOffDriver" required>
+                                    <option value="">Select Driver</option>
+                                </select>
+                                <input type="date" id="driverDayOffDate" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="driverDayOffAmount" style="font-size: 12px; color: #666;">Deduction Amount (LKR)</label>
+                                    <input type="number" id="driverDayOffAmount" placeholder="Amount" step="0.01" required>
+                                    <small style="font-size: 10px; color: #DC143C;" id="suggestedDeduction"></small>
+                                </div>
+                                <div class="form-group" style="flex: 2;">
+                                    <label for="driverDayOffNotes" style="font-size: 12px; color: #666;">Reason / Notes</label>
+                                    <input type="text" id="driverDayOffNotes" placeholder="Reason (e.g., Sick Leave)">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Day Off</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDriverDayOffBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="driverDayOffsTable">
+                            <thead>
+                                <tr>
+                                    <th>Driver</th>
+                                    <th>Date</th>
+                                    <th>Deduction Amount</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="hire-vehicles" class="page">
                     <div class="page-header">
                         <h3>🚚 Hire-to-Pay Vehicles</h3>
