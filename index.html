@@ -76,10 +76,6 @@
                     <span class="nav-icon">📅</span>
                     <span>Day Offs</span>
                 </button>
-                <button class="nav-item" data-page="maintenance">
-                    <span class="nav-icon">🛠️</span>
-                    <span>Maintenance</span>
-                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -1046,100 +1042,6 @@
                                 <tbody></tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-
-                <div id="maintenance" class="page">
-                    <div class="page-header">
-                        <h3>🛠️ Maintenance & Repairs</h3>
-                        <button class="btn btn-primary" id="addMaintenanceBtn">+ Add Record</button>
-                    </div>
-
-                    <div class="dashboard-controls">
-                        <div class="control-group">
-                            <label for="maintenanceMonth">📆 Month</label>
-                            <input type="month" id="maintenanceMonth" title="Select Month and Year">
-                        </div>
-                        <div class="control-group">
-                            <label for="maintenanceVehicleFilter">🚚 Select Vehicle</label>
-                            <select id="maintenanceVehicleFilter" title="Filter by Vehicle">
-                                <option value="">All Vehicles</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="maintenanceWidgetSection" style="display: none; margin-bottom: 25px;">
-                        <div style="
-                            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                            border-radius: 16px;
-                            padding: 20px;
-                            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                            display: flex;
-                            align-items: center;
-                            justify-content: space-between;
-                            border: 1px solid rgba(0,0,0,0.05);
-                            position: relative;
-                            overflow: hidden;
-                        ">
-                            <div style="z-index: 2;">
-                                <h4 style="margin: 0; color: #7f8c8d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Maintenance Cost</h4>
-                                <div id="widgetVehicleName" style="font-size: 1.5rem; font-weight: 800; color: #2c3e50; margin: 5px 0;">Select Vehicle</div>
-                                <div id="widgetMonthDisplay" style="font-size: 0.9rem; color: #95a5a6; margin-bottom: 15px;">-</div>
-                                
-                                <div style="display: flex; align-items: baseline; gap: 10px;">
-                                    <span id="widgetTotalCost" style="font-size: 2.2rem; font-weight: 800; color: #c0392b;">LKR 0.00</span>
-                                    <span style="font-size: 0.9rem; color: #c0392b; opacity: 0.8;">Expended</span>
-                                </div>
-                            </div>
-
-                            <div style="z-index: 2; text-align: right;">
-                                <img id="widgetVectorImage" src="" alt="Vehicle Art" 
-                                     style="max-height: 140px; max-width: 200px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1)); display: none;">
-                                <div id="widgetPlaceholderIcon" style="font-size: 80px; opacity: 0.2;">🛠️</div>
-                            </div>
-                            
-                            <div style="position: absolute; right: -20px; bottom: -20px; font-size: 150px; opacity: 0.03; z-index: 1;">⚙️</div>
-                        </div>
-                    </div>
-
-                    <div class="form-container" id="maintenanceFormContainer" style="display:none;">
-                        <form id="maintenanceForm">
-                            <div class="form-row">
-                                <input type="hidden" id="maintenanceId">
-                                <select id="maintenanceVehicleSelect" required>
-                                    <option value="">Select Vehicle</option>
-                                </select>
-                                <input type="date" id="maintenanceDate" required>
-                            </div>
-                            <div class="form-row">
-                                <input type="text" id="maintenanceDesc" placeholder="Description (e.g., Oil Change, Tire Replacement)" required>
-                                <input type="text" id="garageName" placeholder="Garage / Service Center Name">
-                            </div>
-                            <div class="form-row">
-                                <input type="number" id="maintenanceCost" placeholder="Total Cost (LKR)" step="0.01" required>
-                                <input type="number" id="maintenanceMileage" placeholder="Mileage at Service (Optional)">
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-success">💾 Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelMaintenanceBtn">✖ Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table id="maintenanceTable">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Vehicle</th>
-                                    <th>Description</th>
-                                    <th>Garage</th>
-                                    <th>Cost</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
                     </div>
                 </div>
 
