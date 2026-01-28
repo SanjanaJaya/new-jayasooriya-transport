@@ -1557,13 +1557,14 @@ async function loadDashboardData(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        
-        // FIXED: Get last day correctly without timezone shift
+
+        // Get last day correctly without timezone shift
         const lastDay = new Date(year, month, 0).getDate(); 
         const endDate = `${year}-${month}-${lastDay}`;
 
         const currentQueryUserId = getQueryUserId();
 
+        // 1. Fetch Hire Records
         const { data: hireRecords } = await supabaseClient
             .from('hire_to_pay_records')
             .select('*')
@@ -1571,6 +1572,7 @@ async function loadDashboardData(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
+        // 2. Fetch Commitment Records
         const { data: commitmentRecords } = await supabaseClient
             .from('commitment_records')
             .select('*')
@@ -1578,6 +1580,7 @@ async function loadDashboardData(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
+        // 3. Fetch Day Offs
         const { data: dayOffs } = await supabaseClient
             .from('commitment_day_offs')
             .select('*')
@@ -1585,6 +1588,15 @@ async function loadDashboardData(monthValue) {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
+        // 4. Fetch Maintenance Records (NEW)
+        const { data: maintenanceRecords } = await supabaseClient
+            .from('vehicle_maintenance')
+            .select('cost')
+            .eq('user_id', currentQueryUserId)
+            .gte('maintenance_date', startDate)
+            .lte('maintenance_date', endDate);
+
+        // Fetch related commitment vehicles for fixed payment calc
         const commitmentVehicleIds = new Set();
         commitmentRecords?.forEach(record => {
             commitmentVehicleIds.add(record.vehicle_id);
@@ -1601,16 +1613,27 @@ async function loadDashboardData(monthValue) {
                     : [0]
             );
 
+        // --- CALCULATIONS ---
+
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
+        let totalDistance = 0; // NEW
+        let totalMaintenance = 0; // NEW
 
+        // Set to track unique active vehicles (using string key "type_id" to prevent ID collision)
+        const activeVehiclesSet = new Set(); // NEW
+
+        // Process Hire Records
         hireRecords?.forEach(record => {
             totalRevenue += record.hire_amount || 0;
             totalFuelCost += record.fuel_cost || 0;
+            totalDistance += record.distance || 0; // Add distance
             totalHires++;
+            if(record.vehicle_id) activeVehiclesSet.add(`hire_${record.vehicle_id}`); // Track active vehicle
         });
 
+        // Calculate Commitment Financials
         const commitmentPayment =
             commitmentVehicles?.reduce((sum, v) => sum + (v.fixed_monthly_payment || 0), 0) || 0;
         const dayOffDeductions =
@@ -1620,33 +1643,45 @@ async function loadDashboardData(monthValue) {
         const extraKmCharges =
             commitmentRecords?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
 
+        // Process Commitment Records for Distance & Activity
+        commitmentRecords?.forEach(record => {
+             totalDistance += record.distance || 0; // Add distance
+             if(record.vehicle_id) activeVehiclesSet.add(`commit_${record.vehicle_id}`); // Track active vehicle
+        });
+
+        // Calculate Maintenance Total
+        maintenanceRecords?.forEach(rec => {
+            totalMaintenance += rec.cost || 0;
+        });
+
         totalRevenue += commitmentPayment - dayOffDeductions + extraKmCharges;
         totalFuelCost += commitmentFuelCost;
         totalHires += commitmentRecords?.length || 0;
 
+        // Calculate Fuel Allowance (11.25% of Fuel Cost) - Display only, not affecting profit
+        const fuelAllowance = totalFuelCost * 0.1125;
+
+        // Net Profit = Revenue - Fuel Cost ONLY (no maintenance, no fuel allowance)
         const netProfit = totalRevenue - totalFuelCost;
 
-        // --- NEW CODE START ---
-        // Calculate Fuel Allowance (11.25%)
-        const fuelAllowance = totalFuelCost * 0.1125;
-        // --- NEW CODE END ---
+        // --- UPDATE UI ELEMENTS ---
 
-        const revEl = document.getElementById('totalRevenue');
-        const fuelEl = document.getElementById('fuelCost');
-        const allowanceEl = document.getElementById('fuelAllowance'); // <--- Add this selector
-        const hiresEl = document.getElementById('totalHires');
-        const profitEl = document.getElementById('netProfit');
+        const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
 
-        if (revEl) revEl.textContent = `LKR ${totalRevenue.toFixed(2)}`;
-        if (fuelEl) fuelEl.textContent = `LKR ${totalFuelCost.toFixed(2)}`;
+        setText('totalRevenue', `LKR ${totalRevenue.toFixed(2)}`);
+        setText('fuelCost', `LKR ${totalFuelCost.toFixed(2)}`);
+        setText('fuelAllowance', `LKR ${fuelAllowance.toFixed(2)}`);
+        setText('totalHires', totalHires);
 
-        // --- NEW CODE START ---
-        if (allowanceEl) allowanceEl.textContent = `LKR ${fuelAllowance.toFixed(2)}`;
-        // --- NEW CODE END ---
+        // NEW UI UPDATES
+        setText('activeLorries', activeVehiclesSet.size);
+        setText('totalDistance', `${totalDistance.toLocaleString()} km`);
+        setText('maintenanceCost', `LKR ${totalMaintenance.toFixed(2)}`);
 
-        if (hiresEl) hiresEl.textContent = totalHires;
-        if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
+        // Profit (Revenue - Fuel Cost only)
+        setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
 
+        // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
              await loadVehicleRevenueChart(monthValue);
         }
@@ -1655,7 +1690,7 @@ async function loadDashboardData(monthValue) {
     }
 }
 
-// ============ DASHBOARD FUNCTIONS ============
+// ============ VEHICLE PERFORMANCE ============
 async function loadVehiclePerformance(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
