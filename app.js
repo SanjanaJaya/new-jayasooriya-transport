@@ -1626,13 +1626,24 @@ async function loadDashboardData(monthValue) {
 
         const netProfit = totalRevenue - totalFuelCost;
 
+        // --- NEW CODE START ---
+        // Calculate Fuel Allowance (11.25%)
+        const fuelAllowance = totalFuelCost * 0.1125;
+        // --- NEW CODE END ---
+
         const revEl = document.getElementById('totalRevenue');
         const fuelEl = document.getElementById('fuelCost');
+        const allowanceEl = document.getElementById('fuelAllowance'); // <--- Add this selector
         const hiresEl = document.getElementById('totalHires');
         const profitEl = document.getElementById('netProfit');
 
         if (revEl) revEl.textContent = `LKR ${totalRevenue.toFixed(2)}`;
         if (fuelEl) fuelEl.textContent = `LKR ${totalFuelCost.toFixed(2)}`;
+
+        // --- NEW CODE START ---
+        if (allowanceEl) allowanceEl.textContent = `LKR ${fuelAllowance.toFixed(2)}`;
+        // --- NEW CODE END ---
+
         if (hiresEl) hiresEl.textContent = totalHires;
         if (profitEl) profitEl.textContent = `LKR ${netProfit.toFixed(2)}`;
 
