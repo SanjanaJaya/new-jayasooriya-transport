@@ -397,7 +397,6 @@ function switchPage(page) {
         'commitment-records': 'Commitment Vehicle Hires',
         'commitment-dayoffs': 'Day Offs',
         'driver-dayoffs': 'Driver Day Offs',
-        'vehicle-maintenance': 'Vehicle Maintenance' // ADDED: New Page Title
     };
     
     const titleEl = document.getElementById('pageTitle');
@@ -419,17 +418,6 @@ function switchPage(page) {
     if (page === 'commitment-dayoffs') loadDayOffs();
     if (page === 'driver-dayoffs') loadDriverDayOffs();
 
-    // ADD THIS BLOCK
-    if (page === 'vehicle-maintenance') {
-        const maintMonth = document.getElementById('maintenanceMonth');
-        if (maintMonth && !maintMonth.value) {
-            // Set default month
-             const now = new Date();
-             const m = String(now.getMonth() + 1).padStart(2, '0');
-             maintMonth.value = `${now.getFullYear()}-${m}`;
-        }
-        loadVehicleMaintenance();
-    } // ADDED: Load function call
 }
 
 // ============ FIX: UPDATED LOAD DASHBOARD WITH LOCAL TIME FALLBACK ============
@@ -1588,13 +1576,6 @@ async function loadDashboardData(monthValue) {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
-        // 4. Fetch Maintenance Records (NEW)
-        const { data: maintenanceRecords } = await supabaseClient
-            .from('vehicle_maintenance')
-            .select('cost')
-            .eq('user_id', currentQueryUserId)
-            .gte('maintenance_date', startDate)
-            .lte('maintenance_date', endDate);
 
         // Fetch related commitment vehicles for fixed payment calc
         const commitmentVehicleIds = new Set();
@@ -1619,7 +1600,6 @@ async function loadDashboardData(monthValue) {
         let totalFuelCost = 0;
         let totalHires = 0;
         let totalDistance = 0; // NEW
-        let totalMaintenance = 0; // NEW
 
         // Set to track unique active vehicles (using string key "type_id" to prevent ID collision)
         const activeVehiclesSet = new Set(); // NEW
@@ -1649,10 +1629,7 @@ async function loadDashboardData(monthValue) {
              if(record.vehicle_id) activeVehiclesSet.add(`commit_${record.vehicle_id}`); // Track active vehicle
         });
 
-        // Calculate Maintenance Total
-        maintenanceRecords?.forEach(rec => {
-            totalMaintenance += rec.cost || 0;
-        });
+       
 
         totalRevenue += commitmentPayment - dayOffDeductions + extraKmCharges;
         totalFuelCost += commitmentFuelCost;
@@ -1676,7 +1653,6 @@ async function loadDashboardData(monthValue) {
         // NEW UI UPDATES
         setText('activeLorries', activeVehiclesSet.size);
         setText('totalDistance', `${totalDistance.toLocaleString()} km`);
-        setText('maintenanceCost', `LKR ${totalMaintenance.toFixed(2)}`);
 
         // Profit (Revenue - Fuel Cost only)
         setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
@@ -3446,243 +3422,6 @@ async function deleteDriverDayOff(id) {
             loadDriverDayOffs();
         } catch (error) {
             alert('Error deleting record: ' + error.message);
-        }
-    }
-}
-// ============ VEHICLE MAINTENANCE ============
-document.getElementById('addMaintenanceBtn')?.addEventListener('click', () => {
-    if (!checkAdminAccess('add')) return;
-    document.getElementById('maintenanceForm').reset();
-    document.getElementById('maintenanceId').value = '';
-    document.getElementById('maintenanceFormContainer').style.display = 'block';
-});
-
-document.getElementById('cancelMaintenanceBtn')?.addEventListener('click', () => {
-    document.getElementById('maintenanceFormContainer').style.display = 'none';
-});
-
-document.getElementById('maintenanceMonth')?.addEventListener('change', loadVehicleMaintenance);
-
-// Handle Vehicle Type Change to populate dropdown
-document.getElementById('maintenanceVehicleType')?.addEventListener('change', async (e) => {
-    const type = e.target.value;
-    const select = document.getElementById('maintenanceVehicleSelect');
-    select.innerHTML = '<option value="">Loading...</option>';
-
-    if (!type) {
-        select.innerHTML = '<option value="">Select Vehicle</option>';
-        return;
-    }
-
-    try {
-        let data = [];
-        if (type === 'hire') {
-            const res = await supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId());
-            data = res.data;
-        } else {
-            const res = await supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId());
-            data = res.data;
-        }
-
-        select.innerHTML = '<option value="">Select Vehicle</option>';
-        data?.forEach(v => {
-            const option = document.createElement('option');
-            option.value = v.id;
-            // Handle different naming conventions (lorry_number vs vehicle_number)
-            option.textContent = v.lorry_number || v.vehicle_number; 
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error fetching vehicles:', error);
-        select.innerHTML = '<option value="">Error loading</option>';
-    }
-});
-
-// Save Maintenance Record
-document.getElementById('maintenanceForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!checkAdminAccess('save')) return;
-
-    const id = document.getElementById('maintenanceId').value;
-    const data = {
-        vehicle_type: document.getElementById('maintenanceVehicleType').value,
-        vehicle_id: document.getElementById('maintenanceVehicleSelect').value,
-        maintenance_date: document.getElementById('maintenanceDate').value,
-        cost: parseFloat(document.getElementById('maintenanceCost').value),
-        service_type: document.getElementById('maintenanceServiceType').value,
-        garage_name: document.getElementById('maintenanceGarage').value,
-        description: document.getElementById('maintenanceDescription').value,
-        user_id: adminUserId
-    };
-
-    try {
-        if (id) {
-            await supabaseClient.from('vehicle_maintenance').update(data).eq('id', id);
-        } else {
-            await supabaseClient.from('vehicle_maintenance').insert([data]);
-        }
-        loadVehicleMaintenance();
-        document.getElementById('maintenanceFormContainer').style.display = 'none';
-    } catch (error) {
-        alert('Error saving record: ' + error.message);
-    }
-});
-
-async function loadVehicleMaintenance() {
-    try {
-        const monthValue = document.getElementById('maintenanceMonth')?.value;
-
-        let query = supabaseClient.from('vehicle_maintenance').select('*').eq('user_id', getQueryUserId());
-
-        if (monthValue) {
-            const [year, month] = monthValue.split('-');
-            const startDate = `${year}-${month}-01`;
-            const lastDay = new Date(year, month, 0).getDate();
-            const endDate = `${year}-${month}-${lastDay}`;
-            query = query.gte('maintenance_date', startDate).lte('maintenance_date', endDate);
-        }
-
-        const { data: records, error } = await query.order('maintenance_date', { ascending: false });
-        if (error) throw error;
-
-        // Fetch vehicle details for names
-        // Ideally we would do a join, but since we have dynamic table references (hire vs commitment),
-        // it's easier to fetch all vehicle names and map them in JS for this scale.
-        const { data: hireVs } = await supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url').eq('user_id', getQueryUserId());
-        const { data: commVs } = await supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url').eq('user_id', getQueryUserId());
-
-        const vehicleMap = {};
-        hireVs?.forEach(v => vehicleMap[`hire_${v.id}`] = { name: v.lorry_number, art: v.vector_art_url });
-        commVs?.forEach(v => vehicleMap[`commitment_${v.id}`] = { name: v.vehicle_number, art: v.vector_art_url });
-
-        // Update Table
-        const tbody = document.querySelector('#maintenanceTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '';
-            records.forEach(rec => {
-                const vKey = `${rec.vehicle_type}_${rec.vehicle_id}`;
-                const vName = vehicleMap[vKey]?.name || 'Unknown Vehicle';
-
-                const row = document.createElement('tr');
-                const actionButtons = userRole === 'viewer' ? '' : `
-                    <td class="action-buttons">
-                        <button class="btn btn-edit" onclick="editMaintenance(${rec.id})">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteMaintenance(${rec.id})">Delete</button>
-                    </td>
-                `;
-
-                row.innerHTML = `
-                    <td>${rec.maintenance_date}</td>
-                    <td>${vName} <span style="font-size:10px; background:#eee; padding:2px 4px; border-radius:3px;">${rec.vehicle_type}</span></td>
-                    <td>${rec.service_type}</td>
-                    <td>${rec.service_type === 'service' ? '🔧 Service' : '🛠️ Repair'}</td>
-                    <td>${rec.garage_name || '-'}</td>
-                    <td style="color: #E74C3C; font-weight: bold;">LKR ${rec.cost.toFixed(2)}</td>
-                    <td>${rec.description || '-'}</td>
-                    ${actionButtons}
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Update Top Widget (Aggregated Costs)
-        updateMaintenanceWidget(records, vehicleMap);
-
-    } catch (error) {
-        console.error('Error loading maintenance:', error);
-    }
-}
-
-function updateMaintenanceWidget(records, vehicleMap) {
-    const widget = document.getElementById('maintenanceWidget');
-    if (!widget) return;
-
-    // Aggregate costs per vehicle
-    const stats = {};
-    records.forEach(rec => {
-        const vKey = `${rec.vehicle_type}_${rec.vehicle_id}`;
-        if (!stats[vKey]) stats[vKey] = 0;
-        stats[vKey] += rec.cost;
-    });
-
-    // Create sorted array
-    const sortedStats = Object.keys(stats)
-        .map(key => ({
-            key,
-            cost: stats[key],
-            name: vehicleMap[key]?.name || 'Unknown',
-            art: vehicleMap[key]?.art
-        }))
-        .sort((a, b) => b.cost - a.cost); // Highest cost first
-
-    if (sortedStats.length === 0) {
-        widget.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:20px; color:#999;">No maintenance records for this month.</div>`;
-        return;
-    }
-
-    widget.innerHTML = sortedStats.map(item => {
-        const iconHtml = item.art 
-            ? `<img src="${item.art}" alt="Vehicle Art">`
-            : `🚛`;
-
-        return `
-            <div class="premium-vehicle-card">
-                <div class="card-header-section">
-                    <div class="vehicle-icon-large">${iconHtml}</div>
-                    <div class="vehicle-info-block">
-                        <h4>${item.name}</h4>
-                        <span class="vehicle-type-pill">Maintenance</span>
-                    </div>
-                </div>
-                <div class="card-body-section" style="text-align:center; padding-top:10px;">
-                    <span style="font-size: 12px; color: #666;">Total Cost (Month)</span>
-                    <div style="font-size: 24px; font-weight: bold; color: #E74C3C; margin-top: 5px;">
-                        LKR ${item.cost.toLocaleString()}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-async function editMaintenance(id) {
-    if (!checkAdminAccess('edit')) return;
-    try {
-        const { data, error } = await supabaseClient.from('vehicle_maintenance').select('*').eq('id', id).single();
-        if (error) throw error;
-
-        document.getElementById('maintenanceId').value = data.id;
-        document.getElementById('maintenanceVehicleType').value = data.vehicle_type;
-
-        // Trigger change event to populate vehicle dropdown, then set value after delay
-        const event = new Event('change');
-        document.getElementById('maintenanceVehicleType').dispatchEvent(event);
-
-        setTimeout(() => {
-            document.getElementById('maintenanceVehicleSelect').value = data.vehicle_id;
-        }, 500); // Small delay to allow dropdown fetch
-
-        document.getElementById('maintenanceDate').value = data.maintenance_date;
-        document.getElementById('maintenanceCost').value = data.cost;
-        document.getElementById('maintenanceServiceType').value = data.service_type || 'service';
-        document.getElementById('maintenanceGarage').value = data.garage_name || '';
-        document.getElementById('maintenanceDescription').value = data.description || '';
-
-        document.getElementById('maintenanceFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
-    } catch (error) {
-        alert('Error loading record: ' + error.message);
-    }
-}
-
-async function deleteMaintenance(id) {
-    if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this record?')) {
-        try {
-            await supabaseClient.from('vehicle_maintenance').delete().eq('id', id);
-            loadVehicleMaintenance();
-        } catch (error) {
-            alert('Error deleting: ' + error.message);
         }
     }
 }
