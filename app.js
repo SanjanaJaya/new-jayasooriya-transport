@@ -1761,12 +1761,13 @@ async function loadVehiclePerformance(monthValue) {
                     const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
                     const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
                     const profit = totalRevenue - totalFuel;
+                    const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
                     vehiclesWithData.push({
                         type: 'Commitment',
                         number: vehicle.vehicle_number,
                         model: vehicle.vehicle_model || '-',
-                        ownership: '-',
+                        ownership: ownershipLabel,
                         totalKm,
                         totalRevenue,
                         totalFuel,
