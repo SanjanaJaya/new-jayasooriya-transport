@@ -76,6 +76,10 @@
                     <span class="nav-icon">📅</span>
                     <span>Day Offs</span>
                 </button>
+                <button class="nav-item" data-page="lorry-maintenance">
+                    <span class="nav-icon">🔧</span>
+                    <span>Lorry Maintenance</span>
+                </button>
 
             </nav>
 
@@ -1080,6 +1084,91 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- ============ LORRY MAINTENANCE PAGE ============ -->
+                <div id="lorry-maintenance" class="page">
+                    <div class="page-header">
+                        <h3>🔧 Lorry Maintenance</h3>
+                        <button class="btn btn-primary" id="addMaintenanceBtn">+ Add Record</button>
+                    </div>
+
+                    <!-- Per-vehicle maintenance cost widgets -->
+                    <div class="performance-section">
+                        <h3>🚛 Maintenance Cost Per Vehicle</h3>
+                        <div id="maintenanceVehicleWidgets" class="metrics-grid" style="margin-top:0;"></div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="maintenanceMonth">📆 Month</label>
+                            <input type="month" id="maintenanceMonth" title="Select Month and Year">
+                        </div>
+                        <div class="control-group">
+                            <label for="maintenanceVehicleFilter">🚛 Vehicle</label>
+                            <select id="maintenanceVehicleFilter" title="Filter by Vehicle">
+                                <option value="">All Vehicles</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Add / Edit Form -->
+                    <div class="form-container" id="maintenanceFormContainer" style="display:none;">
+                        <form id="maintenanceForm">
+                            <div class="form-row">
+                                <input type="hidden" id="maintenanceId">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="maintenanceVehicle" style="font-size:12px;color:#666;">Vehicle</label>
+                                    <select id="maintenanceVehicle" required>
+                                        <option value="">Select Vehicle</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="maintenanceDate" style="font-size:12px;color:#666;">Date</label>
+                                    <input type="date" id="maintenanceDate" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2;">
+                                    <label for="maintenanceExpense" style="font-size:12px;color:#666;">Expense Type</label>
+                                    <input type="text" id="maintenanceExpense" placeholder="e.g. Engine Oil, Tyre Replacement, Service…" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="maintenanceAmount" style="font-size:12px;color:#666;">Amount (LKR)</label>
+                                    <input type="number" id="maintenanceAmount" placeholder="0.00" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="form-row full">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="maintenanceNotes" style="font-size:12px;color:#666;">Notes (Optional)</label>
+                                    <input type="text" id="maintenanceNotes" placeholder="Additional details…">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelMaintenanceBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Records Table -->
+                    <div class="table-responsive">
+                        <table id="maintenanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle</th>
+                                    <th>Date</th>
+                                    <th>Expense</th>
+                                    <th>Amount</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>

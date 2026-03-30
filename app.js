@@ -313,7 +313,8 @@ function setDefaultMonths() {
         'dayOffMonth',
         'advanceMonth',
         'salaryMonth',
-        'driverDayOffMonth' // ADDED: New Driver Day Off filter
+        'driverDayOffMonth', // ADDED: New Driver Day Off filter
+        'maintenanceMonth'   // ADDED: Lorry Maintenance filter
     ];
     
     elements.forEach(id => {
@@ -397,6 +398,7 @@ function switchPage(page) {
         'commitment-records': 'Commitment Vehicle Hires',
         'commitment-dayoffs': 'Day Offs',
         'driver-dayoffs': 'Driver Day Offs',
+        'lorry-maintenance': 'Lorry Maintenance',
     };
     
     const titleEl = document.getElementById('pageTitle');
@@ -417,6 +419,7 @@ function switchPage(page) {
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
     if (page === 'driver-dayoffs') loadDriverDayOffs();
+    if (page === 'lorry-maintenance') loadMaintenanceRecords();
 
 }
 
@@ -3421,6 +3424,345 @@ async function deleteDriverDayOff(id) {
         try {
             await supabaseClient.from('driver_day_offs').delete().eq('id', id);
             loadDriverDayOffs();
+        } catch (error) {
+            alert('Error deleting record: ' + error.message);
+        }
+    }
+}
+// ============ LORRY MAINTENANCE ============
+
+// 1. Open / Close Form
+document.getElementById('addMaintenanceBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
+    document.getElementById('maintenanceForm').reset();
+    document.getElementById('maintenanceId').value = '';
+    document.getElementById('maintenanceFormContainer').style.display = 'block';
+    populateMaintenanceVehicleDropdown();
+});
+
+document.getElementById('cancelMaintenanceBtn')?.addEventListener('click', () => {
+    document.getElementById('maintenanceFormContainer').style.display = 'none';
+});
+
+// 2. Filter Listeners
+document.getElementById('maintenanceMonth')?.addEventListener('change', loadMaintenanceRecords);
+document.getElementById('maintenanceVehicleFilter')?.addEventListener('change', loadMaintenanceRecords);
+
+// 3. Form Submit
+document.getElementById('maintenanceForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
+    const id = document.getElementById('maintenanceId').value;
+    const vehicleRaw = document.getElementById('maintenanceVehicle').value;
+    // vehicle value format: "hire_VEHICLEID" or "commitment_VEHICLEID"
+    const [vehicleType, vehicleId] = vehicleRaw.split('_');
+
+    const data = {
+        vehicle_ref:    vehicleRaw,
+        vehicle_type:   vehicleType,   // 'hire' | 'commitment'
+        vehicle_id:     parseInt(vehicleId),
+        expense_type:   document.getElementById('maintenanceExpense').value,
+        amount:         parseFloat(document.getElementById('maintenanceAmount').value) || 0,
+        maintenance_date: document.getElementById('maintenanceDate').value,
+        notes:          document.getElementById('maintenanceNotes').value || null,
+        user_id:        adminUserId
+    };
+
+    try {
+        if (id) {
+            await supabaseClient.from('lorry_maintenance').update(data).eq('id', id);
+        } else {
+            await supabaseClient.from('lorry_maintenance').insert([data]);
+        }
+        loadMaintenanceRecords();
+        document.getElementById('maintenanceFormContainer').style.display = 'none';
+    } catch (error) {
+        alert('Error saving maintenance record: ' + error.message);
+    }
+});
+
+// 4. Load Records + Widgets
+async function loadMaintenanceRecords() {
+    try {
+        let monthValue = document.getElementById('maintenanceMonth')?.value;
+
+        // FIXED: Same local-time fallback pattern as loadDashboard
+        if (!monthValue) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            monthValue = `${year}-${month}`;
+            const el = document.getElementById('maintenanceMonth');
+            if (el) el.value = monthValue;
+        }
+
+        const vehicleFilter = document.getElementById('maintenanceVehicleFilter')?.value;
+
+        let query = supabaseClient
+            .from('lorry_maintenance')
+            .select('*')
+            .eq('user_id', getQueryUserId());
+
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            query = query.gte('maintenance_date', startDate).lte('maintenance_date', endDate);
+        }
+
+        if (vehicleFilter) {
+            query = query.eq('vehicle_ref', vehicleFilter);
+        }
+
+        const { data, error } = await query.order('maintenance_date', { ascending: false });
+        if (error) throw error;
+
+        // --- Render table ---
+        const tbody = document.querySelector('#maintenanceTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found.</td></tr>';
+        } else {
+            // Build a label map from fetched vehicles
+            const labelMap = await getVehicleLabelMap();
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                const actionButtons = userRole === 'viewer' ? '' : `
+                    <td class="action-buttons">
+                        <button class="btn btn-edit" onclick="editMaintenanceRecord(${item.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteMaintenanceRecord(${item.id})">Delete</button>
+                    </td>
+                `;
+                row.innerHTML = `
+                    <td>${labelMap[item.vehicle_ref] || item.vehicle_ref}</td>
+                    <td>${item.maintenance_date}</td>
+                    <td>${item.expense_type}</td>
+                    <td style="color:#E74C3C;font-weight:bold;">LKR ${item.amount.toFixed(2)}</td>
+                    <td>${item.notes || '-'}</td>
+                    ${actionButtons}
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // --- Render per-vehicle widgets (all time within current filter) ---
+        await renderMaintenanceWidgets(monthValue);
+
+        // --- Populate filter ---
+        await populateMaintenanceVehicleFilter();
+
+    } catch (error) {
+        console.error('Error loading maintenance records:', error.message);
+    }
+}
+
+// 5. Render per-vehicle cost widgets
+async function renderMaintenanceWidgets(monthValue) {
+    try {
+        // Query all records (no month filter) for total, then filtered for period total
+        let allQuery = supabaseClient
+            .from('lorry_maintenance')
+            .select('vehicle_ref, amount')
+            .eq('user_id', getQueryUserId());
+
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            allQuery = allQuery.gte('maintenance_date', startDate).lte('maintenance_date', endDate);
+        }
+
+        const { data } = await allQuery;
+        if (!data) return;
+
+        const labelMap = await getVehicleLabelMap();
+
+        // Group by vehicle
+        const totals = {};
+        data.forEach(row => {
+            totals[row.vehicle_ref] = (totals[row.vehicle_ref] || 0) + row.amount;
+        });
+
+        const container = document.getElementById('maintenanceVehicleWidgets');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (Object.keys(totals).length === 0) {
+            container.innerHTML = '<p style="color:#7F8C8D;padding:10px;">No data for selected period.</p>';
+            return;
+        }
+
+        Object.entries(totals).forEach(([ref, total]) => {
+            const card = document.createElement('div');
+            card.className = 'metric-card';
+            card.innerHTML = `
+                <div class="metric-icon">🔧</div>
+                <div class="metric-content">
+                    <div class="metric-label">${labelMap[ref] || ref}</div>
+                    <div class="metric-value" style="color:#E74C3C;">LKR ${total.toFixed(2)}</div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        // Overall total widget
+        const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+        const totalCard = document.createElement('div');
+        totalCard.className = 'metric-card';
+        totalCard.style.borderLeft = '4px solid #8E44AD';
+        totalCard.innerHTML = `
+            <div class="metric-icon">💰</div>
+            <div class="metric-content">
+                <div class="metric-label">Total Maintenance</div>
+                <div class="metric-value" style="color:#8E44AD;">LKR ${grandTotal.toFixed(2)}</div>
+            </div>
+        `;
+        container.appendChild(totalCard);
+
+    } catch (error) {
+        console.error('Error rendering maintenance widgets:', error.message);
+    }
+}
+
+// 6. Helper: build vehicle label map (hire + commitment)
+async function getVehicleLabelMap() {
+    const map = {};
+    try {
+        const [{ data: hireVehicles }, { data: commitmentVehicles }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId())
+        ]);
+        hireVehicles?.forEach(v => { map[`hire_${v.id}`] = `${v.lorry_number} (Hire)`; });
+        commitmentVehicles?.forEach(v => { map[`commitment_${v.id}`] = `${v.vehicle_number} (Commitment)`; });
+    } catch (e) { /* silent */ }
+    return map;
+}
+
+// 7. Populate Vehicle Dropdown (form)
+async function populateMaintenanceVehicleDropdown() {
+    try {
+        const select = document.getElementById('maintenanceVehicle');
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Select Vehicle</option>';
+
+        const [{ data: hireVehicles }, { data: commitmentVehicles }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()).eq('terminated', false),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId()).eq('terminated', false)
+        ]);
+
+        if (hireVehicles?.length) {
+            const group = document.createElement('optgroup');
+            group.label = '🚚 Hire-to-Pay Vehicles';
+            hireVehicles.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = `hire_${v.id}`;
+                opt.textContent = v.lorry_number;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        }
+
+        if (commitmentVehicles?.length) {
+            const group = document.createElement('optgroup');
+            group.label = '🚛 Commitment Vehicles';
+            commitmentVehicles.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = `commitment_${v.id}`;
+                opt.textContent = v.vehicle_number;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        }
+
+        if (currentVal) select.value = currentVal;
+    } catch (error) {
+        console.error('Error populating vehicle dropdown:', error.message);
+    }
+}
+
+// 8. Populate Vehicle Filter (filter bar)
+async function populateMaintenanceVehicleFilter() {
+    try {
+        const filterSelect = document.getElementById('maintenanceVehicleFilter');
+        if (!filterSelect) return;
+        const currentVal = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">All Vehicles</option>';
+
+        const [{ data: hireVehicles }, { data: commitmentVehicles }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId())
+        ]);
+
+        if (hireVehicles?.length) {
+            const group = document.createElement('optgroup');
+            group.label = '🚚 Hire-to-Pay';
+            hireVehicles.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = `hire_${v.id}`;
+                opt.textContent = v.lorry_number;
+                group.appendChild(opt);
+            });
+            filterSelect.appendChild(group);
+        }
+
+        if (commitmentVehicles?.length) {
+            const group = document.createElement('optgroup');
+            group.label = '🚛 Commitment';
+            commitmentVehicles.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = `commitment_${v.id}`;
+                opt.textContent = v.vehicle_number;
+                group.appendChild(opt);
+            });
+            filterSelect.appendChild(group);
+        }
+
+        filterSelect.value = currentVal;
+    } catch (error) {
+        console.error('Error populating maintenance filter:', error.message);
+    }
+}
+
+// 9. Edit Record
+async function editMaintenanceRecord(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('lorry_maintenance')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error) throw error;
+
+        await populateMaintenanceVehicleDropdown();
+
+        document.getElementById('maintenanceId').value = data.id;
+        document.getElementById('maintenanceVehicle').value = data.vehicle_ref;
+        document.getElementById('maintenanceDate').value = data.maintenance_date;
+        document.getElementById('maintenanceExpense').value = data.expense_type;
+        document.getElementById('maintenanceAmount').value = data.amount;
+        document.getElementById('maintenanceNotes').value = data.notes || '';
+
+        document.getElementById('maintenanceFormContainer').style.display = 'block';
+        window.scrollTo(0, 0);
+    } catch (error) {
+        alert('Error loading maintenance record: ' + error.message);
+    }
+}
+
+// 10. Delete Record
+async function deleteMaintenanceRecord(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (confirm('Are you sure you want to delete this maintenance record?')) {
+        try {
+            await supabaseClient.from('lorry_maintenance').delete().eq('id', id);
+            loadMaintenanceRecords();
         } catch (error) {
             alert('Error deleting record: ' + error.message);
         }
