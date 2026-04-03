@@ -99,8 +99,14 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
     const wb = XLSX.utils.book_new();
 
     // =========================================================
-    // SHEET 1 — Revenue Summary (by month)
     // =========================================================
+    // SHEET 1 — Revenue Summary with inline hire + commitment job details
+    // =========================================================
+    // Column layout (11 cols):
+    // A: Job No / Label   B: Date      C: Vehicle / Type    D: From
+    // E: To               F: Hire Amt  G: Fuel Cost         H: Net (Hire-Fuel)
+    // I: Distance (km)    J: Waiting / Extra Chg            K: Fixed Pay (commit)
+
     const summaryRows = [
       ['JAYASOORIYA TRANSPORT — REVENUE SUMMARY'],
       [`Date Range: ${formatDateRangeLabel(startDate, endDate)}`],
@@ -115,13 +121,26 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
         'Net Profit (LKR)',
         'Total Hires',
         'Total Distance (km)',
+        '', '', '',
       ],
     ];
 
-    let grandTotalRevenue = 0;
-    let grandTotalFuel = 0;
-    let grandTotalProfit = 0;
-    let grandTotalHires = 0;
+    // Sub-headers for job detail rows
+    const hireJobHeader = [
+      'Job No', 'Date', 'Vehicle', 'From',
+      'To', 'Hire Amt (LKR)', 'Fuel Cost (LKR)', 'Net (LKR)',
+      'Distance (km)', 'Waiting Chg (LKR)', '',
+    ];
+    const commitJobHeader = [
+      'Job No', 'Date', 'Vehicle', 'From',
+      'To', 'Fixed Pay (LKR)', 'Fuel Cost (LKR)', 'Net (LKR)',
+      'Distance (km)', 'Extra Chg (LKR)', '',
+    ];
+
+    let grandTotalRevenue  = 0;
+    let grandTotalFuel     = 0;
+    let grandTotalProfit   = 0;
+    let grandTotalHires    = 0;
     let grandTotalDistance = 0;
 
     months.forEach(month => {
@@ -157,6 +176,7 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
       const totalHires   = hireHires + commitHires;
       const totalDist    = hireDist + commitDist;
 
+      // ── Month summary row ──────────────────────────────────
       summaryRows.push([
         month,
         +hireRevenue.toFixed(2),
@@ -166,7 +186,95 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
         +netProfit.toFixed(2),
         totalHires,
         +totalDist.toFixed(2),
+        '', '', '',
       ]);
+
+      // ── SECTION A: Hire-to-Pay jobs ────────────────────────
+      if (monthHire.length > 0) {
+        summaryRows.push(['--- HIRE-TO-PAY JOBS ---', '', '', '', '', '', '', '', '', '', '']);
+        summaryRows.push(hireJobHeader);
+
+        const sortedHire = [...monthHire].sort((a, b) => {
+          const d = (a.hire_date || '').localeCompare(b.hire_date || '');
+          if (d !== 0) return d;
+          return (a.hire_to_pay_vehicles?.lorry_number || '')
+            .localeCompare(b.hire_to_pay_vehicles?.lorry_number || '');
+        });
+
+        sortedHire.forEach(r => {
+          const hireAmt  = r.hire_amount || 0;
+          const fuelCost = r.fuel_cost   || 0;
+          summaryRows.push([
+            r.job_number                         || '',
+            r.hire_date                          || '',
+            r.hire_to_pay_vehicles?.lorry_number || '',
+            r.from_location                      || '',
+            r.to_location                        || '',
+            +hireAmt.toFixed(2),
+            +fuelCost.toFixed(2),
+            +(hireAmt - fuelCost).toFixed(2),
+            +(r.distance      || 0).toFixed(2),
+            +(r.waiting_charge|| 0).toFixed(2),
+            '',
+          ]);
+        });
+
+        // Hire subtotal
+        summaryRows.push([
+          `Hire Subtotal (${monthHire.length} jobs)`,
+          '', '', '', '',
+          +hireRevenue.toFixed(2),
+          +hireFuel.toFixed(2),
+          +(hireRevenue - hireFuel).toFixed(2),
+          +hireDist.toFixed(2),
+          '', '',
+        ]);
+      }
+
+      // ── SECTION B: Commitment jobs ─────────────────────────
+      if (commitMonthRecords.length > 0) {
+        summaryRows.push(['--- COMMITMENT JOBS ---', '', '', '', '', '', '', '', '', '', '']);
+        summaryRows.push(commitJobHeader);
+
+        const sortedCommit = [...commitMonthRecords].sort((a, b) => {
+          const d = (a.hire_date || '').localeCompare(b.hire_date || '');
+          if (d !== 0) return d;
+          return (a.commitment_vehicles?.vehicle_number || '')
+            .localeCompare(b.commitment_vehicles?.vehicle_number || '');
+        });
+
+        sortedCommit.forEach(r => {
+          const fixedPay  = r.commitment_vehicles?.fixed_monthly_payment || 0;
+          const fuelCost  = r.fuel_cost    || 0;
+          const extraChg  = r.extra_charges|| 0;
+          summaryRows.push([
+            r.job_number                          || '',
+            r.hire_date                           || '',
+            r.commitment_vehicles?.vehicle_number || '',
+            r.from_location                       || '',
+            r.to_location                         || '',
+            +fixedPay.toFixed(2),
+            +fuelCost.toFixed(2),
+            +(fixedPay - fuelCost + extraChg).toFixed(2),
+            +(r.distance   || 0).toFixed(2),
+            +extraChg.toFixed(2),
+            '',
+          ]);
+        });
+
+        // Commitment subtotal
+        summaryRows.push([
+          `Commitment Subtotal (${commitMonthRecords.length} jobs)`,
+          '', '', '', '',
+          +commitRevenue.toFixed(2),
+          +commitFuel.toFixed(2),
+          +(commitRevenue - commitFuel).toFixed(2),
+          +commitDist.toFixed(2),
+          '', '',
+        ]);
+      }
+
+      summaryRows.push([]); // spacer between months
 
       grandTotalRevenue  += totalRevenue;
       grandTotalFuel     += totalFuel;
@@ -175,7 +283,6 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
       grandTotalDistance += totalDist;
     });
 
-    summaryRows.push([]);
     summaryRows.push([
       'GRAND TOTAL', '', '',
       +grandTotalRevenue.toFixed(2),
@@ -183,12 +290,15 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
       +grandTotalProfit.toFixed(2),
       grandTotalHires,
       +grandTotalDistance.toFixed(2),
+      '', '', '',
     ]);
 
     const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+    // A:JobNo  B:Date  C:Vehicle  D:From  E:To(wide)  F:HireAmt  G:Fuel  H:Net  I:Dist  J:WaitChg  K:spare
     ws1['!cols'] = [
-      { wch: 14 }, { wch: 24 }, { wch: 24 }, { wch: 20 },
-      { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 18 },
+      { wch: 20 }, { wch: 12 }, { wch: 26 }, { wch: 22 },
+      { wch: 55 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
+      { wch: 14 }, { wch: 20 }, { wch: 6 },
     ];
     XLSX.utils.book_append_sheet(wb, ws1, 'Revenue Summary');
 
@@ -208,11 +318,44 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
       ],
     ];
 
-    (hireRecords || []).forEach(r => {
+    // Sort by vehicle name then date for a clean grouped view
+    const sortedHireRecords = [...(hireRecords || [])].sort((a, b) => {
+      const vA = a.hire_to_pay_vehicles?.lorry_number || '';
+      const vB = b.hire_to_pay_vehicles?.lorry_number || '';
+      if (vA !== vB) return vA.localeCompare(vB);
+      return (a.hire_date || '').localeCompare(b.hire_date || '');
+    });
+
+    let detailSubVehicle = null;
+    let detailSubHire = 0, detailSubFuel = 0, detailSubDist = 0, detailSubJobs = 0;
+
+    sortedHireRecords.forEach((r, idx) => {
+      const lorryNum = r.hire_to_pay_vehicles?.lorry_number || 'Unknown';
+
+      // Insert a subtotal row whenever the vehicle changes
+      if (detailSubVehicle !== null && detailSubVehicle !== lorryNum) {
+        hireDetailRows.push([
+          `Subtotal — ${detailSubVehicle} (${detailSubJobs} job${detailSubJobs !== 1 ? 's' : ''})`,
+          '', '', '', '', '',
+          +detailSubDist.toFixed(2),
+          '', '',
+          +detailSubFuel.toFixed(2),
+          '', '', '', '',
+          +detailSubHire.toFixed(2),
+        ]);
+        hireDetailRows.push([]); // spacer row
+        detailSubHire = 0; detailSubFuel = 0; detailSubDist = 0; detailSubJobs = 0;
+      }
+      detailSubVehicle  = lorryNum;
+      detailSubHire    += r.hire_amount || 0;
+      detailSubFuel    += r.fuel_cost   || 0;
+      detailSubDist    += r.distance    || 0;
+      detailSubJobs    += 1;
+
       hireDetailRows.push([
         r.job_number                         || '',
         r.hire_date                          || '',
-        r.hire_to_pay_vehicles?.lorry_number || '',
+        lorryNum,
         r.hire_to_pay_vehicles?.ownership    || '',
         r.from_location                      || '',
         r.to_location                        || '',
@@ -226,6 +369,19 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
         +(r.other_charges                    || 0).toFixed(2),
         +(r.hire_amount                      || 0).toFixed(2),
       ]);
+
+      // Insert the last vehicle’s subtotal after the final record
+      if (idx === sortedHireRecords.length - 1 && detailSubVehicle) {
+        hireDetailRows.push([
+          `Subtotal — ${detailSubVehicle} (${detailSubJobs} job${detailSubJobs !== 1 ? 's' : ''})`,
+          '', '', '', '', '',
+          +detailSubDist.toFixed(2),
+          '', '',
+          +detailSubFuel.toFixed(2),
+          '', '', '', '',
+          +detailSubHire.toFixed(2),
+        ]);
+      }
     });
 
     const ws2 = XLSX.utils.aoa_to_sheet(hireDetailRows);
@@ -297,6 +453,138 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
     const ws4 = XLSX.utils.aoa_to_sheet(dayOffRows);
     ws4['!cols'] = [{ wch: 14 }, { wch: 16 }, { wch: 22 }];
     XLSX.utils.book_append_sheet(wb, ws4, 'Day Offs');
+
+    // =========================================================
+    // SHEET 5 — Hire-to-Pay Vehicle Job Summary
+    // Groups every job under its vehicle with a subtotal row
+    // =========================================================
+    const vehicleJobRows = [
+      ['HIRE-TO-PAY — VEHICLE JOB SUMMARY'],
+      [`Date Range: ${formatDateRangeLabel(startDate, endDate)}`],
+      [`Generated: ${new Date().toLocaleString('en-US')}`],
+      [],
+    ];
+
+    // Group hire records by vehicle_id
+    const vehicleGroups = {};
+    (hireRecords || []).forEach(r => {
+      const vid    = r.vehicle_id || 'unknown';
+      const vLabel = r.hire_to_pay_vehicles?.lorry_number || 'Unknown Vehicle';
+      const vOwn   = r.hire_to_pay_vehicles?.ownership    || '';
+      if (!vehicleGroups[vid]) {
+        vehicleGroups[vid] = { label: vLabel, ownership: vOwn, jobs: [] };
+      }
+      vehicleGroups[vid].jobs.push(r);
+    });
+
+    const jobHeader = [
+      'Job No', 'Date', 'From', 'To',
+      'Distance (km)', 'Fuel (L)', 'Fuel Price/L', 'Fuel Cost (LKR)',
+      'Waiting Hrs', 'Waiting Charge (LKR)',
+      'Loading', 'Other Charges (LKR)', 'Hire Amount (LKR)',
+    ];
+
+    let grandHireTotal      = 0;
+    let grandFuelCostTotal  = 0;
+    let grandWaitTotal      = 0;
+    let grandOtherTotal     = 0;
+    let grandNetTotal       = 0;
+
+    Object.values(vehicleGroups).forEach(vg => {
+      // Vehicle header block
+      vehicleJobRows.push([
+        `🚚 Vehicle: ${vg.label}`,
+        `Ownership: ${vg.ownership}`,
+        '', '', '', '', '', '', '', '', '', '', '',
+      ]);
+      vehicleJobRows.push(jobHeader);
+
+      let vHireTotal     = 0;
+      let vFuelTotal     = 0;
+      let vWaitTotal     = 0;
+      let vOtherTotal    = 0;
+      let vDistTotal     = 0;
+
+      vg.jobs.forEach(r => {
+        const hireAmt  = r.hire_amount   || 0;
+        const fuelCost = r.fuel_cost     || 0;
+        const waitChg  = r.waiting_charge|| 0;
+        const otherChg = r.other_charges || 0;
+        const dist     = r.distance      || 0;
+
+        vHireTotal  += hireAmt;
+        vFuelTotal  += fuelCost;
+        vWaitTotal  += waitChg;
+        vOtherTotal += otherChg;
+        vDistTotal  += dist;
+
+        vehicleJobRows.push([
+          r.job_number           || '',
+          r.hire_date            || '',
+          r.from_location        || '',
+          r.to_location          || '',
+          +dist.toFixed(2),
+          r.fuel_litres          || 0,
+          r.fuel_price_per_litre || 0,
+          +fuelCost.toFixed(2),
+          r.waiting_hours        || 0,
+          +waitChg.toFixed(2),
+          r.loading_applied ? 'Yes' : 'No',
+          +otherChg.toFixed(2),
+          +hireAmt.toFixed(2),
+        ]);
+      });
+
+      // Vehicle subtotal row
+      const vNet = vHireTotal - vFuelTotal;
+      vehicleJobRows.push([
+        `SUBTOTAL — ${vg.label} (${vg.jobs.length} job${vg.jobs.length !== 1 ? 's' : ''})`,
+        '', '', '',
+        +vDistTotal.toFixed(2),
+        '', '',
+        +vFuelTotal.toFixed(2),
+        '',
+        +vWaitTotal.toFixed(2),
+        '',
+        +vOtherTotal.toFixed(2),
+        +vHireTotal.toFixed(2),
+      ]);
+      vehicleJobRows.push([
+        `  Net Profit (Hire − Fuel): LKR ${vNet.toFixed(2)}`,
+        '', '', '', '', '', '', '', '', '', '', '', '',
+      ]);
+      vehicleJobRows.push([]); // spacer between vehicles
+
+      grandHireTotal     += vHireTotal;
+      grandFuelCostTotal += vFuelTotal;
+      grandWaitTotal     += vWaitTotal;
+      grandOtherTotal    += vOtherTotal;
+      grandNetTotal      += vNet;
+    });
+
+    // Grand total block
+    vehicleJobRows.push([
+      '══ GRAND TOTAL — ALL HIRE-TO-PAY VEHICLES ══',
+      '', '', '', '', '', '',
+      +grandFuelCostTotal.toFixed(2),
+      '',
+      +grandWaitTotal.toFixed(2),
+      '',
+      +grandOtherTotal.toFixed(2),
+      +grandHireTotal.toFixed(2),
+    ]);
+    vehicleJobRows.push([
+      `  Net Profit (Hire − Fuel): LKR ${grandNetTotal.toFixed(2)}`,
+      '', '', '', '', '', '', '', '', '', '', '', '',
+    ]);
+
+    const ws5 = XLSX.utils.aoa_to_sheet(vehicleJobRows);
+    ws5['!cols'] = [
+      { wch: 38 }, { wch: 12 }, { wch: 18 }, { wch: 18 },
+      { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 },
+      { wch: 12 }, { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 16 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws5, 'Hire Vehicle Job Summary');
 
     // 7. Download file
     const fileName = `JT_Revenue_${startDate}_to_${endDate}.xlsx`;
