@@ -1638,8 +1638,8 @@ async function loadDashboardData(monthValue) {
         totalFuelCost += commitmentFuelCost;
         totalHires += commitmentRecords?.length || 0;
 
-        // Calculate Fuel Allowance (11.25% of Fuel Cost) - Display only, not affecting profit
-        const fuelAllowance = totalFuelCost * 0.1125;
+        // Calculate Fuel Allowance (16.00% of Fuel Cost) - Display only, not affecting profit
+        const fuelAllowance = totalFuelCost * 0.1600;
 
         // Net Profit = Revenue - Fuel Cost ONLY (no maintenance, no fuel allowance)
         const netProfit = totalRevenue - totalFuelCost;
