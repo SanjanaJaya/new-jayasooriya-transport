@@ -1660,6 +1660,10 @@ async function loadDashboardData(monthValue) {
         // Profit (Revenue - Fuel Cost only)
         setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
 
+        // Total Credit Amount = Net Profit + Fuel Allowance
+        const totalCreditAmount = netProfit + fuelAllowance;
+        setText('totalCreditAmount', `LKR ${totalCreditAmount.toFixed(2)}`);
+
         // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
              await loadVehicleRevenueChart(monthValue);
