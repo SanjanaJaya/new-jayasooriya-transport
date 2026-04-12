@@ -45,19 +45,19 @@
                 </button>
                 <button class="nav-item" data-page="drivers">
                     <span class="nav-icon">👤</span>
-                    <span>Drivers</span>
+                    <span>Staff</span>
                 </button>
                 <button class="nav-item" data-page="driver-advances">
                     <span class="nav-icon">💵</span>
-                    <span>Driver Advances</span>
+                    <span>Staff Advances</span>
                 </button>
                 <button class="nav-item" data-page="driver-dayoffs">
                     <span class="nav-icon">⛔</span>
-                    <span>Driver Day Offs</span>
+                    <span>Staff Day Offs</span>
                 </button>
                 <button class="nav-item" data-page="driver-salary">
                     <span class="nav-icon">💼</span>
-                    <span>Driver Salary</span>
+                    <span>Staff Salary</span>
                 </button>
                 <button class="nav-item" data-page="hire-vehicles">
                     <span class="nav-icon">🚚</span>
@@ -266,7 +266,7 @@
                     </div>
 
                     <div class="performance-section">
-                        <h3>🚚 Fleet & Driver Overview</h3>
+                        <h3>🚚 Fleet & Staff Overview</h3>
                         <div class="metrics-detailed">
                             <div class="detail-metric">
                                 <span class="detail-label">Total Vehicles</span>
@@ -281,7 +281,7 @@
                                 <span class="detail-value" id="commitmentVehicleCount">0</span>
                             </div>
                             <div class="detail-metric">
-                                <span class="detail-label">Total Drivers</span>
+                                <span class="detail-label">Total Staff</span>
                                 <span class="detail-value" id="totalDrivers">0</span>
                             </div>
                         </div>
@@ -350,16 +350,27 @@
 
                 <div id="drivers" class="page">
                     <div class="page-header">
-                        <h3>👤 Manage Drivers</h3>
-                        <button class="btn btn-primary" id="addDriverBtn">+ Add Driver</button>
+                        <h3>👤 Manage Staff</h3>
+                        <button class="btn btn-primary" id="addDriverBtn">+ Add Staff</button>
                     </div>
 
                     <div class="form-container" id="driverFormContainer" style="display:none;">
                         <form id="driverForm">
                             <div class="form-row">
                                 <input type="hidden" id="driverId">
-                                <input type="text" id="driverName" placeholder="Driver Name" required>
+                                <input type="text" id="driverName" placeholder="Staff Name" required>
                                 <input type="tel" id="driverContact" placeholder="Contact Number" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="driverRole" style="font-size:12px;color:#666;">Role</label>
+                                    <select id="driverRole" required>
+                                        <option value="">Select Role</option>
+                                        <option value="Driver">Driver</option>
+                                        <option value="Helper">Helper</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <input type="text" id="driverLicense" placeholder="License Number" required>
@@ -396,6 +407,7 @@
                             <thead>
                                 <tr>
                                     <th>Photo</th> <th>Name</th>
+                                    <th>Role</th>
                                     <th>Contact</th>
                                     <th>License</th>
                                     <th>Age</th>
@@ -413,7 +425,7 @@
 
                 <div id="driver-advances" class="page">
                     <div class="page-header">
-                        <h3>💵 Driver Salary Advances</h3>
+                        <h3>💵 Staff Salary Advances</h3>
                         <button class="btn btn-primary" id="addAdvanceBtn">+ Add Advance</button>
                     </div>
 
@@ -461,7 +473,7 @@
                     </div>
 
                     <div class="performance-section">
-                        <h3>📊 Driver Advance Summary</h3>
+                        <h3>📊 Staff Advance Summary</h3>
                         <div id="advanceSummary" class="advance-summary-grid">
                         </div>
                     </div>
@@ -498,7 +510,7 @@
 
                 <div id="driver-dayoffs" class="page">
                     <div class="page-header">
-                        <h3>⛔ Driver Day Offs</h3>
+                        <h3>⛔ Staff Day Offs</h3>
                         <button class="btn btn-primary" id="addDriverDayOffBtn">+ Add Day Off</button>
                     </div>
 
@@ -560,7 +572,7 @@
 
                 <div id="driver-salary" class="page">
                     <div class="page-header">
-                        <h3>💼 Driver Salary Calculator & Salary Slips</h3>
+                        <h3>💼 Staff Salary Calculator & Salary Slips</h3>
                     </div>
 
                     <div class="dashboard-controls">

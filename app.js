@@ -389,15 +389,15 @@ function switchPage(page) {
     
     const titles = {
         'dashboard': 'Dashboard',
-        'drivers': 'Manage Drivers',
-        'driver-advances': 'Driver Salary Advances',
-        'driver-salary': 'Driver Salary Calculator & Salary Slips', 
+        'drivers': 'Manage Staff',
+        'driver-advances': 'Staff Salary Advances',
+        'driver-salary': 'Staff Salary Calculator & Salary Slips', 
         'hire-vehicles': 'Hire-to-Pay Vehicles',
         'hire-records': 'Hire-to-Pay Records',
         'commitment-vehicles': 'Commitment Vehicles',
         'commitment-records': 'Commitment Vehicle Hires',
         'commitment-dayoffs': 'Day Offs',
-        'driver-dayoffs': 'Driver Day Offs',
+        'driver-dayoffs': 'Staff Day Offs',
         'lorry-maintenance': 'Lorry Maintenance',
     };
     
@@ -482,6 +482,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
+        role: document.getElementById('driverRole').value || null,
         basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
         km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
         extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
@@ -517,7 +518,7 @@ async function loadDrivers() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-             tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No drivers found</td></tr>';
+             tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
              return;
         }
 
@@ -541,6 +542,7 @@ async function loadDrivers() {
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${driver.name}</td>
+                <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number}</td>
                 <td>${driver.age}</td>
@@ -571,6 +573,7 @@ async function editDriver(id) {
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';
+        document.getElementById('driverRole').value = data.role || '';
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
@@ -1726,7 +1729,9 @@ async function loadVehiclePerformance(monthValue) {
                     totalRevenue,
                     totalFuel,
                     profit,
-                    recordsCount: records.length
+                    recordsCount: records.length,
+                    kmLimit: null,
+                    commitmentKmPct: null
                 });
             }
         }
@@ -1770,6 +1775,9 @@ async function loadVehiclePerformance(monthValue) {
                     const profit = totalRevenue - totalFuel;
                     const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
+                    const kmLimit = vehicle.km_limit_per_month || 0;
+                    const commitmentKmPct = kmLimit > 0 ? Math.min((totalKm / kmLimit) * 100, 100) : null;
+
                     vehiclesWithData.push({
                         type: 'Commitment',
                         number: vehicle.vehicle_number,
@@ -1779,7 +1787,9 @@ async function loadVehiclePerformance(monthValue) {
                         totalRevenue,
                         totalFuel,
                         profit,
-                        recordsCount: records.length
+                        recordsCount: records.length,
+                        kmLimit,
+                        commitmentKmPct
                     });
                 }
             }
@@ -1811,6 +1821,7 @@ async function loadVehiclePerformance(monthValue) {
                                 <th>Model</th>
                                 <th>Ownership</th>
                                 <th style="text-align: right;">Total KM</th>
+                                <th style="text-align: center;">KM Progress</th>
                                 <th style="text-align: center;">Hires</th>
                                 <th style="text-align: right;">Total Revenue</th>
                                 <th style="text-align: right;">Fuel Cost</th>
@@ -1832,6 +1843,16 @@ async function loadVehiclePerformance(monthValue) {
                         <td>${vehicle.model}</td>
                         <td>${vehicle.ownership}</td>
                         <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                        <td style="min-width:140px;">
+                            ${vehicle.type === 'Commitment' && vehicle.commitmentKmPct !== null ? `
+                                <div style="font-size:11px;color:#7f8c8d;margin-bottom:3px;text-align:center;">
+                                    ${vehicle.totalKm.toFixed(0)} / ${vehicle.kmLimit} km (${vehicle.commitmentKmPct.toFixed(0)}%)
+                                </div>
+                                <div style="background:#e0e0e0;border-radius:6px;height:10px;overflow:hidden;">
+                                    <div style="width:${vehicle.commitmentKmPct}%;height:100%;border-radius:6px;background:${vehicle.commitmentKmPct >= 100 ? '#E74C3C' : vehicle.commitmentKmPct >= 75 ? '#F39C12' : '#27AE60'};transition:width 0.4s;"></div>
+                                </div>
+                            ` : '<span style="color:#bdc3c7;font-size:11px;">—</span>'}
+                        </td>
                         <td style="text-align: center;">
                             <span style="background: #3498db; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                 ${vehicle.recordsCount}
@@ -2803,7 +2824,7 @@ async function loadAdvanceSummary() {
                 : drivers;
 
             if (driversToDisplay.length === 0) {
-                 summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; width: 100%;">No drivers match the filter.</p>';
+                 summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; width: 100%;">No staff match the filter.</p>';
                  return;
             }
 
@@ -2825,7 +2846,7 @@ async function loadAdvanceSummary() {
                 summaryEl.appendChild(card);
             });
         } else {
-            summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No drivers found. Add drivers first.</p>';
+            summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No staff found. Add staff first.</p>';
         }
     } catch (error) {
         console.error('Error loading advance summary:', error.message);
@@ -2843,7 +2864,7 @@ async function updateAdvanceDriverSelectors() {
         const filterSelect = document.getElementById('advanceDriverFilter');
 
         if (advanceDriverSelect) {
-            advanceDriverSelect.innerHTML = '<option value="">Select Driver</option>';
+            advanceDriverSelect.innerHTML = '<option value="">Select Staff</option>';
             drivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
@@ -2854,7 +2875,7 @@ async function updateAdvanceDriverSelectors() {
 
         if (filterSelect) {
             const currentValue = filterSelect.value;
-            filterSelect.innerHTML = '<option value="">All Drivers</option>';
+            filterSelect.innerHTML = '<option value="">All Staff</option>';
             drivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
@@ -3367,7 +3388,7 @@ async function updateDriverDayOffSelectors() {
         // Update Filter (preserve selection)
         if (filterSelect) {
             const currentFilter = filterSelect.value;
-            filterSelect.innerHTML = '<option value="">All Drivers</option>';
+            filterSelect.innerHTML = '<option value="">All Staff</option>';
             drivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
@@ -3379,7 +3400,7 @@ async function updateDriverDayOffSelectors() {
 
         // Update Form Select (only if form is closed or we want fresh list)
         if (formSelect && formSelect.options.length <= 1) {
-            formSelect.innerHTML = '<option value="">Select Driver</option>';
+            formSelect.innerHTML = '<option value="">Select Staff</option>';
             drivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
