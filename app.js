@@ -323,6 +323,18 @@ function setDefaultMonths() {
     });
 }
 
+// FIXED: Helper to guarantee a month input has the current month value
+// Needed because display:none pages block value assignment in some browsers
+function ensureMonthValue(elementId) {
+    const el = document.getElementById(elementId);
+    if (el && !el.value) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        el.value = `${year}-${month}`;
+    }
+}
+
 // ============ HAMBURGER MENU ============
 let hamburger = null;
 let sidebar = null;
@@ -418,8 +430,8 @@ function switchPage(page) {
     if (page === 'commitment-vehicles') loadCommitmentVehicles();
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
-    if (page === 'driver-dayoffs') loadDriverDayOffs();
-    if (page === 'lorry-maintenance') loadMaintenanceRecords();
+    if (page === 'driver-dayoffs') { ensureMonthValue('driverDayOffMonth'); loadDriverDayOffs(); }
+    if (page === 'lorry-maintenance') { ensureMonthValue('maintenanceMonth'); loadMaintenanceRecords(); }
 
 }
 
@@ -1269,6 +1281,15 @@ async function loadCommitmentRecords() {
 
         const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
+
+        // FIXED: Sort by job_number alphabetically (numeric-aware)
+        if (data) {
+            data.sort((a, b) => {
+                const ja = (a.job_number || '').toString().toLowerCase();
+                const jb = (b.job_number || '').toString().toLowerCase();
+                return ja.localeCompare(jb, undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
 
         const tbody = document.querySelector('#commitmentRecordsTable tbody');
         if (!tbody) return;
