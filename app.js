@@ -1625,18 +1625,20 @@ async function loadDashboardData(monthValue) {
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
-        let totalDistance = 0; // NEW
+        let totalDistance = 0;
+        let totalFuelLitres = 0;
 
         // Set to track unique active vehicles (using string key "type_id" to prevent ID collision)
-        const activeVehiclesSet = new Set(); // NEW
+        const activeVehiclesSet = new Set();
 
         // Process Hire Records
         hireRecords?.forEach(record => {
             totalRevenue += record.hire_amount || 0;
             totalFuelCost += record.fuel_cost || 0;
-            totalDistance += record.distance || 0; // Add distance
+            totalDistance += record.distance || 0;
+            totalFuelLitres += record.fuel_litres || 0;
             totalHires++;
-            if(record.vehicle_id) activeVehiclesSet.add(`hire_${record.vehicle_id}`); // Track active vehicle
+            if(record.vehicle_id) activeVehiclesSet.add(`hire_${record.vehicle_id}`);
         });
 
         // Calculate Commitment Financials
@@ -1651,8 +1653,9 @@ async function loadDashboardData(monthValue) {
 
         // Process Commitment Records for Distance & Activity
         commitmentRecords?.forEach(record => {
-             totalDistance += record.distance || 0; // Add distance
-             if(record.vehicle_id) activeVehiclesSet.add(`commit_${record.vehicle_id}`); // Track active vehicle
+             totalDistance += record.distance || 0;
+             totalFuelLitres += record.fuel_litres || 0;
+             if(record.vehicle_id) activeVehiclesSet.add(`commit_${record.vehicle_id}`);
         });
 
        
@@ -1679,6 +1682,7 @@ async function loadDashboardData(monthValue) {
         // NEW UI UPDATES
         setText('activeLorries', activeVehiclesSet.size);
         setText('totalDistance', `${totalDistance.toLocaleString()} km`);
+        setText('totalDieselLitres', `${totalFuelLitres.toFixed(0)} L`);
 
         // Profit (Revenue - Fuel Cost only)
         setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
@@ -1737,6 +1741,7 @@ async function loadVehiclePerformance(monthValue) {
                 const totalKm = records.reduce((sum, r) => sum + r.distance, 0);
                 const totalRevenue = records.reduce((sum, r) => sum + r.hire_amount, 0);
                 const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0);
+                const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
                 const profit = totalRevenue - totalFuel;
                 const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
@@ -1748,6 +1753,7 @@ async function loadVehiclePerformance(monthValue) {
                     totalKm,
                     totalRevenue,
                     totalFuel,
+                    totalFuelLitres,
                     profit,
                     recordsCount: records.length,
                     kmLimit: null,
@@ -1792,6 +1798,7 @@ async function loadVehiclePerformance(monthValue) {
                     const extraKmCharges = records.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
                     const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
                     const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+                    const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
                     const profit = totalRevenue - totalFuel;
                     const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
@@ -1806,6 +1813,7 @@ async function loadVehiclePerformance(monthValue) {
                         totalKm,
                         totalRevenue,
                         totalFuel,
+                        totalFuelLitres,
                         profit,
                         recordsCount: records.length,
                         kmLimit,
@@ -1845,6 +1853,7 @@ async function loadVehiclePerformance(monthValue) {
                                 <th style="text-align: center;">Hires</th>
                                 <th style="text-align: right;">Total Revenue</th>
                                 <th style="text-align: right;">Fuel Cost</th>
+                                <th style="text-align: right;">Fuel Litres</th>
                                 <th style="text-align: right;">Profit</th>
                             </tr>
                         </thead>
@@ -1880,6 +1889,7 @@ async function loadVehiclePerformance(monthValue) {
                         </td>
                         <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
                         <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                        <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
                         <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
                             LKR ${vehicle.profit.toFixed(2)}
                         </td>
@@ -1971,9 +1981,11 @@ async function loadDashboardCharts() {
         const months = [];
         const revenues = [];
         const profits = [];
+        const creditAmounts = [];
         const fuelCosts = [];
         let totalRevenue6M = 0;
         let totalProfit6M = 0;
+        let totalCreditAmount6M = 0;
         let totalHires6M = 0;
 
         for (let i = 5; i >= 0; i--) {
@@ -2042,22 +2054,27 @@ async function loadDashboardCharts() {
             monthFuelCost += commitmentFuelCost;
 
             const monthProfit = monthRevenue - monthFuelCost;
+            const monthFuelAllowance = monthFuelCost * 0.1600;
+            const monthCreditAmount = monthProfit + monthFuelAllowance;
 
             months.push(monthLabel);
             revenues.push(monthRevenue);
             profits.push(monthProfit);
+            creditAmounts.push(monthCreditAmount);
             fuelCosts.push(monthFuelCost);
             totalRevenue6M += monthRevenue;
             totalProfit6M += monthProfit;
+            totalCreditAmount6M += monthCreditAmount;
             totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0);
         }
 
         const avgRevenue = totalRevenue6M / 6;
         const avgProfit = totalProfit6M / 6;
+        const avgCreditAmount = totalCreditAmount6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
 
         document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toFixed(2)}`;
-        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toFixed(2)}`;
+        document.getElementById('avgProfit').textContent = `LKR ${avgCreditAmount.toFixed(2)}`;
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
 
@@ -2111,8 +2128,8 @@ async function loadDashboardCharts() {
                 data: {
                     labels: months,
                     datasets: [{
-                        label: 'Monthly Profit',
-                        data: profits,
+                        label: 'Monthly Total Credit Amount',
+                        data: creditAmounts,
                         borderColor: '#27AE60',
                         backgroundColor: 'rgba(39, 174, 96, 0.1)',
                         borderWidth: 3,
@@ -2129,7 +2146,12 @@ async function loadDashboardCharts() {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
-                        legend: { display: true, position: 'top' }
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `LKR ${Math.round(ctx.parsed.y).toLocaleString()}`
+                            }
+                        }
                     },
                     scales: {
                         y: {
