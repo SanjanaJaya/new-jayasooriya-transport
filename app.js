@@ -1216,16 +1216,20 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
 
         const { data: existingRecords } = await query;
 
-        let totalMonthlyKm = distance;
-        if (existingRecords) {
-            totalMonthlyKm += existingRecords.reduce((sum, r) => sum + r.distance, 0);
-        }
+        // KM already accumulated BEFORE this hire (excluding current record)
+        const previousKm = existingRecords
+            ? existingRecords.reduce((sum, r) => sum + r.distance, 0)
+            : 0;
+        const totalMonthlyKm = previousKm + distance;
+        const kmLimit = vehicleData.km_limit_per_month;
 
-        let extraKmCharge = 0;
-        if (totalMonthlyKm > vehicleData.km_limit_per_month) {
-            const extraKm = totalMonthlyKm - vehicleData.km_limit_per_month;
-            extraKmCharge = extraKm * vehicleData.extra_km_charge;
-        }
+        // Extra KM charged in previous records (before this hire)
+        const previousExtraKm = Math.max(0, previousKm - kmLimit);
+        // Total extra KM after adding this hire
+        const totalExtraKm = Math.max(0, totalMonthlyKm - kmLimit);
+        // This hire's incremental extra KM = only the NEW extra km this hire introduced
+        const thisHireExtraKm = totalExtraKm - previousExtraKm;
+        const extraKmCharge = thisHireExtraKm * vehicleData.extra_km_charge;
 
         const totalExtraCharges = extraChargesInput + extraKmCharge;
 
@@ -1295,29 +1299,24 @@ async function loadCommitmentRecords() {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        const vehicleGroups = {};
-        if (monthValue) {
-            data.forEach(record => {
-                if (!vehicleGroups[record.vehicle_id]) {
-                    vehicleGroups[record.vehicle_id] = [];
-                }
-                vehicleGroups[record.vehicle_id].push(record);
-            });
-        }
+        // Track running KM totals per vehicle for display (cumulative up to each row)
+        const vehicleRunningKm = {};
 
         data.forEach(record => {
             const row = document.createElement('tr');
-            
-            let totalMonthlyKm = record.distance;
-            let extraKmCharge = 0;
-            
-            if (vehicleGroups[record.vehicle_id]) {
-                totalMonthlyKm = vehicleGroups[record.vehicle_id].reduce((sum, r) => sum + r.distance, 0);
-                if (totalMonthlyKm > record.commitment_vehicles.km_limit_per_month) {
-                    const extraKm = totalMonthlyKm - record.commitment_vehicles.km_limit_per_month;
-                    extraKmCharge = extraKm * record.commitment_vehicles.extra_km_charge;
-                }
-            }
+            const kmLimit = record.commitment_vehicles.km_limit_per_month;
+            const vid = record.vehicle_id;
+
+            // Running cumulative KM up to and including this record
+            if (!vehicleRunningKm[vid]) vehicleRunningKm[vid] = 0;
+            const kmBefore = vehicleRunningKm[vid];
+            vehicleRunningKm[vid] += record.distance;
+            const kmAfter = vehicleRunningKm[vid];
+
+            // Extra KM introduced specifically by this hire
+            const extraKmBefore = Math.max(0, kmBefore - kmLimit);
+            const extraKmAfter = Math.max(0, kmAfter - kmLimit);
+            const thisHireExtraKm = extraKmAfter - extraKmBefore;
 
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
@@ -1334,7 +1333,7 @@ async function loadCommitmentRecords() {
                 <td>${record.to_location}</td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
-                <td><small>Monthly KM: ${totalMonthlyKm} / ${record.commitment_vehicles.km_limit_per_month}<br>Extra KM: ${(totalMonthlyKm > record.commitment_vehicles.km_limit_per_month ? totalMonthlyKm - record.commitment_vehicles.km_limit_per_month : 0).toFixed(2)}<br>Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small></td>
+                <td><small>Running KM: ${kmAfter} / ${kmLimit}<br>Extra KM (this hire): ${thisHireExtraKm.toFixed(2)}<br>Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small></td>
                 ${actionButtons}
             `;
             tbody.appendChild(row);
