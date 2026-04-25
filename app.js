@@ -498,6 +498,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
         km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
         extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
+        terminated: document.getElementById('driverTerminated') ? document.getElementById('driverTerminated').checked : false,
         user_id: adminUserId
     };
 
@@ -534,26 +535,24 @@ async function loadDrivers() {
              return;
         }
 
-        data.forEach(driver => {
-            const row = document.createElement('tr');
+        const activeDrivers = data.filter(d => !d.terminated);
+        const terminatedDrivers = data.filter(d => d.terminated);
+
+        function buildDriverRow(driver) {
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editDriver(${driver.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
                 </td>
             `;
-
             const photoHTML = driver.photo_url ? 
-                `<img src="${driver.photo_url}" 
-                      alt="${driver.name}" 
-                      class="profile-photo" 
-                      onclick="openPhotoLightbox('${driver.photo_url}')"
-                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` : 
+                `<img src="${driver.photo_url}" alt="${driver.name}" class="profile-photo" onclick="openPhotoLightbox('${driver.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` : 
                 `<div class="no-photo">📷</div>`;
-
+            const row = document.createElement('tr');
+            if (driver.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
             row.innerHTML = `
                 <td>${photoHTML}</td>
-                <td>${driver.name}</td>
+                <td>${driver.name}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}</td>
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number}</td>
@@ -564,11 +563,40 @@ async function loadDrivers() {
                 <td>${driver.extra_km_rate ? 'LKR ' + driver.extra_km_rate.toFixed(2) : '-'}</td>
                 ${actionButtons}
             `;
-            tbody.appendChild(row);
-        });
+            return row;
+        }
+
+        activeDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
+
+        if (terminatedDrivers.length > 0) {
+            const colSpan = userRole === 'viewer' ? 10 : 11;
+            const archiveToggleRow = document.createElement('tr');
+            archiveToggleRow.innerHTML = `
+                <td colspan="${colSpan}" onclick="toggleDriverArchive()">
+                    <span id="driverArchiveIcon">▶</span>
+                    📦 Archived / Terminated Staff
+                    <span class="archive-badge">🔒 ${terminatedDrivers.length}</span>
+                </td>`;
+            tbody.appendChild(archiveToggleRow);
+
+            terminatedDrivers.forEach(driver => {
+                const row = buildDriverRow(driver);
+                row.classList.add('driver-archive-row');
+                row.style.display = 'none';
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Error loading drivers:', error.message);
     }
+}
+
+function toggleDriverArchive() {
+    const rows = document.querySelectorAll('.driver-archive-row');
+    const icon = document.getElementById('driverArchiveIcon');
+    const isHidden = rows.length > 0 && rows[0].style.display === 'none';
+    rows.forEach(r => r.style.display = isHidden ? '' : 'none');
+    if (icon) icon.classList.toggle('open', isHidden);
 }
 
 // Edit Driver
@@ -589,6 +617,9 @@ async function editDriver(id) {
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
+        if (document.getElementById('driverTerminated')) {
+            document.getElementById('driverTerminated').checked = data.terminated || false;
+        }
         document.getElementById('driverFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -660,6 +691,39 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
     }
 });
 
+function buildHireVehicleRow(vehicle) {
+    const actionButtons = userRole === 'viewer' ? '' : `
+        <td class="action-buttons">
+            <button class="btn btn-edit" onclick="editHireVehicle(${vehicle.id})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteHireVehicle(${vehicle.id})">Delete</button>
+        </td>
+    `;
+    const photoHTML = vehicle.photo_url ?
+        `<img src="${vehicle.photo_url}" alt="${vehicle.lorry_number}" class="vehicle-photo" onclick="openPhotoLightbox('${vehicle.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚚</div>';">` :
+        `<div class="no-vehicle-photo">🚚</div>`;
+    const statusBadge = vehicle.terminated
+        ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
+        : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
+    const row = document.createElement('tr');
+    if (vehicle.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
+    row.innerHTML = `
+        <td>${photoHTML}</td>
+        <td>${vehicle.lorry_number}<br>${statusBadge}</td>
+        <td>${vehicle.vehicle_model || '-'}</td>
+        <td>${vehicle.length}</td>
+        <td>LKR ${vehicle.price_0_100km}</td>
+        <td>LKR ${vehicle.price_100_250km}</td>
+        <td>LKR ${vehicle.price_250km_plus}</td>
+        <td>LKR ${vehicle.loading_charge}</td>
+        <td>LKR ${vehicle.waiting_charge_24hrs}</td>
+        <td>LKR ${vehicle.waiting_charge_extra}</td>
+        <td>LKR ${vehicle.minimum_hire_amount}</td>
+        <td>${vehicle.ownership}</td>
+        ${actionButtons}
+    `;
+    return row;
+}
+
 async function loadHireVehicles() {
     try {
         const { data, error } = await supabaseClient
@@ -679,56 +743,45 @@ async function loadHireVehicles() {
             return;
         }
 
-        data.forEach(vehicle => {
-            const row = document.createElement('tr');
-            
-            // Add visual styling for terminated vehicles
-            if (vehicle.terminated) {
-                row.style.backgroundColor = '#FADBD8';
-                row.style.opacity = '0.7';
-            }
+        const activeVehicles = data.filter(v => !v.terminated);
+        const terminatedVehicles = data.filter(v => v.terminated);
 
-            const actionButtons = userRole === 'viewer' ? '' : `
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editHireVehicle(${vehicle.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteHireVehicle(${vehicle.id})">Delete</button>
-                </td>
-            `;
+        // Render active vehicles first
+        activeVehicles.forEach(vehicle => tbody.appendChild(buildHireVehicleRow(vehicle)));
 
-            const photoHTML = vehicle.photo_url ? 
-                `<img src="${vehicle.photo_url}" 
-                      alt="${vehicle.lorry_number}" 
-                      class="vehicle-photo" 
-                      onclick="openPhotoLightbox('${vehicle.photo_url}')"
-                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚚</div>';">` : 
-                `<div class="no-vehicle-photo">🚚</div>`;
+        // Render terminated vehicles as collapsible archive
+        if (terminatedVehicles.length > 0) {
+            const colSpan = userRole === 'viewer' ? 12 : 13;
+            const archiveToggleRow = document.createElement('tr');
+            archiveToggleRow.id = 'hireArchiveToggleRow';
+            archiveToggleRow.innerHTML = `
+                <td colspan="${colSpan}" onclick="toggleHireArchive()">
+                    <span id="hireArchiveIcon">▶</span>
+                    📦 Archived / Terminated Vehicles
+                    <span class="archive-badge">🔒 ${terminatedVehicles.length}</span>
+                </td>`;
+            tbody.appendChild(archiveToggleRow);
 
-            const statusBadge = vehicle.terminated
-                ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
-                : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
-
-            row.innerHTML = `
-                <td>${photoHTML}</td>
-                <td>${vehicle.lorry_number}<br>${statusBadge}</td>
-                <td>${vehicle.vehicle_model || '-'}</td>
-                <td>${vehicle.length}</td>
-                <td>LKR ${vehicle.price_0_100km}</td>
-                <td>LKR ${vehicle.price_100_250km}</td>
-                <td>LKR ${vehicle.price_250km_plus}</td>
-                <td>LKR ${vehicle.loading_charge}</td>
-                <td>LKR ${vehicle.waiting_charge_24hrs}</td>
-                <td>LKR ${vehicle.waiting_charge_extra}</td>
-                <td>LKR ${vehicle.minimum_hire_amount}</td>
-                <td>${vehicle.ownership}</td>
-                ${actionButtons}
-            `;
-            tbody.appendChild(row);
-        });
+            terminatedVehicles.forEach(vehicle => {
+                const row = buildHireVehicleRow(vehicle);
+                row.classList.add('hire-archive-row');
+                row.style.display = 'none';
+                tbody.appendChild(row);
+            });
+        }
         
         updateVehicleSelectors();
     } catch (error) {
         console.error('Error loading vehicles:', error.message);
     }
+}
+
+function toggleHireArchive() {
+    const rows = document.querySelectorAll('.hire-archive-row');
+    const icon = document.getElementById('hireArchiveIcon');
+    const isHidden = rows.length > 0 && rows[0].style.display === 'none';
+    rows.forEach(r => r.style.display = isHidden ? '' : 'none');
+    if (icon) icon.classList.toggle('open', isHidden);
 }
 
 async function editHireVehicle(id) {
@@ -952,10 +1005,27 @@ async function loadHireRecords() {
 
 async function updateHireRecordVehicleFilter() {
     try {
+        const monthValue = document.getElementById('hireRecordsMonth')?.value;
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
-            .select('id, lorry_number, ownership')
+            .select('id, lorry_number, ownership, terminated')
             .eq('user_id', getQueryUserId());
+
+        // Get vehicle IDs that have hires in the selected month (for terminated check)
+        let vehicleIdsWithHires = new Set();
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            const { data: hiresInMonth } = await supabaseClient
+                .from('hire_to_pay_records')
+                .select('vehicle_id')
+                .eq('user_id', getQueryUserId())
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+            if (hiresInMonth) hiresInMonth.forEach(r => vehicleIdsWithHires.add(r.vehicle_id));
+        }
 
         const filterSelect = document.getElementById('hireRecordsVehicleFilter');
         if (!filterSelect) return;
@@ -964,9 +1034,11 @@ async function updateHireRecordVehicleFilter() {
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
         
         hireVehicles?.forEach(v => {
+            // Skip terminated vehicles that have no hires in the selected month
+            if (v.terminated && monthValue && !vehicleIdsWithHires.has(v.id)) return;
             const option = document.createElement('option');
             option.value = v.id;
-            option.textContent = `${v.lorry_number} (${v.ownership})`;
+            option.textContent = `${v.lorry_number} (${v.ownership})${v.terminated ? ' [Terminated]' : ''}`;
             filterSelect.appendChild(option);
         });
 
@@ -1061,6 +1133,35 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     }
 });
 
+function buildCommitmentVehicleRow(vehicle) {
+    const actionButtons = userRole === 'viewer' ? '' : `
+        <td class="action-buttons">
+            <button class="btn btn-edit" onclick="editCommitmentVehicle(${vehicle.id})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteCommitmentVehicle(${vehicle.id})">Delete</button>
+        </td>
+    `;
+    const photoHTML = vehicle.photo_url ?
+        `<img src="${vehicle.photo_url}" alt="${vehicle.vehicle_number}" class="vehicle-photo" onclick="openPhotoLightbox('${vehicle.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚛</div>';">` :
+        `<div class="no-vehicle-photo">🚛</div>`;
+    const statusBadge = vehicle.terminated
+        ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
+        : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
+    const row = document.createElement('tr');
+    if (vehicle.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
+    row.innerHTML = `
+        <td>${photoHTML}</td>
+        <td>${vehicle.vehicle_number}<br>${statusBadge}</td>
+        <td>${vehicle.vehicle_model || '-'}</td>
+        <td>LKR ${vehicle.fixed_monthly_payment}</td>
+        <td>${vehicle.km_limit_per_month} km</td>
+        <td>LKR ${vehicle.extra_km_charge}/km</td>
+        <td>LKR ${vehicle.loading_charge}</td>
+        <td>${vehicle.ownership || '-'}</td>
+        ${actionButtons}
+    `;
+    return row;
+}
+
 async function loadCommitmentVehicles() {
     try {
         const { data, error } = await supabaseClient
@@ -1075,52 +1176,48 @@ async function loadCommitmentVehicles() {
         if (!tbody) return;
         tbody.innerHTML = '';
         
-        data.forEach(vehicle => {
-            const row = document.createElement('tr');
-            
-            // Add visual styling for terminated vehicles
-            if (vehicle.terminated) {
-                row.style.backgroundColor = '#FADBD8';
-                row.style.opacity = '0.7';
-            }
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            return;
+        }
 
-            const actionButtons = userRole === 'viewer' ? '' : `
-                <td class="action-buttons">
-                    <button class="btn btn-edit" onclick="editCommitmentVehicle(${vehicle.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteCommitmentVehicle(${vehicle.id})">Delete</button>
-                </td>
-            `;
+        const activeVehicles = data.filter(v => !v.terminated);
+        const terminatedVehicles = data.filter(v => v.terminated);
 
-            const photoHTML = vehicle.photo_url ? 
-                `<img src="${vehicle.photo_url}" 
-                      alt="${vehicle.vehicle_number}" 
-                      class="vehicle-photo" 
-                      onclick="openPhotoLightbox('${vehicle.photo_url}')"
-                      onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-vehicle-photo\\'>🚛</div>';">` : 
-                `<div class="no-vehicle-photo">🚛</div>`;
-            
-            const statusBadge = vehicle.terminated
-                ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
-                : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
+        activeVehicles.forEach(vehicle => tbody.appendChild(buildCommitmentVehicleRow(vehicle)));
 
-            row.innerHTML = `
-                <td>${photoHTML}</td>
-                <td>${vehicle.vehicle_number}<br>${statusBadge}</td>
-                <td>${vehicle.vehicle_model || '-'}</td>
-                <td>LKR ${vehicle.fixed_monthly_payment}</td>
-                <td>${vehicle.km_limit_per_month} km</td>
-                <td>LKR ${vehicle.extra_km_charge}/km</td>
-                <td>LKR ${vehicle.loading_charge}</td>
-                    <td>${vehicle.ownership || '-'}</td>
-                ${actionButtons}
-            `;
-            tbody.appendChild(row);
-        });
+        if (terminatedVehicles.length > 0) {
+            const colSpan = userRole === 'viewer' ? 8 : 9;
+            const archiveToggleRow = document.createElement('tr');
+            archiveToggleRow.id = 'commitmentArchiveToggleRow';
+            archiveToggleRow.innerHTML = `
+                <td colspan="${colSpan}" onclick="toggleCommitmentArchive()">
+                    <span id="commitmentArchiveIcon">▶</span>
+                    📦 Archived / Terminated Vehicles
+                    <span class="archive-badge">🔒 ${terminatedVehicles.length}</span>
+                </td>`;
+            tbody.appendChild(archiveToggleRow);
+
+            terminatedVehicles.forEach(vehicle => {
+                const row = buildCommitmentVehicleRow(vehicle);
+                row.classList.add('commitment-archive-row');
+                row.style.display = 'none';
+                tbody.appendChild(row);
+            });
+        }
         
         updateVehicleSelectors();
     } catch (error) {
         console.error('Error loading commitment vehicles:', error.message);
     }
+}
+
+function toggleCommitmentArchive() {
+    const rows = document.querySelectorAll('.commitment-archive-row');
+    const icon = document.getElementById('commitmentArchiveIcon');
+    const isHidden = rows.length > 0 && rows[0].style.display === 'none';
+    rows.forEach(r => r.style.display = isHidden ? '' : 'none');
+    if (icon) icon.classList.toggle('open', isHidden);
 }
 
 async function editCommitmentVehicle(id) {
@@ -1347,10 +1444,27 @@ async function loadCommitmentRecords() {
 
 async function updateCommitmentRecordVehicleFilter() {
     try {
+        const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
         const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
-            .select('id, vehicle_number')
+            .select('id, vehicle_number, terminated')
             .eq('user_id', getQueryUserId());
+
+        // Get vehicle IDs that have records in the selected month (for terminated check)
+        let vehicleIdsWithHires = new Set();
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            const { data: recordsInMonth } = await supabaseClient
+                .from('commitment_records')
+                .select('vehicle_id')
+                .eq('user_id', getQueryUserId())
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+            if (recordsInMonth) recordsInMonth.forEach(r => vehicleIdsWithHires.add(r.vehicle_id));
+        }
 
         const filterSelect = document.getElementById('commitmentRecordsVehicleFilter');
         if (!filterSelect) return;
@@ -1359,9 +1473,11 @@ async function updateCommitmentRecordVehicleFilter() {
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
         
         commitmentVehicles?.forEach(v => {
+            // Skip terminated vehicles that have no records in the selected month
+            if (v.terminated && monthValue && !vehicleIdsWithHires.has(v.id)) return;
             const option = document.createElement('option');
             option.value = v.id;
-            option.textContent = v.vehicle_number;
+            option.textContent = `${v.vehicle_number}${v.terminated ? ' [Terminated]' : ''}`;
             filterSelect.appendChild(option);
         });
 

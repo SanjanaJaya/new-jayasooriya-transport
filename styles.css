@@ -2467,3 +2467,164 @@ body.dark-mode .stat-card { background: var(--surface-raised); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--brand-red-light); }
+/* =====================================================
+   ARCHIVE / TERMINATED — BEAUTIFUL COLLAPSIBLE SECTION
+   ===================================================== */
+
+/* The toggle row that acts as the archive header */
+tr.archive-toggle-row,
+#hireArchiveToggleRow,
+#commitmentArchiveToggleRow {
+    cursor: pointer;
+    user-select: none;
+}
+
+tr.archive-toggle-row td,
+#hireArchiveToggleRow td,
+#commitmentArchiveToggleRow td {
+    background: linear-gradient(135deg, #f8f0f0 0%, #fdf5f5 100%) !important;
+    border-top: 2px dashed rgba(209, 0, 31, 0.25) !important;
+    border-bottom: 1px solid rgba(209, 0, 31, 0.12) !important;
+    padding: 14px 18px !important;
+    color: var(--text-secondary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px;
+    transition: background var(--ease-fast), color var(--ease-fast) !important;
+    position: relative;
+}
+
+tr.archive-toggle-row td:hover,
+#hireArchiveToggleRow td:hover,
+#commitmentArchiveToggleRow td:hover {
+    background: linear-gradient(135deg, #fdeaea 0%, #fdf0f0 100%) !important;
+    color: var(--brand-red) !important;
+}
+
+/* Archive icon (▶ / ▼) */
+#hireArchiveIcon,
+#commitmentArchiveIcon,
+#driverArchiveIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: rgba(209, 0, 31, 0.10);
+    border-radius: 50%;
+    font-size: 10px;
+    color: var(--brand-red);
+    margin-right: 2px;
+    transition: transform var(--ease-base), background var(--ease-fast);
+    vertical-align: middle;
+    font-style: normal;
+}
+
+/* Rotate icon when open */
+#hireArchiveIcon.open,
+#commitmentArchiveIcon.open,
+#driverArchiveIcon.open {
+    transform: rotate(90deg);
+    background: rgba(209, 0, 31, 0.18);
+}
+
+/* Archive pill badge */
+.archive-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(209, 0, 31, 0.10);
+    color: var(--brand-red);
+    border: 1px solid rgba(209, 0, 31, 0.20);
+    border-radius: var(--radius-pill);
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+
+/* Archive rows — fade in smoothly */
+.hire-archive-row,
+.commitment-archive-row,
+.driver-archive-row {
+    animation: archiveFadeIn 0.22s var(--ease-base) both;
+}
+
+@keyframes archiveFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Terminated row styling — softer than the old inline style */
+.hire-archive-row td,
+.commitment-archive-row td,
+.driver-archive-row td {
+    background: rgba(231, 76, 60, 0.05) !important;
+    opacity: 0.85;
+}
+
+/* =====================================================
+   DARK MODE — ARCHIVE
+   ===================================================== */
+body.dark-mode #hireArchiveToggleRow td,
+body.dark-mode #commitmentArchiveToggleRow td,
+body.dark-mode tr.archive-toggle-row td {
+    background: linear-gradient(135deg, rgba(255,32,64,0.06) 0%, rgba(255,32,64,0.03) 100%) !important;
+    border-top-color: rgba(255, 32, 64, 0.20) !important;
+    border-bottom-color: rgba(255, 32, 64, 0.10) !important;
+    color: var(--text-secondary) !important;
+}
+
+body.dark-mode #hireArchiveToggleRow td:hover,
+body.dark-mode #commitmentArchiveToggleRow td:hover,
+body.dark-mode tr.archive-toggle-row td:hover {
+    background: linear-gradient(135deg, rgba(255,32,64,0.12) 0%, rgba(255,32,64,0.06) 100%) !important;
+    color: var(--brand-red) !important;
+}
+
+body.dark-mode #hireArchiveIcon,
+body.dark-mode #commitmentArchiveIcon,
+body.dark-mode #driverArchiveIcon {
+    background: rgba(255, 32, 64, 0.14);
+    color: var(--brand-red);
+}
+
+body.dark-mode .archive-badge {
+    background: rgba(255, 32, 64, 0.12);
+    border-color: rgba(255, 32, 64, 0.25);
+    color: var(--brand-red);
+}
+
+body.dark-mode .hire-archive-row td,
+body.dark-mode .commitment-archive-row td,
+body.dark-mode .driver-archive-row td {
+    background: rgba(255, 32, 64, 0.06) !important;
+}
+
+/* =====================================================
+   MOBILE — ARCHIVE TOGGLE ROW
+   ===================================================== */
+@media (max-width: 768px) {
+    tr.archive-toggle-row td,
+    #hireArchiveToggleRow td,
+    #commitmentArchiveToggleRow td {
+        padding: 13px 14px !important;
+        font-size: 12px !important;
+    }
+
+    #hireArchiveIcon,
+    #commitmentArchiveIcon,
+    #driverArchiveIcon {
+        width: 20px;
+        height: 20px;
+        font-size: 9px;
+    }
+
+    .archive-badge {
+        padding: 2px 8px;
+        font-size: 10px;
+    }
+}
