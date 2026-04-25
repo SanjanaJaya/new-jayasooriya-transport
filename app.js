@@ -1285,51 +1285,13 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
     const distance = parseFloat(document.getElementById('commitmentDistance').value);
     const vehicleId = parseInt(document.getElementById('commitmentVehicleSelect').value);
     const hireDate = document.getElementById('commitmentDate').value;
-    const extraChargesInput = parseFloat(document.getElementById('commitmentExtraCharges').value) || 0;
+
+    // NOTE: Extra KM charges are NO LONGER calculated per-hire.
+    // They are calculated once at the vehicle+month level (total KMs vs km limit)
+    // in loadCommitmentRecords(), loadDashboardData(), etc.
+    // This avoids double-counting when editing past records.
 
     try {
-        const { data: vehicleData, error: vehicleError } = await supabaseClient
-            .from('commitment_vehicles')
-            .select('*')
-            .eq('id', vehicleId)
-            .single();
-        
-        if (vehicleError) throw vehicleError;
-
-        const [year, month] = hireDate.split('-');
-        const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-
-        let query = supabaseClient
-            .from('commitment_records')
-            .select('distance')
-            .eq('vehicle_id', vehicleId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-        
-        if (id) {
-            query = query.neq('id', id);
-        }
-
-        const { data: existingRecords } = await query;
-
-        // KM already accumulated BEFORE this hire (excluding current record)
-        const previousKm = existingRecords
-            ? existingRecords.reduce((sum, r) => sum + r.distance, 0)
-            : 0;
-        const totalMonthlyKm = previousKm + distance;
-        const kmLimit = vehicleData.km_limit_per_month;
-
-        // Extra KM charged in previous records (before this hire)
-        const previousExtraKm = Math.max(0, previousKm - kmLimit);
-        // Total extra KM after adding this hire
-        const totalExtraKm = Math.max(0, totalMonthlyKm - kmLimit);
-        // This hire's incremental extra KM = only the NEW extra km this hire introduced
-        const thisHireExtraKm = totalExtraKm - previousExtraKm;
-        const extraKmCharge = thisHireExtraKm * vehicleData.extra_km_charge;
-
-        const totalExtraCharges = extraChargesInput + extraKmCharge;
-
         const recordData = {
             job_number: document.getElementById('commitmentJobNumber').value,
             hire_date: hireDate,
@@ -1340,7 +1302,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             fuel_litres: fuelLitres,
             fuel_price_per_litre: fuelPrice,
             fuel_cost: fuelCost,
-            extra_charges: totalExtraCharges,
+            extra_charges: 0,  // deprecated field — kept for DB compatibility, always 0
             user_id: adminUserId
         };
 
@@ -1370,7 +1332,6 @@ async function loadCommitmentRecords() {
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
-            // FIXED:
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${month}-${lastDay}`;
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
@@ -1383,7 +1344,7 @@ async function loadCommitmentRecords() {
         const { data, error } = await query.order('hire_date', { ascending: true });
         if (error) throw error;
 
-        // FIXED: Sort by job_number alphabetically (numeric-aware)
+        // Sort by job_number alphabetically (numeric-aware)
         if (data) {
             data.sort((a, b) => {
                 const ja = (a.job_number || '').toString().toLowerCase();
@@ -1396,7 +1357,28 @@ async function loadCommitmentRecords() {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        // Track running KM totals per vehicle for display (cumulative up to each row)
+        // FIXED: Calculate total KMs per vehicle for the WHOLE month first,
+        // then compute one monthly extra km charge per vehicle.
+        // Never calculate extra km charge hire-by-hire — it causes doubling on edit.
+        const vehicleTotalKm = {};
+        data.forEach(record => {
+            const vid = record.vehicle_id;
+            vehicleTotalKm[vid] = (vehicleTotalKm[vid] || 0) + record.distance;
+        });
+
+        // Compute monthly extra km charge per vehicle (calculated once, not per hire)
+        const vehicleMonthlyExtraKmCharge = {};
+        data.forEach(record => {
+            const vid = record.vehicle_id;
+            if (vehicleMonthlyExtraKmCharge[vid] === undefined) {
+                const kmLimit = record.commitment_vehicles.km_limit_per_month;
+                const totalKm = vehicleTotalKm[vid];
+                const exceedingKm = Math.max(0, totalKm - kmLimit);
+                vehicleMonthlyExtraKmCharge[vid] = exceedingKm * record.commitment_vehicles.extra_km_charge;
+            }
+        });
+
+        // Track running KM totals per vehicle for display
         const vehicleRunningKm = {};
 
         data.forEach(record => {
@@ -1404,16 +1386,13 @@ async function loadCommitmentRecords() {
             const kmLimit = record.commitment_vehicles.km_limit_per_month;
             const vid = record.vehicle_id;
 
-            // Running cumulative KM up to and including this record
             if (!vehicleRunningKm[vid]) vehicleRunningKm[vid] = 0;
-            const kmBefore = vehicleRunningKm[vid];
             vehicleRunningKm[vid] += record.distance;
             const kmAfter = vehicleRunningKm[vid];
 
-            // Extra KM introduced specifically by this hire
-            const extraKmBefore = Math.max(0, kmBefore - kmLimit);
-            const extraKmAfter = Math.max(0, kmAfter - kmLimit);
-            const thisHireExtraKm = extraKmAfter - extraKmBefore;
+            const monthlyExtraKmCharge = vehicleMonthlyExtraKmCharge[vid] || 0;
+            const totalKmForVehicle = vehicleTotalKm[vid] || 0;
+            const exceedingKm = Math.max(0, totalKmForVehicle - kmLimit);
 
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
@@ -1430,7 +1409,7 @@ async function loadCommitmentRecords() {
                 <td>${record.to_location}</td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
-                <td><small>Running KM: ${kmAfter} / ${kmLimit}<br>Extra KM (this hire): ${thisHireExtraKm.toFixed(2)}<br>Extra Charge: LKR ${record.extra_charges.toFixed(2)}</small></td>
+                <td><small>Running KM: ${kmAfter} / ${kmLimit}<br>Monthly Total KM: ${totalKmForVehicle} | Exceeding: ${exceedingKm.toFixed(2)} km<br>Monthly Extra Charge: LKR ${monthlyExtraKmCharge.toFixed(2)}</small></td>
                 ${actionButtons}
             `;
             tbody.appendChild(row);
@@ -1502,7 +1481,7 @@ async function editCommitmentRecord(id) {
         document.getElementById('commitmentDistance').value = data.distance;
         document.getElementById('commitmentFuel').value = data.fuel_litres;
         document.getElementById('commitmentFuelPrice').value = data.fuel_price_per_litre;
-        document.getElementById('commitmentExtraCharges').value = data.extra_charges;
+        // NOTE: extra_charges field removed from form — km charges now calculated at vehicle+month level
         document.getElementById('commitmentRecordFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -1764,8 +1743,21 @@ async function loadDashboardData(monthValue) {
             dayOffs?.reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
         const commitmentFuelCost =
             commitmentRecords?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
-        const extraKmCharges =
-            commitmentRecords?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
+
+        // FIXED: Calculate extra km charges at vehicle+month level (total KMs vs km limit).
+        // Never sum stored extra_charges per hire - that caused doubling on edit.
+        let extraKmCharges = 0;
+        if (commitmentVehicles && commitmentRecords) {
+            const vehicleTotalKmDash = {};
+            commitmentRecords.forEach(r => {
+                vehicleTotalKmDash[r.vehicle_id] = (vehicleTotalKmDash[r.vehicle_id] || 0) + (r.distance || 0);
+            });
+            commitmentVehicles.forEach(v => {
+                const totalKm = vehicleTotalKmDash[v.id] || 0;
+                const exceedingKm = Math.max(0, totalKm - (v.km_limit_per_month || 0));
+                extraKmCharges += exceedingKm * (v.extra_km_charge || 0);
+            });
+        }
 
         // Process Commitment Records for Distance & Activity
         commitmentRecords?.forEach(record => {
@@ -1911,7 +1903,9 @@ async function loadVehiclePerformance(monthValue) {
                     const totalKm = records.reduce((sum, r) => sum + r.distance, 0) || 0;
                     const basePay = vehicle.fixed_monthly_payment;
                     const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
-                    const extraKmCharges = records.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+                    // FIXED: Calculate extra km charge at vehicle+month level (not summing per-hire stored values)
+                    const exceedingKm = Math.max(0, totalKm - (vehicle.km_limit_per_month || 0));
+                    const extraKmCharges = exceedingKm * (vehicle.extra_km_charge || 0);
                     const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
                     const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
                     const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
@@ -2164,7 +2158,16 @@ async function loadDashboardCharts() {
             const commitmentPayment = commitmentVehicles?.reduce((sum, v) => sum + v.fixed_monthly_payment, 0) || 0;
             const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
             const commitmentFuelCost = commitmentRecords?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            const extraKmCharges = commitmentRecords?.reduce((sum, r) => sum + r.extra_charges, 0) || 0;
+            // FIXED: Calculate extra km charges at vehicle+month level
+            let extraKmCharges = 0;
+            if (commitmentVehicles && commitmentRecords) {
+                const vKmMap = {};
+                commitmentRecords.forEach(r => { vKmMap[r.vehicle_id] = (vKmMap[r.vehicle_id] || 0) + (r.distance || 0); });
+                commitmentVehicles.forEach(v => {
+                    const exc = Math.max(0, (vKmMap[v.id] || 0) - (v.km_limit_per_month || 0));
+                    extraKmCharges += exc * (v.extra_km_charge || 0);
+                });
+            }
 
             monthRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
             monthFuelCost += commitmentFuelCost;
@@ -2413,8 +2416,21 @@ async function loadAllTimeStatistics() {
         const dayOffDeductions = allDayOffs?.reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
         totalRevenue -= dayOffDeductions;
 
-        // Add extra KM charges
-        const extraKmCharges = allCommitmentRecords?.reduce((sum, r) => sum + (r.extra_charges || 0), 0) || 0;
+        // FIXED: Calculate extra km charges at vehicle+month level (not summing per-hire stored values)
+        const vehicleMonthKmMap = {};
+        allCommitmentRecords?.forEach(r => {
+            const key = r.vehicle_id + '-' + r.hire_date.substring(0, 7);
+            vehicleMonthKmMap[key] = (vehicleMonthKmMap[key] || 0) + (r.distance || 0);
+        });
+        let extraKmCharges = 0;
+        for (const key in vehicleMonthKmMap) {
+            const vehicleId = parseInt(key.split('-')[0]);
+            const vehicle = allCommitmentVehicles?.find(v => v.id === vehicleId);
+            if (vehicle) {
+                const exc = Math.max(0, vehicleMonthKmMap[key] - (vehicle.km_limit_per_month || 0));
+                extraKmCharges += exc * (vehicle.extra_km_charge || 0);
+            }
+        }
         totalRevenue += extraKmCharges;
 
         const totalProfit = totalRevenue - totalFuelCost;
@@ -2547,8 +2563,15 @@ async function loadTopPerformingVehicles() {
 
             const uniqueMonths = new Set(recentRecords.map(r => r.hire_date.substring(0, 7)));
             const baseRevenue = vehicle.fixed_monthly_payment * uniqueMonths.size;
-            const extraCharges = recentRecords.reduce((sum, r) => sum + (r.extra_charges || 0), 0);
-            
+            // FIXED: Calculate extra km charges at vehicle+month level per month
+            let extraCharges = 0;
+            uniqueMonths.forEach(mon => {
+                const monthRecords = recentRecords.filter(r => r.hire_date.substring(0, 7) === mon);
+                const monthKm = monthRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+                const exc = Math.max(0, monthKm - (vehicle.km_limit_per_month || 0));
+                extraCharges += exc * (vehicle.extra_km_charge || 0);
+            });
+
             const rev6m = baseRevenue + extraCharges;
             const fuelCost6m = recentRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
             const profit6m = rev6m - fuelCost6m;
