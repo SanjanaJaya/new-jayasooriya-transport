@@ -1313,7 +1313,6 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             fuel_litres: fuelLitres,
             fuel_price_per_litre: fuelPrice,
             fuel_cost: fuelCost,
-            extra_charges: 0,  // deprecated field — kept for DB compatibility, always 0
             user_id: adminUserId
         };
 
