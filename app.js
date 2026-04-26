@@ -485,6 +485,7 @@ document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
 document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('driverId').value;
     const data = {
@@ -504,9 +505,11 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 
     try {
         if (id) {
-            await supabaseClient.from('drivers').update(data).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('drivers').update(data).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('drivers').insert([data]);
+            const { error: insertError } = await supabaseClient.from('drivers').insert([data]);
+            if (insertError) throw insertError;
         }
         loadDrivers();
         document.getElementById('driverFormContainer').style.display = 'none';
@@ -658,6 +661,7 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('hireVehicleId').value;
     const data = {
@@ -680,9 +684,11 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
 
     try {
         if (id) {
-            await supabaseClient.from('hire_to_pay_vehicles').update(data).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('hire_to_pay_vehicles').update(data).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('hire_to_pay_vehicles').insert([data]);
+            const { error: insertError } = await supabaseClient.from('hire_to_pay_vehicles').insert([data]);
+            if (insertError) throw insertError;
         }
         loadHireVehicles();
         document.getElementById('hireVehicleFormContainer').style.display = 'none';
@@ -845,6 +851,7 @@ document.getElementById('hireRecordsVehicleFilter')?.addEventListener('change', 
 document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('hireRecordId').value;
     const distance = parseFloat(document.getElementById('hireDistance').value);
@@ -1104,6 +1111,7 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
@@ -1122,9 +1130,11 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
 
     try {
         if (id) {
-            await supabaseClient.from('commitment_vehicles').update(data).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('commitment_vehicles').update(data).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('commitment_vehicles').insert([data]);
+            const { error: insertError } = await supabaseClient.from('commitment_vehicles').insert([data]);
+            if (insertError) throw insertError;
         }
         loadCommitmentVehicles();
         document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
@@ -1277,6 +1287,7 @@ document.getElementById('commitmentRecordsVehicleFilter')?.addEventListener('cha
 document.getElementById('commitmentRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('commitmentRecordId').value;
     const fuelLitres = parseFloat(document.getElementById('commitmentFuel').value);
@@ -1307,9 +1318,11 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
         };
 
         if (id) {
-            await supabaseClient.from('commitment_records').update(recordData).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('commitment_records').update(recordData).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('commitment_records').insert([recordData]);
+            const { error: insertError } = await supabaseClient.from('commitment_records').insert([recordData]);
+            if (insertError) throw insertError;
         }
         
         loadCommitmentRecords();
@@ -1519,6 +1532,7 @@ document.getElementById('dayOffVehicleFilter')?.addEventListener('change', loadD
 document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('dayOffId').value;
     const vehicleId = parseInt(document.getElementById('dayOffVehicle').value);
@@ -1541,9 +1555,11 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
         };
 
         if (id) {
-            await supabaseClient.from('commitment_day_offs').update(dayOffData).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('commitment_day_offs').update(dayOffData).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('commitment_day_offs').insert([dayOffData]);
+            const { error: insertError } = await supabaseClient.from('commitment_day_offs').insert([dayOffData]);
+            if (insertError) throw insertError;
         }
         
         loadDayOffs();
@@ -2821,6 +2837,7 @@ async function deleteReceipt(receiptUrl) {
 document.getElementById('advanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('advanceId').value;
     const driverId = parseInt(document.getElementById('advanceDriver').value);
@@ -2963,11 +2980,12 @@ async function loadAdvanceSummary() {
             .select('id, name')
             .eq('user_id', currentQueryUserId);
 
-        // 2. Start the query for advances
+        // 2. Start the query for advances — now fetch full records including date and notes
         let query = supabaseClient
             .from('driver_advances')
-            .select('driver_id, amount')
-            .eq('user_id', currentQueryUserId);
+            .select('driver_id, amount, advance_date, notes')
+            .eq('user_id', currentQueryUserId)
+            .order('advance_date', { ascending: true });
 
         // 3. Apply Date Filter if a month is selected
         if (monthValue) {
@@ -2986,12 +3004,18 @@ async function loadAdvanceSummary() {
 
         const { data: advances } = await query;
 
+        // Group advances by driver — store total AND individual records
         const advancesByDriver = {};
         advances?.forEach(adv => {
             if (!advancesByDriver[adv.driver_id]) {
-                advancesByDriver[adv.driver_id] = 0;
+                advancesByDriver[adv.driver_id] = { total: 0, records: [] };
             }
-            advancesByDriver[adv.driver_id] += adv.amount;
+            advancesByDriver[adv.driver_id].total += adv.amount;
+            advancesByDriver[adv.driver_id].records.push({
+                date: adv.advance_date,
+                amount: adv.amount,
+                notes: adv.notes || ''
+            });
         });
 
         const summaryEl = document.getElementById('advanceSummary');
@@ -3009,11 +3033,21 @@ async function loadAdvanceSummary() {
                  return;
             }
 
+            // Determine display month label (e.g. "May 2025")
+            let monthLabel = 'All Time';
+            if (monthValue) {
+                const [yr, mo] = monthValue.split('-');
+                monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+            }
+
             driversToDisplay.forEach(driver => {
-                const totalAdvance = advancesByDriver[driver.id] || 0;
+                const driverData = advancesByDriver[driver.id];
+                const totalAdvance = driverData ? driverData.total : 0;
+                const records = driverData ? driverData.records : [];
                 
-                // Only show card if there is an advance OR if showing all drivers is preferred.
-                // Currently showing all drivers even with 0 advance to match your UI style.
+                // Build the SMS message for this driver
+                const smsMessage = buildAdvanceSmsMessage(driver.name, monthLabel, records);
+
                 const card = document.createElement('div');
                 card.className = 'advance-card';
                 card.innerHTML = `
@@ -3021,9 +3055,16 @@ async function loadAdvanceSummary() {
                     <div class="advance-card-content">
                         <div class="advance-card-name">${driver.name}</div>
                         <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
-                        <div class="advance-card-label">Total Advances (${monthValue ? monthValue : 'All Time'})</div>
+                        <div class="advance-card-label">Total Advances (${monthLabel})</div>
                     </div>
+                    <button class="btn-copy-sms" title="Copy SMS message to clipboard">
+                        📋 Copy SMS
+                    </button>
                 `;
+                // Attach via addEventListener — safe, no HTML/attribute escaping issues
+                card.querySelector('.btn-copy-sms').addEventListener('click', function() {
+                    copyAdvanceSms(this, smsMessage);
+                });
                 summaryEl.appendChild(card);
             });
         } else {
@@ -3032,6 +3073,74 @@ async function loadAdvanceSummary() {
     } catch (error) {
         console.error('Error loading advance summary:', error.message);
     }
+}
+
+// Build the SMS message template for a driver's advances
+function buildAdvanceSmsMessage(driverName, monthLabel, records) {
+    if (records.length === 0) {
+        return `Jayasooriya Transport\nDear ${driverName},\n\nYou have no recorded advances for ${monthLabel}.\n\nThank you.`;
+    }
+
+    let lines = records.map((rec, i) => {
+        const formattedDate = rec.date; // already YYYY-MM-DD
+        const noteStr = rec.notes ? ` (${rec.notes})` : '';
+        return `${i + 1}. ${formattedDate} - LKR ${rec.amount.toFixed(2)}${noteStr}`;
+    });
+
+    const total = records.reduce((sum, r) => sum + r.amount, 0);
+
+    return `Jayasooriya Transport\nDear ${driverName},\n\nAdvance summary for ${monthLabel}:\n\n${lines.join('\n')}\n\nTotal: LKR ${total.toFixed(2)}\n\nThank you.`;
+}
+
+// Copy the SMS message to clipboard and show feedback on the button
+function copyAdvanceSms(btn, message) {
+    // Try modern Clipboard API first (works on https:// and localhost)
+    if (navigator.clipboard && navigator.clipboard.writeText && location.protocol !== 'file:') {
+        navigator.clipboard.writeText(message).then(() => {
+            showCopySmsSuccess(btn);
+        }).catch(() => {
+            fallbackCopyText(message, btn);
+        });
+    } else {
+        // Fallback: works on file://, http://, and older browsers
+        fallbackCopyText(message, btn);
+    }
+}
+
+function fallbackCopyText(text, btn) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    // Also try setSelectionRange for mobile
+    try { ta.setSelectionRange(0, 99999); } catch(e) {}
+    let success = false;
+    try {
+        success = document.execCommand('copy');
+    } catch (e) {
+        success = false;
+    }
+    document.body.removeChild(ta);
+    if (success) {
+        showCopySmsSuccess(btn);
+    } else {
+        alert('Could not copy automatically. Please copy the message below:\n\n' + text);
+    }
+}
+
+function showCopySmsSuccess(btn) {
+    const original = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    btn.classList.add('btn-copy-sms-success');
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.innerHTML = original;
+        btn.classList.remove('btn-copy-sms-success');
+        btn.disabled = false;
+    }, 2000);
 }
 
 async function updateAdvanceDriverSelectors() {
@@ -3471,6 +3580,7 @@ document.getElementById('driverDayOffDriver')?.addEventListener('change', async 
 document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('driverDayOffId').value;
     
@@ -3484,9 +3594,11 @@ document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e
 
     try {
         if (id) {
-            await supabaseClient.from('driver_day_offs').update(data).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('driver_day_offs').update(data).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('driver_day_offs').insert([data]);
+            const { error: insertError } = await supabaseClient.from('driver_day_offs').insert([data]);
+            if (insertError) throw insertError;
         }
         
         loadDriverDayOffs();
@@ -3658,6 +3770,7 @@ document.getElementById('maintenanceVehicleFilter')?.addEventListener('change', 
 document.getElementById('maintenanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('maintenanceId').value;
     const vehicleRaw = document.getElementById('maintenanceVehicle').value;
@@ -3677,9 +3790,11 @@ document.getElementById('maintenanceForm')?.addEventListener('submit', async (e)
 
     try {
         if (id) {
-            await supabaseClient.from('lorry_maintenance').update(data).eq('id', id);
+            const { error: updateError } = await supabaseClient.from('lorry_maintenance').update(data).eq('id', id);
+            if (updateError) throw updateError;
         } else {
-            await supabaseClient.from('lorry_maintenance').insert([data]);
+            const { error: insertError } = await supabaseClient.from('lorry_maintenance').insert([data]);
+            if (insertError) throw insertError;
         }
         loadMaintenanceRecords();
         document.getElementById('maintenanceFormContainer').style.display = 'none';

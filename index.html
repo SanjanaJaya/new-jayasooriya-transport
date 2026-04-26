@@ -27,6 +27,67 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ===== SMS Copy Button ===== */
+        .advance-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-copy-sms {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            background: #2980b9;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1.2;
+        }
+        /* Inside advance cards — push to right */
+        .advance-card .btn-copy-sms {
+            margin-left: auto;
+        }
+        /* Inside table cells — compact size, no margin override */
+        td .btn-copy-sms,
+        .btn-copy-sms.btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+            margin-left: 2px;
+        }
+        .btn-copy-sms:hover {
+            background: #1a6fa0;
+            transform: translateY(-1px);
+        }
+        .btn-copy-sms:active {
+            transform: translateY(0);
+        }
+        .btn-copy-sms-success {
+            background: #27ae60 !important;
+        }
+        .btn-copy-sms:disabled {
+            cursor: default;
+            transform: none;
+        }
+        body.dark-mode .btn-copy-sms {
+            background: #1a6fa0;
+        }
+        body.dark-mode .btn-copy-sms:hover {
+            background: #155884;
+        }
+        body.dark-mode .btn-copy-sms-success {
+            background: #1e8449 !important;
+        }
+    </style>
 </head>
 <body>
     <div class="container">

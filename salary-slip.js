@@ -634,16 +634,35 @@ async function loadSalaryHistory() {
                 <td>${receiptColumn}</td>
                 <td>
                     <button class="btn btn-sm btn-view" onclick="viewSalarySlip(${record.id})" title="View Salary Slip">
-                        👁️ View
+                        \u{1F441}\uFE0F View
                     </button>
                     <button class="btn btn-sm btn-edit" onclick="editSalaryRecord(${record.id})" title="Edit Record">
-                        ✏️ Edit
+                        \u270F\uFE0F Edit
                     </button>
                     <button class="btn btn-sm btn-danger" onclick="deleteSalaryRecord(${record.id})" title="Delete Record">
-                        🗑️ Delete
+                        \u{1F5D1}\uFE0F Delete
+                    </button>
+                    <button class="btn-copy-sms btn-sm" title="Copy salary SMS">
+                        \u{1F4CB} SMS
                     </button>
                 </td>
             `;
+            // Wire copy SMS button safely via addEventListener
+            row.querySelector('.btn-copy-sms').addEventListener('click', function() {
+                const msg = buildSalarySmsMessage(
+                    record.drivers.name,
+                    record.salary_month,
+                    record.basic_salary || 0,
+                    record.extra_km_salary || 0,
+                    record.additional_allowance || 0,
+                    record.total_km || 0,
+                    record.total_advances || 0,
+                    record.other_deductions || 0,
+                    record.gross_salary || 0,
+                    record.net_salary || 0
+                );
+                copyTextToClipboard(msg, this);
+            });
             tbody.appendChild(row);
         });
         
@@ -1091,4 +1110,86 @@ function switchPage(page) {
     if (page === 'commitment-vehicles') loadCommitmentVehicles();
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
+}
+
+// ============ SALARY SMS COPY UTILITIES ============
+
+function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSalary, additionalAllowance, totalKm, totalAdvances, otherDeductions, grossSalary, netSalary) {
+    // Format month label e.g. "2025-05" -> "May 2025"
+    let monthLabel = salaryMonth;
+    if (salaryMonth && salaryMonth.includes('-')) {
+        const [yr, mo] = salaryMonth.split('-');
+        try { monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' }); } catch(e) {}
+    }
+
+    const lines = [];
+    lines.push('Jayasooriya Transport');
+    lines.push('Dear ' + driverName + ',');
+    lines.push('');
+    lines.push('Salary Summary - ' + monthLabel);
+    lines.push('');
+    lines.push('-- Earnings --');
+    lines.push('Basic Salary:      LKR ' + Number(basicSalary).toFixed(2));
+    if (Number(extraKmSalary) > 0) {
+        lines.push('Extra KM Salary:   LKR ' + Number(extraKmSalary).toFixed(2));
+    }
+    if (Number(additionalAllowance) > 0) {
+        lines.push('Allowance:         LKR ' + Number(additionalAllowance).toFixed(2));
+    }
+    lines.push('Gross Salary:      LKR ' + Number(grossSalary).toFixed(2));
+    lines.push('');
+    lines.push('-- Deductions --');
+    lines.push('Advances:          LKR ' + Number(totalAdvances).toFixed(2));
+    if (Number(otherDeductions) > 0) {
+        lines.push('Other Deductions:  LKR ' + Number(otherDeductions).toFixed(2));
+    }
+    lines.push('');
+    lines.push('Net Salary:        LKR ' + Number(netSalary).toFixed(2));
+    lines.push('');
+    lines.push('Thank you.');
+
+    return lines.join('\n');
+}
+
+function copyTextToClipboard(text, btn) {
+    if (navigator.clipboard && navigator.clipboard.writeText && location.protocol !== 'file:') {
+        navigator.clipboard.writeText(text).then(() => {
+            showCopySmsSuccess(btn);
+        }).catch(() => {
+            fallbackCopyText(text, btn);
+        });
+    } else {
+        fallbackCopyText(text, btn);
+    }
+}
+
+function fallbackCopyText(text, btn) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { ta.setSelectionRange(0, 99999); } catch(e) {}
+    let success = false;
+    try { success = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    if (success) {
+        showCopySmsSuccess(btn);
+    } else {
+        alert('Could not copy automatically. Please copy the message below:\n\n' + text);
+    }
+}
+
+function showCopySmsSuccess(btn) {
+    const original = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    btn.classList.add('btn-copy-sms-success');
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.innerHTML = original;
+        btn.classList.remove('btn-copy-sms-success');
+        btn.disabled = false;
+    }, 2000);
 }
