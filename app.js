@@ -620,7 +620,7 @@ async function loadDrivers() {
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
                 <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
-                <td>${driver.license_number}</td>
+                <td>${driver.license_number || '-'}</td>
                 <td>${driver.age}</td>
                 <td>${driver.address}</td>
                 <td style="font-size:12px;">${salaryInfo}</td>
@@ -672,7 +672,7 @@ async function editDriver(id) {
         document.getElementById('driverId').value = data.id;
         document.getElementById('driverName').value = data.name;
         document.getElementById('driverContact').value = data.contact;
-        document.getElementById('driverLicense').value = data.license_number;
+        document.getElementById('driverLicense').value = data.license_number || '';
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';

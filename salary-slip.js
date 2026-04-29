@@ -561,7 +561,7 @@ async function generateSalarySlip() {
             driver: {
                 name: driver.name,
                 contact: driver.contact,
-                license: driver.license_number,
+                license: driver.license_number || '-',
                 address: driver.address
             },
             salaryType: salaryType,
