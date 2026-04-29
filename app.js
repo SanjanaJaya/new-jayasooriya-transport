@@ -515,7 +515,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     const data = {
         name: document.getElementById('driverName').value,
         contact: document.getElementById('driverContact').value,
-        license_number: document.getElementById('driverLicense').value,
+        license_number: document.getElementById('driverLicense').value || null,
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
@@ -530,6 +530,23 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     };
 
     try {
+        // Check for duplicate license number (only if license is provided)
+        if (data.license_number) {
+            let dupQuery = supabaseClient
+                .from('drivers')
+                .select('id')
+                .eq('license_number', data.license_number)
+                .eq('user_id', adminUserId);
+            if (id) {
+                dupQuery = dupQuery.neq('id', id); // Exclude current driver when editing
+            }
+            const { data: duplicates } = await dupQuery;
+            if (duplicates && duplicates.length > 0) {
+                alert('Another staff member already has this license number. Please use a unique license number.');
+                return;
+            }
+        }
+
         if (id) {
             const { error: updateError } = await supabaseClient.from('drivers').update(data).eq('id', id);
             if (updateError) throw updateError;
