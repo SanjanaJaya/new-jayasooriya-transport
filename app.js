@@ -21,6 +21,13 @@ let vehicleRevenueChart = null;
 let distanceDistChart = null;
 let fuelTrendChart = null;
 
+// DASHBOARD WIDGET CHART VARIABLES
+let vehicleRevenuePieChart = null;
+let revenueTypeSplitChart = null;
+let topRoutesChart = null;
+let dailyActivityChart = null;
+let costVsRevenueChart = null;
+
 // Initialize Supabase
 function initSupabase() {
     if (window.supabase) {
@@ -468,6 +475,13 @@ async function loadDashboard() {
         
         // NEW: Load Advanced Stats
         await loadAdvancedDashboardStats(monthValue);
+
+        // NEW: Load Dashboard Widget Charts
+        await loadVehicleRevenuePieChart(monthValue);
+        await loadRevenueTypeSplitChart(monthValue);
+        await loadTopRoutesChart(monthValue);
+        await loadDailyActivityChart(monthValue);
+        await loadCostVsRevenueChart(monthValue);
 
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
@@ -3587,6 +3601,618 @@ async function loadAdvancedDashboardStats(monthValue) {
 
     } catch (error) {
         console.error('Error loading advanced stats:', error.message);
+    }
+}
+
+// ============ NEW DASHBOARD WIDGET CHARTS ============
+
+// Shared color palette for charts
+const CHART_COLORS = [
+    '#D1001F', '#0072CE', '#00B37E', '#E07B00', '#7B35C4',
+    '#E91E63', '#009688', '#FF5722', '#3F51B5', '#8BC34A',
+    '#FF9800', '#00BCD4', '#795548', '#607D8B', '#CDDC39',
+    '#F44336', '#2196F3', '#4CAF50', '#FFC107', '#9C27B0'
+];
+
+// 1. Vehicle Revenue Contribution — PIE CHART
+async function loadVehicleRevenuePieChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch hire records with vehicle info
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('vehicle_id, hire_amount, hire_to_pay_vehicles(lorry_number)')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Fetch commitment records with vehicle info
+        const { data: commitmentRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('vehicle_id, distance, commitment_vehicles(vehicle_number, fixed_monthly_payment, km_limit_per_month, extra_km_charge)')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Aggregate revenue per vehicle
+        const vehicleRevMap = {};
+
+        hireRecords?.forEach(r => {
+            const name = r.hire_to_pay_vehicles?.lorry_number || `Vehicle #${r.vehicle_id}`;
+            vehicleRevMap[name] = (vehicleRevMap[name] || 0) + (r.hire_amount || 0);
+        });
+
+        // Group commitment records by vehicle for monthly payment + extra km charges
+        const commitVehicleData = {};
+        commitmentRecords?.forEach(r => {
+            const name = r.commitment_vehicles?.vehicle_number || `Vehicle #${r.vehicle_id}`;
+            if (!commitVehicleData[name]) {
+                commitVehicleData[name] = {
+                    vehicle: r.commitment_vehicles,
+                    totalKm: 0,
+                    counted: false
+                };
+            }
+            commitVehicleData[name].totalKm += (r.distance || 0);
+        });
+
+        Object.entries(commitVehicleData).forEach(([name, data]) => {
+            if (data.vehicle) {
+                let rev = data.vehicle.fixed_monthly_payment || 0;
+                const exceed = Math.max(0, data.totalKm - (data.vehicle.km_limit_per_month || 0));
+                rev += exceed * (data.vehicle.extra_km_charge || 0);
+                vehicleRevMap[name] = (vehicleRevMap[name] || 0) + rev;
+            }
+        });
+
+        // Sort by revenue descending
+        const sorted = Object.entries(vehicleRevMap)
+            .sort((a, b) => b[1] - a[1]);
+
+        const labels = sorted.map(s => s[0]);
+        const data = sorted.map(s => s[1]);
+
+        // Destroy old
+        if (vehicleRevenuePieChart) vehicleRevenuePieChart.destroy();
+
+        const ctx = document.getElementById('vehicleRevenuePieChart')?.getContext('2d');
+        if (!ctx || labels.length === 0) return;
+
+        vehicleRevenuePieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: CHART_COLORS.slice(0, labels.length),
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    hoverOffset: 12
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Vehicle Revenue Share — ${monthValue}`,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                                return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading vehicle revenue pie chart:', error.message);
+    }
+}
+
+// 2. Revenue Type Split — DOUGHNUT (Hire-to-Pay vs Commitment)
+async function loadRevenueTypeSplitChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Hire-to-Pay total
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('hire_amount')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const hireRevenue = hireRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
+
+        // Commitment total
+        const { data: commitmentRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('vehicle_id, distance')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const commitmentVehicleIds = new Set();
+        commitmentRecords?.forEach(r => commitmentVehicleIds.add(r.vehicle_id));
+
+        const { data: commitmentVehicles } = await supabaseClient
+            .from('commitment_vehicles')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
+
+        // Commitment day offs
+        const { data: dayOffs } = await supabaseClient
+            .from('commitment_day_offs')
+            .select('deduction_amount')
+            .eq('user_id', currentQueryUserId)
+            .gte('day_off_date', startDate)
+            .lte('day_off_date', endDate);
+
+        const commitPayment = commitmentVehicles?.reduce((s, v) => s + (v.fixed_monthly_payment || 0), 0) || 0;
+        const dayOffDeductions = dayOffs?.reduce((s, d) => s + (d.deduction_amount || 0), 0) || 0;
+
+        // Extra KM charges
+        let extraKm = 0;
+        if (commitmentVehicles && commitmentRecords) {
+            const vKmMap = {};
+            commitmentRecords.forEach(r => { vKmMap[r.vehicle_id] = (vKmMap[r.vehicle_id] || 0) + (r.distance || 0); });
+            commitmentVehicles.forEach(v => {
+                const exc = Math.max(0, (vKmMap[v.id] || 0) - (v.km_limit_per_month || 0));
+                extraKm += exc * (v.extra_km_charge || 0);
+            });
+        }
+
+        const commitRevenue = commitPayment - dayOffDeductions + extraKm;
+
+        // Destroy old
+        if (revenueTypeSplitChart) revenueTypeSplitChart.destroy();
+
+        const ctx = document.getElementById('revenueTypeSplitChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const totalRev = hireRevenue + commitRevenue;
+
+        revenueTypeSplitChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Hire-to-Pay Revenue', 'Commitment Revenue'],
+                datasets: [{
+                    data: [hireRevenue, commitRevenue],
+                    backgroundColor: ['#0072CE', '#00B37E'],
+                    borderColor: ['#fff', '#fff'],
+                    borderWidth: 3,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '55%',
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Hire vs Commitment — LKR ${totalRev.toLocaleString()}`,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const pct = totalRev > 0 ? ((ctx.parsed / totalRev) * 100).toFixed(1) : 0;
+                                return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading revenue type split chart:', error.message);
+    }
+}
+
+// 3. Top Routes — HORIZONTAL BAR CHART
+async function loadTopRoutesChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch hire records with route info
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('from_location, to_location, hire_amount')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Fetch commitment records with route info
+        const { data: commitRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('from_location, to_location')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Aggregate routes
+        const routeMap = {};
+
+        hireRecords?.forEach(r => {
+            const route = `${(r.from_location || '?').trim()} → ${(r.to_location || '?').trim()}`;
+            if (!routeMap[route]) routeMap[route] = { trips: 0, revenue: 0 };
+            routeMap[route].trips++;
+            routeMap[route].revenue += (r.hire_amount || 0);
+        });
+
+        commitRecords?.forEach(r => {
+            const route = `${(r.from_location || '?').trim()} → ${(r.to_location || '?').trim()}`;
+            if (!routeMap[route]) routeMap[route] = { trips: 0, revenue: 0 };
+            routeMap[route].trips++;
+        });
+
+        // Sort by trip count, take top 8
+        const sorted = Object.entries(routeMap)
+            .sort((a, b) => b[1].trips - a[1].trips)
+            .slice(0, 8);
+
+        const labels = sorted.map(s => s[0].length > 28 ? s[0].substring(0, 26) + '…' : s[0]);
+        const tripData = sorted.map(s => s[1].trips);
+        const revData = sorted.map(s => s[1].revenue);
+
+        // Destroy old
+        if (topRoutesChart) topRoutesChart.destroy();
+
+        const ctx = document.getElementById('topRoutesChart')?.getContext('2d');
+        if (!ctx || labels.length === 0) return;
+
+        topRoutesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Trip Count',
+                        data: tripData,
+                        backgroundColor: 'rgba(0, 114, 206, 0.75)',
+                        borderColor: '#0072CE',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Revenue (LKR)',
+                        data: revData,
+                        backgroundColor: 'rgba(0, 179, 126, 0.55)',
+                        borderColor: '#00B37E',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Top Routes — ${monthValue}`,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                if (ctx.datasetIndex === 1) {
+                                    return `Revenue: LKR ${ctx.parsed.x.toLocaleString()}`;
+                                }
+                                return `Trips: ${ctx.parsed.x}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 11 } }
+                    },
+                    y1: {
+                        display: false,
+                        beginAtZero: true
+                    },
+                    x: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading top routes chart:', error.message);
+    }
+}
+
+// 4. Daily Activity — BAR CHART (Jobs per Day)
+async function loadDailyActivityChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch hire dates
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('hire_date')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Fetch commitment dates
+        const { data: commitRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('hire_date')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Build daily counts
+        const dailyCounts = {};
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dayStr = `${year}-${month}-${String(d).padStart(2, '0')}`;
+            dailyCounts[dayStr] = 0;
+        }
+
+        hireRecords?.forEach(r => {
+            if (dailyCounts[r.hire_date] !== undefined) dailyCounts[r.hire_date]++;
+        });
+        commitRecords?.forEach(r => {
+            if (dailyCounts[r.hire_date] !== undefined) dailyCounts[r.hire_date]++;
+        });
+
+        const labels = Object.keys(dailyCounts).map(d => {
+            const day = parseInt(d.split('-')[2]);
+            return day;
+        });
+        const data = Object.values(dailyCounts);
+
+        // Color based on activity level
+        const maxJobs = Math.max(...data, 1);
+        const colors = data.map(v => {
+            if (v === 0) return 'rgba(189, 195, 199, 0.4)';
+            const ratio = v / maxJobs;
+            if (ratio >= 0.75) return 'rgba(209, 0, 31, 0.75)';
+            if (ratio >= 0.4) return 'rgba(224, 123, 0, 0.75)';
+            return 'rgba(0, 114, 206, 0.65)';
+        });
+
+        // Destroy old
+        if (dailyActivityChart) dailyActivityChart.destroy();
+
+        const ctx = document.getElementById('dailyActivityChart')?.getContext('2d');
+        if (!ctx) return;
+
+        dailyActivityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jobs',
+                    data: data,
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => c.replace(/[\d.]+\)$/, '1)')),
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Daily Job Activity — ${monthValue}`,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(ctx) {
+                                return `Day ${ctx[0].label}, ${monthValue}`;
+                            },
+                            label: function(ctx) {
+                                return `${ctx.parsed.y} job(s)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 10 },
+                            maxRotation: 0
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily activity chart:', error.message);
+    }
+}
+
+// 5. Cost vs Revenue Comparison — GROUPED BAR (Per Vehicle)
+async function loadCostVsRevenueChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${daysInMonth}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch hire records
+        const { data: hireRecords } = await supabaseClient
+            .from('hire_to_pay_records')
+            .select('vehicle_id, hire_amount, fuel_cost, hire_to_pay_vehicles(lorry_number)')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Fetch commitment records
+        const { data: commitmentRecords } = await supabaseClient
+            .from('commitment_records')
+            .select('vehicle_id, fuel_cost, distance, commitment_vehicles(vehicle_number, fixed_monthly_payment, km_limit_per_month, extra_km_charge)')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        // Aggregate per vehicle
+        const vehicleData = {};
+
+        hireRecords?.forEach(r => {
+            const name = r.hire_to_pay_vehicles?.lorry_number || `H-${r.vehicle_id}`;
+            if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
+            vehicleData[name].revenue += (r.hire_amount || 0);
+            vehicleData[name].fuelCost += (r.fuel_cost || 0);
+        });
+
+        // Group commitment by vehicle for base pay + extra km
+        const commitGrouped = {};
+        commitmentRecords?.forEach(r => {
+            const name = r.commitment_vehicles?.vehicle_number || `C-${r.vehicle_id}`;
+            if (!commitGrouped[name]) {
+                commitGrouped[name] = { vehicle: r.commitment_vehicles, totalKm: 0, fuelCost: 0 };
+            }
+            commitGrouped[name].totalKm += (r.distance || 0);
+            commitGrouped[name].fuelCost += (r.fuel_cost || 0);
+        });
+
+        Object.entries(commitGrouped).forEach(([name, d]) => {
+            if (d.vehicle) {
+                let rev = d.vehicle.fixed_monthly_payment || 0;
+                const exc = Math.max(0, d.totalKm - (d.vehicle.km_limit_per_month || 0));
+                rev += exc * (d.vehicle.extra_km_charge || 0);
+                if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
+                vehicleData[name].revenue += rev;
+                vehicleData[name].fuelCost += d.fuelCost;
+            }
+        });
+
+        // Sort by revenue descending
+        const sorted = Object.entries(vehicleData)
+            .sort((a, b) => b[1].revenue - a[1].revenue);
+
+        const labels = sorted.map(s => s[0]);
+        const revenues = sorted.map(s => s[1].revenue);
+        const fuelCosts = sorted.map(s => s[1].fuelCost);
+        const profits = sorted.map((s, i) => revenues[i] - fuelCosts[i]);
+
+        // Destroy old
+        if (costVsRevenueChart) costVsRevenueChart.destroy();
+
+        const ctx = document.getElementById('costVsRevenueChart')?.getContext('2d');
+        if (!ctx || labels.length === 0) return;
+
+        costVsRevenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: revenues,
+                        backgroundColor: 'rgba(0, 179, 126, 0.75)',
+                        borderColor: '#00B37E',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Fuel Cost',
+                        data: fuelCosts,
+                        backgroundColor: 'rgba(224, 123, 0, 0.70)',
+                        borderColor: '#E07B00',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Profit',
+                        data: profits,
+                        backgroundColor: profits.map(p => p >= 0 ? 'rgba(0, 114, 206, 0.60)' : 'rgba(209, 0, 31, 0.60)'),
+                        borderColor: profits.map(p => p >= 0 ? '#0072CE' : '#D1001F'),
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Vehicle Cost vs Revenue — ${monthValue}`,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return `${ctx.dataset.label}: LKR ${ctx.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `LKR ${(v / 1000).toFixed(0)}K`
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 11 },
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading cost vs revenue chart:', error.message);
     }
 }
 
