@@ -2628,3 +2628,123 @@ body.dark-mode .driver-archive-row td {
         font-size: 10px;
     }
 }
+
+/* =====================================================
+   ENHANCED CHART WRAPPERS — Visual Polish
+   ===================================================== */
+.chart-wrapper {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+}
+
+/* Subtle shimmer accent on top-right */
+.chart-wrapper::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--brand-red-glow) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--ease-base);
+}
+
+.chart-wrapper:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--brand-red-light);
+}
+
+.chart-wrapper:hover::after {
+    opacity: 1;
+}
+
+/* Min height for charts to prevent squishing */
+.chart-wrapper canvas {
+    min-height: 220px;
+}
+
+/* Section header badge accent */
+.performance-section h3 {
+    position: relative;
+}
+
+/* Stagger entry animation for dashboard sections */
+.performance-section:nth-child(1) { animation-delay: 0.05s; }
+.performance-section:nth-child(2) { animation-delay: 0.10s; }
+.performance-section:nth-child(3) { animation-delay: 0.15s; }
+.performance-section:nth-child(4) { animation-delay: 0.20s; }
+.performance-section:nth-child(5) { animation-delay: 0.25s; }
+.performance-section:nth-child(6) { animation-delay: 0.30s; }
+.performance-section:nth-child(7) { animation-delay: 0.35s; }
+.performance-section:nth-child(8) { animation-delay: 0.40s; }
+
+/* Section hover glow */
+.performance-section {
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+}
+
+.performance-section:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--brand-red-light);
+}
+
+/* =====================================================
+   MOBILE — CHART WIDGETS RESPONSIVE
+   ===================================================== */
+@media (max-width: 768px) {
+    .chart-wrapper {
+        padding: 14px 10px;
+    }
+
+    .chart-wrapper canvas {
+        min-height: 200px;
+        max-height: 320px;
+    }
+
+    .charts-container {
+        gap: 12px;
+    }
+
+    /* Remove hover transform on touch devices */
+    .chart-wrapper:hover {
+        transform: none;
+    }
+
+    .performance-section:hover {
+        box-shadow: var(--shadow-sm);
+        border-color: var(--surface-border);
+    }
+}
+
+/* Tablet chart adjustments */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-wrapper canvas {
+        min-height: 240px;
+    }
+}
+
+/* =====================================================
+   DARK MODE — CHART ENHANCEMENTS
+   ===================================================== */
+body.dark-mode .chart-wrapper {
+    background: var(--surface-raised);
+    border-color: var(--surface-border);
+}
+
+body.dark-mode .chart-wrapper:hover {
+    border-color: var(--brand-red);
+    box-shadow: 0 4px 20px rgba(255, 32, 64, 0.12);
+}
+
+body.dark-mode .chart-wrapper::after {
+    background: radial-gradient(circle, rgba(255, 32, 64, 0.15) 0%, transparent 70%);
+}

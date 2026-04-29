@@ -3614,6 +3614,20 @@ const CHART_COLORS = [
     '#F44336', '#2196F3', '#4CAF50', '#FFC107', '#9C27B0'
 ];
 
+// Helper: Get chart text/grid colors based on current theme
+function getChartTheme() {
+    const isDark = document.body.classList.contains('dark-mode');
+    return {
+        textColor: isDark ? '#A8B0C2' : '#4B5260',
+        titleColor: isDark ? '#F0F2F7' : '#1A1D24',
+        gridColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        borderColor: isDark ? '#fff' : '#fff',
+        tooltipBg: isDark ? '#1E2028' : '#fff',
+        tooltipText: isDark ? '#F0F2F7' : '#1A1D24',
+        tooltipBorder: isDark ? '#2A2D38' : '#E2E5EA'
+    };
+}
+
 // 1. Vehicle Revenue Contribution — PIE CHART
 async function loadVehicleRevenuePieChart(monthValue) {
     try {
@@ -3683,6 +3697,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
         const ctx = document.getElementById('vehicleRevenuePieChart')?.getContext('2d');
         if (!ctx || labels.length === 0) return;
 
+        const theme = getChartTheme();
         vehicleRevenuePieChart = new Chart(ctx, {
             type: 'pie',
             data: {
@@ -3690,7 +3705,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
                 datasets: [{
                     data: data,
                     backgroundColor: CHART_COLORS.slice(0, labels.length),
-                    borderColor: '#fff',
+                    borderColor: theme.borderColor,
                     borderWidth: 2,
                     hoverOffset: 12
                 }]
@@ -3702,13 +3717,21 @@ async function loadVehicleRevenuePieChart(monthValue) {
                     title: {
                         display: true,
                         text: `Vehicle Revenue Share — ${monthValue}`,
+                        color: theme.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
                     legend: {
                         position: 'bottom',
-                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } }
+                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 11 }, color: theme.textColor }
                     },
                     tooltip: {
+                        backgroundColor: theme.tooltipBg,
+                        titleColor: theme.tooltipText,
+                        bodyColor: theme.tooltipText,
+                        borderColor: theme.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
                         callbacks: {
                             label: function(ctx) {
                                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
@@ -3793,6 +3816,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
 
         const totalRev = hireRevenue + commitRevenue;
 
+        const theme2 = getChartTheme();
         revenueTypeSplitChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -3800,7 +3824,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
                 datasets: [{
                     data: [hireRevenue, commitRevenue],
                     backgroundColor: ['#0072CE', '#00B37E'],
-                    borderColor: ['#fff', '#fff'],
+                    borderColor: [theme2.borderColor, theme2.borderColor],
                     borderWidth: 3,
                     hoverOffset: 10
                 }]
@@ -3813,13 +3837,21 @@ async function loadRevenueTypeSplitChart(monthValue) {
                     title: {
                         display: true,
                         text: `Hire vs Commitment — LKR ${totalRev.toLocaleString()}`,
+                        color: theme2.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
                     legend: {
                         position: 'bottom',
-                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } }
+                        labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 }, color: theme2.textColor }
                     },
                     tooltip: {
+                        backgroundColor: theme2.tooltipBg,
+                        titleColor: theme2.tooltipText,
+                        bodyColor: theme2.tooltipText,
+                        borderColor: theme2.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
                         callbacks: {
                             label: function(ctx) {
                                 const pct = totalRev > 0 ? ((ctx.parsed / totalRev) * 100).toFixed(1) : 0;
@@ -3891,6 +3923,7 @@ async function loadTopRoutesChart(monthValue) {
         const ctx = document.getElementById('topRoutesChart')?.getContext('2d');
         if (!ctx || labels.length === 0) return;
 
+        const theme3 = getChartTheme();
         topRoutesChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -3924,10 +3957,18 @@ async function loadTopRoutesChart(monthValue) {
                     title: {
                         display: true,
                         text: `Top Routes — ${monthValue}`,
+                        color: theme3.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
-                    legend: { position: 'top' },
+                    legend: { position: 'top', labels: { color: theme3.textColor } },
                     tooltip: {
+                        backgroundColor: theme3.tooltipBg,
+                        titleColor: theme3.tooltipText,
+                        bodyColor: theme3.tooltipText,
+                        borderColor: theme3.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
                         callbacks: {
                             label: function(ctx) {
                                 if (ctx.datasetIndex === 1) {
@@ -3941,7 +3982,8 @@ async function loadTopRoutesChart(monthValue) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { font: { size: 11 } }
+                        ticks: { font: { size: 11 }, color: theme3.textColor },
+                        grid: { color: theme3.gridColor }
                     },
                     y1: {
                         display: false,
@@ -3949,7 +3991,8 @@ async function loadTopRoutesChart(monthValue) {
                     },
                     x: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                        ticks: { stepSize: 1, color: theme3.textColor },
+                        grid: { color: theme3.gridColor }
                     }
                 }
             }
@@ -4020,6 +4063,7 @@ async function loadDailyActivityChart(monthValue) {
         const ctx = document.getElementById('dailyActivityChart')?.getContext('2d');
         if (!ctx) return;
 
+        const theme4 = getChartTheme();
         dailyActivityChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -4040,10 +4084,18 @@ async function loadDailyActivityChart(monthValue) {
                     title: {
                         display: true,
                         text: `Daily Job Activity — ${monthValue}`,
+                        color: theme4.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: theme4.tooltipBg,
+                        titleColor: theme4.tooltipText,
+                        bodyColor: theme4.tooltipText,
+                        borderColor: theme4.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
                         callbacks: {
                             title: function(ctx) {
                                 return `Day ${ctx[0].label}, ${monthValue}`;
@@ -4057,13 +4109,16 @@ async function loadDailyActivityChart(monthValue) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                        ticks: { stepSize: 1, color: theme4.textColor },
+                        grid: { color: theme4.gridColor }
                     },
                     x: {
                         ticks: {
                             font: { size: 10 },
-                            maxRotation: 0
-                        }
+                            maxRotation: 0,
+                            color: theme4.textColor
+                        },
+                        grid: { color: theme4.gridColor }
                     }
                 }
             }
@@ -4145,6 +4200,7 @@ async function loadCostVsRevenueChart(monthValue) {
         const ctx = document.getElementById('costVsRevenueChart')?.getContext('2d');
         if (!ctx || labels.length === 0) return;
 
+        const theme5 = getChartTheme();
         costVsRevenueChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -4183,10 +4239,18 @@ async function loadCostVsRevenueChart(monthValue) {
                     title: {
                         display: true,
                         text: `Vehicle Cost vs Revenue — ${monthValue}`,
+                        color: theme5.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
-                    legend: { position: 'top' },
+                    legend: { position: 'top', labels: { color: theme5.textColor } },
                     tooltip: {
+                        backgroundColor: theme5.tooltipBg,
+                        titleColor: theme5.tooltipText,
+                        bodyColor: theme5.tooltipText,
+                        borderColor: theme5.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
                         callbacks: {
                             label: function(ctx) {
                                 return `${ctx.dataset.label}: LKR ${ctx.parsed.y.toLocaleString()}`;
@@ -4198,15 +4262,19 @@ async function loadCostVsRevenueChart(monthValue) {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: v => `LKR ${(v / 1000).toFixed(0)}K`
-                        }
+                            callback: v => `LKR ${(v / 1000).toFixed(0)}K`,
+                            color: theme5.textColor
+                        },
+                        grid: { color: theme5.gridColor }
                     },
                     x: {
                         ticks: {
                             font: { size: 11 },
                             maxRotation: 45,
-                            minRotation: 0
-                        }
+                            minRotation: 0,
+                            color: theme5.textColor
+                        },
+                        grid: { color: theme5.gridColor }
                     }
                 }
             }
