@@ -3193,7 +3193,8 @@ async function updateAdvanceDriverSelectors() {
         const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
-            .eq('user_id', getQueryUserId());
+            .eq('user_id', getQueryUserId())
+            .neq('terminated', true);
 
         const advanceDriverSelect = document.getElementById('advanceDriver');
         const filterSelect = document.getElementById('advanceDriverFilter');
@@ -3718,7 +3719,8 @@ async function updateDriverDayOffSelectors() {
         const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
-            .eq('user_id', getQueryUserId());
+            .eq('user_id', getQueryUserId())
+            .neq('terminated', true);
 
         const formSelect = document.getElementById('driverDayOffDriver');
         const filterSelect = document.getElementById('driverDayOffFilter');

@@ -190,6 +190,7 @@ async function loadSalaryDrivers() {
             .from('drivers')
             .select('id, name, basic_salary, km_limit, extra_km_rate, salary_type, per_tip_charge')
             .eq('user_id', getQueryUserId())
+            .neq('terminated', true)
             .order('name');
         
         if (error) throw error;
