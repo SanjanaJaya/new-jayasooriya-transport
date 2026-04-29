@@ -431,7 +431,14 @@ function switchPage(page) {
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
     if (page === 'driver-dayoffs') { ensureMonthValue('driverDayOffMonth'); loadDriverDayOffs(); }
-    if (page === 'lorry-maintenance') { ensureMonthValue('maintenanceMonth'); loadMaintenanceRecords(); }
+    if (page === 'lorry-maintenance') {
+        const mEl = document.getElementById('maintenanceMonth');
+        if (mEl && !mEl.value) {
+            const n = new Date();
+            mEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+        }
+        loadMaintenanceRecords();
+    }
 
 }
 
@@ -3805,49 +3812,40 @@ document.getElementById('maintenanceForm')?.addEventListener('submit', async (e)
 // 4. Load Records + Widgets
 async function loadMaintenanceRecords() {
     try {
-        let monthValue = document.getElementById('maintenanceMonth')?.value;
-
-        // FIXED: Same local-time fallback pattern as loadDashboard
+        const monthEl = document.getElementById('maintenanceMonth');
+        let monthValue = monthEl ? monthEl.value : '';
         if (!monthValue) {
             const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            monthValue = `${year}-${month}`;
-            const el = document.getElementById('maintenanceMonth');
-            if (el) el.value = monthValue;
+            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            if (monthEl) monthEl.value = monthValue;
         }
 
-        const vehicleFilter = document.getElementById('maintenanceVehicleFilter')?.value;
+        const vehicleFilter = document.getElementById('maintenanceVehicleFilter')?.value || '';
+
+        const [yr, mo] = monthValue.split('-');
+        const startDate = `${yr}-${mo}-01`;
+        const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
 
         let query = supabaseClient
             .from('lorry_maintenance')
             .select('*')
-            .eq('user_id', getQueryUserId());
+            .eq('user_id', getQueryUserId())
+            .gte('maintenance_date', startDate)
+            .lte('maintenance_date', endDate);
 
-        if (monthValue) {
-            const [year, month] = monthValue.split('-');
-            const startDate = `${year}-${month}-01`;
-            const lastDay = new Date(year, month, 0).getDate();
-            const endDate = `${year}-${month}-${lastDay}`;
-            query = query.gte('maintenance_date', startDate).lte('maintenance_date', endDate);
-        }
-
-        if (vehicleFilter) {
-            query = query.eq('vehicle_ref', vehicleFilter);
-        }
+        if (vehicleFilter) query = query.eq('vehicle_ref', vehicleFilter);
 
         const { data, error } = await query.order('maintenance_date', { ascending: false });
         if (error) throw error;
 
-        // --- Render table ---
         const tbody = document.querySelector('#maintenanceTable tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found for this month.</td></tr>';
         } else {
-            // Build a label map from fetched vehicles
             const labelMap = await getVehicleLabelMap();
             data.forEach(item => {
                 const row = document.createElement('tr');
@@ -3869,20 +3867,17 @@ async function loadMaintenanceRecords() {
             });
         }
 
-        // --- Render per-vehicle widgets (all time within current filter) ---
         await renderMaintenanceWidgets(monthValue);
-
-        // --- Populate filter ---
         await populateMaintenanceVehicleFilter();
 
     } catch (error) {
         console.error('Error loading maintenance records:', error.message);
     }
 }
-
 // 5. Render per-vehicle cost widgets
 async function renderMaintenanceWidgets(monthValue) {
     try {
+        if (!adminUserId) return; // Already waited in loadMaintenanceRecords
         // Query all records (no month filter) for total, then filtered for period total
         let allQuery = supabaseClient
             .from('lorry_maintenance')

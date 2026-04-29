@@ -31,10 +31,16 @@ function initSalarySection() {
     const salaryMonthEl = document.getElementById('salaryMonth');
     if (salaryMonthEl) salaryMonthEl.value = monthStr;
     
-    // Load drivers for selection
-    loadSalaryDrivers();
-    // Load salary history
-    loadSalaryHistory();
+    // Wait for adminUserId before loading (checkUserRole in app.js is async)
+    function waitForAdminAndLoad() {
+        if (typeof adminUserId !== 'undefined' && adminUserId) {
+            loadSalaryDrivers();
+            loadSalaryHistory();
+        } else {
+            setTimeout(waitForAdminAndLoad, 150);
+        }
+    }
+    waitForAdminAndLoad();
 }
 
 // Handle salary receipt file selection
@@ -1077,40 +1083,8 @@ if (document.readyState === 'loading') {
     initSalarySection();
 }
 
-// Add to page switching
-function switchPage(page) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageEl = document.getElementById(page);
-    if (pageEl) pageEl.classList.add('active');
-    
-    const titles = {
-        'dashboard': 'Dashboard',
-        'drivers': 'Manage Drivers',
-        'driver-advances': 'Driver Salary Advances',
-        'driver-salary': 'Driver Salary Calculator & Salary Slips',
-        'hire-vehicles': 'Hire-to-Pay Vehicles',
-        'hire-records': 'Hire-to-Pay Records',
-        'commitment-vehicles': 'Commitment Vehicles',
-        'commitment-records': 'Commitment Vehicle Hires',
-        'commitment-dayoffs': 'Day Offs'
-    };
-    
-    const titleEl = document.getElementById('pageTitle');
-    if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
-    
-    if (page === 'dashboard') loadDashboard();
-    if (page === 'drivers') loadDrivers();
-    if (page === 'driver-advances') loadDriverAdvances();
-    if (page === 'driver-salary') {
-        loadSalaryDrivers();
-        loadSalaryHistory();
-    }
-    if (page === 'hire-vehicles') loadHireVehicles();
-    if (page === 'hire-records') loadHireRecords();
-    if (page === 'commitment-vehicles') loadCommitmentVehicles();
-    if (page === 'commitment-records') loadCommitmentRecords();
-    if (page === 'commitment-dayoffs') loadDayOffs();
-}
+// NOTE: switchPage is defined in app.js — this file does NOT override it.
+// Salary section hooks are handled via the driver-salary case in app.js switchPage.
 
 // ============ SALARY SMS COPY UTILITIES ============
 
