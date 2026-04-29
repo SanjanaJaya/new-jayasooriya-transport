@@ -440,6 +440,13 @@
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="driverSalaryType" style="font-size:12px;color:#666;">Salary Type</label>
+                                    <select id="driverSalaryType" onchange="toggleDriverSalaryTypeFields()">
+                                        <option value="fixed">Fixed Salary (Monthly)</option>
+                                        <option value="per_tip">Per Tip (Per Trip)</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <input type="text" id="driverLicense" placeholder="License Number" required>
@@ -457,12 +464,25 @@
                             <div class="form-row full">
                                 <input type="text" id="driverAddress" placeholder="Address" required>
                             </div>
-                            <div class="form-row">
-                                <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
-                                <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
+                            <!-- Fixed Salary Fields -->
+                            <div id="fixedSalaryFields">
+                                <div class="form-row">
+                                    <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
+                                    <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
+                                </div>
+                                <div class="form-row">
+                                    <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
+                                </div>
                             </div>
-                            <div class="form-row">
-                                <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
+                            <!-- Per Tip Salary Fields -->
+                            <div id="perTipSalaryFields" style="display:none;">
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="driverPerTipCharge" style="font-size:12px;color:#666;">💰 Per Tip Charge (LKR)</label>
+                                        <input type="number" id="driverPerTipCharge" placeholder="Amount per tip/trip (LKR)" step="0.01">
+                                        <small style="color: #666; font-size: 11px;">Amount paid for each trip. Supports 0.5× half tips.</small>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-row full">
                                 <label>
@@ -483,13 +503,12 @@
                                 <tr>
                                     <th>Photo</th> <th>Name</th>
                                     <th>Role</th>
+                                    <th>Salary Type</th>
                                     <th>Contact</th>
                                     <th>License</th>
                                     <th>Age</th>
                                     <th>Address</th>
-                                    <th>Basic Salary</th>
-                                    <th>KM Limit</th>
-                                    <th>Extra KM Rate</th>
+                                    <th>Salary Info</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -683,12 +702,13 @@
                                 </div>
                             </div>
 
-                            <div class="form-section">
+                            <!-- Fixed Salary: KM Section -->
+                            <div class="form-section" id="salaryKmSection">
                                 <h4>🚗 Distance & KM Details</h4>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="totalKm">Total KM This Month</label>
-                                        <input type="number" id="totalKm" placeholder="Total KM" step="0.01" required>
+                                        <input type="number" id="totalKm" placeholder="Total KM" step="0.01">
                                         <small>Total kilometers driven this month</small>
                                     </div>
                                     <div class="form-group">
@@ -704,14 +724,44 @@
                                 </div>
                             </div>
 
-                            <div class="form-section">
-                                <h4>💰 Salary Components</h4>
+                            <!-- Per Tip: Tip Count Section -->
+                            <div class="form-section" id="salaryTipSection" style="display:none;">
+                                <h4>🎫 Per-Tip Details</h4>
                                 <div class="form-row">
                                     <div class="form-group">
+                                        <label for="perTipChargeDisplay">Per Tip Charge</label>
+                                        <input type="text" id="perTipChargeDisplay" readonly style="background: #f5f5f5;">
+                                        <small>From staff profile</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="tipCount">Tip Count (1× Normal Tips)</label>
+                                        <input type="number" id="tipCount" placeholder="Number of normal tips" step="1" min="0" value="0">
+                                        <small>Number of regular trips this month</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="halfTipCount">0.5× Tip Count (Half Tip)</label>
+                                        <input type="number" id="halfTipCount" placeholder="Number of 0.5× tips" step="1" min="0" value="0">
+                                        <small>Half tips (paid 0.5× rate)</small>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="tipSalaryDisplay">Tip Salary (Auto-Calculated)</label>
+                                        <input type="text" id="tipSalaryDisplay" readonly style="background: #E8F5E9; font-weight: bold; color: #27AE60;">
+                                        <small>= (Tips × Rate) + (0.5× Tips × Rate × 0.5)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Salary Components (shown for both types) -->
+                            <div class="form-section" id="salaryFixedComponents">
+                                <h4>💰 Salary Components</h4>
+                                <div class="form-row">
+                                    <div class="form-group" id="basicSalaryGroup">
                                         <label for="basicSalaryDisplay">Basic Salary</label>
                                         <input type="number" id="basicSalaryDisplay" readonly style="background: #f5f5f5;">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group" id="extraKmSalaryGroup">
                                         <label for="extraKmSalary">Extra KM Salary</label>
                                         <input type="number" id="extraKmSalary" readonly style="background: #f5f5f5;">
                                         <small>Automatically calculated</small>
@@ -806,7 +856,7 @@
                                     <tr>
                                         <th>Driver</th>
                                         <th>Month</th>
-                                        <th>Total KM</th>
+                                        <th>KM / Tips</th>
                                         <th>Gross Salary</th>
                                         <th>Advances</th>
                                         <th>Net Salary</th>

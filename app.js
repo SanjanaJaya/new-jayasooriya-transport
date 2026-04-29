@@ -481,8 +481,24 @@ document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('driverForm').reset();
     document.getElementById('driverId').value = '';
+    document.getElementById('driverSalaryType').value = 'fixed';
+    toggleDriverSalaryTypeFields();
     document.getElementById('driverFormContainer').style.display = 'block';
 });
+
+// Toggle salary type fields in driver form
+function toggleDriverSalaryTypeFields() {
+    const salaryType = document.getElementById('driverSalaryType').value;
+    const fixedFields = document.getElementById('fixedSalaryFields');
+    const perTipFields = document.getElementById('perTipSalaryFields');
+    if (salaryType === 'per_tip') {
+        if (fixedFields) fixedFields.style.display = 'none';
+        if (perTipFields) perTipFields.style.display = 'block';
+    } else {
+        if (fixedFields) fixedFields.style.display = 'block';
+        if (perTipFields) perTipFields.style.display = 'none';
+    }
+}
 
 document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverFormContainer').style.display = 'none';
@@ -495,6 +511,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('driverId').value;
+    const salaryType = document.getElementById('driverSalaryType').value || 'fixed';
     const data = {
         name: document.getElementById('driverName').value,
         contact: document.getElementById('driverContact').value,
@@ -503,9 +520,11 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
         role: document.getElementById('driverRole').value || null,
-        basic_salary: parseFloat(document.getElementById('driverBasicSalary').value) || null,
-        km_limit: parseFloat(document.getElementById('driverKmLimit').value) || null,
-        extra_km_rate: parseFloat(document.getElementById('driverExtraKmRate').value) || null,
+        salary_type: salaryType,
+        basic_salary: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverBasicSalary').value) || null) : null,
+        km_limit: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverKmLimit').value) || null) : null,
+        extra_km_rate: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverExtraKmRate').value) || null) : null,
+        per_tip_charge: salaryType === 'per_tip' ? (parseFloat(document.getElementById('driverPerTipCharge').value) || null) : null,
         terminated: document.getElementById('driverTerminated') ? document.getElementById('driverTerminated').checked : false,
         user_id: adminUserId
     };
@@ -541,7 +560,7 @@ async function loadDrivers() {
         tbody.innerHTML = '';
         
         if (!data || data.length === 0) {
-             tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
+             tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
              return;
         }
 
@@ -558,19 +577,36 @@ async function loadDrivers() {
             const photoHTML = driver.photo_url ? 
                 `<img src="${driver.photo_url}" alt="${driver.name}" class="profile-photo" onclick="openPhotoLightbox('${driver.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` : 
                 `<div class="no-photo">📷</div>`;
+            
+            // Salary type badge & info
+            const isPerTip = driver.salary_type === 'per_tip';
+            const salaryTypeBadge = isPerTip 
+                ? '<span style="background:#E67E22;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Per Tip</span>'
+                : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Fixed</span>';
+            
+            let salaryInfo = '';
+            if (isPerTip) {
+                salaryInfo = driver.per_tip_charge ? `LKR ${driver.per_tip_charge.toFixed(2)} / tip` : '-';
+            } else {
+                const parts = [];
+                if (driver.basic_salary) parts.push(`Basic: LKR ${driver.basic_salary.toFixed(2)}`);
+                if (driver.km_limit) parts.push(`KM Limit: ${driver.km_limit} km`);
+                if (driver.extra_km_rate) parts.push(`Extra: LKR ${driver.extra_km_rate.toFixed(2)}/km`);
+                salaryInfo = parts.length > 0 ? parts.join('<br>') : '-';
+            }
+            
             const row = document.createElement('tr');
             if (driver.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${driver.name}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}</td>
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
+                <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number}</td>
                 <td>${driver.age}</td>
                 <td>${driver.address}</td>
-                <td>${driver.basic_salary ? 'LKR ' + driver.basic_salary.toFixed(2) : '-'}</td>
-                <td>${driver.km_limit ? driver.km_limit + ' km' : '-'}</td>
-                <td>${driver.extra_km_rate ? 'LKR ' + driver.extra_km_rate.toFixed(2) : '-'}</td>
+                <td style="font-size:12px;">${salaryInfo}</td>
                 ${actionButtons}
             `;
             return row;
@@ -579,7 +615,7 @@ async function loadDrivers() {
         activeDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
 
         if (terminatedDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 10 : 11;
+            const colSpan = userRole === 'viewer' ? 9 : 10;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.innerHTML = `
                 <td colspan="${colSpan}" onclick="toggleDriverArchive()">
@@ -624,9 +660,12 @@ async function editDriver(id) {
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';
         document.getElementById('driverRole').value = data.role || '';
+        document.getElementById('driverSalaryType').value = data.salary_type || 'fixed';
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
+        document.getElementById('driverPerTipCharge').value = data.per_tip_charge || '';
+        toggleDriverSalaryTypeFields();
         if (document.getElementById('driverTerminated')) {
             document.getElementById('driverTerminated').checked = data.terminated || false;
         }

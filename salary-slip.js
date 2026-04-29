@@ -1,9 +1,10 @@
 // salary-slip.js - Driver Salary Slip Generator with Transport Logo & Red Theme
-// UPDATED: Added full CRUD operations & PDF Receipt Upload
+// UPDATED: Added full CRUD operations, PDF Receipt Upload & Per-Tip Salary Support
 
 // Global variables
 let currentSalaryData = null;
 let isEditMode = false;
+let currentDriverSalaryType = 'fixed'; // 'fixed' or 'per_tip'
 // Global variables for salary receipt upload
 let currentSalaryReceiptFile = null;
 let existingSalaryReceiptUrl = null;
@@ -18,6 +19,10 @@ function initSalarySection() {
     document.getElementById('totalKm')?.addEventListener('input', recalculateExtraKmSalary);
     document.getElementById('additionalAllowance')?.addEventListener('input', recalculateSalary);
     document.getElementById('otherDeductions')?.addEventListener('input', recalculateSalary);
+    
+    // Per-tip input listeners
+    document.getElementById('tipCount')?.addEventListener('input', recalculateTipSalary);
+    document.getElementById('halfTipCount')?.addEventListener('input', recalculateTipSalary);
     
     // New: Handle salary receipt file selection
     document.getElementById('salaryReceipt')?.addEventListener('change', handleSalaryReceiptChange);
@@ -41,6 +46,43 @@ function initSalarySection() {
         }
     }
     waitForAdminAndLoad();
+}
+
+// Toggle salary form sections based on driver salary type
+function toggleSalaryFormSections(salaryType) {
+    currentDriverSalaryType = salaryType || 'fixed';
+    const kmSection = document.getElementById('salaryKmSection');
+    const tipSection = document.getElementById('salaryTipSection');
+    const basicSalaryGroup = document.getElementById('basicSalaryGroup');
+    const extraKmSalaryGroup = document.getElementById('extraKmSalaryGroup');
+    
+    if (currentDriverSalaryType === 'per_tip') {
+        if (kmSection) kmSection.style.display = 'none';
+        if (tipSection) tipSection.style.display = 'block';
+        if (basicSalaryGroup) basicSalaryGroup.style.display = 'none';
+        if (extraKmSalaryGroup) extraKmSalaryGroup.style.display = 'none';
+    } else {
+        if (kmSection) kmSection.style.display = 'block';
+        if (tipSection) tipSection.style.display = 'none';
+        if (basicSalaryGroup) basicSalaryGroup.style.display = 'block';
+        if (extraKmSalaryGroup) extraKmSalaryGroup.style.display = 'block';
+    }
+}
+
+// Recalculate tip salary
+function recalculateTipSalary() {
+    const tipCount = parseInt(document.getElementById('tipCount')?.value) || 0;
+    const halfTipCount = parseInt(document.getElementById('halfTipCount')?.value) || 0;
+    const perTipChargeText = document.getElementById('perTipChargeDisplay')?.value || 'LKR 0';
+    const perTipMatch = perTipChargeText.match(/LKR ([\d.]+)/);
+    const perTipCharge = perTipMatch ? parseFloat(perTipMatch[1]) : 0;
+    
+    const tipSalary = (tipCount * perTipCharge) + (halfTipCount * perTipCharge * 0.5);
+    
+    const tipSalaryEl = document.getElementById('tipSalaryDisplay');
+    if (tipSalaryEl) tipSalaryEl.value = `LKR ${tipSalary.toFixed(2)}`;
+    
+    recalculateSalary();
 }
 
 // Handle salary receipt file selection
@@ -146,7 +188,7 @@ async function loadSalaryDrivers() {
     try {
         const { data: drivers, error } = await supabaseClient
             .from('drivers')
-            .select('id, name, basic_salary, km_limit, extra_km_rate')
+            .select('id, name, basic_salary, km_limit, extra_km_rate, salary_type, per_tip_charge')
             .eq('user_id', getQueryUserId())
             .order('name');
         
@@ -160,10 +202,17 @@ async function loadSalaryDrivers() {
         drivers.forEach(driver => {
             const option = document.createElement('option');
             option.value = driver.id;
-            option.textContent = `${driver.name} (${driver.basic_salary ? 'LKR ' + driver.basic_salary : 'No salary set'})`;
+            const isPerTip = driver.salary_type === 'per_tip';
+            if (isPerTip) {
+                option.textContent = `${driver.name} (Per Tip: LKR ${driver.per_tip_charge || 0})`;
+            } else {
+                option.textContent = `${driver.name} (${driver.basic_salary ? 'LKR ' + driver.basic_salary : 'No salary set'})`;
+            }
             option.dataset.basicSalary = driver.basic_salary || 0;
             option.dataset.kmLimit = driver.km_limit || 0;
             option.dataset.extraKmRate = driver.extra_km_rate || 0;
+            option.dataset.salaryType = driver.salary_type || 'fixed';
+            option.dataset.perTipCharge = driver.per_tip_charge || 0;
             select.appendChild(option);
         });
     } catch (error) {
@@ -222,6 +271,15 @@ async function loadDriverSalaryData() {
         document.getElementById('kmLimitDisplay').value = driver.km_limit || 0;
         document.getElementById('extraKmRateDisplay').value = driver.extra_km_rate ? `LKR ${driver.extra_km_rate}/km` : 'LKR 0.00/km';
         
+        // Toggle form sections based on salary type
+        const driverSalaryType = driver.salary_type || 'fixed';
+        toggleSalaryFormSections(driverSalaryType);
+        
+        // Populate per-tip fields
+        if (driverSalaryType === 'per_tip') {
+            document.getElementById('perTipChargeDisplay').value = driver.per_tip_charge ? `LKR ${driver.per_tip_charge}` : 'LKR 0';
+        }
+        
         // Display advances
         displayAdvances(advances);
         
@@ -235,6 +293,13 @@ async function loadDriverSalaryData() {
             document.getElementById('totalKm').value = existingSalary.total_km || 0;
             document.getElementById('additionalAllowance').value = existingSalary.additional_allowance || 0;
             document.getElementById('otherDeductions').value = existingSalary.other_deductions || 0;
+            
+            // Populate tip fields if per-tip
+            if (driverSalaryType === 'per_tip') {
+                document.getElementById('tipCount').value = existingSalary.tip_count || 0;
+                document.getElementById('halfTipCount').value = existingSalary.half_tip_count || 0;
+                recalculateTipSalary();
+            }
             
             // Display existing receipt if any
             if (existingSalary.receipt_url) {
@@ -258,6 +323,9 @@ async function loadDriverSalaryData() {
             document.getElementById('totalKm').value = '';
             document.getElementById('additionalAllowance').value = 0;
             document.getElementById('otherDeductions').value = 0;
+            document.getElementById('tipCount').value = 0;
+            document.getElementById('halfTipCount').value = 0;
+            if (document.getElementById('tipSalaryDisplay')) document.getElementById('tipSalaryDisplay').value = 'LKR 0.00';
             
             // Reset button text
             const generateBtn = document.getElementById('generateSalarySlipBtn');
@@ -347,8 +415,6 @@ function recalculateExtraKmSalary() {
 
 // Recalculate entire salary
 function recalculateSalary() {
-    const basicSalary = parseFloat(document.getElementById('basicSalaryDisplay').value) || 0;
-    const extraKmSalary = parseFloat(document.getElementById('extraKmSalary').value) || 0;
     const additionalAllowance = parseFloat(document.getElementById('additionalAllowance').value) || 0;
     const otherDeductions = parseFloat(document.getElementById('otherDeductions').value) || 0;
     const totalAdvancesText = document.getElementById('totalAdvancesDisplay').textContent;
@@ -357,7 +423,21 @@ function recalculateSalary() {
     const totalAdvancesMatch = totalAdvancesText.match(/LKR (\d+(\.\d+)?)/);
     const totalAdvances = totalAdvancesMatch ? parseFloat(totalAdvancesMatch[1]) : 0;
     
-    const grossSalary = basicSalary + extraKmSalary + additionalAllowance;
+    let grossSalary = 0;
+    
+    if (currentDriverSalaryType === 'per_tip') {
+        // Per-tip: gross = tip salary + allowance
+        const tipSalaryText = document.getElementById('tipSalaryDisplay')?.value || 'LKR 0';
+        const tipSalaryMatch = tipSalaryText.match(/LKR ([\d.]+)/);
+        const tipSalary = tipSalaryMatch ? parseFloat(tipSalaryMatch[1]) : 0;
+        grossSalary = tipSalary + additionalAllowance;
+    } else {
+        // Fixed: gross = basic + extra km + allowance
+        const basicSalary = parseFloat(document.getElementById('basicSalaryDisplay').value) || 0;
+        const extraKmSalary = parseFloat(document.getElementById('extraKmSalary').value) || 0;
+        grossSalary = basicSalary + extraKmSalary + additionalAllowance;
+    }
+    
     const netSalary = grossSalary - totalAdvances - otherDeductions;
     
     document.getElementById('grossSalaryDisplay').textContent = `LKR ${grossSalary.toFixed(2)}`;
@@ -376,30 +456,46 @@ function resetSalarySummary() {
 async function calculateSalary() {
     const driverId = document.getElementById('salaryDriverSelect').value;
     const monthValue = document.getElementById('salaryMonth').value;
-    const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
     
     if (!driverId || !monthValue) {
         alert('Please select both driver and month');
         return;
     }
     
-    if (!totalKm || totalKm <= 0) {
-        alert('Please enter valid total KM');
-        return;
+    if (currentDriverSalaryType === 'fixed') {
+        const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
+        if (!totalKm || totalKm <= 0) {
+            alert('Please enter valid total KM');
+            return;
+        }
+    } else {
+        const tipCount = parseInt(document.getElementById('tipCount').value) || 0;
+        const halfTipCount = parseInt(document.getElementById('halfTipCount').value) || 0;
+        if (tipCount <= 0 && halfTipCount <= 0) {
+            alert('Please enter at least one tip count');
+            return;
+        }
+        recalculateTipSalary();
     }
     
     recalculateSalary();
     alert('Salary calculated successfully! Click "Generate Salary Slip" to create/update PDF.');
 }
 
-// Generate salary slip PDF (Updated to handle receipt upload)
+// Generate salary slip PDF (Updated to handle receipt upload & per-tip)
 async function generateSalarySlip() {
     const driverId = document.getElementById('salaryDriverSelect').value;
     const monthValue = document.getElementById('salaryMonth').value;
     const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
     
-    if (!driverId || !monthValue || !totalKm) {
+    if (!driverId || !monthValue) {
         alert('Please calculate salary first');
+        return;
+    }
+    
+    // Validate based on salary type
+    if (currentDriverSalaryType === 'fixed' && !totalKm) {
+        alert('Please enter total KM and calculate salary first');
         return;
     }
     
@@ -428,20 +524,35 @@ async function generateSalarySlip() {
         
         if (advancesError) throw advancesError;
         
-        // Calculate values
-        const basicSalary = parseFloat(document.getElementById('basicSalaryDisplay').value) || 0;
-        const kmLimit = parseFloat(document.getElementById('kmLimitDisplay').value) || 0;
-        const extraKmRateText = document.getElementById('extraKmRateDisplay').value;
-        const extraKmRateMatch = extraKmRateText.match(/LKR (\d+(\.\d+)?)/);
-        const extraKmRate = extraKmRateMatch ? parseFloat(extraKmRateMatch[1]) : 0;
-        
-        const extraKm = Math.max(0, totalKm - kmLimit);
-        const extraKmSalary = extraKm * extraKmRate;
         const additionalAllowance = parseFloat(document.getElementById('additionalAllowance').value) || 0;
         const otherDeductions = parseFloat(document.getElementById('otherDeductions').value) || 0;
         const totalAdvances = advances?.reduce((sum, adv) => sum + adv.amount, 0) || 0;
         
-        const grossSalary = basicSalary + extraKmSalary + additionalAllowance;
+        let grossSalary = 0;
+        let salaryType = driver.salary_type || 'fixed';
+        
+        // Per-tip specific values
+        let tipCount = 0, halfTipCount = 0, perTipCharge = 0, tipSalary = 0;
+        // Fixed specific values
+        let basicSalary = 0, kmLimit = 0, extraKmRate = 0, extraKm = 0, extraKmSalary = 0;
+        
+        if (salaryType === 'per_tip') {
+            tipCount = parseInt(document.getElementById('tipCount').value) || 0;
+            halfTipCount = parseInt(document.getElementById('halfTipCount').value) || 0;
+            perTipCharge = driver.per_tip_charge || 0;
+            tipSalary = (tipCount * perTipCharge) + (halfTipCount * perTipCharge * 0.5);
+            grossSalary = tipSalary + additionalAllowance;
+        } else {
+            basicSalary = parseFloat(document.getElementById('basicSalaryDisplay').value) || 0;
+            kmLimit = parseFloat(document.getElementById('kmLimitDisplay').value) || 0;
+            const extraKmRateText = document.getElementById('extraKmRateDisplay').value;
+            const extraKmRateMatch = extraKmRateText.match(/LKR (\d+(\.\d+)?)/);
+            extraKmRate = extraKmRateMatch ? parseFloat(extraKmRateMatch[1]) : 0;
+            extraKm = Math.max(0, totalKm - kmLimit);
+            extraKmSalary = extraKm * extraKmRate;
+            grossSalary = basicSalary + extraKmSalary + additionalAllowance;
+        }
+        
         const netSalary = grossSalary - totalAdvances - otherDeductions;
         
         // Prepare salary data for PDF
@@ -452,13 +563,21 @@ async function generateSalarySlip() {
                 license: driver.license_number,
                 address: driver.address
             },
+            salaryType: salaryType,
             salaryMonth: monthValue,
+            // Fixed salary fields
             basicSalary: basicSalary,
             totalKm: totalKm,
             kmLimit: kmLimit,
             extraKm: extraKm,
             extraKmRate: extraKmRate,
             extraKmSalary: extraKmSalary,
+            // Per-tip fields
+            perTipCharge: perTipCharge,
+            tipCount: tipCount,
+            halfTipCount: halfTipCount,
+            tipSalary: tipSalary,
+            // Common fields
             additionalAllowance: additionalAllowance,
             advances: advances || [],
             totalAdvances: totalAdvances,
@@ -511,9 +630,14 @@ async function saveSalaryRecordWithReceipt(driverId, monthValue, salaryData) {
         const salaryRecord = {
             driver_id: driverId,
             salary_month: monthValue,
+            salary_type: salaryData.salaryType || 'fixed',
             total_km: salaryData.totalKm,
             basic_salary: salaryData.basicSalary,
             extra_km_salary: salaryData.extraKmSalary,
+            per_tip_charge: salaryData.perTipCharge || 0,
+            tip_count: salaryData.tipCount || 0,
+            half_tip_count: salaryData.halfTipCount || 0,
+            tip_salary: salaryData.tipSalary || 0,
             additional_allowance: salaryData.additionalAllowance,
             total_advances: salaryData.totalAdvances,
             other_deductions: salaryData.otherDeductions,
@@ -629,10 +753,16 @@ async function loadSalaryHistory() {
                    </a>`
                 : '<span style="color: #95A5A6;">No receipt</span>';
             
+            // KM or Tip info column
+            const isPerTip = record.salary_type === 'per_tip';
+            const kmOrTipInfo = isPerTip 
+                ? `${(record.tip_count || 0)} tips${(record.half_tip_count || 0) > 0 ? ' + ' + record.half_tip_count + ' (0.5×)' : ''}`
+                : `${(record.total_km || 0).toFixed(2)} km`;
+            
             row.innerHTML = `
                 <td>${record.drivers.name}</td>
                 <td>${record.salary_month}</td>
-                <td>${record.total_km.toFixed(2)} km</td>
+                <td>${kmOrTipInfo}</td>
                 <td>LKR ${record.gross_salary.toFixed(2)}</td>
                 <td>LKR ${record.total_advances.toFixed(2)}</td>
                 <td style="font-weight: bold; color: #27AE60;">LKR ${record.net_salary.toFixed(2)}</td>
@@ -665,7 +795,12 @@ async function loadSalaryHistory() {
                     record.total_advances || 0,
                     record.other_deductions || 0,
                     record.gross_salary || 0,
-                    record.net_salary || 0
+                    record.net_salary || 0,
+                    record.salary_type || 'fixed',
+                    record.tip_count || 0,
+                    record.half_tip_count || 0,
+                    record.per_tip_charge || 0,
+                    record.tip_salary || 0
                 );
                 copyTextToClipboard(msg, this);
             });
@@ -677,12 +812,12 @@ async function loadSalaryHistory() {
     }
 }
 
-// Edit salary record (Updated to handle receipts)
+// Edit salary record (Updated to handle receipts & per-tip)
 async function editSalaryRecord(salaryId) {
     try {
         const { data: salaryRecord, error } = await supabaseClient
             .from('driver_salary')
-            .select('*, drivers(name, contact, license_number, address, basic_salary, km_limit, extra_km_rate)')
+            .select('*, drivers(name, contact, license_number, address, basic_salary, km_limit, extra_km_rate, salary_type, per_tip_charge)')
             .eq('id', salaryId)
             .eq('user_id', getQueryUserId())
             .single();
@@ -701,6 +836,10 @@ async function editSalaryRecord(salaryId) {
             .gte('advance_date', startDate)
             .lte('advance_date', endDate);
         
+        // Determine salary type
+        const salaryType = salaryRecord.salary_type || salaryRecord.drivers.salary_type || 'fixed';
+        toggleSalaryFormSections(salaryType);
+        
         // Populate form with existing data
         document.getElementById('salaryDriverSelect').value = salaryRecord.driver_id;
         document.getElementById('salaryMonth').value = salaryRecord.salary_month;
@@ -713,6 +852,14 @@ async function editSalaryRecord(salaryId) {
         document.getElementById('totalKm').value = salaryRecord.total_km || 0;
         document.getElementById('additionalAllowance').value = salaryRecord.additional_allowance || 0;
         document.getElementById('otherDeductions').value = salaryRecord.other_deductions || 0;
+        
+        // Populate per-tip fields
+        if (salaryType === 'per_tip') {
+            document.getElementById('perTipChargeDisplay').value = salaryRecord.drivers.per_tip_charge ? `LKR ${salaryRecord.drivers.per_tip_charge}` : 'LKR 0';
+            document.getElementById('tipCount').value = salaryRecord.tip_count || 0;
+            document.getElementById('halfTipCount').value = salaryRecord.half_tip_count || 0;
+            recalculateTipSalary();
+        }
         
         // Display existing receipt if any
         if (salaryRecord.receipt_url) {
@@ -735,7 +882,9 @@ async function editSalaryRecord(salaryId) {
         }
         
         // Calculate and display summary
-        recalculateExtraKmSalary();
+        if (salaryType === 'fixed') {
+            recalculateExtraKmSalary();
+        }
         recalculateSalary();
         
         // Show form
@@ -928,17 +1077,33 @@ function createSalarySlipPDF() {
         
         yPos += 10;
         
-        // Create salary details table
-        const salaryDetails = [
-            ['Description', 'Details', 'Amount (LKR)'],
-            ['Basic Salary', '-', currentSalaryData.basicSalary.toFixed(2)],
-            ['Total KM Driven', `${currentSalaryData.totalKm.toFixed(2)} km`, '-'],
-            ['KM Limit in Salary', `${currentSalaryData.kmLimit.toFixed(2)} km`, '-'],
-            ['Extra KM', `${currentSalaryData.extraKm.toFixed(2)} km @ LKR ${currentSalaryData.extraKmRate}/km`, currentSalaryData.extraKmSalary.toFixed(2)],
-            ['Additional Allowance', 'Bonus', currentSalaryData.additionalAllowance.toFixed(2)],
-            ['', '', ''],
-            ['GROSS SALARY', '', currentSalaryData.grossSalary.toFixed(2)]
-        ];
+        // Create salary details table based on salary type
+        let salaryDetails = [];
+        const isPerTipPDF = currentSalaryData.salaryType === 'per_tip';
+        
+        if (isPerTipPDF) {
+            salaryDetails = [
+                ['Description', 'Details', 'Amount (LKR)'],
+                ['Per Tip Charge', `LKR ${(currentSalaryData.perTipCharge || 0).toFixed(2)} / tip`, '-'],
+                ['Normal Tips (1×)', `${currentSalaryData.tipCount || 0} tips`, ((currentSalaryData.tipCount || 0) * (currentSalaryData.perTipCharge || 0)).toFixed(2)],
+                ['0.5× Tips (Half Tip)', `${currentSalaryData.halfTipCount || 0} tips @ 0.5×`, ((currentSalaryData.halfTipCount || 0) * (currentSalaryData.perTipCharge || 0) * 0.5).toFixed(2)],
+                ['Tip Salary', `Total: ${(currentSalaryData.tipCount || 0) + (currentSalaryData.halfTipCount || 0)} tips`, (currentSalaryData.tipSalary || 0).toFixed(2)],
+                ['Additional Allowance', 'Bonus', currentSalaryData.additionalAllowance.toFixed(2)],
+                ['', '', ''],
+                ['GROSS SALARY', '', currentSalaryData.grossSalary.toFixed(2)]
+            ];
+        } else {
+            salaryDetails = [
+                ['Description', 'Details', 'Amount (LKR)'],
+                ['Basic Salary', '-', currentSalaryData.basicSalary.toFixed(2)],
+                ['Total KM Driven', `${currentSalaryData.totalKm.toFixed(2)} km`, '-'],
+                ['KM Limit in Salary', `${currentSalaryData.kmLimit.toFixed(2)} km`, '-'],
+                ['Extra KM', `${currentSalaryData.extraKm.toFixed(2)} km @ LKR ${currentSalaryData.extraKmRate}/km`, currentSalaryData.extraKmSalary.toFixed(2)],
+                ['Additional Allowance', 'Bonus', currentSalaryData.additionalAllowance.toFixed(2)],
+                ['', '', ''],
+                ['GROSS SALARY', '', currentSalaryData.grossSalary.toFixed(2)]
+            ];
+        }
         
         // Draw salary details table
         pdf.setFontSize(10);
@@ -1088,7 +1253,7 @@ if (document.readyState === 'loading') {
 
 // ============ SALARY SMS COPY UTILITIES ============
 
-function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSalary, additionalAllowance, totalKm, totalAdvances, otherDeductions, grossSalary, netSalary) {
+function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSalary, additionalAllowance, totalKm, totalAdvances, otherDeductions, grossSalary, netSalary, salaryType, tipCount, halfTipCount, perTipCharge, tipSalary) {
     // Format month label e.g. "2025-05" -> "May 2025"
     let monthLabel = salaryMonth;
     if (salaryMonth && salaryMonth.includes('-')) {
@@ -1103,10 +1268,21 @@ function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSala
     lines.push('Salary Summary - ' + monthLabel);
     lines.push('');
     lines.push('-- Earnings --');
-    lines.push('Basic Salary:      LKR ' + Number(basicSalary).toFixed(2));
-    if (Number(extraKmSalary) > 0) {
-        lines.push('Extra KM Salary:   LKR ' + Number(extraKmSalary).toFixed(2));
+    
+    if (salaryType === 'per_tip') {
+        lines.push('Per Tip Charge:    LKR ' + Number(perTipCharge || 0).toFixed(2));
+        lines.push('Normal Tips (1x):  ' + Number(tipCount || 0));
+        if (Number(halfTipCount) > 0) {
+            lines.push('0.5x Tips:         ' + Number(halfTipCount));
+        }
+        lines.push('Tip Salary:        LKR ' + Number(tipSalary || 0).toFixed(2));
+    } else {
+        lines.push('Basic Salary:      LKR ' + Number(basicSalary).toFixed(2));
+        if (Number(extraKmSalary) > 0) {
+            lines.push('Extra KM Salary:   LKR ' + Number(extraKmSalary).toFixed(2));
+        }
     }
+    
     if (Number(additionalAllowance) > 0) {
         lines.push('Allowance:         LKR ' + Number(additionalAllowance).toFixed(2));
     }
