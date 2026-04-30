@@ -245,7 +245,8 @@ async function loadDriverSalaryData() {
         // Get advances for this driver and month
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
         
         const { data: advances, error: advancesError } = await supabaseClient
             .from('driver_advances')
@@ -514,7 +515,8 @@ async function generateSalarySlip() {
         // Get advances for this month
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
         
         const { data: advances, error: advancesError } = await supabaseClient
             .from('driver_advances')
@@ -828,7 +830,8 @@ async function editSalaryRecord(salaryId) {
         // Get advances for this month
         const [year, month] = salaryRecord.salary_month.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
         
         const { data: advances } = await supabaseClient
             .from('driver_advances')

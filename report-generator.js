@@ -38,7 +38,8 @@ async function generateMonthlyReport(monthValue) {
         
         const [year, month] = monthValue.split('-');
         const startDate = `${year}-${month}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
         
         const monthName = new Date(year, month - 1).toLocaleDateString('en-US', {
             month: 'long',
