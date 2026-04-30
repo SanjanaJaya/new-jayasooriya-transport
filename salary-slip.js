@@ -363,7 +363,7 @@ function displayAdvances(advances) {
     const totalAdvancesDisplay = document.getElementById('totalAdvancesDisplay');
     
     if (!advances || advances.length === 0) {
-        advancesDetails.innerHTML = '<p style="color: #666; font-style: italic;">No advances for this month</p>';
+        advancesDetails.innerHTML = '<p style="color: var(--text-muted, #666); font-style: italic;">No advances for this month</p>';
         totalAdvancesDisplay.textContent = 'LKR 0.00';
         return;
     }
@@ -378,7 +378,7 @@ function displayAdvances(advances) {
     
     advances.forEach(advance => {
         totalAdvances += advance.amount;
-        html += '<tr style="border-bottom: 1px solid #eee;">';
+        html += '<tr style="border-bottom: 1px solid var(--surface-border, #eee);">';
         html += `<td style="padding: 8px;">${advance.advance_date}</td>`;
         html += `<td style="padding: 8px;">LKR ${advance.amount.toFixed(2)}</td>`;
         html += `<td style="padding: 8px;">${advance.notes || '-'}</td>`;
