@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Jayasooriya Transport">
@@ -11,21 +13,23 @@
     <meta name="msapplication-TileColor" content="#d1001f">
     <meta name="msapplication-tap-highlight" content="no">
     <meta name="description" content="Jayasooriya Transport Management System">
-    
+
     <title>Jayasooriya Transport - Management System</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
-    
+
     <link rel="manifest" href="manifest.json">
-    
+
     <link rel="apple-touch-icon" sizes="120x120" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
     <link rel="apple-touch-icon" sizes="152x152" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
     <link rel="apple-touch-icon" sizes="167x167" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         /* ===== SMS Copy Button ===== */
@@ -36,6 +40,7 @@
             gap: 12px;
             flex-wrap: wrap;
         }
+
         .btn-copy-sms {
             display: inline-flex;
             align-items: center;
@@ -53,10 +58,12 @@
             flex-shrink: 0;
             line-height: 1.2;
         }
+
         /* Inside advance cards — push to right */
         .advance-card .btn-copy-sms {
             margin-left: auto;
         }
+
         /* Inside table cells — compact size, no margin override */
         td .btn-copy-sms,
         .btn-copy-sms.btn-sm {
@@ -64,37 +71,46 @@
             font-size: 11px;
             margin-left: 2px;
         }
+
         .btn-copy-sms:hover {
             background: #1a6fa0;
             transform: translateY(-1px);
         }
+
         .btn-copy-sms:active {
             transform: translateY(0);
         }
+
         .btn-copy-sms-success {
             background: #27ae60 !important;
         }
+
         .btn-copy-sms:disabled {
             cursor: default;
             transform: none;
         }
+
         body.dark-mode .btn-copy-sms {
             background: #1a6fa0;
         }
+
         body.dark-mode .btn-copy-sms:hover {
             background: #155884;
         }
+
         body.dark-mode .btn-copy-sms-success {
             background: #1e8449 !important;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo-section">
-                    <img src="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png" alt="Jayasooriya Transport Logo" class="logo">
+                    <img src="https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png" alt="Jayasooriya Transport Logo"
+                        class="logo">
                     <h1 class="brand-name">JAYASOORIYA<br>TRANSPORT</h1>
                 </div>
             </div>
@@ -156,7 +172,8 @@
 
         <main class="main-content">
             <header class="top-header">
-                <button class="hamburger-menu" id="hamburgerMenu" title="Toggle Navigation Menu" aria-label="Toggle Navigation Menu">
+                <button class="hamburger-menu" id="hamburgerMenu" title="Toggle Navigation Menu"
+                    aria-label="Toggle Navigation Menu">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -190,78 +207,79 @@
                     </div>
 
                     <div class="metrics-grid">
-    <div class="metric-card">
-        <div class="metric-icon">💰</div>
-        <div class="metric-content">
-            <div class="metric-label">Total Revenue</div>
-            <div class="metric-value" id="totalRevenue">LKR 0.00</div>
-        </div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-icon">⛽</div>
-        <div class="metric-content">
-            <div class="metric-label">Fuel Cost</div>
-            <div class="metric-value" id="fuelCost">LKR 0.00</div>
-        </div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-icon">🪙</div>
-        <div class="metric-content">
-            <div class="metric-label">Fuel Allowance (16.00% VAT OFF)</div>
-            <div class="metric-value" id="fuelAllowance" style="color: #27AE60;">LKR 0.00</div>
-        </div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-icon">🎫</div>
-        <div class="metric-content">
-            <div class="metric-label">Total Hires</div>
-            <div class="metric-value" id="totalHires">0</div>
-        </div>
-    </div>
-    
-    <div class="metric-card">
-        <div class="metric-icon">🚛</div>
-        <div class="metric-content">
-            <div class="metric-label">Active Vehicles</div>
-            <div class="metric-value" id="activeLorries">0</div>
-        </div>
-    </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">💰</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Revenue</div>
+                                <div class="metric-value" id="totalRevenue">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">⛽</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Fuel Cost</div>
+                                <div class="metric-value" id="fuelCost">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🪙</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Fuel Allowance (16.00% VAT OFF)</div>
+                                <div class="metric-value" id="fuelAllowance" style="color: #27AE60;">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🎫</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Hires</div>
+                                <div class="metric-value" id="totalHires">0</div>
+                            </div>
+                        </div>
 
-    <div class="metric-card">
-        <div class="metric-icon">🛣️</div>
-        <div class="metric-content">
-            <div class="metric-label">Total Distance</div>
-            <div class="metric-value" id="totalDistance">0 km</div>
-        </div>
-    </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🚛</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Active Vehicles</div>
+                                <div class="metric-value" id="activeLorries">0</div>
+                            </div>
+                        </div>
 
-    <div class="metric-card">
-        <div class="metric-icon">⛽</div>
-        <div class="metric-content">
-            <div class="metric-label">Diesel Used</div>
-            <div class="metric-value" id="totalDieselLitres" style="color: #E67E22;">0 L</div>
-        </div>
-    </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🛣️</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Distance</div>
+                                <div class="metric-value" id="totalDistance">0 km</div>
+                            </div>
+                        </div>
 
-    <div class="metric-card">
-        <div class="metric-icon">📈</div>
-        <div class="metric-content">
-            <div class="metric-label">Net Profit</div>
-            <div class="metric-value profit" id="netProfit">LKR 0.00</div>
-        </div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-icon">💳</div>
-        <div class="metric-content">
-            <div class="metric-label">Total Credit Amount</div>
-            <div class="metric-value" id="totalCreditAmount" style="color: #8E44AD;">LKR 0.00</div>
-        </div>
-    </div>
-</div>
+                        <div class="metric-card">
+                            <div class="metric-icon">⛽</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Diesel Used</div>
+                                <div class="metric-value" id="totalDieselLitres" style="color: #E67E22;">0 L</div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-icon">📈</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Net Profit</div>
+                                <div class="metric-value profit" id="netProfit">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">💳</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Total Credit Amount</div>
+                                <div class="metric-value" id="totalCreditAmount" style="color: #8E44AD;">LKR 0.00</div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="report-controls">
                         <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
-                        <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export Excel</button>
+                        <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export
+                            Excel</button>
                     </div>
 
                     <div class="performance-section">
@@ -486,12 +504,12 @@
                                 <input type="number" id="driverAge" placeholder="Age" required>
                             </div>
                             <div class="form-row full">
-                                <input type="url" 
-                                       id="driverPhoto" 
-                                       placeholder="Driver Photo URL (e.g., https://i.postimg.cc/... or https://imgur.com/...)"
-                                       title="Enter direct image URL">
+                                <input type="url" id="driverPhoto"
+                                    placeholder="Driver Photo URL (e.g., https://i.postimg.cc/... or https://imgur.com/...)"
+                                    title="Enter direct image URL">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px;">
-                                    📸 Tip: Upload photo to postimg.cc or imgur.com and paste the direct image link (must end with .jpg, .png, etc.)
+                                    📸 Tip: Upload photo to postimg.cc or imgur.com and paste the direct image link
+                                    (must end with .jpg, .png, etc.)
                                 </small>
                             </div>
                             <div class="form-row full">
@@ -500,27 +518,34 @@
                             <!-- Fixed Salary Fields -->
                             <div id="fixedSalaryFields">
                                 <div class="form-row">
-                                    <input type="number" id="driverBasicSalary" placeholder="Basic Salary (LKR) - Optional" step="0.01">
-                                    <input type="number" id="driverKmLimit" placeholder="KM Included in Salary - Optional" step="0.01">
+                                    <input type="number" id="driverBasicSalary"
+                                        placeholder="Basic Salary (LKR) - Optional" step="0.01">
+                                    <input type="number" id="driverKmLimit"
+                                        placeholder="KM Included in Salary - Optional" step="0.01">
                                 </div>
                                 <div class="form-row">
-                                    <input type="number" id="driverExtraKmRate" placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
+                                    <input type="number" id="driverExtraKmRate"
+                                        placeholder="Rate per Extra KM (LKR) - Optional" step="0.01">
                                 </div>
                             </div>
                             <!-- Per Tip Salary Fields -->
                             <div id="perTipSalaryFields" style="display:none;">
                                 <div class="form-row">
                                     <div class="form-group" style="flex:1;">
-                                        <label for="driverPerTipCharge" style="font-size:12px;color:#666;">💰 Per Tip Charge (LKR)</label>
-                                        <input type="number" id="driverPerTipCharge" placeholder="Amount per tip/trip (LKR)" step="0.01">
-                                        <small style="color: #666; font-size: 11px;">Amount paid for each trip. Supports 0.5× half tips.</small>
+                                        <label for="driverPerTipCharge" style="font-size:12px;color:#666;">💰 Per Tip
+                                            Charge (LKR)</label>
+                                        <input type="number" id="driverPerTipCharge"
+                                            placeholder="Amount per tip/trip (LKR)" step="0.01">
+                                        <small style="color: #666; font-size: 11px;">Amount paid for each trip. Supports
+                                            0.5× half tips.</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="form-row full">
                                 <label>
                                     <input type="checkbox" id="driverTerminated">
-                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Staff Member (Archive from active list)</span>
+                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Staff Member (Archive from
+                                        active list)</span>
                                 </label>
                             </div>
                             <div class="form-actions">
@@ -534,7 +559,8 @@
                         <table id="driversTable">
                             <thead>
                                 <tr>
-                                    <th>Photo</th> <th>Name</th>
+                                    <th>Photo</th>
+                                    <th>Name</th>
                                     <th>Role</th>
                                     <th>Salary Type</th>
                                     <th>Contact</th>
@@ -566,30 +592,37 @@
                                 <input type="date" id="advanceDate" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="advanceAmount" placeholder="Advance Amount (LKR)" step="0.01" required>
+                                <input type="number" id="advanceAmount" placeholder="Advance Amount (LKR)" step="0.01"
+                                    required>
                                 <input type="text" id="advanceNotes" placeholder="Notes (Optional)">
                             </div>
                             <div class="form-row full">
-                                <label for="advanceReceipt" style="display: block; margin-bottom: 5px; font-weight: 500;">
+                                <label for="advanceReceipt"
+                                    style="display: block; margin-bottom: 5px; font-weight: 500;">
                                     📄 Payment Receipt (PDF)
                                 </label>
-                                <input type="file" 
-                                       id="advanceReceipt" 
-                                       accept="application/pdf"
-                                       style="padding: 8px; border: 2px dashed #DC143C; border-radius: 8px; width: 100%; background: #FFF5F5;">
+                                <input type="file" id="advanceReceipt" accept="application/pdf"
+                                    style="padding: 8px; border: 2px dashed #DC143C; border-radius: 8px; width: 100%; background: #FFF5F5;">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
                                     📎 Upload payment receipt/transaction slip (PDF only, max 5MB)
                                 </small>
                                 <div id="uploadProgress" style="display: none; margin-top: 10px;">
-                                    <div style="background: #ECF0F1; border-radius: 10px; height: 20px; overflow: hidden;">
-                                        <div id="uploadProgressBar" style="background: #27AE60; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                    <div
+                                        style="background: #ECF0F1; border-radius: 10px; height: 20px; overflow: hidden;">
+                                        <div id="uploadProgressBar"
+                                            style="background: #27AE60; height: 100%; width: 0%; transition: width 0.3s;">
+                                        </div>
                                     </div>
-                                    <small id="uploadProgressText" style="color: #666; margin-top: 5px; display: block;">Uploading...</small>
+                                    <small id="uploadProgressText"
+                                        style="color: #666; margin-top: 5px; display: block;">Uploading...</small>
                                 </div>
-                                <div id="currentReceipt" style="display: none; margin-top: 10px; padding: 10px; background: #E8F5E9; border-radius: 5px;">
+                                <div id="currentReceipt"
+                                    style="display: none; margin-top: 10px; padding: 10px; background: #E8F5E9; border-radius: 5px;">
                                     <span style="color: #27AE60;">✓ Receipt uploaded: </span>
-                                    <a id="currentReceiptLink" href="#" target="_blank" style="color: #DC143C; text-decoration: underline;">View Receipt</a>
-                                    <button type="button" id="removeReceiptBtn" style="margin-left: 10px; padding: 2px 8px; background: #E74C3C; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                                    <a id="currentReceiptLink" href="#" target="_blank"
+                                        style="color: #DC143C; text-decoration: underline;">View Receipt</a>
+                                    <button type="button" id="removeReceiptBtn"
+                                        style="margin-left: 10px; padding: 2px 8px; background: #E74C3C; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
                                 </div>
                             </div>
                             <div class="form-actions">
@@ -665,18 +698,22 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group" style="flex: 1;">
-                                    <label for="driverDayOffAmount" style="font-size: 12px; color: #666;">Deduction Amount (LKR)</label>
-                                    <input type="number" id="driverDayOffAmount" placeholder="Amount" step="0.01" required>
+                                    <label for="driverDayOffAmount" style="font-size: 12px; color: #666;">Deduction
+                                        Amount (LKR)</label>
+                                    <input type="number" id="driverDayOffAmount" placeholder="Amount" step="0.01"
+                                        required>
                                     <small style="font-size: 10px; color: #DC143C;" id="suggestedDeduction"></small>
                                 </div>
                                 <div class="form-group" style="flex: 2;">
-                                    <label for="driverDayOffNotes" style="font-size: 12px; color: #666;">Reason / Notes</label>
+                                    <label for="driverDayOffNotes" style="font-size: 12px; color: #666;">Reason /
+                                        Notes</label>
                                     <input type="text" id="driverDayOffNotes" placeholder="Reason (e.g., Sick Leave)">
                                 </div>
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Day Off</button>
-                                <button type="button" class="btn btn-secondary" id="cancelDriverDayOffBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelDriverDayOffBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -730,7 +767,8 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="salaryMonthDisplay">Salary Month</label>
-                                        <input type="text" id="salaryMonthDisplay" readonly style="background: #f5f5f5;">
+                                        <input type="text" id="salaryMonthDisplay" readonly
+                                            style="background: #f5f5f5;">
                                     </div>
                                 </div>
                             </div>
@@ -751,7 +789,8 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="extraKmRateDisplay">Extra KM Rate</label>
-                                        <input type="text" id="extraKmRateDisplay" readonly style="background: #f5f5f5;">
+                                        <input type="text" id="extraKmRateDisplay" readonly
+                                            style="background: #f5f5f5;">
                                         <small>LKR per extra KM</small>
                                     </div>
                                 </div>
@@ -763,24 +802,28 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="perTipChargeDisplay">Per Tip Charge</label>
-                                        <input type="text" id="perTipChargeDisplay" readonly style="background: #f5f5f5;">
+                                        <input type="text" id="perTipChargeDisplay" readonly
+                                            style="background: #f5f5f5;">
                                         <small>From staff profile</small>
                                     </div>
                                     <div class="form-group">
                                         <label for="tipCount">Tip Count (1× Normal Tips)</label>
-                                        <input type="number" id="tipCount" placeholder="Number of normal tips" step="1" min="0" value="0">
+                                        <input type="number" id="tipCount" placeholder="Number of normal tips" step="1"
+                                            min="0" value="0">
                                         <small>Number of regular trips this month</small>
                                     </div>
                                     <div class="form-group">
                                         <label for="halfTipCount">0.5× Tip Count (Half Tip)</label>
-                                        <input type="number" id="halfTipCount" placeholder="Number of 0.5× tips" step="1" min="0" value="0">
+                                        <input type="number" id="halfTipCount" placeholder="Number of 0.5× tips"
+                                            step="1" min="0" value="0">
                                         <small>Half tips (paid 0.5× rate)</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="tipSalaryDisplay">Tip Salary (Auto-Calculated)</label>
-                                        <input type="text" id="tipSalaryDisplay" readonly style="background: #E8F5E9; font-weight: bold; color: #27AE60;">
+                                        <input type="text" id="tipSalaryDisplay" readonly
+                                            style="background: #E8F5E9; font-weight: bold; color: #27AE60;">
                                         <small>= (Tips × Rate) + (0.5× Tips × Rate × 0.5)</small>
                                     </div>
                                 </div>
@@ -792,7 +835,8 @@
                                 <div class="form-row">
                                     <div class="form-group" id="basicSalaryGroup">
                                         <label for="basicSalaryDisplay">Basic Salary</label>
-                                        <input type="number" id="basicSalaryDisplay" readonly style="background: #f5f5f5;">
+                                        <input type="number" id="basicSalaryDisplay" readonly
+                                            style="background: #f5f5f5;">
                                     </div>
                                     <div class="form-group" id="extraKmSalaryGroup">
                                         <label for="extraKmSalary">Extra KM Salary</label>
@@ -801,7 +845,8 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="additionalAllowance">Additional Allowance</label>
-                                        <input type="number" id="additionalAllowance" placeholder="Additional Allowance (LKR)" step="0.01" value="0">
+                                        <input type="number" id="additionalAllowance"
+                                            placeholder="Additional Allowance (LKR)" step="0.01" value="0">
                                         <small>Any extra allowances (bonus, overtime, etc.)</small>
                                     </div>
                                 </div>
@@ -809,44 +854,80 @@
 
                             <div class="form-section">
                                 <h4>💵 Advances & Deductions</h4>
-                                <div id="advancesList" style="margin-bottom: 20px; padding: 15px; background: #FFF5F5; border-radius: 8px;">
+                                <div id="advancesList"
+                                    style="margin-bottom: 20px; padding: 15px; background: #FFF5F5; border-radius: 8px;">
                                     <h5 style="color: #DC143C; margin-bottom: 10px;">Advances This Month:</h5>
                                     <div id="advancesDetails"></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="otherDeductions">Other Deductions</label>
-                                        <input type="number" id="otherDeductions" placeholder="Other Deductions (LKR)" step="0.01" value="0">
-                                        <small>Any other deductions (tax, insurance, etc.)</small>
+                                <div id="deductionsList"
+                                    style="margin-bottom: 20px; padding: 15px; background: #FFF8E1; border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <h5 style="color: #E67E22; margin: 0;">📋 Deductions This Month:</h5>
+                                        <button type="button" class="btn btn-sm" id="addDeductionBtn"
+                                            style="background: #E67E22; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                            + Add Deduction
+                                        </button>
                                     </div>
+                                    <!-- Inline Add Deduction Form -->
+                                    <div id="addDeductionFormRow" style="display: none; margin-bottom: 12px; padding: 12px; background: #FFF3CD; border-radius: 8px; border: 1px dashed #E67E22;">
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;">
+                                            <div style="flex: 1; min-width: 120px;">
+                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Date</label>
+                                                <input type="date" id="deductionDate" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                            </div>
+                                            <div style="flex: 2; min-width: 150px;">
+                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Reason</label>
+                                                <input type="text" id="deductionReason" placeholder="e.g., Damage, Insurance, Fine" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                            </div>
+                                            <div style="flex: 1; min-width: 100px;">
+                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Amount (LKR)</label>
+                                                <input type="number" id="deductionAmount" placeholder="0.00" step="0.01" min="0" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                            </div>
+                                            <div style="display: flex; gap: 5px;">
+                                                <button type="button" id="saveDeductionBtn"
+                                                    style="padding: 6px 14px; background: #27AE60; color: white; border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;">💾 Save</button>
+                                                <button type="button" id="cancelDeductionBtn"
+                                                    style="padding: 6px 10px; background: #95A5A6; color: white; border: none; border-radius: 5px; font-size: 12px; cursor: pointer;">✖</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Deductions Details Table -->
+                                    <div id="deductionsDetails"></div>
                                 </div>
+                                <input type="hidden" id="otherDeductions" value="0">
                             </div>
 
                             <div class="form-section">
                                 <h4>📄 Salary Payment Receipt (PDF)</h4>
                                 <div class="form-row full">
-                                    <label for="salaryReceipt" style="display: block; margin-bottom: 5px; font-weight: 500;">
+                                    <label for="salaryReceipt"
+                                        style="display: block; margin-bottom: 5px; font-weight: 500;">
                                         📄 Payment Receipt (PDF) - Optional
                                     </label>
-                                    <input type="file" 
-                                           id="salaryReceipt" 
-                                           accept="application/pdf"
-                                           style="padding: 8px; border: 2px dashed #DC143C; border-radius: 8px; width: 100%; background: #FFF5F5;">
+                                    <input type="file" id="salaryReceipt" accept="application/pdf"
+                                        style="padding: 8px; border: 2px dashed #DC143C; border-radius: 8px; width: 100%; background: #FFF5F5;">
                                     <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
                                         📎 Upload salary payment receipt/transaction slip (PDF only, max 5MB)
                                     </small>
-                                    
+
                                     <div id="salaryUploadProgress" style="display: none; margin-top: 10px;">
-                                        <div style="background: #ECF0F1; border-radius: 10px; height: 20px; overflow: hidden;">
-                                            <div id="salaryUploadProgressBar" style="background: #27AE60; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                        <div
+                                            style="background: #ECF0F1; border-radius: 10px; height: 20px; overflow: hidden;">
+                                            <div id="salaryUploadProgressBar"
+                                                style="background: #27AE60; height: 100%; width: 0%; transition: width 0.3s;">
+                                            </div>
                                         </div>
-                                        <small id="salaryUploadProgressText" style="color: #666; margin-top: 5px; display: block;">Uploading...</small>
+                                        <small id="salaryUploadProgressText"
+                                            style="color: #666; margin-top: 5px; display: block;">Uploading...</small>
                                     </div>
-                                    
-                                    <div id="currentSalaryReceipt" style="display: none; margin-top: 10px; padding: 10px; background: #E8F5E9; border-radius: 5px;">
+
+                                    <div id="currentSalaryReceipt"
+                                        style="display: none; margin-top: 10px; padding: 10px; background: #E8F5E9; border-radius: 5px;">
                                         <span style="color: #27AE60;">✓ Receipt uploaded: </span>
-                                        <a id="currentSalaryReceiptLink" href="#" target="_blank" style="color: #DC143C; text-decoration: underline;">View Receipt</a>
-                                        <button type="button" id="removeSalaryReceiptBtn" style="margin-left: 10px; padding: 2px 8px; background: #E74C3C; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                                        <a id="currentSalaryReceiptLink" href="#" target="_blank"
+                                            style="color: #DC143C; text-decoration: underline;">View Receipt</a>
+                                        <button type="button" id="removeSalaryReceiptBtn"
+                                            style="margin-left: 10px; padding: 2px 8px; background: #E74C3C; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
                                     </div>
                                 </div>
                             </div>
@@ -863,7 +944,7 @@
                                         <span class="summary-value" id="totalAdvancesDisplay">LKR 0.00</span>
                                     </div>
                                     <div class="summary-item">
-                                        <span class="summary-label">Other Deductions:</span>
+                                        <span class="summary-label">Total Deductions:</span>
                                         <span class="summary-value" id="otherDeductionsDisplay">LKR 0.00</span>
                                     </div>
                                     <div class="summary-item total">
@@ -874,8 +955,10 @@
                             </div>
 
                             <div class="form-actions">
-                                <button type="button" class="btn btn-success" id="calculateSalaryBtn">🧮 Calculate Salary</button>
-                                <button type="button" class="btn btn-primary" id="generateSalarySlipBtn">📄 Generate Salary Slip</button>
+                                <button type="button" class="btn btn-success" id="calculateSalaryBtn">🧮 Calculate
+                                    Salary</button>
+                                <button type="button" class="btn btn-primary" id="generateSalarySlipBtn">📄 Generate
+                                    Salary Slip</button>
                                 <button type="button" class="btn btn-secondary" id="cancelSalaryBtn">✖ Cancel</button>
                             </div>
                         </form>
@@ -914,28 +997,30 @@
                             <div class="form-row">
                                 <input type="hidden" id="hireVehicleId">
                                 <input type="text" id="lorryNumber" placeholder="Lorry Number" required>
-                                <input type="text" id="hireVehicleModel" placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
+                                <input type="text" id="hireVehicleModel" placeholder="Vehicle Model (e.g., TATA, ISUZU)"
+                                    required>
                             </div>
                             <div class="form-row">
                                 <input type="number" id="lorryLength" placeholder="Length (ft)" required>
                             </div>
                             <div class="form-row full">
-                                <input type="url" 
-                                       id="hireVehiclePhoto" 
-                                       placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
-                                       title="Enter direct image URL">
+                                <input type="url" id="hireVehiclePhoto"
+                                    placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
+                                    title="Enter direct image URL">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px;">
                                     🚚 Tip: Upload vehicle photo to postimg.cc and paste the direct image link
                                 </small>
                             </div>
-                            
+
                             <div class="form-row full">
-                                <input type="url" 
-                                       id="hireVehicleVectorArt" 
-                                       placeholder="Vehicle Vector Art URL (Optional)"
-                                       title="Enter vector art URL (SVG or PNG recommended)">
+                                <input type="url" id="hireVehicleVectorArt"
+                                    placeholder="Vehicle Vector Art URL (Optional)"
+                                    title="Enter vector art URL (SVG or PNG recommended)">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px;">
-                                    🎨 Optional: Add vehicle vector art (e.g., from <a href="https://undraw.co" target="_blank" style="color: #DC143C;">undraw.co</a> or <a href="https://icons8.com/illustrations" target="_blank" style="color: #DC143C;">icons8.com</a>)
+                                    🎨 Optional: Add vehicle vector art (e.g., from <a href="https://undraw.co"
+                                        target="_blank" style="color: #DC143C;">undraw.co</a> or <a
+                                        href="https://icons8.com/illustrations" target="_blank"
+                                        style="color: #DC143C;">icons8.com</a>)
                                 </small>
                             </div>
 
@@ -946,17 +1031,21 @@
                             </div>
                             <div class="form-row">
                                 <input type="number" id="loadingCharge" placeholder="Loading Charge (LKR)" required>
-                                <input type="number" id="waitingCharge24" placeholder="Waiting Charge per hour (First 24hrs) (LKR)" required>
+                                <input type="number" id="waitingCharge24"
+                                    placeholder="Waiting Charge per hour (First 24hrs) (LKR)" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="waitingChargeExtra" placeholder="Waiting Charge per hour (24hrs+) (LKR)" required>
-                                <input type="number" id="minimumHireAmount" placeholder="Minimum Hire Amount (LKR)" required>
+                                <input type="number" id="waitingChargeExtra"
+                                    placeholder="Waiting Charge per hour (24hrs+) (LKR)" required>
+                                <input type="number" id="minimumHireAmount" placeholder="Minimum Hire Amount (LKR)"
+                                    required>
                             </div>
-                            
+
                             <div class="form-row full">
                                 <label>
                                     <input type="checkbox" id="hireVehicleTerminated">
-                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new hires)</span>
+                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new
+                                        hires)</span>
                                 </label>
                             </div>
 
@@ -969,7 +1058,8 @@
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Vehicle</button>
-                                <button type="button" class="btn btn-secondary" id="cancelHireVehicleBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireVehicleBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1036,8 +1126,10 @@
                                 <input type="number" id="hireFuel" placeholder="Fuel (L)" step="0.01" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="hireFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
-                                <input type="number" id="hireWaitingHours" placeholder="Waiting Hours" step="0.5" value="0">
+                                <input type="number" id="hireFuelPrice" placeholder="Fuel Price per L" step="0.01"
+                                    required>
+                                <input type="number" id="hireWaitingHours" placeholder="Waiting Hours" step="0.5"
+                                    value="0">
                             </div>
                             <div class="form-row">
                                 <label><input type="checkbox" id="hireLoading"> Include Loading Charge</label>
@@ -1045,7 +1137,8 @@
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelHireRecordBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelHireRecordBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1082,44 +1175,50 @@
                             <div class="form-row">
                                 <input type="hidden" id="commitmentVehicleId">
                                 <input type="text" id="commitmentVehicleNumber" placeholder="Vehicle Number" required>
-                                <input type="text" id="commitmentVehicleModel" placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
+                                <input type="text" id="commitmentVehicleModel"
+                                    placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)" required>
+                                <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)"
+                                    required>
                             </div>
                             <div class="form-row full">
-                                <input type="url" 
-                                       id="commitmentVehiclePhoto" 
-                                       placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
-                                       title="Enter direct image URL">
+                                <input type="url" id="commitmentVehiclePhoto"
+                                    placeholder="Vehicle Photo URL (e.g., https://i.postimg.cc/...)"
+                                    title="Enter direct image URL">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px;">
                                     🚛 Tip: Upload vehicle photo to postimg.cc and paste the direct image link
                                 </small>
                             </div>
 
                             <div class="form-row full">
-                                <input type="url" 
-                                       id="commitmentVehicleVectorArt" 
-                                       placeholder="Vehicle Vector Art URL (Optional)"
-                                       title="Enter vector art URL (SVG or PNG recommended)">
+                                <input type="url" id="commitmentVehicleVectorArt"
+                                    placeholder="Vehicle Vector Art URL (Optional)"
+                                    title="Enter vector art URL (SVG or PNG recommended)">
                                 <small style="color: #666; font-size: 12px; margin-top: 5px;">
-                                    🎨 Optional: Add vehicle vector art (e.g., from <a href="https://undraw.co" target="_blank" style="color: #DC143C;">undraw.co</a> or <a href="https://icons8.com/illustrations" target="_blank" style="color: #DC143C;">icons8.com</a>)
+                                    🎨 Optional: Add vehicle vector art (e.g., from <a href="https://undraw.co"
+                                        target="_blank" style="color: #DC143C;">undraw.co</a> or <a
+                                        href="https://icons8.com/illustrations" target="_blank"
+                                        style="color: #DC143C;">icons8.com</a>)
                                 </small>
                             </div>
 
                             <div class="form-row">
                                 <input type="number" id="kmLimit" placeholder="KM Limit per Month" required>
-                                <input type="number" id="extraKmCharge" placeholder="Extra KM Charge (LKR/km)" step="0.01" required>
-                                <input type="number" id="commitmentLoadingCharge" placeholder="Loading Charge (LKR)" required>
+                                <input type="number" id="extraKmCharge" placeholder="Extra KM Charge (LKR/km)"
+                                    step="0.01" required>
+                                <input type="number" id="commitmentLoadingCharge" placeholder="Loading Charge (LKR)"
+                                    required>
                             </div>
-                            
+
                             <div class="form-row full">
                                 <label>
                                     <input type="checkbox" id="commitmentVehicleTerminated">
-                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new hires)</span>
+                                    <span style="color: #E74C3C; font-weight: 500;">Terminate Vehicle (Cannot add new
+                                        hires)</span>
                                 </label>
                             </div>
-                            
+
                             <div class="form-row full">
                                 <select id="commitmentOwnership" required>
                                     <option value="">Select Ownership</option>
@@ -1130,7 +1229,8 @@
 
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Vehicle</button>
-                                <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentVehicleBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1189,15 +1289,18 @@
                                 <input type="text" id="commitmentTo" placeholder="To" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="commitmentDistance" placeholder="Distance (km)" step="0.01" required>
+                                <input type="number" id="commitmentDistance" placeholder="Distance (km)" step="0.01"
+                                    required>
                                 <input type="number" id="commitmentFuel" placeholder="Fuel (L)" step="0.01" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="commitmentFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
+                                <input type="number" id="commitmentFuelPrice" placeholder="Fuel Price per L" step="0.01"
+                                    required>
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelCommitmentRecordBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelCommitmentRecordBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1317,23 +1420,29 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group" style="flex:2;">
-                                    <label for="maintenanceExpense" style="font-size:12px;color:#666;">Expense Type</label>
-                                    <input type="text" id="maintenanceExpense" placeholder="e.g. Engine Oil, Tyre Replacement, Service…" required>
+                                    <label for="maintenanceExpense" style="font-size:12px;color:#666;">Expense
+                                        Type</label>
+                                    <input type="text" id="maintenanceExpense"
+                                        placeholder="e.g. Engine Oil, Tyre Replacement, Service…" required>
                                 </div>
                                 <div class="form-group" style="flex:1;">
-                                    <label for="maintenanceAmount" style="font-size:12px;color:#666;">Amount (LKR)</label>
-                                    <input type="number" id="maintenanceAmount" placeholder="0.00" step="0.01" min="0" required>
+                                    <label for="maintenanceAmount" style="font-size:12px;color:#666;">Amount
+                                        (LKR)</label>
+                                    <input type="number" id="maintenanceAmount" placeholder="0.00" step="0.01" min="0"
+                                        required>
                                 </div>
                             </div>
                             <div class="form-row full">
                                 <div class="form-group" style="flex:1;">
-                                    <label for="maintenanceNotes" style="font-size:12px;color:#666;">Notes (Optional)</label>
+                                    <label for="maintenanceNotes" style="font-size:12px;color:#666;">Notes
+                                        (Optional)</label>
                                     <input type="text" id="maintenanceNotes" placeholder="Additional details…">
                                 </div>
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelMaintenanceBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelMaintenanceBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1381,81 +1490,81 @@
     </div>
 
     <script>
-    function openPhotoLightbox(photoUrl) {
-        const lightbox = document.getElementById('photoLightbox');
-        const lightboxImg = document.getElementById('lightboxImage');
-        lightboxImg.src = photoUrl;
-        lightbox.classList.add('active');
-    }
-
-    function closePhotoLightbox() {
-        const lightbox = document.getElementById('photoLightbox');
-        lightbox.classList.remove('active');
-    }
-
-    // Close on Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closePhotoLightbox();
+        function openPhotoLightbox(photoUrl) {
+            const lightbox = document.getElementById('photoLightbox');
+            const lightboxImg = document.getElementById('lightboxImage');
+            lightboxImg.src = photoUrl;
+            lightbox.classList.add('active');
         }
-    });
+
+        function closePhotoLightbox() {
+            const lightbox = document.getElementById('photoLightbox');
+            lightbox.classList.remove('active');
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closePhotoLightbox();
+            }
+        });
     </script>
 
     <div id="exportModal" class="modal">
-  <div class="modal-content" style="max-width:420px">
-    <div class="login-header" style="padding:24px 28px 12px">
-      <h2 style="margin:0">📥 Export Revenue Excel</h2>
-      <p style="font-size:13px;margin-top:6px">
-        Select a date range — all matching records will be exported.
-      </p>
+        <div class="modal-content" style="max-width:420px">
+            <div class="login-header" style="padding:24px 28px 12px">
+                <h2 style="margin:0">📥 Export Revenue Excel</h2>
+                <p style="font-size:13px;margin-top:6px">
+                    Select a date range — all matching records will be exported.
+                </p>
+            </div>
+            <div style="padding:18px 28px 26px;display:flex;flex-direction:column;gap:16px">
+                <div class="form-group">
+                    <label for="exportStartDate">Start Date</label>
+                    <input type="date" id="exportStartDate" />
+                </div>
+                <div class="form-group">
+                    <label for="exportEndDate">End Date</label>
+                    <input type="date" id="exportEndDate" />
+                </div>
+                <p style="font-size:12px;margin:0;color:var(--text-muted)">
+                    The exported Excel file will contain 4 sheets covering the selected range.
+                </p>
+                <div class="form-actions" style="margin:0;gap:10px;display:flex">
+                    <button class="btn btn-success" id="exportConfirmBtn" style="flex:1">✅ Export Now</button>
+                    <button class="btn btn-secondary" id="exportCancelBtn" style="flex:1">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div style="padding:18px 28px 26px;display:flex;flex-direction:column;gap:16px">
-      <div class="form-group">
-        <label for="exportStartDate">Start Date</label>
-        <input type="date" id="exportStartDate"/>
-      </div>
-      <div class="form-group">
-        <label for="exportEndDate">End Date</label>
-        <input type="date" id="exportEndDate"/>
-      </div>
-      <p style="font-size:12px;margin:0;color:var(--text-muted)">
-        The exported Excel file will contain 4 sheets covering the selected range.
-      </p>
-      <div class="form-actions" style="margin:0;gap:10px;display:flex">
-        <button class="btn btn-success" id="exportConfirmBtn" style="flex:1">✅ Export Now</button>
-        <button class="btn btn-secondary" id="exportCancelBtn" style="flex:1">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 
     <!-- ===== DARK MODE TOGGLE + RIPPLE ===== -->
     <script>
-    (function() {
-        const saved = localStorage.getItem('jtms-theme');
-        if (saved === 'dark') document.body.classList.add('dark-mode');
-        document.addEventListener('DOMContentLoaded', function() {
-            var btn = document.querySelector('#darkModeToggle button');
-            if (btn) {
-                btn.addEventListener('click', function() {
-                    var isDark = document.body.classList.toggle('dark-mode');
-                    localStorage.setItem('jtms-theme', isDark ? 'dark' : 'light');
-                });
-            }
-            document.querySelectorAll('.nav-item').forEach(function(item) {
-                item.addEventListener('click', function(e) {
-                    var ripple = document.createElement('span');
-                    ripple.className = 'ripple';
-                    var rect = item.getBoundingClientRect();
-                    var size = Math.max(rect.width, rect.height);
-                    ripple.style.cssText = 'width:'+size+'px;height:'+size+'px;top:'+(e.clientY-rect.top-size/2)+'px;left:'+(e.clientX-rect.left-size/2)+'px;';
-                    item.appendChild(ripple);
-                    setTimeout(function(){ripple.remove();},700);
+        (function () {
+            const saved = localStorage.getItem('jtms-theme');
+            if (saved === 'dark') document.body.classList.add('dark-mode');
+            document.addEventListener('DOMContentLoaded', function () {
+                var btn = document.querySelector('#darkModeToggle button');
+                if (btn) {
+                    btn.addEventListener('click', function () {
+                        var isDark = document.body.classList.toggle('dark-mode');
+                        localStorage.setItem('jtms-theme', isDark ? 'dark' : 'light');
+                    });
+                }
+                document.querySelectorAll('.nav-item').forEach(function (item) {
+                    item.addEventListener('click', function (e) {
+                        var ripple = document.createElement('span');
+                        ripple.className = 'ripple';
+                        var rect = item.getBoundingClientRect();
+                        var size = Math.max(rect.width, rect.height);
+                        ripple.style.cssText = 'width:' + size + 'px;height:' + size + 'px;top:' + (e.clientY - rect.top - size / 2) + 'px;left:' + (e.clientX - rect.left - size / 2) + 'px;';
+                        item.appendChild(ripple);
+                        setTimeout(function () { ripple.remove(); }, 700);
+                    });
                 });
             });
-        });
-    })();
+        })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -1466,4 +1575,5 @@
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
 </body>
+
 </html>
