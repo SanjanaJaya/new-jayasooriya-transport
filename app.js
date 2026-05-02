@@ -3867,7 +3867,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
     }
 }
 
-// 3. Top Routes — HORIZONTAL BAR CHART
+// 3. Top Visited Towns — HORIZONTAL BAR CHART
 async function loadTopRoutesChart(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
@@ -3879,7 +3879,7 @@ async function loadTopRoutesChart(monthValue) {
         // Fetch hire records with route info
         const { data: hireRecords } = await supabaseClient
             .from('hire_to_pay_records')
-            .select('from_location, to_location, hire_amount')
+            .select('to_location')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
@@ -3887,40 +3887,63 @@ async function loadTopRoutesChart(monthValue) {
         // Fetch commitment records with route info
         const { data: commitRecords } = await supabaseClient
             .from('commitment_records')
-            .select('from_location, to_location')
+            .select('to_location')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        // Aggregate routes
-        const routeMap = {};
+        // Aggregate towns
+        const townMap = {};
 
-        hireRecords?.forEach(r => {
-            const route = `${(r.from_location || '?').trim()} → ${(r.to_location || '?').trim()}`;
-            if (!routeMap[route]) routeMap[route] = { trips: 0, revenue: 0 };
-            routeMap[route].trips++;
-            routeMap[route].revenue += (r.hire_amount || 0);
-        });
+        const processLocation = (loc) => {
+            if (!loc) return;
+            const lowerLoc = loc.toLowerCase();
+            let townsPart = loc;
+            
+            // Check if "via" exists
+            const viaIndex = lowerLoc.indexOf('via');
+            if (viaIndex !== -1) {
+                // Extract everything after "via"
+                townsPart = loc.substring(viaIndex + 3);
+            }
+            
+            // Split by comma
+            const towns = townsPart.split(',');
+            towns.forEach(t => {
+                const cleanTown = t.trim();
+                if (!cleanTown) return;
+                
+                // Exclude "ederamulla" specifically as requested
+                if (cleanTown.toLowerCase().includes('ederamulla')) return;
+                if (cleanTown.toLowerCase() === 'via') return;
+                
+                if (cleanTown.length > 1) {
+                    // Title case formatting
+                    const formattedTown = cleanTown.split(' ')
+                        .map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '')
+                        .join(' ');
+                        
+                    if (!townMap[formattedTown]) townMap[formattedTown] = 0;
+                    townMap[formattedTown]++;
+                }
+            });
+        };
 
-        commitRecords?.forEach(r => {
-            const route = `${(r.from_location || '?').trim()} → ${(r.to_location || '?').trim()}`;
-            if (!routeMap[route]) routeMap[route] = { trips: 0, revenue: 0 };
-            routeMap[route].trips++;
-        });
+        hireRecords?.forEach(r => processLocation(r.to_location));
+        commitRecords?.forEach(r => processLocation(r.to_location));
 
-        // Sort by trip count, take top 8
-        const sorted = Object.entries(routeMap)
-            .sort((a, b) => b[1].trips - a[1].trips)
-            .slice(0, 8);
+        // Sort by visit count, take top 10
+        const sorted = Object.entries(townMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
 
         const labels = sorted.map(s => s[0].length > 28 ? s[0].substring(0, 26) + '…' : s[0]);
-        const tripData = sorted.map(s => s[1].trips);
-        const revData = sorted.map(s => s[1].revenue);
+        const tripData = sorted.map(s => s[1]);
 
         // Destroy old
         if (topRoutesChart) topRoutesChart.destroy();
 
-        const ctx = document.getElementById('topRoutesChart')?.getContext('2d');
+        const ctx = document.getElementById('topTownsChart')?.getContext('2d');
         if (!ctx || labels.length === 0) return;
 
         const theme3 = getChartTheme();
@@ -3930,22 +3953,12 @@ async function loadTopRoutesChart(monthValue) {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Trip Count',
+                        label: 'Visits',
                         data: tripData,
                         backgroundColor: 'rgba(0, 114, 206, 0.75)',
                         borderColor: '#0072CE',
                         borderWidth: 1,
-                        borderRadius: 5,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Revenue (LKR)',
-                        data: revData,
-                        backgroundColor: 'rgba(0, 179, 126, 0.55)',
-                        borderColor: '#00B37E',
-                        borderWidth: 1,
-                        borderRadius: 5,
-                        yAxisID: 'y1'
+                        borderRadius: 5
                     }
                 ]
             },
@@ -3956,11 +3969,11 @@ async function loadTopRoutesChart(monthValue) {
                 plugins: {
                     title: {
                         display: true,
-                        text: `Top Routes — ${monthValue}`,
+                        text: `Top 10 Visited Towns — ${monthValue}`,
                         color: theme3.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
-                    legend: { position: 'top', labels: { color: theme3.textColor } },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: theme3.tooltipBg,
                         titleColor: theme3.tooltipText,
@@ -3971,10 +3984,7 @@ async function loadTopRoutesChart(monthValue) {
                         padding: 12,
                         callbacks: {
                             label: function(ctx) {
-                                if (ctx.datasetIndex === 1) {
-                                    return `Revenue: LKR ${ctx.parsed.x.toLocaleString()}`;
-                                }
-                                return `Trips: ${ctx.parsed.x}`;
+                                return `Visits: ${ctx.parsed.x}`;
                             }
                         }
                     }
@@ -3985,10 +3995,6 @@ async function loadTopRoutesChart(monthValue) {
                         ticks: { font: { size: 11 }, color: theme3.textColor },
                         grid: { color: theme3.gridColor }
                     },
-                    y1: {
-                        display: false,
-                        beginAtZero: true
-                    },
                     x: {
                         beginAtZero: true,
                         ticks: { stepSize: 1, color: theme3.textColor },
@@ -3998,7 +4004,7 @@ async function loadTopRoutesChart(monthValue) {
             }
         });
     } catch (error) {
-        console.error('Error loading top routes chart:', error.message);
+        console.error('Error loading top towns chart:', error.message);
     }
 }
 
