@@ -911,7 +911,7 @@ async function loadSalaryHistory() {
         if (!salaryRecords || salaryRecords.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 30px; color: #7F8C8D;">
+                    <td colspan="10" style="text-align: center; padding: 30px; color: #7F8C8D;">
                         No salary records found. Generate salary slips to see them here.
                     </td>
                 </tr>
@@ -949,6 +949,7 @@ async function loadSalaryHistory() {
                 <td>${kmOrTipInfo}</td>
                 <td>LKR ${record.gross_salary.toFixed(2)}</td>
                 <td>LKR ${record.total_advances.toFixed(2)}</td>
+                <td>LKR ${(record.other_deductions || 0).toFixed(2)}</td>
                 <td style="font-weight: bold; color: #27AE60;">LKR ${record.net_salary.toFixed(2)}</td>
                 <td>${formattedDate}</td>
                 <td>${receiptColumn}</td>
