@@ -4539,13 +4539,14 @@ async function loadCostVsRevenueChart(monthValue) {
         const vehicleData = {};
 
         hireRecords?.forEach(r => {
-            const name = r.hire_to_pay_vehicles?.lorry_number || `H-${r.vehicle_id}`;
+            const rawName = r.hire_to_pay_vehicles?.lorry_number || `H-${r.vehicle_id}`;
+            const name = extractBaseVehicleName(rawName);
             if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
             vehicleData[name].revenue += (r.hire_amount || 0);
             vehicleData[name].fuelCost += (r.fuel_cost || 0);
         });
 
-        // Group commitment by vehicle for base pay + extra km
+        // Group commitment by vehicle for base pay + extra km (keep raw name for individual calculation)
         const commitGrouped = {};
         commitmentRecords?.forEach(r => {
             const name = r.commitment_vehicles?.vehicle_number || `C-${r.vehicle_id}`;
@@ -4556,11 +4557,13 @@ async function loadCostVsRevenueChart(monthValue) {
             commitGrouped[name].fuelCost += (r.fuel_cost || 0);
         });
 
-        Object.entries(commitGrouped).forEach(([name, d]) => {
+        Object.entries(commitGrouped).forEach(([rawName, d]) => {
             if (d.vehicle) {
                 let rev = d.vehicle.fixed_monthly_payment || 0;
                 const exc = Math.max(0, d.totalKm - (d.vehicle.km_limit_per_month || 0));
                 rev += exc * (d.vehicle.extra_km_charge || 0);
+                
+                const name = extractBaseVehicleName(rawName);
                 if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
                 vehicleData[name].revenue += rev;
                 vehicleData[name].fuelCost += d.fuelCost;
