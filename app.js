@@ -224,7 +224,8 @@ async function initializeApp() {
             showApp();
             setDefaultMonths();
             initServiceTracking(); // Initialize Service Tracking
-            loadDashboard();
+            await loadDashboard();
+            preloadAllData(); // Preload other tabs
         } else {
             showLogin();
         }
@@ -287,7 +288,8 @@ if (loginForm) {
             showApp();
             setDefaultMonths();
             initServiceTracking(); // Initialize Service Tracking
-            loadDashboard();
+            await loadDashboard();
+            preloadAllData(); // Preload other tabs
         } catch (error) {
             errorEl.textContent = error.message || 'Login failed';
         }
@@ -448,7 +450,43 @@ function switchPage(page) {
         }
         loadMaintenanceRecords();
     }
+}
 
+// ============ BACKGROUND PRELOADER ============
+async function preloadAllData() {
+    console.log("Preloading background data...");
+    try {
+        // Run preloads concurrently where possible without blocking the main thread
+        Promise.allSettled([
+            loadDrivers(),
+            loadHireVehicles(),
+            loadCommitmentVehicles(),
+            loadDriverAdvances(),
+            loadHireRecords(),
+            loadCommitmentRecords(),
+            loadDayOffs(),
+            (async () => {
+                ensureMonthValue('driverDayOffMonth');
+                if (typeof loadDriverDayOffs === 'function') await loadDriverDayOffs();
+            })(),
+            (async () => {
+                const mEl = document.getElementById('maintenanceMonth');
+                if (mEl && !mEl.value) {
+                    const n = new Date();
+                    mEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+                }
+                if (typeof loadMaintenanceRecords === 'function') await loadMaintenanceRecords();
+            })(),
+            (async () => {
+                if (typeof loadSalaryDrivers === 'function') await loadSalaryDrivers();
+            })(),
+            (async () => {
+                if (typeof loadSalaryHistory === 'function') await loadSalaryHistory();
+            })()
+        ]).then(() => console.log("Background preloading complete."));
+    } catch (e) {
+        console.error('Error in preloadAllData:', e);
+    }
 }
 
 // ============ FIX: UPDATED LOAD DASHBOARD WITH LOCAL TIME FALLBACK ============
