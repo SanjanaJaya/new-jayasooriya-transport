@@ -541,6 +541,9 @@ async function initServiceTracking() {
         if(!lorryNoSelect.value) { alert('Please select a vehicle.'); return; }
         if(!dateInput.value) { alert('Please select a service date.'); return; }
         
+        const targetKmsInput = document.getElementById('serviceTargetKms');
+        const targetKms = targetKmsInput ? parseInt(targetKmsInput.value) || 5000 : 5000;
+        
         let trackedVehicles = JSON.parse(localStorage.getItem('serviceTrackedVehicles') || '[]');
         
         // Remove existing entry for the same vehicle
@@ -549,7 +552,8 @@ async function initServiceTracking() {
         trackedVehicles.push({
             baseName: lorryNoSelect.value,
             date: dateInput.value,
-            location: locationInput.value || ''
+            location: locationInput.value || '',
+            targetKms: targetKms
         });
         
         localStorage.setItem('serviceTrackedVehicles', JSON.stringify(trackedVehicles));
@@ -557,6 +561,7 @@ async function initServiceTracking() {
         lorryNoSelect.value = '';
         dateInput.value = '';
         locationInput.value = '';
+        if(targetKmsInput) targetKmsInput.value = 5000;
         
         renderTrackedVehicles();
     });
@@ -580,13 +585,13 @@ async function renderTrackedVehicles() {
     const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
     if (!currentQueryUserId) return;
     
-    // Fetch all vehicles once to map IDs
+    // Fetch all vehicles once to map IDs and Vector Art
     let allHireVehicles = [];
     let allCommVehicles = [];
     try {
         const [{ data: hireV }, { data: commV }] = await Promise.all([
-            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', currentQueryUserId),
-            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', currentQueryUserId)
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url').eq('user_id', currentQueryUserId),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url').eq('user_id', currentQueryUserId)
         ]);
         allHireVehicles = hireV || [];
         allCommVehicles = commV || [];
@@ -597,25 +602,41 @@ async function renderTrackedVehicles() {
     trackedVehicles.forEach((tracker, index) => {
         const safeId = 'tracker_' + index;
         const card = document.createElement('div');
-        card.className = 'metrics-detailed';
-        card.style.cssText = 'flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #eee; margin: 0;';
+        card.className = 'tracked-vehicle-card';
+        
+        // Find vector art url for this vehicle
+        let artUrl = '';
+        const foundHire = allHireVehicles.find(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.baseName));
+        const foundComm = allCommVehicles.find(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.baseName));
+        if (foundHire && foundHire.vector_art_url) artUrl = foundHire.vector_art_url;
+        else if (foundComm && foundComm.vector_art_url) artUrl = foundComm.vector_art_url;
+        
+        const artHtml = artUrl ? `<img src="${artUrl}" class="tracked-vehicle-art" alt="${tracker.baseName}">` : `<div class="tracked-vehicle-art" style="font-size: 32px; display:flex; align-items:center; justify-content:center; opacity:0.5;">🚚</div>`;
         
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;">
-                <div>
-                    <strong style="font-size: 1.1rem; color: #2c3e50;">🚚 ${tracker.baseName}</strong>
-                    <div style="font-size: 12px; color: #7f8c8d; margin-top: 4px;">Serviced: ${tracker.date}</div>
-                    ${tracker.location ? `<div style="font-size: 12px; color: #7f8c8d;">Location: ${tracker.location}</div>` : ''}
+            <div class="tracked-vehicle-header">
+                <div class="tracked-vehicle-title">
+                    ${artHtml}
+                    <div>
+                        ${tracker.baseName}
+                        <div class="tracked-vehicle-info">
+                            <strong>Serviced:</strong> ${tracker.date}<br>
+                            ${tracker.location ? `<strong>At:</strong> ${tracker.location}` : ''}
+                        </div>
+                    </div>
                 </div>
-                <button onclick="removeTrackedVehicle('${tracker.baseName}')" title="Remove" style="background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.2rem; padding: 0;">🗑️</button>
+                <button onclick="removeTrackedVehicle('${tracker.baseName}')" class="remove-tracker-btn" title="Remove Tracker">✖</button>
             </div>
-            <div class="detail-metric" style="background: #FFF5F5; border: 1px solid #FADBD8; width: 100%; box-sizing: border-box; text-align: center; margin: 0;">
-                <span class="detail-label" style="color: #c0392b;">Distance Since Service</span>
-                <span class="detail-value" id="${safeId}_kms" style="color: #E74C3C; font-size: 1.5rem;">Calculating...</span>
-            </div>
-            <div class="detail-metric" style="width: 100%; box-sizing: border-box; text-align: center; margin-top: 8px; padding: 5px; opacity: 0.8;">
-                <span class="detail-label">Status</span>
-                <span class="detail-value" id="${safeId}_status" style="font-size: 1rem;">-</span>
+            
+            <div class="tracked-vehicle-body">
+                <div class="detail-metric" id="${safeId}_kms_metric">
+                    <span class="detail-label">Distance Run After Service</span>
+                    <span class="detail-value" id="${safeId}_kms">Calculating...</span>
+                </div>
+                <div class="detail-metric">
+                    <span class="detail-label">Target Status</span>
+                    <span class="detail-value" id="${safeId}_status" style="font-size: 1.1rem;">-</span>
+                </div>
             </div>
         `;
         grid.appendChild(card);
@@ -672,17 +693,22 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
             }
         }
         
-        kmDisplay.textContent = totalKm + ' KM';
+        kmDisplay.textContent = totalKm.toLocaleString() + ' KM';
         
         if (statusDisplay) {
-            const target = 5000;
+            const target = tracker.targetKms || 5000;
+            const metricBox = document.getElementById(elementId + '_kms_metric');
+            
             if (totalKm >= target) {
                 statusDisplay.textContent = 'Service Due!';
-                statusDisplay.style.color = '#E74C3C';
-                statusDisplay.style.fontWeight = 'bold';
+                statusDisplay.style.color = 'var(--brand-red)';
+                statusDisplay.style.fontWeight = '700';
+                if(metricBox) metricBox.classList.add('danger');
             } else {
-                statusDisplay.textContent = (target - totalKm) + ' KM Left';
-                statusDisplay.style.color = '#27AE60';
+                statusDisplay.textContent = (target - totalKm).toLocaleString() + ' KM Remaining';
+                statusDisplay.style.color = 'var(--green)';
+                statusDisplay.style.fontWeight = '500';
+                if(metricBox) metricBox.classList.remove('danger');
             }
         }
     } catch (e) {

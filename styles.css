@@ -2850,3 +2850,112 @@ body.dark-mode .chart-wrapper:hover {
 body.dark-mode .chart-wrapper::after {
     background: radial-gradient(circle, rgba(255, 32, 64, 0.15) 0%, transparent 70%);
 }
+
+/* =====================================================
+   TRACKED VEHICLE CARDS (SERVICE WIDGET)
+   ===================================================== */
+.tracked-vehicle-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    transition: all var(--ease-base);
+}
+
+.tracked-vehicle-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--brand-red-light);
+}
+
+.tracked-vehicle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--surface-border);
+    padding-bottom: 14px;
+    gap: 10px;
+}
+
+.tracked-vehicle-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tracked-vehicle-info {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.5;
+}
+
+.tracked-vehicle-art {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    flex-shrink: 0;
+    border-radius: 4px;
+}
+
+.tracked-vehicle-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tracked-vehicle-card .detail-metric {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    text-align: center;
+    background: var(--surface-bg);
+}
+
+.tracked-vehicle-card .detail-metric.danger {
+    background: var(--brand-red-glow);
+    border-color: rgba(209, 0, 31, 0.3);
+}
+
+.tracked-vehicle-card .detail-metric.danger .detail-label {
+    color: var(--brand-red);
+}
+
+.tracked-vehicle-card .detail-metric.danger .detail-value {
+    color: var(--brand-red-dark);
+}
+
+body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
+    color: #FF4D65;
+}
+
+.remove-tracker-btn {
+    background: rgba(209, 0, 31, 0.1);
+    border: none;
+    color: var(--brand-red);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--ease-base);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.remove-tracker-btn:hover {
+    background: var(--brand-red);
+    color: #fff;
+    transform: rotate(90deg);
+}
