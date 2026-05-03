@@ -909,6 +909,10 @@ async function loadDrivers() {
         }
 
         const activeDrivers = data.filter(d => !d.terminated);
+        const activeStaffCountEl = document.getElementById('activeStaffCount');
+        if (activeStaffCountEl) {
+            activeStaffCountEl.textContent = activeDrivers.length;
+        }
         const terminatedDrivers = data.filter(d => d.terminated);
 
         function buildDriverRow(driver) {
@@ -2128,8 +2132,21 @@ async function loadDashboardData(monthValue) {
         let totalDistance = 0;
         let totalFuelLitres = 0;
 
-        // Set to track unique active vehicles (using string key "type_id" to prevent ID collision)
+        // Set to track unique active vehicles (merged by base number plate)
         const activeVehiclesSet = new Set();
+        
+        // Map to quickly get base names for records
+        const hireVehicleBaseMap = {};
+        const commitVehicleBaseMap = {};
+
+        // Fetch all vehicles to get base names for merging
+        const [{ data: allHireV }, { data: allCommV }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', currentQueryUserId),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', currentQueryUserId)
+        ]);
+        
+        allHireV?.forEach(v => { hireVehicleBaseMap[v.id] = extractBaseVehicleName(v.lorry_number); });
+        allCommV?.forEach(v => { commitVehicleBaseMap[v.id] = extractBaseVehicleName(v.vehicle_number); });
 
         // Process Hire Records
         hireRecords?.forEach(record => {
@@ -2138,7 +2155,10 @@ async function loadDashboardData(monthValue) {
             totalDistance += record.distance || 0;
             totalFuelLitres += record.fuel_litres || 0;
             totalHires++;
-            if(record.vehicle_id) activeVehiclesSet.add(`hire_${record.vehicle_id}`);
+            if(record.vehicle_id) {
+                const baseName = hireVehicleBaseMap[record.vehicle_id] || `hire_${record.vehicle_id}`;
+                activeVehiclesSet.add(baseName);
+            }
         });
 
         // Calculate Commitment Financials
@@ -2168,7 +2188,10 @@ async function loadDashboardData(monthValue) {
         commitmentRecords?.forEach(record => {
              totalDistance += record.distance || 0;
              totalFuelLitres += record.fuel_litres || 0;
-             if(record.vehicle_id) activeVehiclesSet.add(`commit_${record.vehicle_id}`);
+             if(record.vehicle_id) {
+                 const baseName = commitVehicleBaseMap[record.vehicle_id] || `commit_${record.vehicle_id}`;
+                 activeVehiclesSet.add(baseName);
+             }
         });
 
        
@@ -2856,28 +2879,39 @@ async function loadFleetOverview() {
 
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
-            .select('id')
+            .select('id, lorry_number, terminated')
             .eq('user_id', currentQueryUserId);
 
         const { data: commitmentVehicles } = await supabaseClient
             .from('commitment_vehicles')
-            .select('id')
+            .select('id, vehicle_number, terminated')
             .eq('user_id', currentQueryUserId);
 
         const { data: drivers } = await supabaseClient
             .from('drivers')
-            .select('id')
+            .select('id, terminated')
             .eq('user_id', currentQueryUserId);
 
-        const hireCount = hireVehicles?.length || 0;
-        const commitmentCount = commitmentVehicles?.length || 0;
-        const totalVehicles = hireCount + commitmentCount;
-        const driverCount = drivers?.length || 0;
+        const baseNames = new Set();
+        if (hireVehicles) {
+            hireVehicles.forEach(v => {
+                if (!v.terminated && v.lorry_number) {
+                    baseNames.add(extractBaseVehicleName(v.lorry_number));
+                }
+            });
+        }
+        if (commitmentVehicles) {
+            commitmentVehicles.forEach(v => {
+                if (!v.terminated && v.vehicle_number) {
+                    baseNames.add(extractBaseVehicleName(v.vehicle_number));
+                }
+            });
+        }
 
-        document.getElementById('totalVehicles').textContent = totalVehicles;
-        document.getElementById('hireVehicleCount').textContent = hireCount;
-        document.getElementById('commitmentVehicleCount').textContent = commitmentCount;
-        document.getElementById('totalDrivers').textContent = driverCount;
+        const activeDrivers = drivers ? drivers.filter(d => !d.terminated).length : 0;
+
+        document.getElementById('totalVehicles').textContent = baseNames.size;
+        document.getElementById('totalDrivers').textContent = activeDrivers;
     } catch (error) {
         console.error('Error loading fleet overview:', error.message);
     }
@@ -3715,23 +3749,49 @@ async function loadAdvancedDashboardStats(monthValue) {
 
         const { data: allVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
-            .select('id, lorry_number')
-            .eq('user_id', currentQueryUserId)
-            .eq('terminated', false); // Only active vehicles for utilization
+            .select('id, lorry_number, terminated')
+            .eq('user_id', currentQueryUserId);
 
         const { data: allCommitVehicles } = await supabaseClient
             .from('commitment_vehicles')
-            .select('id, vehicle_number')
-            .eq('user_id', currentQueryUserId)
-            .eq('terminated', false);
+            .select('id, vehicle_number, terminated')
+            .eq('user_id', currentQueryUserId);
 
-        // Combine Active Vehicles count
-        const totalActiveVehicles = (allVehicles?.length || 0) + (allCommitVehicles?.length || 0);
+        const baseNames = new Set();
+        const vehicleMap = {}; 
 
-        // Combine Records
+        if (allVehicles) {
+            allVehicles.forEach(v => {
+                if (v.lorry_number) {
+                    const baseName = extractBaseVehicleName(v.lorry_number);
+                    vehicleMap[`hire_${v.id}`] = baseName;
+                    if (!v.terminated) baseNames.add(baseName);
+                }
+            });
+        }
+        if (allCommitVehicles) {
+            allCommitVehicles.forEach(v => {
+                if (v.vehicle_number) {
+                    const baseName = extractBaseVehicleName(v.vehicle_number);
+                    vehicleMap[`commit_${v.id}`] = baseName;
+                    if (!v.terminated) baseNames.add(baseName);
+                }
+            });
+        }
+
+        // Fleet-wide count of unique non-terminated vehicles (aligns with Overview widget)
+        const fleetCount = baseNames.size;
+
+        // Combine Records and add type for mapping
         let combinedRecords = [];
-        if (hireRecords) combinedRecords = [...combinedRecords, ...hireRecords];
-        if (commitmentRecords) combinedRecords = [...combinedRecords, ...commitmentRecords];
+        if (hireRecords) {
+            const mappedHire = hireRecords.map(r => ({ ...r, _recordType: 'hire' }));
+            combinedRecords = [...combinedRecords, ...mappedHire];
+        }
+        if (commitmentRecords) {
+            const mappedCommit = commitmentRecords.map(r => ({ ...r, _recordType: 'commit' }));
+            combinedRecords = [...combinedRecords, ...mappedCommit];
+        }
 
         // --- CALCULATIONS ---
 
@@ -3743,7 +3803,7 @@ async function loadAdvancedDashboardStats(monthValue) {
         let totalJobs = combinedRecords.length;
         let totalFuelLitres = 0;
         
-        // Utilization Set: Store "VehicleID-Date" strings
+        // Utilization Set: Store "BaseName-Date" strings
         const activeVehicleDays = new Set();
 
         combinedRecords.forEach(r => {
@@ -3758,7 +3818,8 @@ async function loadAdvancedDashboardStats(monthValue) {
             if (r.waiting_charge) totalWaitingRev += r.waiting_charge;
             
             // Utilization
-            activeVehicleDays.add(`${r.vehicle_id}-${r.hire_date}`);
+            const baseName = vehicleMap[`${r._recordType}_${r.vehicle_id}`] || `unknown_${r._recordType}_${r.vehicle_id}`;
+            activeVehicleDays.add(`${baseName}-${r.hire_date}`);
         });
 
         // Get Totals from the DOM (calculated in loadDashboardData) to ensure consistency with base pay
@@ -3770,7 +3831,7 @@ async function loadAdvancedDashboardStats(monthValue) {
 
         // 2. Vehicle Utilization Rate
         // (Total Active Vehicle Days) / (Total Vehicles * Days in Month)
-        const totalPossibleDays = totalActiveVehicles * daysInMonth;
+        const totalPossibleDays = fleetCount * daysInMonth;
         const utilizationRate = totalPossibleDays > 0 ? (activeVehicleDays.size / totalPossibleDays) * 100 : 0;
 
         // 3. Revenue per Vehicle per Day
@@ -3783,10 +3844,10 @@ async function loadAdvancedDashboardStats(monthValue) {
         const avgTripDist = totalJobs > 0 ? (totalDistance / totalJobs) : 0;
 
         // 6. Jobs per Vehicle
-        const jobsPerVeh = totalActiveVehicles > 0 ? (totalJobs / totalActiveVehicles) : 0;
+        const jobsPerVeh = fleetCount > 0 ? (totalJobs / fleetCount) : 0;
         
         // 7. Distance per Vehicle
-        const distPerVeh = totalActiveVehicles > 0 ? (totalDistance / totalActiveVehicles) : 0;
+        const distPerVeh = fleetCount > 0 ? (totalDistance / fleetCount) : 0;
 
         // --- UPDATE UI ---
         
