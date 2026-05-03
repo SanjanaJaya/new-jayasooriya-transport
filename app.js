@@ -4851,13 +4851,12 @@ document.getElementById('maintenanceForm')?.addEventListener('submit', async (e)
 
     const id = document.getElementById('maintenanceId').value;
     const vehicleRaw = document.getElementById('maintenanceVehicle').value;
-    // vehicle value format: "hire_VEHICLEID" or "commitment_VEHICLEID"
-    const [vehicleType, vehicleId] = vehicleRaw.split('_');
-
+    
+    // We now save the base name directly.
     const data = {
         vehicle_ref:    vehicleRaw,
-        vehicle_type:   vehicleType,   // 'hire' | 'commitment'
-        vehicle_id:     parseInt(vehicleId),
+        vehicle_type:   'merged',
+        vehicle_id:     0,
         expense_type:   document.getElementById('maintenanceExpense').value,
         amount:         parseFloat(document.getElementById('maintenanceAmount').value) || 0,
         maintenance_date: document.getElementById('maintenanceDate').value,
@@ -4905,8 +4904,6 @@ async function loadMaintenanceRecords() {
             .gte('maintenance_date', startDate)
             .lte('maintenance_date', endDate);
 
-        if (vehicleFilter) query = query.eq('vehicle_ref', vehicleFilter);
-
         const { data, error } = await query.order('maintenance_date', { ascending: false });
         if (error) throw error;
 
@@ -4918,24 +4915,34 @@ async function loadMaintenanceRecords() {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found for this month.</td></tr>';
         } else {
             const labelMap = await getVehicleLabelMap();
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                const actionButtons = userRole === 'viewer' ? '' : `
-                    <td class="action-buttons">
-                        <button class="btn btn-edit" onclick="editMaintenanceRecord(${item.id})">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteMaintenanceRecord(${item.id})">Delete</button>
-                    </td>
-                `;
-                row.innerHTML = `
-                    <td>${labelMap[item.vehicle_ref] || item.vehicle_ref}</td>
-                    <td>${item.maintenance_date}</td>
-                    <td>${item.expense_type}</td>
-                    <td style="color:#E74C3C;font-weight:bold;">LKR ${item.amount.toFixed(2)}</td>
-                    <td>${item.notes || '-'}</td>
-                    ${actionButtons}
-                `;
-                tbody.appendChild(row);
-            });
+            
+            // Filter locally to support merged base names for old records
+            const filteredData = vehicleFilter 
+                ? data.filter(item => (labelMap[item.vehicle_ref] || item.vehicle_ref) === vehicleFilter)
+                : data;
+                
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found for the selected vehicle.</td></tr>';
+            } else {
+                filteredData.forEach(item => {
+                    const row = document.createElement('tr');
+                    const actionButtons = userRole === 'viewer' ? '' : `
+                        <td class="action-buttons">
+                            <button class="btn btn-edit" onclick="editMaintenanceRecord(${item.id})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteMaintenanceRecord(${item.id})">Delete</button>
+                        </td>
+                    `;
+                    row.innerHTML = `
+                        <td>${labelMap[item.vehicle_ref] || item.vehicle_ref}</td>
+                        <td>${item.maintenance_date}</td>
+                        <td>${item.expense_type}</td>
+                        <td style="color:#E74C3C;font-weight:bold;">LKR ${item.amount.toFixed(2)}</td>
+                        <td>${item.notes || '-'}</td>
+                        ${actionButtons}
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
         }
 
         await renderMaintenanceWidgets(monthValue);
@@ -4968,10 +4975,11 @@ async function renderMaintenanceWidgets(monthValue) {
 
         const labelMap = await getVehicleLabelMap();
 
-        // Group by vehicle
+        // Group by vehicle (mapping old IDs to base names)
         const totals = {};
         data.forEach(row => {
-            totals[row.vehicle_ref] = (totals[row.vehicle_ref] || 0) + row.amount;
+            const baseName = labelMap[row.vehicle_ref] || row.vehicle_ref;
+            totals[baseName] = (totals[baseName] || 0) + row.amount;
         });
 
         const container = document.getElementById('maintenanceVehicleWidgets');
@@ -4983,13 +4991,13 @@ async function renderMaintenanceWidgets(monthValue) {
             return;
         }
 
-        Object.entries(totals).forEach(([ref, total]) => {
+        Object.entries(totals).forEach(([baseName, total]) => {
             const card = document.createElement('div');
             card.className = 'metric-card';
             card.innerHTML = `
                 <div class="metric-icon">🔧</div>
                 <div class="metric-content">
-                    <div class="metric-label">${labelMap[ref] || ref}</div>
+                    <div class="metric-label">${baseName}</div>
                     <div class="metric-value" style="color:#E74C3C;">LKR ${total.toFixed(2)}</div>
                 </div>
             `;
@@ -5023,8 +5031,8 @@ async function getVehicleLabelMap() {
             supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()),
             supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId())
         ]);
-        hireVehicles?.forEach(v => { map[`hire_${v.id}`] = `${v.lorry_number} (Hire)`; });
-        commitmentVehicles?.forEach(v => { map[`commitment_${v.id}`] = `${v.vehicle_number} (Commitment)`; });
+        hireVehicles?.forEach(v => { map[`hire_${v.id}`] = extractBaseVehicleName(v.lorry_number); });
+        commitmentVehicles?.forEach(v => { map[`commitment_${v.id}`] = extractBaseVehicleName(v.vehicle_number); });
     } catch (e) { /* silent */ }
     return map;
 }
@@ -5042,29 +5050,17 @@ async function populateMaintenanceVehicleDropdown() {
             supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId()).eq('terminated', false)
         ]);
 
-        if (hireVehicles?.length) {
-            const group = document.createElement('optgroup');
-            group.label = '🚚 Hire-to-Pay Vehicles';
-            hireVehicles.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = `hire_${v.id}`;
-                opt.textContent = v.lorry_number;
-                group.appendChild(opt);
-            });
-            select.appendChild(group);
-        }
+        const baseNames = new Set();
+        if (hireVehicles) hireVehicles.forEach(v => baseNames.add(extractBaseVehicleName(v.lorry_number)));
+        if (commitmentVehicles) commitmentVehicles.forEach(v => baseNames.add(extractBaseVehicleName(v.vehicle_number)));
 
-        if (commitmentVehicles?.length) {
-            const group = document.createElement('optgroup');
-            group.label = '🚛 Commitment Vehicles';
-            commitmentVehicles.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = `commitment_${v.id}`;
-                opt.textContent = v.vehicle_number;
-                group.appendChild(opt);
-            });
-            select.appendChild(group);
-        }
+        const sortedNames = Array.from(baseNames).sort();
+        sortedNames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
 
         if (currentVal) select.value = currentVal;
     } catch (error) {
@@ -5081,33 +5077,21 @@ async function populateMaintenanceVehicleFilter() {
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
 
         const [{ data: hireVehicles }, { data: commitmentVehicles }] = await Promise.all([
-            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()),
-            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId())
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', getQueryUserId()).eq('terminated', false),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', getQueryUserId()).eq('terminated', false)
         ]);
 
-        if (hireVehicles?.length) {
-            const group = document.createElement('optgroup');
-            group.label = '🚚 Hire-to-Pay';
-            hireVehicles.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = `hire_${v.id}`;
-                opt.textContent = v.lorry_number;
-                group.appendChild(opt);
-            });
-            filterSelect.appendChild(group);
-        }
+        const baseNames = new Set();
+        if (hireVehicles) hireVehicles.forEach(v => baseNames.add(extractBaseVehicleName(v.lorry_number)));
+        if (commitmentVehicles) commitmentVehicles.forEach(v => baseNames.add(extractBaseVehicleName(v.vehicle_number)));
 
-        if (commitmentVehicles?.length) {
-            const group = document.createElement('optgroup');
-            group.label = '🚛 Commitment';
-            commitmentVehicles.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = `commitment_${v.id}`;
-                opt.textContent = v.vehicle_number;
-                group.appendChild(opt);
-            });
-            filterSelect.appendChild(group);
-        }
+        const sortedNames = Array.from(baseNames).sort();
+        sortedNames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            filterSelect.appendChild(opt);
+        });
 
         filterSelect.value = currentVal;
     } catch (error) {
@@ -5128,8 +5112,10 @@ async function editMaintenanceRecord(id) {
 
         await populateMaintenanceVehicleDropdown();
 
+        // Handle converting old reference back to base name for edit select dropdown
+        const labelMap = await getVehicleLabelMap();
         document.getElementById('maintenanceId').value = data.id;
-        document.getElementById('maintenanceVehicle').value = data.vehicle_ref;
+        document.getElementById('maintenanceVehicle').value = labelMap[data.vehicle_ref] || data.vehicle_ref;
         document.getElementById('maintenanceDate').value = data.maintenance_date;
         document.getElementById('maintenanceExpense').value = data.expense_type;
         document.getElementById('maintenanceAmount').value = data.amount;
