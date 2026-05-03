@@ -537,33 +537,54 @@ async function initServiceTracking() {
         }
     }
     
-    addBtn.addEventListener('click', () => {
+    addBtn.addEventListener('click', async () => {
         if(!lorryNoSelect.value) { alert('Please select a vehicle.'); return; }
         if(!dateInput.value) { alert('Please select a service date.'); return; }
         
         const targetKmsInput = document.getElementById('serviceTargetKms');
         const targetKms = targetKmsInput ? parseInt(targetKmsInput.value) || 5000 : 5000;
         
-        let trackedVehicles = JSON.parse(localStorage.getItem('serviceTrackedVehicles') || '[]');
-        
-        // Remove existing entry for the same vehicle
-        trackedVehicles = trackedVehicles.filter(v => v.baseName !== lorryNoSelect.value);
-        
-        trackedVehicles.push({
-            baseName: lorryNoSelect.value,
-            date: dateInput.value,
-            location: locationInput.value || '',
-            targetKms: targetKms
-        });
-        
-        localStorage.setItem('serviceTrackedVehicles', JSON.stringify(trackedVehicles));
-        
-        lorryNoSelect.value = '';
-        dateInput.value = '';
-        locationInput.value = '';
-        if(targetKmsInput) targetKmsInput.value = 5000;
-        
-        renderTrackedVehicles();
+        const currentUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
+        if (!currentUserId) {
+            alert('User authentication error. Cannot save.');
+            return;
+        }
+
+        addBtn.disabled = true;
+        addBtn.textContent = 'Saving...';
+
+        try {
+            // Remove existing entry for the same vehicle
+            await supabaseClient.from('service_trackers')
+                .delete()
+                .eq('user_id', currentUserId)
+                .eq('base_name', lorryNoSelect.value);
+            
+            // Insert new tracker
+            const { error } = await supabaseClient.from('service_trackers')
+                .insert([{
+                    user_id: currentUserId,
+                    base_name: lorryNoSelect.value,
+                    service_date: dateInput.value,
+                    service_location: locationInput.value || '',
+                    target_kms: targetKms
+                }]);
+
+            if (error) throw error;
+
+            lorryNoSelect.value = '';
+            dateInput.value = '';
+            locationInput.value = '';
+            if(targetKmsInput) targetKmsInput.value = 5000;
+            
+            renderTrackedVehicles();
+        } catch (e) {
+            console.error('Error saving service tracker:', e);
+            alert('Failed to save service tracker to database.');
+        } finally {
+            addBtn.disabled = false;
+            addBtn.textContent = '➕ Track Vehicle';
+        }
     });
     
     // Auto-load on initialize
@@ -574,16 +595,32 @@ async function renderTrackedVehicles() {
     const grid = document.getElementById('trackedVehiclesGrid');
     if (!grid) return;
     
-    const trackedVehicles = JSON.parse(localStorage.getItem('serviceTrackedVehicles') || '[]');
+    const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
+    if (!currentQueryUserId) return;
+    
+    grid.innerHTML = '<div style="color: #7f8c8d; padding: 10px; text-align: center; grid-column: 1 / -1;">Loading trackers...</div>';
+    
+    let trackedVehicles = [];
+    try {
+        const { data, error } = await supabaseClient.from('service_trackers')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        trackedVehicles = data || [];
+    } catch (e) {
+        console.error('Error loading service trackers:', e);
+        grid.innerHTML = '<div style="color: #e74c3c; padding: 10px; text-align: center; grid-column: 1 / -1;">Error loading trackers from database.</div>';
+        return;
+    }
+    
     grid.innerHTML = '';
     
     if (trackedVehicles.length === 0) {
         grid.innerHTML = '<div style="color: #7f8c8d; padding: 10px; text-align: center; grid-column: 1 / -1;">No vehicles are currently being tracked.</div>';
         return;
     }
-    
-    const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
-    if (!currentQueryUserId) return;
     
     // Fetch all vehicles once to map IDs and Vector Art
     let allHireVehicles = [];
@@ -606,26 +643,26 @@ async function renderTrackedVehicles() {
         
         // Find vector art url for this vehicle
         let artUrl = '';
-        const foundHire = allHireVehicles.find(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.baseName));
-        const foundComm = allCommVehicles.find(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.baseName));
+        const foundHire = allHireVehicles.find(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name));
+        const foundComm = allCommVehicles.find(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name));
         if (foundHire && foundHire.vector_art_url) artUrl = foundHire.vector_art_url;
         else if (foundComm && foundComm.vector_art_url) artUrl = foundComm.vector_art_url;
         
-        const artHtml = artUrl ? `<img src="${artUrl}" class="tracked-vehicle-art" alt="${tracker.baseName}">` : `<div class="tracked-vehicle-art" style="font-size: 32px; display:flex; align-items:center; justify-content:center; opacity:0.5;">🚚</div>`;
+        const artHtml = artUrl ? `<img src="${artUrl}" class="tracked-vehicle-art" alt="${tracker.base_name}">` : `<div class="tracked-vehicle-art" style="font-size: 32px; display:flex; align-items:center; justify-content:center; opacity:0.5;">🚚</div>`;
         
         card.innerHTML = `
             <div class="tracked-vehicle-header">
                 <div class="tracked-vehicle-title">
                     ${artHtml}
                     <div>
-                        ${tracker.baseName}
+                        ${tracker.base_name}
                         <div class="tracked-vehicle-info">
-                            <strong>Serviced:</strong> ${tracker.date}<br>
-                            ${tracker.location ? `<strong>At:</strong> ${tracker.location}` : ''}
+                            <strong>Serviced:</strong> ${tracker.service_date}<br>
+                            ${tracker.service_location ? `<strong>At:</strong> ${tracker.service_location}` : ''}
                         </div>
                     </div>
                 </div>
-                <button onclick="removeTrackedVehicle('${tracker.baseName}')" class="remove-tracker-btn" title="Remove Tracker">✖</button>
+                <button onclick="removeTrackedVehicle('${tracker.base_name}')" class="remove-tracker-btn" title="Remove Tracker">✖</button>
             </div>
             
             <div class="tracked-vehicle-body">
@@ -646,12 +683,23 @@ async function renderTrackedVehicles() {
     });
 }
 
-window.removeTrackedVehicle = function(baseName) {
+window.removeTrackedVehicle = async function(baseName) {
     if(confirm('Stop tracking this vehicle?')) {
-        let trackedVehicles = JSON.parse(localStorage.getItem('serviceTrackedVehicles') || '[]');
-        trackedVehicles = trackedVehicles.filter(v => v.baseName !== baseName);
-        localStorage.setItem('serviceTrackedVehicles', JSON.stringify(trackedVehicles));
-        renderTrackedVehicles();
+        const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
+        if (!currentQueryUserId) return;
+        
+        try {
+            const { error } = await supabaseClient.from('service_trackers')
+                .delete()
+                .eq('user_id', currentQueryUserId)
+                .eq('base_name', baseName);
+                
+            if (error) throw error;
+            renderTrackedVehicles();
+        } catch (e) {
+            console.error('Error removing tracked vehicle:', e);
+            alert('Failed to remove tracker. Please try again.');
+        }
     }
 };
 
@@ -662,11 +710,11 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
     
     try {
         const targetHireIds = allHireVehicles
-            .filter(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.baseName))
+            .filter(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name))
             .map(v => v.id);
             
         const targetCommIds = allCommVehicles
-            .filter(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.baseName))
+            .filter(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name))
             .map(v => v.id);
             
         let totalKm = 0;
@@ -676,7 +724,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
                 .from('hire_to_pay_records')
                 .select('distance')
                 .in('vehicle_id', targetHireIds)
-                .gte('hire_date', tracker.date);
+                .gte('hire_date', tracker.service_date);
             if (hireRecords) {
                 totalKm += hireRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             }
@@ -687,7 +735,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
                 .from('commitment_records')
                 .select('distance')
                 .in('vehicle_id', targetCommIds)
-                .gte('hire_date', tracker.date);
+                .gte('hire_date', tracker.service_date);
             if (commRecords) {
                 totalKm += commRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             }
@@ -696,7 +744,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
         kmDisplay.textContent = totalKm.toLocaleString() + ' KM';
         
         if (statusDisplay) {
-            const target = tracker.targetKms || 5000;
+            const target = tracker.target_kms || 5000;
             const metricBox = document.getElementById(elementId + '_kms_metric');
             
             if (totalKm >= target) {
@@ -712,7 +760,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
             }
         }
     } catch (e) {
-        console.error('Error calculating service KMs for', tracker.baseName, e);
+        console.error('Error calculating service KMs for', tracker.base_name, e);
         kmDisplay.textContent = 'Error';
     }
 }
