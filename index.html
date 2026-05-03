@@ -302,6 +302,32 @@
                         <div id="vehiclePerformance" class="performance-table"></div>
                     </div>
 
+                    <div class="performance-section" id="serviceTrackingSection">
+                        <h3>🔧 Lorry Service Tracking</h3>
+                        <div class="dashboard-controls" style="margin-bottom: 15px;">
+                            <div class="control-group">
+                                <label for="serviceLorryNo">🚚 Vehicle Number</label>
+                                <select id="serviceLorryNo" title="Select Vehicle">
+                                    <option value="">Select Vehicle</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label for="serviceDateInput">📅 Serviced Date</label>
+                                <input type="date" id="serviceDateInput" title="Last Serviced Date">
+                            </div>
+                            <div class="control-group">
+                                <label for="serviceLocationInput">📍 Serviced Location</label>
+                                <input type="text" id="serviceLocationInput" placeholder="e.g., Dimo, ABC Motors" title="Service Location">
+                            </div>
+                            <div class="control-group">
+                                <button class="btn btn-primary" id="addServiceTrackingBtn" style="margin-top: 24px;">➕ Track Vehicle</button>
+                            </div>
+                        </div>
+                        <div id="trackedVehiclesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <!-- Tracked vehicles will be displayed here -->
+                        </div>
+                    </div>
+
                     <div class="performance-section">
                         <h3>📈 Monthly Financial Trends</h3>
                         <div class="charts-container">
