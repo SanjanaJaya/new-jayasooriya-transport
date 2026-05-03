@@ -2906,7 +2906,7 @@ async function loadTopPerformingVehicles() {
             .select('*')
             .eq('user_id', currentQueryUserId);
 
-        const vehiclePerformance = [];
+        const mergedMap = {};
 
         // 4. Process Hire Vehicles (Fetch ALL records then filter)
         for (const vehicle of hireVehicles || []) {
@@ -2921,7 +2921,6 @@ async function loadTopPerformingVehicles() {
             // --- All-Time Metrics ---
             const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
-            const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
             const allTimeHires = allRecords.length;
 
             // --- 6-Month Metrics (Filtering in Memory) ---
@@ -2934,19 +2933,22 @@ async function loadTopPerformingVehicles() {
             const hires6m = recentRecords.length;
 
             if (rev6m > 0) {
-                vehiclePerformance.push({
-                    name: vehicle.lorry_number,
-                    type: 'Hire-to-Pay',
-                    revenue: rev6m,
-                    profit: profit6m,
-                    km: km6m,
-                    hires: hires6m,
-                    profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
-                    allTimeEfficiency: allTimeEff,
-                    allTimeKm: allTimeDist,
-                    allTimeHiresTotal: allTimeHires,
-                    vectorArt: vehicle.vector_art_url
-                });
+                const baseName = extractBaseVehicleName(vehicle.lorry_number);
+                if (!mergedMap[baseName]) {
+                    mergedMap[baseName] = {
+                        name: baseName, type: 'Hire-to-Pay', revenue: 0, profit: 0, km: 0, hires: 0,
+                        allTimeKm: 0, allTimeHiresTotal: 0, allTimeDist: 0, allTimeFuel: 0, vectorArt: vehicle.vector_art_url
+                    };
+                }
+                mergedMap[baseName].revenue += rev6m;
+                mergedMap[baseName].profit += profit6m;
+                mergedMap[baseName].km += km6m;
+                mergedMap[baseName].hires += hires6m;
+                mergedMap[baseName].allTimeKm += allTimeDist;
+                mergedMap[baseName].allTimeHiresTotal += allTimeHires;
+                mergedMap[baseName].allTimeDist += allTimeDist;
+                mergedMap[baseName].allTimeFuel += allTimeFuel;
+                if (!mergedMap[baseName].vectorArt) mergedMap[baseName].vectorArt = vehicle.vector_art_url;
             }
         }
 
@@ -2961,7 +2963,6 @@ async function loadTopPerformingVehicles() {
 
             const allTimeDist = allRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
-            const allTimeEff = allTimeFuel > 0 ? (allTimeDist / allTimeFuel) : 0;
             const allTimeHires = allRecords.length;
 
             const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
@@ -2984,21 +2985,36 @@ async function loadTopPerformingVehicles() {
             const hires6m = recentRecords.length;
 
             if (rev6m > 0) {
-                vehiclePerformance.push({
-                    name: vehicle.vehicle_number,
-                    type: 'Commitment',
-                    revenue: rev6m,
-                    profit: profit6m,
-                    km: km6m,
-                    hires: hires6m,
-                    profitMargin: rev6m > 0 ? (profit6m / rev6m * 100) : 0,
-                    allTimeEfficiency: allTimeEff,
-                    allTimeKm: allTimeDist,
-                    allTimeHiresTotal: allTimeHires,
-                    vectorArt: vehicle.vector_art_url
-                });
+                const baseName = extractBaseVehicleName(vehicle.vehicle_number);
+                if (!mergedMap[baseName]) {
+                    mergedMap[baseName] = {
+                        name: baseName, type: 'Commitment', revenue: 0, profit: 0, km: 0, hires: 0,
+                        allTimeKm: 0, allTimeHiresTotal: 0, allTimeDist: 0, allTimeFuel: 0, vectorArt: vehicle.vector_art_url
+                    };
+                } else {
+                    if (mergedMap[baseName].type !== 'Commitment') {
+                        mergedMap[baseName].type = 'Mixed';
+                    }
+                }
+                mergedMap[baseName].revenue += rev6m;
+                mergedMap[baseName].profit += profit6m;
+                mergedMap[baseName].km += km6m;
+                mergedMap[baseName].hires += hires6m;
+                mergedMap[baseName].allTimeKm += allTimeDist;
+                mergedMap[baseName].allTimeHiresTotal += allTimeHires;
+                mergedMap[baseName].allTimeDist += allTimeDist;
+                mergedMap[baseName].allTimeFuel += allTimeFuel;
+                if (!mergedMap[baseName].vectorArt) mergedMap[baseName].vectorArt = vehicle.vector_art_url;
             }
         }
+
+        const vehiclePerformance = Object.values(mergedMap).map(v => {
+            return {
+                ...v,
+                profitMargin: v.revenue > 0 ? (v.profit / v.revenue * 100) : 0,
+                allTimeEfficiency: v.allTimeFuel > 0 ? (v.allTimeDist / v.allTimeFuel) : 0
+            };
+        });
 
         // 6. Sort and Slice
         vehiclePerformance.sort((a, b) => b.profit - a.profit);
@@ -3970,30 +3986,33 @@ async function loadVehicleRevenuePieChart(monthValue) {
         const vehicleRevMap = {};
 
         hireRecords?.forEach(r => {
-            const name = r.hire_to_pay_vehicles?.lorry_number || `Vehicle #${r.vehicle_id}`;
+            const rawName = r.hire_to_pay_vehicles?.lorry_number || `Vehicle #${r.vehicle_id}`;
+            const name = extractBaseVehicleName(rawName);
             vehicleRevMap[name] = (vehicleRevMap[name] || 0) + (r.hire_amount || 0);
         });
 
         // Group commitment records by vehicle for monthly payment + extra km charges
         const commitVehicleData = {};
         commitmentRecords?.forEach(r => {
-            const name = r.commitment_vehicles?.vehicle_number || `Vehicle #${r.vehicle_id}`;
-            if (!commitVehicleData[name]) {
-                commitVehicleData[name] = {
+            const rawName = r.commitment_vehicles?.vehicle_number || `Vehicle #${r.vehicle_id}`;
+            if (!commitVehicleData[rawName]) {
+                commitVehicleData[rawName] = {
                     vehicle: r.commitment_vehicles,
                     totalKm: 0,
                     counted: false
                 };
             }
-            commitVehicleData[name].totalKm += (r.distance || 0);
+            commitVehicleData[rawName].totalKm += (r.distance || 0);
         });
 
-        Object.entries(commitVehicleData).forEach(([name, data]) => {
+        Object.entries(commitVehicleData).forEach(([rawName, data]) => {
             if (data.vehicle) {
                 let rev = data.vehicle.fixed_monthly_payment || 0;
                 const exceed = Math.max(0, data.totalKm - (data.vehicle.km_limit_per_month || 0));
                 rev += exceed * (data.vehicle.extra_km_charge || 0);
-                vehicleRevMap[name] = (vehicleRevMap[name] || 0) + rev;
+                
+                const baseName = extractBaseVehicleName(rawName);
+                vehicleRevMap[baseName] = (vehicleRevMap[baseName] || 0) + rev;
             }
         });
 
