@@ -2888,13 +2888,6 @@ async function loadTopPerformingVehicles() {
     try {
         const currentQueryUserId = getQueryUserId();
         
-        // 2. Prepare Date Ranges
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(1); 
-        startDate.setMonth(startDate.getMonth() - 6);
-        const startDate6M = startDate.toISOString().split('T')[0];
-
         // 3. Fetch Basic Vehicle Data
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
@@ -2923,8 +2916,8 @@ async function loadTopPerformingVehicles() {
             const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
             const allTimeHires = allRecords.length;
 
-            // --- 6-Month Metrics (Filtering in Memory) ---
-            const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
+            // --- Metrics (All-Time) ---
+            const recentRecords = allRecords;
             
             const rev6m = recentRecords.reduce((sum, r) => sum + (r.hire_amount || 0), 0);
             const fuelCost6m = recentRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
@@ -2965,7 +2958,7 @@ async function loadTopPerformingVehicles() {
             const allTimeFuel = allRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
             const allTimeHires = allRecords.length;
 
-            const recentRecords = allRecords.filter(r => r.hire_date >= startDate6M);
+            const recentRecords = allRecords;
 
             const uniqueMonths = new Set(recentRecords.map(r => r.hire_date.substring(0, 7)));
             const baseRevenue = vehicle.fixed_monthly_payment * uniqueMonths.size;
@@ -3042,7 +3035,7 @@ async function loadTopPerformingVehicles() {
         }
 
         container.innerHTML = topVehicles.map((vehicle, index) => {
-            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+            const rankEmoji = `#${index + 1}`;
             
             const iconHtml = vehicle.vectorArt 
                 ? `<img src="${vehicle.vectorArt}" alt="Vehicle Art">`
@@ -3065,46 +3058,36 @@ async function loadTopPerformingVehicles() {
                     </div>
 
                     <div class="card-body-section">
-                        <span class="section-title">RECENT PERFORMANCE (LAST 6 MONTHS)</span>
+                        <span class="section-title">ALL-TIME PERFORMANCE</span>
                         
-                        <div class="metrics-row">
-                            <div class="metric-box align-left">
-                                <span class="metric-label">Revenue</span>
-                                <span class="metric-value">LKR ${(vehicle.revenue/1000).toFixed(1)}K</span>
-                            </div>
-                            <div class="metric-box">
-                                <span class="metric-label">Profit</span>
-                                <span class="metric-value ${profitClass}">LKR ${(vehicle.profit/1000).toFixed(1)}K</span>
-                            </div>
-                            <div class="metric-box align-right">
-                                <span class="metric-label">Margin</span>
-                                <span class="metric-value">${vehicle.profitMargin.toFixed(0)}%</span>
-                            </div>
+                        <div class="premium-metric-row">
+                            <span class="metric-label">Revenue</span>
+                            <span class="metric-value">LKR ${vehicle.revenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
                         </div>
-
-                        <div class="metrics-row">
-                             <div class="metric-box align-left">
-                                <span class="metric-label">Total KM (6m)</span>
-                                <span class="metric-value">${vehicle.km.toLocaleString()} km</span>
-                            </div>
-                            <div class="metric-box align-right">
-                                <span class="metric-label">Total Hires (6m)</span>
-                                <span class="metric-value">${vehicle.hires}</span>
-                            </div>
+                        <div class="premium-metric-row">
+                            <span class="metric-label">Profit</span>
+                            <span class="metric-value ${profitClass}">LKR ${vehicle.profit.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                        </div>
+                        <div class="premium-metric-row">
+                            <span class="metric-label">Margin</span>
+                            <span class="metric-value">${vehicle.profitMargin.toFixed(0)}%</span>
+                        </div>
+                        <div class="premium-metric-row">
+                            <span class="metric-label">Total KM</span>
+                            <span class="metric-value">${vehicle.km.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                        </div>
+                        <div class="premium-metric-row">
+                            <span class="metric-label">Total Hires</span>
+                            <span class="metric-value">${vehicle.hires}</span>
                         </div>
 
                         <div class="efficiency-section">
                             <div class="efficiency-label">
-                                <span>⛽ All-Time Efficiency</span>
+                                <span>⛽ Fuel Efficiency</span>
                             </div>
                             <div class="efficiency-value">
                                 ${vehicle.allTimeEfficiency.toFixed(2)} <span style="font-size: 0.8em; font-weight: normal; color: #7f8c8d;">Km/L</span>
                             </div>
-                        </div>
-                        
-                        <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.75rem; color: #95a5a6; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
-                            <span>Lifetime KM: <strong>${vehicle.allTimeKm.toLocaleString()}</strong></span>
-                            <span>Lifetime Hires: <strong>${vehicle.allTimeHiresTotal}</strong></span>
                         </div>
                     </div>
                 </div>

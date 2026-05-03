@@ -1678,7 +1678,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
     background: linear-gradient(145deg, var(--surface-card) 0%, var(--surface-bg) 100%);
     border-radius: var(--radius-xl);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
     border: 1px solid rgba(150, 150, 150, 0.1);
     position: relative;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1693,6 +1692,8 @@ input[type="file"]::-webkit-file-upload-button:hover {
     background-size: 200% auto;
     animation: gradientShift 3s linear infinite;
     opacity: 0.8;
+    border-top-left-radius: var(--radius-xl);
+    border-top-right-radius: var(--radius-xl);
 }
 
 @keyframes gradientShift {
@@ -1721,36 +1722,47 @@ body.dark-mode .premium-vehicle-card {
 
 .rank-badge-overlay {
     position: absolute;
-    top: 14px;
-    right: 14px;
-    background: var(--surface-card);
-    box-shadow: var(--shadow-sm);
-    border-radius: 50%;
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
+    top: -10px;
+    right: 24px;
+    background: linear-gradient(135deg, var(--brand-red), #ff4757);
+    color: white;
+    box-shadow: 0 4px 15px rgba(209, 0, 31, 0.4);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 1px;
     z-index: 2;
-    transition: background var(--ease-base), box-shadow var(--ease-base);
+    transition: all 0.3s var(--ease-spring);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.premium-vehicle-card:hover .rank-badge-overlay {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(209, 0, 31, 0.6);
 }
 
 /* Vehicle icon box — shows lorry photo or SVG */
 .vehicle-icon-large {
-    width: 68px;
-    height: 52px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-card);
+    width: 90px;
+    height: 70px;
+    border-radius: var(--radius-md);
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    box-shadow: var(--shadow-xs);
-    border: 1px solid var(--surface-border);
-    overflow: hidden;
+    font-size: 42px;
+    box-shadow: none;
+    border: none;
+    overflow: visible;
     flex-shrink: 0;
-    transition: background var(--ease-base), box-shadow var(--ease-base);
+    transition: all 0.4s var(--ease-spring);
+    filter: drop-shadow(0 12px 18px rgba(209, 0, 31, 0.4));
+}
+
+.premium-vehicle-card:hover .vehicle-icon-large {
+    transform: scale(1.15) rotate(-3deg);
+    filter: drop-shadow(0 16px 25px rgba(209, 0, 31, 0.6));
 }
 
 .vehicle-icon-large img {
@@ -1797,6 +1809,24 @@ body.dark-mode .premium-vehicle-card {
     border-bottom: none;
 }
 
+.premium-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px dashed rgba(150, 150, 150, 0.15);
+    transition: background var(--ease-base);
+}
+
+.premium-metric-row:hover {
+    background: rgba(150, 150, 150, 0.03);
+}
+
+.premium-metric-row:last-of-type {
+    border-bottom: none;
+    margin-bottom: 14px;
+}
+
 .metric-box { text-align: center; flex: 1; }
 .metric-box.align-left  { text-align: left; }
 .metric-box.align-right { text-align: right; }
@@ -1812,12 +1842,22 @@ body.dark-mode .premium-vehicle-card {
     transition: color var(--ease-base);
 }
 
+.premium-metric-row .metric-label {
+    margin-bottom: 0;
+    font-size: 11px;
+}
+
 .premium-vehicle-card .metric-value {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
     letter-spacing: -0.3px;
+}
+
+.premium-metric-row .metric-value {
+    font-size: 18px;
+    line-height: 1;
 }
 
 .metric-value.highlight { color: var(--green); }
