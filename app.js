@@ -547,8 +547,14 @@ document.getElementById('dashboardMonth')?.addEventListener('change', loadDashbo
 // ============ SERVICE TRACKING ============
 function extractBaseVehicleName(name) {
     if (!name) return '';
-    const match = name.match(/^([a-zA-Z0-9]{2,3}\s*-\s*[0-9]{4})/);
-    return match ? match[1].trim().toUpperCase() : name.trim().toUpperCase();
+    // Match common formats like WP NB-1234, 68-1234, NB - 1234
+    // More permissive: matches 1-4 letters/digits, then hyphen, then 1-4 digits anywhere in string
+    const match = name.match(/([a-zA-Z0-9]{1,4})\s*-\s*([0-9]{1,4})/);
+    if (match) {
+        // Return normalized format: "XX - YYYY"
+        return `${match[1].trim().toUpperCase()} - ${match[2].trim()}`;
+    }
+    return name.trim().toUpperCase();
 }
 
 async function initServiceTracking() {
@@ -2323,11 +2329,12 @@ async function deleteDayOff(id) {
 async function loadDashboardData(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
-        const startDate = `${year}-${month}-01`;
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
 
         // Get last day correctly without timezone shift
         const lastDay = new Date(year, month, 0).getDate(); 
-        const endDate = `${year}-${month}-${lastDay}`;
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
 
         const currentQueryUserId = getQueryUserId();
 
@@ -2509,11 +2516,11 @@ async function loadDashboardData(monthValue) {
 async function loadVehiclePerformance(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
-        const startDate = `${year}-${month}-01`;
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
         
-        // FIXED:
         const lastDay = new Date(year, month, 0).getDate();
-        const endDate = `${year}-${month}-${lastDay}`;
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
         
         const currentQueryUserId = getQueryUserId();
 
@@ -2559,7 +2566,7 @@ async function loadVehiclePerformance(monthValue) {
 
                 vehiclesWithData.push({
                     type: 'Hire-to-Pay',
-                    number: vehicle.lorry_number,
+                    number: extractBaseVehicleName(vehicle.lorry_number),
                     model: vehicle.vehicle_model || '-',
                     ownership: ownershipLabel,
                     totalKm,
@@ -2619,9 +2626,10 @@ async function loadVehiclePerformance(monthValue) {
                     const kmLimit = vehicle.km_limit_per_month || 0;
                     const commitmentKmPct = kmLimit > 0 ? Math.min((totalKm / kmLimit) * 100, 100) : null;
 
+                    const normalizedNum = extractBaseVehicleName(vehicle.vehicle_number);
                     vehiclesWithData.push({
                         type: 'Commitment',
-                        number: vehicle.vehicle_number,
+                        number: normalizedNum,
                         model: vehicle.vehicle_model || '-',
                         ownership: ownershipLabel,
                         totalKm,
@@ -2641,7 +2649,7 @@ async function loadVehiclePerformance(monthValue) {
         if (otherOpRecords && otherOpRecords.length > 0) {
             const otherOpGrouped = {};
             otherOpRecords.forEach(r => {
-                const base = r.base_lorry_number;
+                const base = extractBaseVehicleName(r.base_lorry_number);
                 if (!otherOpGrouped[base]) {
                     otherOpGrouped[base] = {
                         totalKm: 0,
@@ -2659,31 +2667,20 @@ async function loadVehiclePerformance(monthValue) {
             });
 
             for (const [baseName, stats] of Object.entries(otherOpGrouped)) {
-                // Check if this vehicle already exists in vehiclesWithData
-                const existing = vehiclesWithData.find(v => extractBaseVehicleName(v.number) === extractBaseVehicleName(baseName));
-                if (existing) {
-                    existing.totalKm += stats.totalKm;
-                    existing.totalRevenue += stats.totalRevenue;
-                    existing.totalFuel += stats.totalFuel;
-                    existing.totalFuelLitres += stats.totalFuelLitres;
-                    existing.profit = existing.totalRevenue - existing.totalFuel;
-                    existing.recordsCount += stats.recordsCount;
-                } else {
-                    vehiclesWithData.push({
-                        type: 'Other Operation',
-                        number: baseName,
-                        model: '-',
-                        ownership: '🏢 Company', // Defaulting to company for other ops
-                        totalKm: stats.totalKm,
-                        totalRevenue: stats.totalRevenue,
-                        totalFuel: stats.totalFuel,
-                        totalFuelLitres: stats.totalFuelLitres,
-                        profit: stats.totalRevenue - stats.totalFuel,
-                        recordsCount: stats.recordsCount,
-                        kmLimit: null,
-                        commitmentKmPct: null
-                    });
-                }
+                vehiclesWithData.push({
+                    type: 'Other Operation',
+                    number: baseName,
+                    model: '-',
+                    ownership: '🏢 Company', // Defaulting to company for other ops
+                    totalKm: stats.totalKm,
+                    totalRevenue: stats.totalRevenue,
+                    totalFuel: stats.totalFuel,
+                    totalFuelLitres: stats.totalFuelLitres,
+                    profit: stats.totalRevenue - stats.totalFuel,
+                    recordsCount: stats.recordsCount,
+                    kmLimit: null,
+                    commitmentKmPct: null
+                });
             }
         }
 
@@ -2865,9 +2862,8 @@ async function loadDashboardCharts() {
             
             const startDate = `${year}-${month}-01`;
             
-            // FIXED:
             const lastDay = new Date(year, monthRaw, 0).getDate();
-            const endDate = `${year}-${month}-${lastDay}`;
+            const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
             const { data: hireRecords } = await supabaseClient
                 .from('hire_to_pay_records')
@@ -4408,9 +4404,10 @@ function getChartTheme() {
 async function loadVehicleRevenuePieChart(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const startDate = `${year}-${month}-01`;
-        const endDate = `${year}-${month}-${daysInMonth}`;
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
         const currentQueryUserId = getQueryUserId();
 
         // Fetch hire records with vehicle info
@@ -4748,9 +4745,10 @@ async function loadTopRoutesChart(monthValue) {
 async function loadDailyActivityChart(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const startDate = `${year}-${month}-01`;
-        const endDate = `${year}-${month}-${daysInMonth}`;
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
         const currentQueryUserId = getQueryUserId();
 
         const { data: hireRecords } = await supabaseClient.from('hire_to_pay_records').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
@@ -4865,9 +4863,10 @@ async function loadDailyActivityChart(monthValue) {
 async function loadCostVsRevenueChart(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const startDate = `${year}-${month}-01`;
-        const endDate = `${year}-${month}-${daysInMonth}`;
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
         const currentQueryUserId = getQueryUserId();
 
         // Fetch hire records
