@@ -325,7 +325,8 @@ function setDefaultMonths() {
         'advanceMonth',
         'salaryMonth',
         'driverDayOffMonth', // ADDED: New Driver Day Off filter
-        'maintenanceMonth'   // ADDED: Lorry Maintenance filter
+        'maintenanceMonth',  // ADDED: Lorry Maintenance filter
+        'otherOperationHiresMonth' // ADDED: Other Operation Hires filter
     ];
     
     elements.forEach(id => {
@@ -422,6 +423,7 @@ function switchPage(page) {
         'commitment-dayoffs': 'Day Offs',
         'driver-dayoffs': 'Staff Day Offs',
         'lorry-maintenance': 'Lorry Maintenance',
+        'other-operation-hires': 'Other Operation Hires',
     };
     
     const titleEl = document.getElementById('pageTitle');
@@ -449,6 +451,11 @@ function switchPage(page) {
             mEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
         }
         loadMaintenanceRecords();
+    }
+    if (page === 'other-operation-hires') {
+        ensureMonthValue('otherOperationHiresMonth');
+        loadOtherOperationHires();
+        updateOtherOperationHireVehicleFilter();
     }
 }
 
@@ -482,6 +489,10 @@ async function preloadAllData() {
             })(),
             (async () => {
                 if (typeof loadSalaryHistory === 'function') await loadSalaryHistory();
+            })(),
+            (async () => {
+                ensureMonthValue('otherOperationHiresMonth');
+                if (typeof loadOtherOperationHires === 'function') await loadOtherOperationHires();
             })()
         ]).then(() => console.log("Background preloading complete."));
     } catch (e) {
@@ -777,6 +788,16 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
             if (commRecords) {
                 totalKm += commRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             }
+        }
+        
+        // ADD: Fetch other operation hires for this base name
+        const { data: otherOpHires } = await supabaseClient
+            .from('other_operation_hires')
+            .select('distance')
+            .eq('base_lorry_number', tracker.base_name)
+            .gte('hire_date', tracker.service_date);
+        if (otherOpHires) {
+            totalKm += otherOpHires.reduce((sum, r) => sum + (r.distance || 0), 0);
         }
         
         kmDisplay.textContent = totalKm.toLocaleString() + ' KM';
@@ -1486,6 +1507,234 @@ async function deleteHireRecord(id) {
     }
 }
 
+// ============ OTHER OPERATION HIRES ============
+document.getElementById('addOtherOperationHireBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
+    document.getElementById('otherOperationHireForm').reset();
+    document.getElementById('otherOperationHireId').value = '';
+    document.getElementById('otherOperationHireFormContainer').style.display = 'block';
+});
+
+document.getElementById('cancelOtherOperationHireBtn')?.addEventListener('click', () => {
+    document.getElementById('otherOperationHireFormContainer').style.display = 'none';
+});
+
+document.getElementById('otherOperationHiresMonth')?.addEventListener('change', loadOtherOperationHires);
+document.getElementById('otherOperationHiresVehicleFilter')?.addEventListener('change', loadOtherOperationHires);
+
+document.getElementById('otherOperationHireForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+
+    const id = document.getElementById('otherOperationHireId').value;
+    const distance = parseFloat(document.getElementById('otherOpDistance').value) || 0;
+    const first100Rate = parseFloat(document.getElementById('otherOpFirst100Rate').value) || 0;
+    const restRate = parseFloat(document.getElementById('otherOpRestKmRate').value) || 0;
+    
+    let hireAmount = 0;
+    if (distance <= 100) {
+        hireAmount = distance * first100Rate;
+    } else {
+        hireAmount = (100 * first100Rate) + ((distance - 100) * restRate);
+    }
+
+    const fuelLitres = parseFloat(document.getElementById('otherOpFuel').value) || 0;
+    const fuelPrice = parseFloat(document.getElementById('otherOpFuelPrice').value) || 0;
+    const fuelCost = fuelLitres * fuelPrice;
+
+    const recordData = {
+        base_lorry_number: document.getElementById('otherOpBaseVehicle').value,
+        operation_name: document.getElementById('otherOpOperationName').value,
+        hire_date: document.getElementById('otherOpDate').value,
+        from_location: document.getElementById('otherOpFrom').value,
+        to_location: document.getElementById('otherOpTo').value,
+        distance: distance,
+        first_100km_rate: first100Rate,
+        rest_km_rate: restRate,
+        fuel_litres: fuelLitres,
+        fuel_price_per_litre: fuelPrice,
+        fuel_cost: fuelCost,
+        hire_amount: hireAmount,
+        user_id: adminUserId
+    };
+
+    try {
+        if (id) {
+            await supabaseClient.from('other_operation_hires').update(recordData).eq('id', id);
+        } else {
+            await supabaseClient.from('other_operation_hires').insert([recordData]);
+        }
+        
+        loadOtherOperationHires();
+        document.getElementById('otherOperationHireFormContainer').style.display = 'none';
+    } catch (error) {
+        alert('Error saving record: ' + error.message);
+    }
+});
+
+async function loadOtherOperationHires() {
+    try {
+        const monthValue = document.getElementById('otherOperationHiresMonth')?.value;
+        const vehicleFilter = document.getElementById('otherOperationHiresVehicleFilter')?.value;
+        
+        let query = supabaseClient
+            .from('other_operation_hires')
+            .select('*')
+            .eq('user_id', getQueryUserId());
+        
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            query = query.gte('hire_date', startDate).lte('hire_date', endDate);
+        }
+
+        if (vehicleFilter) {
+            query = query.eq('base_lorry_number', vehicleFilter);
+        }
+
+        const { data, error } = await query.order('hire_date', { ascending: true });
+        if (error) {
+            console.warn('Error loading other operation hires (table might not exist yet):', error.message);
+        } else if (data) {
+            const tbody = document.querySelector('#otherOperationHiresTable tbody');
+            if (tbody) {
+                tbody.innerHTML = '';
+                data.forEach(record => {
+                    const row = document.createElement('tr');
+                    const actionButtons = userRole === 'viewer' ? '' : `
+                        <td class="action-buttons">
+                            <button class="btn btn-edit" onclick="editOtherOperationHire(${record.id})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteOtherOperationHire(${record.id})">Delete</button>
+                        </td>
+                    `;
+                    row.innerHTML = `
+                        <td>${record.hire_date}</td>
+                        <td>${record.base_lorry_number}</td>
+                        <td>${record.operation_name}</td>
+                        <td>${record.from_location} - ${record.to_location}</td>
+                        <td>${record.distance} km</td>
+                        <td><small>Litres: ${record.fuel_litres}<br>Rate: LKR ${record.fuel_price_per_litre}<br><strong>Cost: LKR ${record.fuel_cost.toFixed(2)}</strong></small></td>
+                        <td><small>First 100: LKR ${record.first_100km_rate}<br>Rest KM: LKR ${record.rest_km_rate}<br><strong>Total Hire: LKR ${record.hire_amount.toFixed(2)}</strong></small></td>
+                        ${actionButtons}
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error in loadOtherOperationHires:', error.message);
+    }
+    // Always update vehicle filter regardless of table existence
+    updateOtherOperationHireVehicleFilter();
+}
+
+async function updateOtherOperationHireVehicleFilter() {
+    try {
+        const queryUserId = getQueryUserId();
+        if (!queryUserId) return;
+
+        const [{ data: hireVehicles }, { data: commitmentVehicles }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, terminated').eq('user_id', queryUserId),
+            supabaseClient.from('commitment_vehicles').select('vehicle_number, terminated').eq('user_id', queryUserId)
+        ]);
+
+        const baseVehicles = new Set();
+        hireVehicles?.forEach(v => {
+            if (!v.terminated) baseVehicles.add(extractBaseVehicleName(v.lorry_number));
+        });
+        commitmentVehicles?.forEach(v => {
+            if (!v.terminated) baseVehicles.add(extractBaseVehicleName(v.vehicle_number));
+        });
+
+        // Also add vehicles that are already in the records even if terminated now
+        const { data: existingRecords } = await supabaseClient
+            .from('other_operation_hires')
+            .select('base_lorry_number')
+            .eq('user_id', queryUserId);
+        existingRecords?.forEach(r => baseVehicles.add(r.base_lorry_number));
+
+        const sortedBaseVehicles = Array.from(baseVehicles).sort();
+
+        const filterSelect = document.getElementById('otherOperationHiresVehicleFilter');
+        const formSelect = document.getElementById('otherOpBaseVehicle');
+        
+        if (filterSelect) {
+            const currentValue = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">All Base Vehicles</option>';
+            sortedBaseVehicles.forEach(number => {
+                const option = document.createElement('option');
+                option.value = number;
+                option.textContent = number;
+                filterSelect.appendChild(option);
+            });
+            filterSelect.value = currentValue;
+        }
+
+        if (formSelect) {
+            const currentFormValue = formSelect.value;
+            formSelect.innerHTML = '<option value="">Select Base Vehicle</option>';
+            sortedBaseVehicles.forEach(number => {
+                const option = document.createElement('option');
+                option.value = number;
+                option.textContent = number;
+                formSelect.appendChild(option);
+            });
+            formSelect.value = currentFormValue;
+        }
+    } catch (error) {
+        console.error('Error updating other operation hire vehicle filter:', error.message);
+    }
+}
+
+async function editOtherOperationHire(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient.from('other_operation_hires').select('*').eq('id', id).single();
+        if (error) throw error;
+        
+        // Ensure vehicle exists in select
+        const formSelect = document.getElementById('otherOpBaseVehicle');
+        if (formSelect && ![...formSelect.options].some(opt => opt.value == data.base_lorry_number)) {
+            const option = document.createElement('option');
+            option.value = data.base_lorry_number;
+            option.textContent = `${data.base_lorry_number} [Archived/Terminated]`;
+            formSelect.appendChild(option);
+        }
+
+        document.getElementById('otherOperationHireId').value = data.id;
+        document.getElementById('otherOpBaseVehicle').value = data.base_lorry_number;
+        document.getElementById('otherOpOperationName').value = data.operation_name;
+        document.getElementById('otherOpDate').value = data.hire_date;
+        document.getElementById('otherOpFrom').value = data.from_location;
+        document.getElementById('otherOpTo').value = data.to_location;
+        document.getElementById('otherOpDistance').value = data.distance;
+        document.getElementById('otherOpFirst100Rate').value = data.first_100km_rate;
+        document.getElementById('otherOpRestKmRate').value = data.rest_km_rate;
+        document.getElementById('otherOpFuel').value = data.fuel_litres;
+        document.getElementById('otherOpFuelPrice').value = data.fuel_price_per_litre;
+        
+        document.getElementById('otherOperationHireFormContainer').style.display = 'block';
+        window.scrollTo(0, 0);
+    } catch (error) {
+        alert('Error loading record: ' + error.message);
+    }
+}
+
+async function deleteOtherOperationHire(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (confirm('Are you sure you want to delete this record?')) {
+        try {
+            await supabaseClient.from('other_operation_hires').delete().eq('id', id);
+            loadOtherOperationHires();
+        } catch (error) {
+            alert('Error deleting record: ' + error.message);
+        }
+    }
+}
+
 // ============ COMMITMENT VEHICLES ============
 document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
@@ -2106,6 +2355,14 @@ async function loadDashboardData(monthValue) {
             .gte('day_off_date', startDate)
             .lte('day_off_date', endDate);
 
+        // 4. Fetch Other Operation Hires
+        const { data: otherOpHires } = await supabaseClient
+            .from('other_operation_hires')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
 
         // Fetch related commitment vehicles for fixed payment calc
         const commitmentVehicleIds = new Set();
@@ -2196,9 +2453,21 @@ async function loadDashboardData(monthValue) {
 
        
 
-        totalRevenue += commitmentPayment - dayOffDeductions + extraKmCharges;
+        totalRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
         totalFuelCost += commitmentFuelCost;
-        totalHires += commitmentRecords?.length || 0;
+        totalHires += (commitmentRecords?.length || 0);
+
+        // Process Other Operation Hires
+        otherOpHires?.forEach(record => {
+            totalRevenue += record.hire_amount || 0;
+            totalFuelCost += record.fuel_cost || 0;
+            totalDistance += record.distance || 0;
+            totalFuelLitres += record.fuel_litres || 0;
+            totalHires++;
+            if(record.base_lorry_number) {
+                activeVehiclesSet.add(record.base_lorry_number);
+            }
+        });
 
         // Calculate Fuel Allowance (16.00% of Fuel Cost) - Display only, not affecting profit
         const fuelAllowance = totalFuelCost * 0.1600;
@@ -2256,6 +2525,13 @@ async function loadVehiclePerformance(monthValue) {
         const { data: commitmentRecordsMonth } = await supabaseClient
             .from('commitment_records')
             .select('vehicle_id')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
+        const { data: otherOpRecords } = await supabaseClient
+            .from('other_operation_hires')
+            .select('*')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
@@ -2356,6 +2632,56 @@ async function loadVehiclePerformance(monthValue) {
                         recordsCount: records.length,
                         kmLimit,
                         commitmentKmPct
+                    });
+                }
+            }
+        }
+
+        // 3. Process Other Operation Hires and merge with existing data if base name matches
+        if (otherOpRecords && otherOpRecords.length > 0) {
+            const otherOpGrouped = {};
+            otherOpRecords.forEach(r => {
+                const base = r.base_lorry_number;
+                if (!otherOpGrouped[base]) {
+                    otherOpGrouped[base] = {
+                        totalKm: 0,
+                        totalRevenue: 0,
+                        totalFuel: 0,
+                        totalFuelLitres: 0,
+                        recordsCount: 0
+                    };
+                }
+                otherOpGrouped[base].totalKm += r.distance || 0;
+                otherOpGrouped[base].totalRevenue += r.hire_amount || 0;
+                otherOpGrouped[base].totalFuel += r.fuel_cost || 0;
+                otherOpGrouped[base].totalFuelLitres += r.fuel_litres || 0;
+                otherOpGrouped[base].recordsCount++;
+            });
+
+            for (const [baseName, stats] of Object.entries(otherOpGrouped)) {
+                // Check if this vehicle already exists in vehiclesWithData
+                const existing = vehiclesWithData.find(v => extractBaseVehicleName(v.number) === extractBaseVehicleName(baseName));
+                if (existing) {
+                    existing.totalKm += stats.totalKm;
+                    existing.totalRevenue += stats.totalRevenue;
+                    existing.totalFuel += stats.totalFuel;
+                    existing.totalFuelLitres += stats.totalFuelLitres;
+                    existing.profit = existing.totalRevenue - existing.totalFuel;
+                    existing.recordsCount += stats.recordsCount;
+                } else {
+                    vehiclesWithData.push({
+                        type: 'Other Operation',
+                        number: baseName,
+                        model: '-',
+                        ownership: '🏢 Company', // Defaulting to company for other ops
+                        totalKm: stats.totalKm,
+                        totalRevenue: stats.totalRevenue,
+                        totalFuel: stats.totalFuel,
+                        totalFuelLitres: stats.totalFuelLitres,
+                        profit: stats.totalRevenue - stats.totalFuel,
+                        recordsCount: stats.recordsCount,
+                        kmLimit: null,
+                        commitmentKmPct: null
                     });
                 }
             }
@@ -2564,6 +2890,13 @@ async function loadDashboardCharts() {
                 .gte('day_off_date', startDate)
                 .lte('day_off_date', endDate);
 
+            const { data: otherOpRecords } = await supabaseClient
+                .from('other_operation_hires')
+                .select('*')
+                .eq('user_id', currentQueryUserId)
+                .gte('hire_date', startDate)
+                .lte('hire_date', endDate);
+
             const commitmentVehicleIds = new Set();
             commitmentRecords?.forEach(record => {
                 commitmentVehicleIds.add(record.vehicle_id);
@@ -2600,6 +2933,11 @@ async function loadDashboardCharts() {
             monthRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
             monthFuelCost += commitmentFuelCost;
 
+            otherOpRecords?.forEach(record => {
+                monthRevenue += (record.hire_amount || 0);
+                monthFuelCost += (record.fuel_cost || 0);
+            });
+
             const monthProfit = monthRevenue - monthFuelCost;
             const monthFuelAllowance = monthFuelCost * 0.1600;
             const monthCreditAmount = monthProfit + monthFuelAllowance;
@@ -2612,7 +2950,7 @@ async function loadDashboardCharts() {
             totalRevenue6M += monthRevenue;
             totalProfit6M += monthProfit;
             totalCreditAmount6M += monthCreditAmount;
-            totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0);
+            totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpRecords?.length || 0);
         }
 
         const avgRevenue = totalRevenue6M / 6;
@@ -2801,6 +3139,11 @@ async function loadAllTimeStatistics() {
             .select('*')
             .eq('user_id', currentQueryUserId);
 
+        const { data: allOtherOpRecords } = await supabaseClient
+            .from('other_operation_hires')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
         let totalRevenue = 0;
         let totalFuelCost = 0;
         let totalHires = 0;
@@ -2860,6 +3203,13 @@ async function loadAllTimeStatistics() {
             }
         }
         totalRevenue += extraKmCharges;
+
+        // Calculate from other operation hires
+        allOtherOpRecords?.forEach(record => {
+            totalRevenue += record.hire_amount || 0;
+            totalFuelCost += record.fuel_cost || 0;
+            totalHires++;
+        });
 
         const totalProfit = totalRevenue - totalFuelCost;
 
@@ -3034,6 +3384,39 @@ async function loadTopPerformingVehicles() {
                 if (!mergedMap[baseName].vectorArt) mergedMap[baseName].vectorArt = vehicle.vector_art_url;
             }
         }
+
+        // 6. Process Other Operation Hires
+        const { data: otherOpRecords } = await supabaseClient
+            .from('other_operation_hires')
+            .select('*')
+            .eq('user_id', currentQueryUserId);
+
+        otherOpRecords?.forEach(r => {
+            const baseName = extractBaseVehicleName(r.base_lorry_number);
+            if (!mergedMap[baseName]) {
+                mergedMap[baseName] = {
+                    name: baseName, type: 'Other Operation', revenue: 0, profit: 0, km: 0, hires: 0,
+                    allTimeKm: 0, allTimeHiresTotal: 0, allTimeDist: 0, allTimeFuel: 0, vectorArt: null
+                };
+            } else if (mergedMap[baseName].type !== 'Other Operation' && mergedMap[baseName].type !== 'Mixed') {
+                 mergedMap[baseName].type = 'Mixed';
+            }
+            
+            const revenue = r.hire_amount || 0;
+            const fuelCost = r.fuel_cost || 0;
+            const distance = r.distance || 0;
+            const fuelLitres = r.fuel_litres || 0;
+            const profit = revenue - fuelCost;
+
+            mergedMap[baseName].revenue += revenue;
+            mergedMap[baseName].profit += profit;
+            mergedMap[baseName].km += distance;
+            mergedMap[baseName].hires += 1;
+            mergedMap[baseName].allTimeKm += distance;
+            mergedMap[baseName].allTimeHiresTotal += 1;
+            mergedMap[baseName].allTimeDist += distance;
+            mergedMap[baseName].allTimeFuel += fuelLitres;
+        });
 
         const vehiclePerformance = Object.values(mergedMap).map(v => {
             return {
@@ -3747,6 +4130,13 @@ async function loadAdvancedDashboardStats(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
+        const { data: otherOpHires } = await supabaseClient
+            .from('other_operation_hires')
+            .select('*')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
         const { data: allVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
             .select('id, lorry_number, terminated')
@@ -3792,6 +4182,10 @@ async function loadAdvancedDashboardStats(monthValue) {
             const mappedCommit = commitmentRecords.map(r => ({ ...r, _recordType: 'commit' }));
             combinedRecords = [...combinedRecords, ...mappedCommit];
         }
+        if (otherOpHires) {
+            const mappedOther = otherOpHires.map(r => ({ ...r, _recordType: 'other' }));
+            combinedRecords = [...combinedRecords, ...mappedOther];
+        }
 
         // --- CALCULATIONS ---
 
@@ -3818,7 +4212,12 @@ async function loadAdvancedDashboardStats(monthValue) {
             if (r.waiting_charge) totalWaitingRev += r.waiting_charge;
             
             // Utilization
-            const baseName = vehicleMap[`${r._recordType}_${r.vehicle_id}`] || `unknown_${r._recordType}_${r.vehicle_id}`;
+            let baseName = 'unknown';
+            if (r._recordType === 'other') {
+                baseName = r.base_lorry_number;
+            } else {
+                baseName = vehicleMap[`${r._recordType}_${r.vehicle_id}`] || `unknown_${r._recordType}_${r.vehicle_id}`;
+            }
             activeVehicleDays.add(`${baseName}-${r.hire_date}`);
         });
 
@@ -3931,10 +4330,14 @@ async function loadAdvancedDashboardStats(monthValue) {
                 .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
                 .gte('hire_date', startD).lte('hire_date', endD);
 
+            const { data: oRecs } = await supabaseClient.from('other_operation_hires')
+                .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
+                .gte('hire_date', startD).lte('hire_date', endD);
+
             let mDist = 0; 
             let mFuel = 0;
             
-            [...(hRecs||[]), ...(cRecs||[])].forEach(r => {
+            [...(hRecs||[]), ...(cRecs||[]), ...(oRecs||[])].forEach(r => {
                 mDist += (r.distance || 0);
                 mFuel += (r.fuel_litres || 0);
             });
@@ -4018,10 +4421,16 @@ async function loadVehicleRevenuePieChart(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
-        // Fetch commitment records with vehicle info
         const { data: commitmentRecords } = await supabaseClient
             .from('commitment_records')
             .select('vehicle_id, distance, commitment_vehicles(vehicle_number, fixed_monthly_payment, km_limit_per_month, extra_km_charge)')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+            
+        const { data: otherOpRecords } = await supabaseClient
+            .from('other_operation_hires')
+            .select('base_lorry_number, hire_amount')
             .eq('user_id', currentQueryUserId)
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
@@ -4033,6 +4442,13 @@ async function loadVehicleRevenuePieChart(monthValue) {
             const rawName = r.hire_to_pay_vehicles?.lorry_number || `Vehicle #${r.vehicle_id}`;
             const name = extractBaseVehicleName(rawName);
             vehicleRevMap[name] = (vehicleRevMap[name] || 0) + (r.hire_amount || 0);
+        });
+        
+        otherOpRecords?.forEach(r => {
+            if (r.base_lorry_number) {
+                const name = extractBaseVehicleName(r.base_lorry_number);
+                vehicleRevMap[name] = (vehicleRevMap[name] || 0) + (r.hire_amount || 0);
+            }
         });
 
         // Group commitment records by vehicle for monthly payment + extra km charges
@@ -4133,74 +4549,30 @@ async function loadRevenueTypeSplitChart(monthValue) {
         const endDate = `${year}-${month}-${daysInMonth}`;
         const currentQueryUserId = getQueryUserId();
 
-        // Hire-to-Pay total
-        const { data: hireRecords } = await supabaseClient
-            .from('hire_to_pay_records')
-            .select('hire_amount')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
+        const { data: hireRecords } = await supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: commRecords } = await supabaseClient.from('commitment_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: otherOpRecords } = await supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
 
         const hireRevenue = hireRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
-
-        // Commitment total
-        const { data: commitmentRecords } = await supabaseClient
-            .from('commitment_records')
-            .select('vehicle_id, distance')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        const commitmentVehicleIds = new Set();
-        commitmentRecords?.forEach(r => commitmentVehicleIds.add(r.vehicle_id));
-
-        const { data: commitmentVehicles } = await supabaseClient
-            .from('commitment_vehicles')
-            .select('*')
-            .eq('user_id', currentQueryUserId)
-            .in('id', Array.from(commitmentVehicleIds).length > 0 ? Array.from(commitmentVehicleIds) : [0]);
-
-        // Commitment day offs
-        const { data: dayOffs } = await supabaseClient
-            .from('commitment_day_offs')
-            .select('deduction_amount')
-            .eq('user_id', currentQueryUserId)
-            .gte('day_off_date', startDate)
-            .lte('day_off_date', endDate);
-
-        const commitPayment = commitmentVehicles?.reduce((s, v) => s + (v.fixed_monthly_payment || 0), 0) || 0;
-        const dayOffDeductions = dayOffs?.reduce((s, d) => s + (d.deduction_amount || 0), 0) || 0;
-
-        // Extra KM charges
-        let extraKm = 0;
-        if (commitmentVehicles && commitmentRecords) {
-            const vKmMap = {};
-            commitmentRecords.forEach(r => { vKmMap[r.vehicle_id] = (vKmMap[r.vehicle_id] || 0) + (r.distance || 0); });
-            commitmentVehicles.forEach(v => {
-                const exc = Math.max(0, (vKmMap[v.id] || 0) - (v.km_limit_per_month || 0));
-                extraKm += exc * (v.extra_km_charge || 0);
-            });
-        }
-
-        const commitRevenue = commitPayment - dayOffDeductions + extraKm;
-
-        // Destroy old
-        if (revenueTypeSplitChart) revenueTypeSplitChart.destroy();
+        const commRevenue = commRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
+        const otherOpRevenue = otherOpRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
 
         const ctx = document.getElementById('revenueTypeSplitChart')?.getContext('2d');
         if (!ctx) return;
 
-        const totalRev = hireRevenue + commitRevenue;
+        if (window.revenueTypeSplitChartInstance) window.revenueTypeSplitChartInstance.destroy();
 
+        const totalRev = hireRevenue + commRevenue + otherOpRevenue;
         const theme2 = getChartTheme();
-        revenueTypeSplitChart = new Chart(ctx, {
+        
+        window.revenueTypeSplitChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Hire-to-Pay Revenue', 'Commitment Revenue'],
+                labels: ['Hire-to-Pay', 'Commitment', 'Other Operation'],
                 datasets: [{
-                    data: [hireRevenue, commitRevenue],
-                    backgroundColor: ['#0072CE', '#00B37E'],
-                    borderColor: [theme2.borderColor, theme2.borderColor],
+                    data: [hireRevenue, commRevenue, otherOpRevenue],
+                    backgroundColor: ['#0072CE', '#00B37E', '#E67E22'],
+                    borderColor: theme2.borderColor,
                     borderWidth: 3,
                     hoverOffset: 10
                 }]
@@ -4212,7 +4584,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
                 plugins: {
                     title: {
                         display: true,
-                        text: `Hire vs Commitment — LKR ${totalRev.toLocaleString()}`,
+                        text: `Revenue Breakdown — LKR ${totalRev.toLocaleString()}`,
                         color: theme2.titleColor,
                         font: { size: 14, weight: 'bold' }
                     },
@@ -4252,23 +4624,6 @@ async function loadTopRoutesChart(monthValue) {
         const endDate = `${year}-${month}-${daysInMonth}`;
         const currentQueryUserId = getQueryUserId();
 
-        // Fetch hire records with route info
-        const { data: hireRecords } = await supabaseClient
-            .from('hire_to_pay_records')
-            .select('to_location')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        // Fetch commitment records with route info
-        const { data: commitRecords } = await supabaseClient
-            .from('commitment_records')
-            .select('to_location')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        // Aggregate towns
         const townMap = {};
 
         const processLocation = (loc) => {
@@ -4305,8 +4660,13 @@ async function loadTopRoutesChart(monthValue) {
             });
         };
 
+        const { data: hireRecords } = await supabaseClient.from('hire_to_pay_records').select('to_location').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: commitRecords } = await supabaseClient.from('commitment_records').select('to_location').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: otherOpRecords } = await supabaseClient.from('other_operation_hires').select('to_location').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+
         hireRecords?.forEach(r => processLocation(r.to_location));
         commitRecords?.forEach(r => processLocation(r.to_location));
+        otherOpRecords?.forEach(r => processLocation(r.to_location));
 
         // Sort by visit count, take top 10
         const sorted = Object.entries(townMap)
@@ -4393,21 +4753,9 @@ async function loadDailyActivityChart(monthValue) {
         const endDate = `${year}-${month}-${daysInMonth}`;
         const currentQueryUserId = getQueryUserId();
 
-        // Fetch hire dates
-        const { data: hireRecords } = await supabaseClient
-            .from('hire_to_pay_records')
-            .select('hire_date')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
-
-        // Fetch commitment dates
-        const { data: commitRecords } = await supabaseClient
-            .from('commitment_records')
-            .select('hire_date')
-            .eq('user_id', currentQueryUserId)
-            .gte('hire_date', startDate)
-            .lte('hire_date', endDate);
+        const { data: hireRecords } = await supabaseClient.from('hire_to_pay_records').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: commitRecords } = await supabaseClient.from('commitment_records').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const { data: otherOpRecords } = await supabaseClient.from('other_operation_hires').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
 
         // Build daily counts
         const dailyCounts = {};
@@ -4420,6 +4768,9 @@ async function loadDailyActivityChart(monthValue) {
             if (dailyCounts[r.hire_date] !== undefined) dailyCounts[r.hire_date]++;
         });
         commitRecords?.forEach(r => {
+            if (dailyCounts[r.hire_date] !== undefined) dailyCounts[r.hire_date]++;
+        });
+        otherOpRecords?.forEach(r => {
             if (dailyCounts[r.hire_date] !== undefined) dailyCounts[r.hire_date]++;
         });
 
@@ -4535,6 +4886,14 @@ async function loadCostVsRevenueChart(monthValue) {
             .gte('hire_date', startDate)
             .lte('hire_date', endDate);
 
+        // Fetch other operation hires
+        const { data: otherOpHires } = await supabaseClient
+            .from('other_operation_hires')
+            .select('base_lorry_number, hire_amount, fuel_cost')
+            .eq('user_id', currentQueryUserId)
+            .gte('hire_date', startDate)
+            .lte('hire_date', endDate);
+
         // Aggregate per vehicle
         const vehicleData = {};
 
@@ -4544,6 +4903,15 @@ async function loadCostVsRevenueChart(monthValue) {
             if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
             vehicleData[name].revenue += (r.hire_amount || 0);
             vehicleData[name].fuelCost += (r.fuel_cost || 0);
+        });
+
+        otherOpHires?.forEach(r => {
+            if (r.base_lorry_number) {
+                const name = extractBaseVehicleName(r.base_lorry_number);
+                if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
+                vehicleData[name].revenue += (r.hire_amount || 0);
+                vehicleData[name].fuelCost += (r.fuel_cost || 0);
+            }
         });
 
         // Group commitment by vehicle for base pay + extra km (keep raw name for individual calculation)

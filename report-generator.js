@@ -154,9 +154,9 @@ async function generateMonthlyReport(monthValue) {
         yPosition += 8;
         
         const breakdownData = [
-            { label: 'Hire-to-Pay Revenue', value: reportData.hireRevenue },
-            { label: 'Commitment Base Payment', value: reportData.commitmentBaseRevenue },
-            { label: 'Extra KM Charges', value: reportData.extraKmCharges },
+            { label: 'Hire-to-Pay Revenue', value: reportData.hireToPayRevenue },
+            { label: 'Commitment Revenue', value: reportData.commitmentRevenue },
+            { label: 'Other Operation Revenue', value: reportData.otherOperationRevenue },
             { label: 'Day Off Deductions', value: -reportData.dayOffDeductions, negative: true }
         ];
         
@@ -449,6 +449,14 @@ async function fetchReportData(startDate, endDate) {
         .gte('advance_date', startDate)
         .lte('advance_date', endDate);
     
+    // Fetch other operation hires
+    const { data: otherOpHires } = await supabaseClient
+        .from('other_operation_hires')
+        .select('*')
+        .eq('user_id', getQueryUserId())
+        .gte('hire_date', startDate)
+        .lte('hire_date', endDate);
+    
     // Get commitment vehicles
     const commitmentVehicleIds = new Set();
     commitmentRecords?.forEach(record => {
@@ -548,11 +556,26 @@ async function fetchReportData(startDate, endDate) {
     const totalDriverAdvances = driverAdvances?.reduce((sum, adv) => sum + adv.amount, 0) || 0;
     
     // Calculate totals
-    const totalRevenue = hireRevenue + commitmentBaseRevenue - dayOffDeductions + extraKmCharges;
-    const totalFuelCost = hireFuelCost + commitmentFuelCost;
+    let otherOpRevenue = 0;
+    let otherOpFuelCost = 0;
+    let otherOpDistance = 0;
+    
+    otherOpHires?.forEach(record => {
+        otherOpRevenue += record.hire_amount || 0;
+        otherOpFuelCost += record.fuel_cost || 0;
+        otherOpDistance += record.distance || 0;
+        
+        const baseName = record.base_lorry_number;
+        // Merge with hire vehicle map if it exists
+        // This is a bit tricky because hireVehicleMap uses numeric IDs as keys
+        // We might want to create a separate map for reports or use base names
+    });
+
+    const totalRevenue = hireRevenue + commitmentBaseRevenue - dayOffDeductions + extraKmCharges + otherOpRevenue;
+    const totalFuelCost = hireFuelCost + commitmentFuelCost + otherOpFuelCost;
     const netProfit = totalRevenue - totalFuelCost;
-    const totalHires = (hireRecords?.length || 0) + (commitmentRecords?.length || 0);
-    const totalDistance = hireDistance + commitmentDistance;
+    const totalHires = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpHires?.length || 0);
+    const totalDistance = hireDistance + commitmentDistance + otherOpDistance;
     const avgRevenuePerHire = totalHires > 0 ? totalRevenue / totalHires : 0;
     const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
     
@@ -572,6 +595,9 @@ async function fetchReportData(startDate, endDate) {
         avgRevenuePerHire,
         profitMargin,
         totalDriverAdvances,
+        hireToPayRevenue: hireRevenue,
+        commitmentRevenue: commitmentBaseRevenue - dayOffDeductions + extraKmCharges,
+        otherOperationRevenue: otherOpRevenue,
         hireVehiclePerformance: Array.from(hireVehicleMap.values()),
         commitmentVehiclePerformance: Array.from(commitmentVehicleMap.values())
     };

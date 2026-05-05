@@ -159,6 +159,10 @@
                     <span class="nav-icon">📋</span>
                     <span>Hire-to-Pay Records</span>
                 </button>
+                <button class="nav-item" data-page="other-operation-hires">
+                    <span class="nav-icon">🔄</span>
+                    <span>Other Operation Hires</span>
+                </button>
                 <button class="nav-item" data-page="commitment-vehicles">
                     <span class="nav-icon">🚛</span>
                     <span>Commitment Vehicles</span>
@@ -1194,6 +1198,74 @@
                                     <th>Distance</th>
                                     <th>Fuel Cost</th>
                                     <th>Waiting</th>
+                                    <th>Hire Amount Breakdown</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="other-operation-hires" class="page">
+                    <div class="page-header">
+                        <h3>🔄 Other Operation Hires</h3>
+                        <button class="btn btn-primary" id="addOtherOperationHireBtn">+ Add Record</button>
+                    </div>
+
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="otherOperationHiresMonth">📆 Month</label>
+                            <input type="month" id="otherOperationHiresMonth" title="Select Month and Year" value="">
+                        </div>
+                        <div class="control-group">
+                            <label for="otherOperationHiresVehicleFilter">🚚 Base Vehicle</label>
+                            <select id="otherOperationHiresVehicleFilter" title="Filter by Base Vehicle">
+                                <option value="">All Base Vehicles</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-container" id="otherOperationHireFormContainer" style="display:none;">
+                        <form id="otherOperationHireForm">
+                            <div class="form-row">
+                                <input type="hidden" id="otherOperationHireId">
+                                <select id="otherOpBaseVehicle" required>
+                                    <option value="">Select Vehicle (e.g., 68 - 8556)</option>
+                                </select>
+                                <input type="text" id="otherOpOperationName" placeholder="Operation Name" required>
+                                <input type="date" id="otherOpDate" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="otherOpFrom" placeholder="From Location" required>
+                                <input type="text" id="otherOpTo" placeholder="To Location" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="otherOpFirst100Rate" placeholder="First 100km Rate (LKR)" step="0.01" required>
+                                <input type="number" id="otherOpRestKmRate" placeholder="Rest KM Rate (LKR)" step="0.01" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="otherOpDistance" placeholder="Distance / Hire KM Amount" step="0.01" required>
+                                <input type="number" id="otherOpFuel" placeholder="Fuel (L)" step="0.01" required>
+                                <input type="number" id="otherOpFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelOtherOperationHireBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="otherOperationHiresTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Vehicle</th>
+                                    <th>Operation</th>
+                                    <th>From - To</th>
+                                    <th>Distance</th>
+                                    <th>Fuel Cost</th>
                                     <th>Hire Amount Breakdown</th>
                                     <th>Actions</th>
                                 </tr>
