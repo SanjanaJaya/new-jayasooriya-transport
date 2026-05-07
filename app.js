@@ -3077,26 +3077,88 @@ async function loadDashboardCharts() {
 
         const breakdownCtx = document.getElementById('revenueBreakdownChart')?.getContext('2d');
         if (breakdownCtx) {
-            const currentRevenue = revenues[revenues.length - 1];
-            const currentFuel = fuelCosts[fuelCosts.length - 1];
-            const currentProfit = profits[profits.length - 1];
+            // Fetch current selected month revenue by type
+            // Uses same formula as loadDashboardData for consistency
+            const selMonth = document.getElementById('dashboardMonth')?.value || monthValue;
+            const selMonthStr = selMonth || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+            const [selYear, selMon] = selMonthStr.split('-');
+            const selMonPadded = String(selMon).padStart(2, '0');
+            const selStart = `${selYear}-${selMonPadded}-01`;
+            const selLastDay = new Date(selYear, parseInt(selMon), 0).getDate();
+            const selEnd = `${selYear}-${selMonPadded}-${String(selLastDay).padStart(2, '0')}`;
 
+            const [{ data: bdHireRec }, { data: bdCommRec }, { data: bdOtherRec }, { data: bdDayOffs }] = await Promise.all([
+                supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
+                supabaseClient.from('commitment_records').select('vehicle_id, distance').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
+                supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
+                supabaseClient.from('commitment_day_offs').select('deduction_amount').eq('user_id', currentQueryUserId).gte('day_off_date', selStart).lte('day_off_date', selEnd)
+            ]);
+
+            // Fetch ONLY commitment vehicles that had records this month (mirrors loadDashboardData)
+            const bdCommVehicleIds = [...new Set((bdCommRec || []).map(r => r.vehicle_id).filter(Boolean))];
+            let bdCommVehicles = [];
+            if (bdCommVehicleIds.length > 0) {
+                const { data: cvData } = await supabaseClient
+                    .from('commitment_vehicles')
+                    .select('id, fixed_monthly_payment, km_limit_per_month, extra_km_charge')
+                    .eq('user_id', currentQueryUserId)
+                    .in('id', bdCommVehicleIds);
+                bdCommVehicles = cvData || [];
+            }
+
+            // Hire-to-Pay revenue
+            const bdHireRev = (bdHireRec || []).reduce((s, r) => s + (r.hire_amount || 0), 0);
+
+            // Commitment revenue = fixed_monthly_payment - day_off_deductions + extra_km_charges
+            const bdCommFixed = bdCommVehicles.reduce((s, v) => s + (v.fixed_monthly_payment || 0), 0);
+            const bdDayOffDed = (bdDayOffs || []).reduce((s, d) => s + (d.deduction_amount || 0), 0);
+            let bdExtraKm = 0;
+            if (bdCommVehicles.length > 0 && bdCommRec && bdCommRec.length > 0) {
+                const vKmMap = {};
+                bdCommRec.forEach(r => { vKmMap[r.vehicle_id] = (vKmMap[r.vehicle_id] || 0) + (r.distance || 0); });
+                bdCommVehicles.forEach(v => {
+                    const exc = Math.max(0, (vKmMap[v.id] || 0) - (v.km_limit_per_month || 0));
+                    bdExtraKm += exc * (v.extra_km_charge || 0);
+                });
+            }
+            const bdCommRev = Math.max(0, bdCommFixed - bdDayOffDed) + bdExtraKm;
+
+            // Other Operation revenue
+            const bdOtherRev = (bdOtherRec || []).reduce((s, r) => s + (r.hire_amount || 0), 0);
+
+            const totalBreakdown = bdHireRev + bdCommRev + bdOtherRev;
+
+            if (revenueBreakdownChart) revenueBreakdownChart.destroy();
             revenueBreakdownChart = new Chart(breakdownCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Profit', 'Fuel Cost'],
+                    labels: ['Hire-to-Pay', 'Commitment', 'Other Operation'],
                     datasets: [{
-                        data: [currentProfit, currentFuel],
-                        backgroundColor: ['#27AE60', '#E67E22'],
-                        borderColor: ['#fff', '#fff'],
-                        borderWidth: 2
+                        data: [bdHireRev, bdCommRev, bdOtherRev],
+                        backgroundColor: ['#0072CE', '#00B37E', '#E67E22'],
+                        borderColor: ['#fff', '#fff', '#fff'],
+                        borderWidth: 2,
+                        hoverOffset: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        title: {
+                            display: true,
+                            text: `Revenue Breakdown — ${selMonthStr}`,
+                            font: { size: 13, weight: 'bold' }
+                        },
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const pct = totalBreakdown > 0 ? ((ctx.parsed / totalBreakdown) * 100).toFixed(1) : 0;
+                                    return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -4541,18 +4603,50 @@ async function loadVehicleRevenuePieChart(monthValue) {
 async function loadRevenueTypeSplitChart(monthValue) {
     try {
         const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
         const daysInMonth = new Date(year, month, 0).getDate();
-        const startDate = `${year}-${month}-01`;
-        const endDate = `${year}-${month}-${daysInMonth}`;
+        const startDate = `${year}-${monthPadded}-01`;
+        const endDate = `${year}-${monthPadded}-${String(daysInMonth).padStart(2, '0')}`;
         const currentQueryUserId = getQueryUserId();
 
-        const { data: hireRecords } = await supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
-        const { data: commRecords } = await supabaseClient.from('commitment_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
-        const { data: otherOpRecords } = await supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
+        const [{ data: hireRecords }, { data: commRecords }, { data: otherOpRecords }, { data: rtsCommDayOffs }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_records').select('vehicle_id, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_day_offs').select('deduction_amount').eq('user_id', currentQueryUserId).gte('day_off_date', startDate).lte('day_off_date', endDate)
+        ]);
 
-        const hireRevenue = hireRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
-        const commRevenue = commRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
-        const otherOpRevenue = otherOpRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
+        // Fetch only vehicles that had records this month
+        const rtsCommVehicleIds = [...new Set((commRecords || []).map(r => r.vehicle_id).filter(Boolean))];
+        let rtsCommVehicles = [];
+        if (rtsCommVehicleIds.length > 0) {
+            const { data: cvData } = await supabaseClient
+                .from('commitment_vehicles')
+                .select('id, fixed_monthly_payment, km_limit_per_month, extra_km_charge')
+                .eq('user_id', currentQueryUserId)
+                .in('id', rtsCommVehicleIds);
+            rtsCommVehicles = cvData || [];
+        }
+
+        // Hire-to-Pay revenue
+        const hireRevenue = (hireRecords || []).reduce((sum, r) => sum + (r.hire_amount || 0), 0);
+
+        // Commitment revenue = fixed_monthly_payment - day_off_deductions + extra_km_charges
+        const rtsCommFixed = rtsCommVehicles.reduce((sum, v) => sum + (v.fixed_monthly_payment || 0), 0);
+        const rtsCommDayOffDed = (rtsCommDayOffs || []).reduce((sum, d) => sum + (d.deduction_amount || 0), 0);
+        let rtsExtraKm = 0;
+        if (rtsCommVehicles.length > 0 && commRecords && commRecords.length > 0) {
+            const vKmMap = {};
+            commRecords.forEach(r => { vKmMap[r.vehicle_id] = (vKmMap[r.vehicle_id] || 0) + (r.distance || 0); });
+            rtsCommVehicles.forEach(v => {
+                const exc = Math.max(0, (vKmMap[v.id] || 0) - (v.km_limit_per_month || 0));
+                rtsExtraKm += exc * (v.extra_km_charge || 0);
+            });
+        }
+        const commRevenue = Math.max(0, rtsCommFixed - rtsCommDayOffDed) + rtsExtraKm;
+
+        // Other Operation revenue
+        const otherOpRevenue = (otherOpRecords || []).reduce((sum, r) => sum + (r.hire_amount || 0), 0);
 
         const ctx = document.getElementById('revenueTypeSplitChart')?.getContext('2d');
         if (!ctx) return;
@@ -4755,10 +4849,10 @@ async function loadDailyActivityChart(monthValue) {
         const { data: commitRecords } = await supabaseClient.from('commitment_records').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
         const { data: otherOpRecords } = await supabaseClient.from('other_operation_hires').select('hire_date').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate);
 
-        // Build daily counts
+        // Build daily counts (use lastDay which is already computed above)
         const dailyCounts = {};
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dayStr = `${year}-${month}-${String(d).padStart(2, '0')}`;
+        for (let d = 1; d <= lastDay; d++) {
+            const dayStr = `${year}-${monthPadded}-${String(d).padStart(2, '0')}`;
             dailyCounts[dayStr] = 0;
         }
 
