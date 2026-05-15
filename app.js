@@ -27,6 +27,7 @@ let revenueTypeSplitChart = null;
 let topRoutesChart = null;
 let dailyActivityChart = null;
 let costVsRevenueChart = null;
+let dailyKmChart = null;
 
 // Initialize Supabase
 function initSupabase() {
@@ -533,6 +534,7 @@ async function loadDashboard() {
         await loadTopRoutesChart(monthValue);
         await loadDailyActivityChart(monthValue);
         await loadCostVsRevenueChart(monthValue);
+        await loadDailyKmChart(monthValue);
         
         // NEW: Load Service KMs
         await calculateServiceKMs();
@@ -5127,6 +5129,121 @@ async function loadCostVsRevenueChart(monthValue) {
         });
     } catch (error) {
         console.error('Error loading cost vs revenue chart:', error.message);
+    }
+}
+
+// 6. Daily KM Run Chart — BAR (Per Day in Month)
+async function loadDailyKmChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch distance data from all three sources
+        const [{ data: hireRecords }, { data: commitRecords }, { data: otherOpRecords }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('other_operation_hires').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate)
+        ]);
+
+        // Build daily KM totals
+        const dailyKms = {};
+        for (let d = 1; d <= lastDay; d++) {
+            const dayStr = `${year}-${monthPadded}-${String(d).padStart(2, '0')}`;
+            dailyKms[dayStr] = 0;
+        }
+
+        hireRecords?.forEach(r => { if (dailyKms[r.hire_date] !== undefined) dailyKms[r.hire_date] += (r.distance || 0); });
+        commitRecords?.forEach(r => { if (dailyKms[r.hire_date] !== undefined) dailyKms[r.hire_date] += (r.distance || 0); });
+        otherOpRecords?.forEach(r => { if (dailyKms[r.hire_date] !== undefined) dailyKms[r.hire_date] += (r.distance || 0); });
+
+        const labels = Object.keys(dailyKms).map(d => parseInt(d.split('-')[2]));
+        const data = Object.values(dailyKms);
+
+        // Color bars: green gradient based on KM value
+        const maxKm = Math.max(...data, 1);
+        const colors = data.map(v => {
+            if (v === 0) return 'rgba(189, 195, 199, 0.35)';
+            const ratio = v / maxKm;
+            if (ratio >= 0.75) return 'rgba(0, 163, 108, 0.80)';
+            if (ratio >= 0.40) return 'rgba(39, 174, 96, 0.70)';
+            return 'rgba(46, 213, 115, 0.60)';
+        });
+        const borderColors = colors.map(c => c.replace(/[\d.]+\)$/, '1)'));
+
+        if (dailyKmChart) dailyKmChart.destroy();
+
+        const ctx = document.getElementById('dailyKmChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const theme = getChartTheme();
+        dailyKmChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'KM Run',
+                    data: data,
+                    backgroundColor: colors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Daily Distance Run (KM) — ${monthValue}`,
+                        color: theme.titleColor,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: theme.tooltipBg,
+                        titleColor: theme.tooltipText,
+                        bodyColor: theme.tooltipText,
+                        borderColor: theme.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        callbacks: {
+                            title: function(ctx) {
+                                return `Day ${ctx[0].label} — ${monthValue}`;
+                            },
+                            label: function(ctx) {
+                                return `Distance: ${ctx.parsed.y.toLocaleString()} km`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `${v} km`,
+                            color: theme.textColor
+                        },
+                        grid: { color: theme.gridColor }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 10 },
+                            maxRotation: 0,
+                            color: theme.textColor
+                        },
+                        grid: { color: theme.gridColor }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily KM chart:', error.message);
     }
 }
 
