@@ -28,6 +28,7 @@ let topRoutesChart = null;
 let dailyActivityChart = null;
 let costVsRevenueChart = null;
 let dailyKmChart = null;
+let dailyFuelChart = null;
 
 // Initialize Supabase
 function initSupabase() {
@@ -535,6 +536,7 @@ async function loadDashboard() {
         await loadDailyActivityChart(monthValue);
         await loadCostVsRevenueChart(monthValue);
         await loadDailyKmChart(monthValue);
+        await loadDailyFuelChart(monthValue);
         
         // NEW: Load Service KMs
         await calculateServiceKMs();
@@ -5244,6 +5246,164 @@ async function loadDailyKmChart(monthValue) {
         });
     } catch (error) {
         console.error('Error loading daily KM chart:', error.message);
+    }
+}
+
+// 7. Daily Fuel Usage & Cost Chart — GROUPED BAR (Per Day in Month)
+async function loadDailyFuelChart(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+        const currentQueryUserId = getQueryUserId();
+
+        // Fetch fuel data from all three sources
+        const [{ data: hireRecords }, { data: commitRecords }, { data: otherOpRecords }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, fuel_litres, fuel_cost').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_records').select('hire_date, fuel_litres, fuel_cost').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('other_operation_hires').select('hire_date, fuel_litres, fuel_cost').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate)
+        ]);
+
+        // Build daily fuel totals
+        const dailyFuelLitres = {};
+        const dailyFuelCost = {};
+        for (let d = 1; d <= lastDay; d++) {
+            const dayStr = `${year}-${monthPadded}-${String(d).padStart(2, '0')}`;
+            dailyFuelLitres[dayStr] = 0;
+            dailyFuelCost[dayStr] = 0;
+        }
+
+        [...(hireRecords || []), ...(commitRecords || []), ...(otherOpRecords || [])].forEach(r => {
+            if (dailyFuelLitres[r.hire_date] !== undefined) {
+                dailyFuelLitres[r.hire_date] += (r.fuel_litres || 0);
+                dailyFuelCost[r.hire_date] += (r.fuel_cost || 0);
+            }
+        });
+
+        const labels = Object.keys(dailyFuelLitres).map(d => parseInt(d.split('-')[2]));
+        const litresData = Object.values(dailyFuelLitres);
+        const costData = Object.values(dailyFuelCost);
+
+        // Monthly totals for subtitle
+        const totalLitres = litresData.reduce((a, b) => a + b, 0);
+        const totalCost = costData.reduce((a, b) => a + b, 0);
+
+        if (dailyFuelChart) dailyFuelChart.destroy();
+
+        const ctx = document.getElementById('dailyFuelChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const theme = getChartTheme();
+        dailyFuelChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Fuel Used (Litres)',
+                        data: litresData,
+                        backgroundColor: 'rgba(230, 126, 34, 0.75)',
+                        borderColor: '#E07B00',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'yLitres'
+                    },
+                    {
+                        label: 'Fuel Cost (LKR)',
+                        data: costData,
+                        backgroundColor: 'rgba(209, 0, 31, 0.65)',
+                        borderColor: '#D1001F',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'yCost'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: [`Daily Fuel Usage & Cost — ${monthValue}`, `Total: ${totalLitres.toFixed(1)} L  |  LKR ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                        color: theme.titleColor,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: { color: theme.textColor, usePointStyle: true, pointStyle: 'rect', padding: 16 }
+                    },
+                    tooltip: {
+                        backgroundColor: theme.tooltipBg,
+                        titleColor: theme.tooltipText,
+                        bodyColor: theme.tooltipText,
+                        borderColor: theme.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        callbacks: {
+                            title: function(ctx) {
+                                return `Day ${ctx[0].label} — ${monthValue}`;
+                            },
+                            label: function(ctx) {
+                                if (ctx.dataset.yAxisID === 'yLitres') {
+                                    return `Fuel Used: ${ctx.parsed.y.toFixed(2)} Litres`;
+                                } else {
+                                    return `Fuel Cost: LKR ${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    yLitres: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `${v} L`,
+                            color: '#E07B00'
+                        },
+                        grid: { color: theme.gridColor },
+                        title: {
+                            display: true,
+                            text: 'Litres',
+                            color: '#E07B00',
+                            font: { size: 11 }
+                        }
+                    },
+                    yCost: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `LKR ${(v / 1000).toFixed(1)}K`,
+                            color: '#D1001F'
+                        },
+                        grid: { drawOnChartArea: false },
+                        title: {
+                            display: true,
+                            text: 'Cost (LKR)',
+                            color: '#D1001F',
+                            font: { size: 11 }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 10 },
+                            maxRotation: 0,
+                            color: theme.textColor
+                        },
+                        grid: { color: theme.gridColor }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily fuel chart:', error.message);
     }
 }
 
