@@ -259,6 +259,105 @@ img {
     gap: 4px;
 }
 
+/* ── NAV GROUP (collapsible category) ── */
+.nav-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Category header button */
+.nav-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.70);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    border-radius: var(--radius-md);
+    width: 100%;
+    text-align: left;
+    transition: all var(--ease-base);
+    margin-bottom: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-group-header:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border-color: rgba(255,255,255,0.20);
+}
+
+.nav-group-header:active {
+    transform: scale(0.98);
+}
+
+/* Expanded state */
+.nav-group-header[aria-expanded="true"] {
+    background: rgba(255,255,255,0.11);
+    color: #fff;
+    border-color: rgba(255,255,255,0.18);
+}
+
+.nav-group-icon {
+    font-size: 16px;
+    min-width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-group-label {
+    flex: 1;
+}
+
+/* Animated chevron */
+.nav-group-chevron {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    transition: transform var(--ease-base);
+    opacity: 0.70;
+}
+
+.nav-group-header[aria-expanded="true"] .nav-group-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+/* Collapsible item container — animated with max-height */
+.nav-group-items {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.28s ease;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 10px;
+}
+
+.nav-group-items.open {
+    max-height: 600px;  /* large enough to fit all items */
+    opacity: 1;
+}
+
+/* Active group gets a subtle left border accent */
+.nav-group.has-active .nav-group-header {
+    background: rgba(255,255,255,0.13);
+    color: #fff;
+    border-color: rgba(255,255,255,0.22);
+}
+
+/* ── Individual NAV ITEM (used both standalone & inside groups) ── */
 .nav-item {
     display: flex;
     align-items: center;
@@ -277,6 +376,26 @@ img {
     text-align: left;
     width: 100%;
     transition: all var(--ease-base);
+}
+
+/* Sub-items inside groups — slightly smaller and indented */
+.nav-sub-item {
+    font-size: 13px;
+    padding: 11px 14px;
+}
+
+/* Staggered entrance animation for sub-items when group opens */
+.nav-group-items.open .nav-sub-item:nth-child(1) { animation: navItemSlideIn 0.22s 0.03s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(2) { animation: navItemSlideIn 0.22s 0.07s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(3) { animation: navItemSlideIn 0.22s 0.11s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(4) { animation: navItemSlideIn 0.22s 0.15s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(5) { animation: navItemSlideIn 0.22s 0.19s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(6) { animation: navItemSlideIn 0.22s 0.23s var(--ease-base) both; }
+.nav-group-items.open .nav-sub-item:nth-child(7) { animation: navItemSlideIn 0.22s 0.27s var(--ease-base) both; }
+
+@keyframes navItemSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
 
 .nav-item::after {
@@ -341,7 +460,15 @@ img {
     line-height: 1;
 }
 
-/* Sidebar Footer */
+/* Thin separator between standalone items and groups */
+.nav-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.10);
+    margin: 6px 4px;
+    border-radius: 1px;
+}
+
+
 .sidebar-footer {
     padding: 16px 12px;
     border-top: 1px solid rgba(255,255,255,0.12);
@@ -2277,6 +2404,26 @@ body.dark-mode .nav-item.active {
 }
 
 body.dark-mode .nav-item.active::after { background: var(--brand-red); }
+
+body.dark-mode .nav-group-header {
+    background: rgba(255, 32, 64, 0.06);
+    border-color: rgba(255, 32, 64, 0.15);
+    color: rgba(255,255,255,0.60);
+}
+
+body.dark-mode .nav-group-header:hover {
+    background: rgba(255, 32, 64, 0.12);
+    color: #fff;
+    border-color: rgba(255, 32, 64, 0.25);
+}
+
+body.dark-mode .nav-group-header[aria-expanded="true"],
+body.dark-mode .nav-group.has-active .nav-group-header {
+    background: rgba(255, 32, 64, 0.10);
+    color: #fff;
+    border-color: rgba(255, 32, 64, 0.28);
+}
+
 
 body.dark-mode .logout-btn {
     background: rgba(255, 32, 64, 0.08);

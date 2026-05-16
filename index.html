@@ -131,54 +131,80 @@
             </div>
 
             <nav class="nav-menu">
+
+                <!-- Dashboard — standalone -->
                 <button class="nav-item active" data-page="dashboard">
                     <span class="nav-icon">📊</span>
                     <span>Dashboard</span>
                 </button>
-                <button class="nav-item" data-page="drivers">
-                    <span class="nav-icon">👤</span>
-                    <span>Staff</span>
-                </button>
-                <button class="nav-item" data-page="driver-advances">
-                    <span class="nav-icon">💵</span>
-                    <span>Staff Advances</span>
-                </button>
-                <button class="nav-item" data-page="driver-dayoffs">
-                    <span class="nav-icon">⛔</span>
-                    <span>Staff Day Offs</span>
-                </button>
-                <button class="nav-item" data-page="driver-salary">
-                    <span class="nav-icon">💼</span>
-                    <span>Staff Salary</span>
-                </button>
-                <button class="nav-item" data-page="hire-vehicles">
-                    <span class="nav-icon">🚚</span>
-                    <span>Hire-to-Pay Vehicles</span>
-                </button>
-                <button class="nav-item" data-page="hire-records">
-                    <span class="nav-icon">📋</span>
-                    <span>Hire-to-Pay Records</span>
-                </button>
-                <button class="nav-item" data-page="other-operation-hires">
-                    <span class="nav-icon">🔄</span>
-                    <span>Other Operation Hires</span>
-                </button>
-                <button class="nav-item" data-page="commitment-vehicles">
-                    <span class="nav-icon">🚛</span>
-                    <span>Commitment Vehicles</span>
-                </button>
-                <button class="nav-item" data-page="commitment-records">
-                    <span class="nav-icon">📝</span>
-                    <span>Commitment Records</span>
-                </button>
-                <button class="nav-item" data-page="commitment-dayoffs">
-                    <span class="nav-icon">📅</span>
-                    <span>Day Offs</span>
-                </button>
-                <button class="nav-item" data-page="lorry-maintenance">
-                    <span class="nav-icon">🔧</span>
-                    <span>Lorry Maintenance</span>
-                </button>
+
+                <div class="nav-divider"></div>
+
+
+                <div class="nav-group" id="navGroupStaff">
+                    <button class="nav-group-header" data-group="staff" aria-expanded="false">
+                        <span class="nav-group-icon">👥</span>
+                        <span class="nav-group-label">Staff</span>
+                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="nav-group-items" id="navItemsStaff">
+                        <button class="nav-item nav-sub-item" data-page="drivers">
+                            <span class="nav-icon">👤</span>
+                            <span>Staff List</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="driver-advances">
+                            <span class="nav-icon">💵</span>
+                            <span>Advances</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="driver-dayoffs">
+                            <span class="nav-icon">⛔</span>
+                            <span>Day Offs</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="driver-salary">
+                            <span class="nav-icon">💼</span>
+                            <span>Salary</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── FLEET GROUP ── -->
+                <div class="nav-group" id="navGroupFleet">
+                    <button class="nav-group-header" data-group="fleet" aria-expanded="false">
+                        <span class="nav-group-icon">🚛</span>
+                        <span class="nav-group-label">Fleet</span>
+                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="nav-group-items" id="navItemsFleet">
+                        <button class="nav-item nav-sub-item" data-page="hire-vehicles">
+                            <span class="nav-icon">🚚</span>
+                            <span>Hire-to-Pay Vehicles</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="hire-records">
+                            <span class="nav-icon">📋</span>
+                            <span>Hire-to-Pay Records</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="other-operation-hires">
+                            <span class="nav-icon">🔄</span>
+                            <span>Other Operations</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="commitment-vehicles">
+                            <span class="nav-icon">🚛</span>
+                            <span>Commitment Vehicles</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="commitment-records">
+                            <span class="nav-icon">📝</span>
+                            <span>Commitment Records</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="commitment-dayoffs">
+                            <span class="nav-icon">📅</span>
+                            <span>Commitment Day Offs</span>
+                        </button>
+                        <button class="nav-item nav-sub-item" data-page="lorry-maintenance">
+                            <span class="nav-icon">🔧</span>
+                            <span>Lorry Maintenance</span>
+                        </button>
+                    </div>
+                </div>
 
             </nav>
 

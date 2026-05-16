@@ -395,13 +395,76 @@ function openMobileMenu() {
     if (mobileOverlay) mobileOverlay.classList.add('active');
 }
 
-// Navigation
+// ============ GROUPED COLLAPSIBLE NAVIGATION ============
+
+// Map of page -> group id (null = no group / standalone)
+const PAGE_GROUP_MAP = {
+    'dashboard':             null,
+    'drivers':               'navGroupStaff',
+    'driver-advances':       'navGroupStaff',
+    'driver-dayoffs':        'navGroupStaff',
+    'driver-salary':         'navGroupStaff',
+    'hire-vehicles':         'navGroupFleet',
+    'hire-records':          'navGroupFleet',
+    'other-operation-hires': 'navGroupFleet',
+    'commitment-vehicles':   'navGroupFleet',
+    'commitment-records':    'navGroupFleet',
+    'commitment-dayoffs':    'navGroupFleet',
+    'lorry-maintenance':     'navGroupFleet',
+};
+
+function openNavGroup(groupId) {
+    const group  = document.getElementById(groupId);
+    const header = group?.querySelector('.nav-group-header');
+    const items  = group?.querySelector('.nav-group-items');
+    if (!group || !header || !items) return;
+    header.setAttribute('aria-expanded', 'true');
+    items.classList.add('open');
+    group.classList.add('has-active');
+}
+
+function closeNavGroup(groupId) {
+    const group  = document.getElementById(groupId);
+    const header = group?.querySelector('.nav-group-header');
+    const items  = group?.querySelector('.nav-group-items');
+    if (!group || !header || !items) return;
+    header.setAttribute('aria-expanded', 'false');
+    items.classList.remove('open');
+    group.classList.remove('has-active');
+}
+
+function setActiveNavItem(page) {
+    // Deactivate all nav items
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    // Activate the matching one
+    const target = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (target) target.classList.add('active');
+
+    // Close all groups, then open the relevant one
+    ['navGroupStaff', 'navGroupFleet'].forEach(id => closeNavGroup(id));
+    const groupId = PAGE_GROUP_MAP[page];
+    if (groupId) openNavGroup(groupId);
+}
+
+// Group header — toggle expand/collapse
+document.querySelectorAll('.nav-group-header').forEach(header => {
+    header.addEventListener('click', () => {
+        const key     = header.dataset.group; // 'staff' or 'fleet'
+        const groupId = 'navGroup' + key.charAt(0).toUpperCase() + key.slice(1);
+        const expanded = header.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+            closeNavGroup(groupId);
+        } else {
+            openNavGroup(groupId);
+        }
+    });
+});
+
+// Navigation — individual page nav items
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        
         currentPage = item.dataset.page;
+        setActiveNavItem(currentPage);
         switchPage(currentPage);
         closeMobileMenu();
     });
