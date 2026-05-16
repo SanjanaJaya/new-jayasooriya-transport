@@ -2081,6 +2081,33 @@ body.dark-mode .premium-vehicle-card {
     font-weight: 600;
 }
 
+/* Copy SMS button inside advance cards */
+.btn-copy-sms {
+    flex-shrink: 0;
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 13px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background var(--ease-base), transform var(--ease-base);
+    white-space: nowrap;
+}
+
+.btn-copy-sms:hover {
+    background: rgba(255, 255, 255, 0.30);
+    transform: translateY(-2px);
+}
+
+.btn-copy-sms-success {
+    background: rgba(46, 213, 115, 0.35) !important;
+    border-color: rgba(46, 213, 115, 0.60) !important;
+}
+
 /* =====================================================
    SUMMARY GRID (Salary slip)
    ===================================================== */
@@ -2602,6 +2629,71 @@ body.dark-mode .dark-mode-toggle button {
 
     .advance-summary-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Advance / day-off cards — stack cleanly on narrow screens */
+    .advance-card {
+        padding: 14px 12px;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .advance-card-icon {
+        font-size: 28px;
+        width: 48px;
+        height: 48px;
+    }
+
+    .advance-card-content {
+        flex: 1;
+        min-width: 0; /* allow text truncation */
+    }
+
+    .advance-card-name {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .advance-card-amount { font-size: 20px; }
+
+    /* Copy SMS goes full-width below the icon+content row */
+    .btn-copy-sms {
+        width: 100%;
+        text-align: center;
+        margin-left: 0;
+        margin-top: 6px;
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+
+    /* Grand-total banners: tighten padding & font on small screens */
+    .summary-banner {
+        padding: 14px 14px !important;
+        gap: 12px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Large emoji icon in banner */
+    .summary-banner > div[style*="font-size:44px"],
+    .summary-banner > div[style*="font-size: 44px"] {
+        font-size: 32px !important;
+    }
+
+    /* LKR amount in banner */
+    .summary-banner div[style*="font-size:38px"],
+    .summary-banner div[style*="font-size: 38px"] {
+        font-size: 26px !important;
+    }
+
+    /* Top-3 ranking rows inside advance banner */
+    .summary-banner > div[style*="min-width:160px"],
+    .summary-banner > div[style*="min-width: 160px"] {
+        min-width: 0 !important;
+        width: 100%;
     }
 
     .summary-grid {

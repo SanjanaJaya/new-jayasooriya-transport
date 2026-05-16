@@ -4036,7 +4036,7 @@ async function loadAdvanceSummary() {
             </div>` : '';
         const topWidget = document.createElement('div');
         topWidget.style.cssText = 'grid-column:1/-1;margin-bottom:4px;';
-        topWidget.innerHTML = `<div style="background:linear-gradient(135deg,#D1001F 0%,#8B0012 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(209,0,31,.30);color:#fff;flex-wrap:wrap;">
+        topWidget.innerHTML = `<div class="summary-banner" style="background:linear-gradient(135deg,#D1001F 0%,#8B0012 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(209,0,31,.30);color:#fff;flex-wrap:wrap;">
             <div style="font-size:44px;flex-shrink:0;">💳</div>
             <div style="flex:1;min-width:180px;">
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Staff Advances — ${monthLabel}</div>
@@ -5732,7 +5732,7 @@ async function renderDayOffWidgets(dayOffData) {
 
     const topWidget = document.createElement('div');
     topWidget.style.cssText = 'grid-column:1/-1;margin-bottom:4px;';
-    topWidget.innerHTML = `<div style="background:linear-gradient(135deg,#c0392b 0%,#7b241c 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(192,57,43,.30);color:#fff;flex-wrap:wrap;">
+    topWidget.innerHTML = `<div class="summary-banner" style="background:linear-gradient(135deg,#c0392b 0%,#7b241c 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(192,57,43,.30);color:#fff;flex-wrap:wrap;">
         <div style="font-size:44px;flex-shrink:0;">⛔</div>
         <div style="flex:1;min-width:180px;">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Day Off Deductions — ${monthLabel}</div>
