@@ -922,28 +922,65 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 // Load Drivers
 async function loadDrivers() {
     try {
-        const { data, error } = await supabaseClient
-            .from('drivers')
-            .select('*')
-            .eq('user_id', getQueryUserId())
-            .order('created_at', { ascending: false });
-        
+        const userId = getQueryUserId();
+        const [
+            { data, error },
+            { data: assignments },
+            { data: hireV },
+            { data: commV }
+        ] = await Promise.all([
+            supabaseClient.from('drivers').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+            // Include driver role so we can enforce 1-driver + 1-helper per lorry
+            supabaseClient.from('staff_lorry_assignments').select('driver_id, lorry_number, driver_role').eq('user_id', userId),
+            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, vector_art_url').eq('user_id', userId).neq('terminated', true),
+            supabaseClient.from('commitment_vehicles').select('vehicle_number, vector_art_url').eq('user_id', userId).neq('terminated', true)
+        ]);
+
         if (error) throw error;
-        
+
         const tbody = document.querySelector('#driversTable tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         if (!data || data.length === 0) {
              tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
              return;
         }
 
+        // Build assignment map: driverId -> { lorry_number, driver_role }
+        const assignmentMap = {};
+        assignments?.forEach(a => { assignmentMap[a.driver_id] = { lorry: a.lorry_number, role: a.driver_role }; });
+
+        // Build base-plate -> vector_art_url map
+        const artMap = {};
+        hireV?.forEach(v => {
+            const base = extractBaseVehicleName(v.lorry_number);
+            if (base && v.vector_art_url) artMap[base] = v.vector_art_url;
+        });
+        commV?.forEach(v => {
+            const base = extractBaseVehicleName(v.vehicle_number);
+            if (base && v.vector_art_url && !artMap[base]) artMap[base] = v.vector_art_url;
+        });
+
+        // Build list of base plate numbers (normalised), sorted, unique
+        const allVehicles = new Set();
+        hireV?.forEach(v => { const b = extractBaseVehicleName(v.lorry_number); if (b) allVehicles.add(b); });
+        commV?.forEach(v => { const b = extractBaseVehicleName(v.vehicle_number); if (b) allVehicles.add(b); });
+        const vehicleList = Array.from(allVehicles).sort();
+
+        // Track per-lorry role slots: lorryBase -> { hasDriver, hasHelper }
+        const lorrySlots = {};
+        assignments?.forEach(a => {
+            const base = a.lorry_number;
+            if (!lorrySlots[base]) lorrySlots[base] = { hasDriver: false, hasHelper: false };
+            const r = (a.driver_role || '').toLowerCase();
+            if (r === 'driver') lorrySlots[base].hasDriver = true;
+            else if (r === 'helper') lorrySlots[base].hasHelper = true;
+        });
+
         const activeDrivers = data.filter(d => !d.terminated);
         const activeStaffCountEl = document.getElementById('activeStaffCount');
-        if (activeStaffCountEl) {
-            activeStaffCountEl.textContent = activeDrivers.length;
-        }
+        if (activeStaffCountEl) activeStaffCountEl.textContent = activeDrivers.length;
         const terminatedDrivers = data.filter(d => d.terminated);
 
         function buildDriverRow(driver) {
@@ -953,16 +990,15 @@ async function loadDrivers() {
                     <button class="btn btn-danger" onclick="deleteDriver(${driver.id})">Delete</button>
                 </td>
             `;
-            const photoHTML = driver.photo_url ? 
-                `<img src="${driver.photo_url}" alt="${driver.name}" class="profile-photo" onclick="openPhotoLightbox('${driver.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` : 
+            const photoHTML = driver.photo_url ?
+                `<img src="${driver.photo_url}" alt="${driver.name}" class="profile-photo" onclick="openPhotoLightbox('${driver.photo_url}')" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'>📷</div>';">` :
                 `<div class="no-photo">📷</div>`;
-            
-            // Salary type badge & info
+
             const isPerTip = driver.salary_type === 'per_tip';
-            const salaryTypeBadge = isPerTip 
+            const salaryTypeBadge = isPerTip
                 ? '<span style="background:#E67E22;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Per Tip</span>'
                 : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Fixed</span>';
-            
+
             let salaryInfo = '';
             if (isPerTip) {
                 salaryInfo = driver.per_tip_charge ? `LKR ${driver.per_tip_charge.toFixed(2)} / tip` : '-';
@@ -973,12 +1009,58 @@ async function loadDrivers() {
                 if (driver.extra_km_rate) parts.push(`Extra: LKR ${driver.extra_km_rate.toFixed(2)}/km`);
                 salaryInfo = parts.length > 0 ? parts.join('<br>') : '-';
             }
-            
+
+            // ── Lorry assignment badge / dropdown ──
+            const assignment = assignmentMap[driver.id];
+            const driverRole = (driver.role || 'Driver').toLowerCase();
+            let lorryHtml = '';
+
+            if (assignment) {
+                // Already assigned — premium badge: art panel + plate panel
+                const artUrl = artMap[assignment.lorry];
+                const artContent = artUrl
+                    ? `<img src="${artUrl}" alt="${assignment.lorry}" onerror="this.parentElement.innerHTML='<span class=\\'lorry-badge-icon\\'>🚛</span>'">`
+                    : `<span class="lorry-badge-icon">🚛</span>`;
+                lorryHtml = `
+                <div class="lorry-assignment-wrap">
+                    <span class="lorry-badge" title="Assigned: ${assignment.lorry}">
+                        <span class="lorry-badge-art">${artContent}</span>
+                        <span class="lorry-badge-plate">${assignment.lorry}</span>
+                    </span>
+                    ${userRole !== 'viewer' ? `<button class="lorry-assign-btn" onclick="unassignLorry(${driver.id})" title="Remove assignment">✖ Unassign</button>` : ''}
+                </div>`;
+            } else if (userRole !== 'viewer' && vehicleList.length > 0 && driverRole !== 'other') {
+                // Not assigned — filtered dropdown by role slot
+                const isHelper = driverRole === 'helper';
+                const opts = vehicleList
+                    .filter(v => {
+                        const slots = lorrySlots[v];
+                        if (!slots) return true;
+                        if (isHelper) return !slots.hasHelper;
+                        return !slots.hasDriver;
+                    })
+                    .map(v => {
+                        const slots = lorrySlots[v];
+                        let hint = '';
+                        if (slots) {
+                            if (!isHelper && slots.hasHelper) hint = ' (has helper)';
+                            if (isHelper && slots.hasDriver) hint = ' (has driver)';
+                        }
+                        return `<option value="${v}">${v}${hint}</option>`;
+                    })
+                    .join('');
+                if (opts) {
+                    lorryHtml = `<br><select class="lorry-assign-select" onchange="assignLorry(${driver.id}, this, '${driver.role || 'Driver'}')" title="Assign a lorry">
+                        <option value="">🚛 Assign lorry...</option>${opts}</select>`;
+                }
+            }
+
+
             const row = document.createElement('tr');
             if (driver.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
             row.innerHTML = `
                 <td>${photoHTML}</td>
-                <td>${driver.name}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}</td>
+                <td>${driver.name}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}${lorryHtml}</td>
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
                 <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
@@ -1015,6 +1097,45 @@ async function loadDrivers() {
         console.error('Error loading drivers:', error.message);
     }
 }
+
+
+window.assignLorry = async function(driverId, selectEl, driverRole) {
+    const lorryNumber = selectEl.value;
+    if (!lorryNumber) return;
+    if (!checkAdminAccess('assign')) return;
+    try {
+        // Remove any existing assignment for this driver first (1 lorry per person)
+        await supabaseClient.from('staff_lorry_assignments')
+            .delete().eq('driver_id', driverId).eq('user_id', getQueryUserId());
+        const { error } = await supabaseClient.from('staff_lorry_assignments').insert([{
+            driver_id: driverId,
+            lorry_number: lorryNumber,
+            driver_role: driverRole || 'Driver',
+            user_id: getQueryUserId()
+        }]);
+        if (error) throw error;
+        loadDrivers();
+    } catch (err) {
+        console.error('Error assigning lorry:', err);
+        alert('Error assigning lorry: ' + err.message);
+    }
+};
+
+// Remove lorry assignment from a staff member
+window.unassignLorry = async function(driverId) {
+    if (!checkAdminAccess('unassign')) return;
+    if (!confirm('Remove this lorry assignment?')) return;
+    try {
+        const { error } = await supabaseClient.from('staff_lorry_assignments')
+            .delete().eq('driver_id', driverId).eq('user_id', getQueryUserId());
+        if (error) throw error;
+        loadDrivers();
+    } catch (err) {
+        console.error('Error unassigning lorry:', err);
+        alert('Error removing assignment: ' + err.message);
+    }
+};
+
 
 function toggleDriverArchive() {
     const rows = document.querySelectorAll('.driver-archive-row');
@@ -3889,31 +4010,55 @@ async function loadAdvanceSummary() {
         if (!summaryEl) return;
         summaryEl.innerHTML = '';
 
-        if (drivers && drivers.length > 0) {
-            // Filter drivers list if a specific driver is selected
-            const driversToDisplay = driverFilter 
-                ? drivers.filter(d => d.id == driverFilter) 
-                : drivers;
+        // Determine display month label (e.g. "May 2025")
+        let monthLabel = 'All Time';
+        if (monthValue) {
+            const [yr, mo] = monthValue.split('-');
+            monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+        }
 
-            if (driversToDisplay.length === 0) {
-                 summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; width: 100%;">No staff match the filter.</p>';
-                 return;
-            }
+        // ── TOP MONTHLY TOTAL ADVANCES WIDGET ──
+        const grandTotal = advances ? advances.reduce((s, a) => s + (a.amount || 0), 0) : 0;
+        const advCount = advances ? advances.length : 0;
+        const driverNameMap = {};
+        drivers?.forEach(d => { driverNameMap[d.id] = d.name; });
+        const topRanked = Object.entries(advancesByDriver)
+            .map(([dId, d]) => ({ name: driverNameMap[dId] || 'Staff', total: d.total }))
+            .sort((a, b) => b.total - a.total).slice(0, 3);
+        const medals = ['🥇', '🥈', '🥉'];
+        const topHtml = topRanked.length > 0 ? `
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:160px;">
+                <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;font-weight:700;">🏆 Highest This Period</div>
+                ${topRanked.map((s,i) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;background:rgba(255,255,255,0.13);border-radius:8px;padding:5px 10px;">
+                    <span>${medals[i]} ${s.name}</span>
+                    <span style="font-weight:800;font-family:'Barlow Condensed',sans-serif;font-size:14px;">LKR ${s.total.toLocaleString('en-LK',{minimumFractionDigits:2})}</span>
+                </div>`).join('')}
+            </div>` : '';
+        const topWidget = document.createElement('div');
+        topWidget.style.cssText = 'grid-column:1/-1;margin-bottom:4px;';
+        topWidget.innerHTML = `<div style="background:linear-gradient(135deg,#D1001F 0%,#8B0012 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(209,0,31,.30);color:#fff;flex-wrap:wrap;">
+            <div style="font-size:44px;flex-shrink:0;">💳</div>
+            <div style="flex:1;min-width:180px;">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Staff Advances — ${monthLabel}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandTotal.toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+                <div style="font-size:12px;opacity:.75;margin-top:5px;">${advCount} advance transaction${advCount!==1?'s':''} recorded</div>
+            </div>
+            ${topHtml}
+        </div>`;
+        summaryEl.appendChild(topWidget);
 
-            // Determine display month label (e.g. "May 2025")
-            let monthLabel = 'All Time';
-            if (monthValue) {
-                const [yr, mo] = monthValue.split('-');
-                monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-            }
+        if (Object.keys(advancesByDriver).length > 0) {
+            // Only render cards for drivers who have at least one advance in the period
+            const driversWithAdvances = Object.entries(advancesByDriver)
+                .map(([dId, dData]) => ({
+                    id: dId,
+                    name: driverNameMap[dId] || 'Staff',
+                    ...dData
+                }))
+                .sort((a, b) => b.total - a.total);
 
-            driversToDisplay.forEach(driver => {
-                const driverData = advancesByDriver[driver.id];
-                const totalAdvance = driverData ? driverData.total : 0;
-                const records = driverData ? driverData.records : [];
-                
-                // Build the SMS message for this driver
-                const smsMessage = buildAdvanceSmsMessage(driver.name, monthLabel, records);
+            driversWithAdvances.forEach(driver => {
+                const smsMessage = buildAdvanceSmsMessage(driver.name, monthLabel, driver.records);
 
                 const card = document.createElement('div');
                 card.className = 'advance-card';
@@ -3921,21 +4066,20 @@ async function loadAdvanceSummary() {
                     <div class="advance-card-icon">💰</div>
                     <div class="advance-card-content">
                         <div class="advance-card-name">${driver.name}</div>
-                        <div class="advance-card-amount">LKR ${totalAdvance.toFixed(2)}</div>
+                        <div class="advance-card-amount">LKR ${driver.total.toFixed(2)}</div>
                         <div class="advance-card-label">Total Advances (${monthLabel})</div>
                     </div>
                     <button class="btn-copy-sms" title="Copy SMS message to clipboard">
                         📋 Copy SMS
                     </button>
                 `;
-                // Attach via addEventListener — safe, no HTML/attribute escaping issues
                 card.querySelector('.btn-copy-sms').addEventListener('click', function() {
                     copyAdvanceSms(this, smsMessage);
                 });
                 summaryEl.appendChild(card);
             });
         } else {
-            summaryEl.innerHTML = '<p style="text-align: center; color: #7F8C8D; padding: 20px;">No staff found. Add staff first.</p>';
+            summaryEl.innerHTML += '<p style="text-align:center;color:#7F8C8D;padding:20px;width:100%;">No advances recorded for this period.</p>';
         }
     } catch (error) {
         console.error('Error loading advance summary:', error.message);
@@ -5541,25 +5685,96 @@ async function loadDriverDayOffs() {
             });
         }
 
+        await renderDayOffWidgets(data);
         updateDriverDayOffSelectors();
     } catch (error) {
         console.error('Error loading driver day offs:', error.message);
     }
 }
 
+// 5b. Render per-driver day-off summary widgets
+async function renderDayOffWidgets(dayOffData) {
+    const section = document.getElementById('driverDayOffWidgetsSection');
+    const container = document.getElementById('driverDayOffWidgets');
+    if (!container || !section) return;
+
+    if (!dayOffData || dayOffData.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    container.innerHTML = '';
+
+    const monthValue = document.getElementById('driverDayOffMonth')?.value;
+    let monthLabel = 'All Time';
+    if (monthValue) {
+        const [yr, mo] = monthValue.split('-');
+        monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+
+    // Aggregate by driver
+    const byDriver = {};
+    dayOffData.forEach(item => {
+        const driverId = item.driver_id;
+        const name = item.drivers?.name || 'Unknown';
+        if (!byDriver[driverId]) {
+            byDriver[driverId] = { name, count: 0, totalDeduction: 0 };
+        }
+        byDriver[driverId].count += 1;
+        byDriver[driverId].totalDeduction += (item.deduction_amount || 0);
+    });
+
+    // Grand total widget
+    const totalDayOffs = dayOffData.length;
+    const grandDeduction = dayOffData.reduce((s, i) => s + (i.deduction_amount || 0), 0);
+    const driverCount = Object.keys(byDriver).length;
+
+    const topWidget = document.createElement('div');
+    topWidget.style.cssText = 'grid-column:1/-1;margin-bottom:4px;';
+    topWidget.innerHTML = `<div style="background:linear-gradient(135deg,#c0392b 0%,#7b241c 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(192,57,43,.30);color:#fff;flex-wrap:wrap;">
+        <div style="font-size:44px;flex-shrink:0;">⛔</div>
+        <div style="flex:1;min-width:180px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Day Off Deductions — ${monthLabel}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandDeduction.toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:12px;opacity:.75;margin-top:5px;">${totalDayOffs} day off record${totalDayOffs!==1?'s':''} across ${driverCount} staff member${driverCount!==1?'s':''}</div>
+        </div>
+    </div>`;
+    container.appendChild(topWidget);
+
+    // Individual driver cards
+    Object.values(byDriver)
+        .sort((a, b) => b.totalDeduction - a.totalDeduction)
+        .forEach(d => {
+            const card = document.createElement('div');
+            card.className = 'advance-card';
+            card.innerHTML = `
+                <div class="advance-card-icon">📅</div>
+                <div class="advance-card-content">
+                    <div class="advance-card-name">${d.name}</div>
+                    <div class="advance-card-amount" style="color:#E74C3C;">LKR ${d.totalDeduction.toFixed(2)}</div>
+                    <div class="advance-card-label">${d.count} day off${d.count!==1?'s':''} — ${monthLabel}</div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+}
+
 // 6. Helper: Update Selectors
-async function updateDriverDayOffSelectors() {
+async function updateDriverDayOffSelectors(preserveFormValue = false) {
     try {
+        // Only fetch active (non-terminated) staff
         const { data: drivers } = await supabaseClient
             .from('drivers')
             .select('id, name')
             .eq('user_id', getQueryUserId())
-            .neq('terminated', true);
+            .neq('terminated', true)
+            .order('name', { ascending: true });
 
         const formSelect = document.getElementById('driverDayOffDriver');
         const filterSelect = document.getElementById('driverDayOffFilter');
 
-        // Update Filter (preserve selection)
+        // Update Filter dropdown (preserve current selection)
         if (filterSelect) {
             const currentFilter = filterSelect.value;
             filterSelect.innerHTML = '<option value="">All Staff</option>';
@@ -5572,8 +5787,9 @@ async function updateDriverDayOffSelectors() {
             filterSelect.value = currentFilter;
         }
 
-        // Update Form Select (only if form is closed or we want fresh list)
-        if (formSelect && formSelect.options.length <= 1) {
+        // Always repopulate the form dropdown to ensure terminated staff are excluded
+        if (formSelect) {
+            const currentFormValue = preserveFormValue ? formSelect.value : '';
             formSelect.innerHTML = '<option value="">Select Staff</option>';
             drivers?.forEach(d => {
                 const option = document.createElement('option');
@@ -5581,6 +5797,9 @@ async function updateDriverDayOffSelectors() {
                 option.textContent = d.name;
                 formSelect.appendChild(option);
             });
+            if (preserveFormValue && currentFormValue) {
+                formSelect.value = currentFormValue;
+            }
         }
     } catch (error) {
         console.error('Error updating driver selectors:', error.message);
@@ -5599,8 +5818,8 @@ async function editDriverDayOff(id) {
             
         if (error) throw error;
         
-        // Ensure selectors are loaded before setting value
-        await updateDriverDayOffSelectors();
+        // Ensure selectors are loaded before setting value (preserves form value after population)
+        await updateDriverDayOffSelectors(false);
 
         document.getElementById('driverDayOffId').value = data.id;
         document.getElementById('driverDayOffDriver').value = data.driver_id;
