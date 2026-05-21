@@ -1345,7 +1345,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
     border: 1px solid var(--surface-border);
     border-left: 4px solid var(--brand-red);
     animation: fadeSlideRight 0.35s var(--ease-base) both;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .form-row {

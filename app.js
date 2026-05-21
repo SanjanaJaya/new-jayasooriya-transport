@@ -6253,10 +6253,10 @@ const BANK_LOGO_MAP = {
     'Bank of Ceylon (BOC)':       'https://i.postimg.cc/hPHVZvDK/bank-of-ceylon-seeklogo.png',
     "People's Bank":              'https://i.postimg.cc/TPywzqCZ/peoples-bank-seeklogo.png',
     'Hatton National Bank (HNB)': 'https://i.postimg.cc/Qt1MtNLf/id-EGb-VVT5z.png',
-    'Commercial Bank of Ceylon':  'https://i.postimg.cc/RhmZnr4N/Commercial-Bank-of-Ceylon-PLC-idy3Nrk-OGC-0.png',
+    'Commercial Bank of Ceylon':  'https://i.postimg.cc/fy3kN7zN/com-bank.png',
     'Sampath Bank':               'https://i.postimg.cc/jq65Yj4Y/Sampath-Bank-id-Er-NN75DC-1.png',
-    'Seylan Bank':                'https://i.postimg.cc/zXJfz1xj/Seylan-Bank-PLC-id-Dry6TCXm-1.png',
-    'Nations Trust Bank (NTB)':   'https://i.postimg.cc/g0cy85ch/nations-trust-bank-seeklogo.png',
+    'Seylan Bank':                'https://i.postimg.cc/xTzqpPp4/seylan.png',
+    'Nations Trust Bank (NTB)':   'https://i.postimg.cc/MZcyxVrd/tile-NTB.png',
     'DFCC Bank':                  'https://i.postimg.cc/pLrXjJbz/DFCC-id6b-UJt-WD6-0.png',
     'Pan Asia Bank':              'https://i.postimg.cc/13dRrVsW/500px-PAN-ASIA-BANK-LOGO-The-Truly-Sri-Lankan-ank.jpg',
     'Union Bank':                 'https://i.postimg.cc/KYgGqcYX/Union-Bank-of-Colombo-id-Yqg-Xh2uk-0.png',
@@ -6301,6 +6301,7 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
 
     const hasSearch = items.length > 5;
     container.innerHTML = `
+        <input type="hidden" id="${hiddenId}" value="${currentVal}">
         <div class="ldd-trigger" id="${containerId}_trigger" tabindex="0">
             <div class="ldd-selected-content" id="${containerId}_sel">
                 <span class="ldd-placeholder">${placeholder || 'Select…'}</span>
@@ -6340,6 +6341,11 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
         }
     });
 
+    // Prevent clicks inside the dropdown from bubbling to document (closing it)
+    dropdown.addEventListener('click', e => {
+        e.stopPropagation();
+    });
+
     // Search filter
     if (search) {
         search.addEventListener('input', () => {
@@ -6355,6 +6361,7 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
         const item = e.target.closest('.ldd-item');
         if (!item) return;
         _lddSelect(containerId, item.dataset.value);
+        _lddCloseAll();
     });
 
     // Keyboard
