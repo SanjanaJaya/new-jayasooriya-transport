@@ -400,6 +400,7 @@ function openMobileMenu() {
 // Map of page -> group id (null = no group / standalone)
 const PAGE_GROUP_MAP = {
     'dashboard':             null,
+    'cheque-status':         null,
     'drivers':               'navGroupStaff',
     'driver-advances':       'navGroupStaff',
     'driver-dayoffs':        'navGroupStaff',
@@ -478,6 +479,7 @@ function switchPage(page) {
     
     const titles = {
         'dashboard': 'Dashboard',
+        'cheque-status': 'Cheque Status',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
         'driver-salary': 'Staff Salary Calculator & Salary Slips', 
@@ -495,6 +497,7 @@ function switchPage(page) {
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
     
     if (page === 'dashboard') loadDashboard();
+    if (page === 'cheque-status') loadChequeStatus();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
     
@@ -6225,4 +6228,591 @@ async function deleteMaintenanceRecord(id) {
             alert('Error deleting record: ' + error.message);
         }
     }
+}
+
+// ============================================================
+//  CHEQUE STATUS MODULE
+// ============================================================
+
+// Sri Lankan bank → fallback emoji
+const BANK_EMOJI_MAP = {
+    'Bank of Ceylon (BOC)':       '🏗️',
+    "People's Bank":              '🏗️',
+    'Hatton National Bank (HNB)': '🏦',
+    'Commercial Bank of Ceylon':  '🏦',
+    'Sampath Bank':               '💼',
+    'Seylan Bank':                '💳',
+    'Nations Trust Bank (NTB)':   '🔷',
+    'DFCC Bank':                  '🏗️',
+    'Pan Asia Bank':              '🌏',
+    'Union Bank':                 '🤝',
+};
+
+// Sri Lankan bank → logo image URL
+const BANK_LOGO_MAP = {
+    'Bank of Ceylon (BOC)':       'https://i.postimg.cc/hPHVZvDK/bank-of-ceylon-seeklogo.png',
+    "People's Bank":              'https://i.postimg.cc/TPywzqCZ/peoples-bank-seeklogo.png',
+    'Hatton National Bank (HNB)': 'https://i.postimg.cc/Qt1MtNLf/id-EGb-VVT5z.png',
+    'Commercial Bank of Ceylon':  'https://i.postimg.cc/RhmZnr4N/Commercial-Bank-of-Ceylon-PLC-idy3Nrk-OGC-0.png',
+    'Sampath Bank':               'https://i.postimg.cc/jq65Yj4Y/Sampath-Bank-id-Er-NN75DC-1.png',
+    'Seylan Bank':                'https://i.postimg.cc/zXJfz1xj/Seylan-Bank-PLC-id-Dry6TCXm-1.png',
+    'Nations Trust Bank (NTB)':   'https://i.postimg.cc/g0cy85ch/nations-trust-bank-seeklogo.png',
+    'DFCC Bank':                  'https://i.postimg.cc/pLrXjJbz/DFCC-id6b-UJt-WD6-0.png',
+    'Pan Asia Bank':              'https://i.postimg.cc/13dRrVsW/500px-PAN-ASIA-BANK-LOGO-The-Truly-Sri-Lankan-ank.jpg',
+    'Union Bank':                 'https://i.postimg.cc/KYgGqcYX/Union-Bank-of-Colombo-id-Yqg-Xh2uk-0.png',
+};
+
+// Flat items array used by the bank logo picker (static, all banks)
+const BANK_ITEMS = Object.keys(BANK_EMOJI_MAP).map(name => ({
+    value:   name,
+    label:   name,
+    logoUrl: BANK_LOGO_MAP[name] || null,
+    emoji:   BANK_EMOJI_MAP[name] || '🏦',
+}));
+
+const CHEQUE_STATUS_META = {
+    not_issued: { label: 'Not Issued', color: '#8A92A3', bg: 'rgba(138,146,163,0.12)', icon: '⚫' },
+    issued:     { label: 'Issued',     color: '#E07B00', bg: 'rgba(224,123,0,0.12)',    icon: '🟠' },
+    paid:       { label: 'Paid',       color: '#00B37E', bg: 'rgba(0,179,126,0.12)',    icon: '🟢' },
+    stopped:    { label: 'Stopped',    color: '#0072CE', bg: 'rgba(0,114,206,0.12)',    icon: '🔵' },
+    returned:   { label: 'Returned',   color: '#D1001F', bg: 'rgba(209,0,31,0.12)',     icon: '🔴' },
+};
+
+// ============================================================
+//  LOGO DROPDOWN ENGINE
+// ============================================================
+const _lddRegistry = {};
+
+function _lddIconHtml(item, size) {
+    const sz = size || 32;
+    if (item.logoUrl) {
+        return `<div class="ldd-logo-wrap" style="width:${sz}px;height:${sz}px;"><img src="${item.logoUrl}" alt="" class="ldd-logo-img" loading="lazy"></div>`;
+    }
+    return `<div class="ldd-emoji-wrap" style="width:${sz}px;height:${sz}px;">${item.emoji || '🏦'}</div>`;
+}
+
+function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) {
+    const container = document.getElementById(containerId);
+    const hidden    = document.getElementById(hiddenId);
+    if (!container || !hidden) return;
+
+    const currentVal = hidden.value || '';
+    _lddRegistry[containerId] = { hiddenId, placeholder: placeholder || 'Select…', onChange, items };
+
+    const hasSearch = items.length > 5;
+    container.innerHTML = `
+        <div class="ldd-trigger" id="${containerId}_trigger" tabindex="0">
+            <div class="ldd-selected-content" id="${containerId}_sel">
+                <span class="ldd-placeholder">${placeholder || 'Select…'}</span>
+            </div>
+            <svg class="ldd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+        <div class="ldd-dropdown" id="${containerId}_drop">
+            ${hasSearch ? `<div class="ldd-search-wrap"><input class="ldd-search" id="${containerId}_srch" type="text" placeholder="Search bank…" autocomplete="off"></div>` : ''}
+            <div class="ldd-list" id="${containerId}_list">
+                ${items.map(it => `
+                    <div class="ldd-item" data-value="${it.value}" data-label="${it.label}" data-logo="${it.logoUrl || ''}" data-emoji="${it.emoji || ''}"
+                        role="option" tabindex="-1">
+                        ${_lddIconHtml(it, 30)}
+                        <span class="ldd-item-name">${it.label}</span>
+                    </div>`).join('')}
+            </div>
+        </div>
+    `;
+
+    const trigger  = document.getElementById(`${containerId}_trigger`);
+    const dropdown = document.getElementById(`${containerId}_drop`);
+    const selEl    = document.getElementById(`${containerId}_sel`);
+    const list     = document.getElementById(`${containerId}_list`);
+    const search   = document.getElementById(`${containerId}_srch`);
+
+    // Open / close
+    trigger.addEventListener('click', e => {
+        e.stopPropagation();
+        const open = dropdown.classList.contains('ldd-open');
+        _lddCloseAll();
+        if (!open) {
+            dropdown.classList.add('ldd-open');
+            trigger.classList.add('ldd-active');
+            search && setTimeout(() => search.focus(), 60);
+        }
+    });
+
+    // Search filter
+    if (search) {
+        search.addEventListener('input', () => {
+            const q = search.value.toLowerCase();
+            list.querySelectorAll('.ldd-item').forEach(el => {
+                el.style.display = el.dataset.label.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    }
+
+    // Item click
+    list.addEventListener('click', e => {
+        const item = e.target.closest('.ldd-item');
+        if (!item) return;
+        _lddSelect(containerId, item.dataset.value);
+    });
+
+    // Keyboard
+    trigger.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trigger.click(); }
+        if (e.key === 'Escape') _lddCloseAll();
+    });
+
+    // Restore pre-existing value
+    if (currentVal) _lddSelect(containerId, currentVal, true);
+}
+
+function _lddSelect(containerId, value, silent) {
+    const reg     = _lddRegistry[containerId];
+    if (!reg) return;
+    const hidden  = document.getElementById(reg.hiddenId);
+    const selEl   = document.getElementById(`${containerId}_sel`);
+    const list    = document.getElementById(`${containerId}_list`);
+    if (!hidden || !selEl || !list) return;
+
+    hidden.value = value;
+    list.querySelectorAll('.ldd-item').forEach(el => el.classList.toggle('ldd-item-active', el.dataset.value === value));
+
+    if (!value) {
+        selEl.innerHTML = `<span class="ldd-placeholder">${reg.placeholder}</span>`;
+    } else {
+        const item = list.querySelector(`.ldd-item[data-value="${value}"]`);
+        if (item) {
+            const logo  = item.dataset.logo;
+            const emoji = item.dataset.emoji;
+            const label = item.dataset.label;
+            const iconHtml = logo
+                ? `<div class="ldd-logo-wrap ldd-sel-logo"><img src="${logo}" alt="" class="ldd-logo-img"></div>`
+                : `<div class="ldd-emoji-wrap ldd-sel-emoji">${emoji || '🏦'}</div>`;
+            selEl.innerHTML = `${iconHtml}<span class="ldd-sel-name">${label}</span>`;
+        }
+    }
+    if (!silent && reg.onChange) reg.onChange(value);
+}
+
+function setLogoDropdownValue(containerId, value) {
+    _lddCloseAll();
+    _lddSelect(containerId, value, true); // silent — no onChange
+}
+
+function _lddCloseAll() {
+    document.querySelectorAll('.ldd-dropdown.ldd-open').forEach(d => d.classList.remove('ldd-open'));
+    document.querySelectorAll('.ldd-trigger.ldd-active').forEach(t => t.classList.remove('ldd-active'));
+}
+
+// Global outside-click (attached once)
+if (!window._lddGlobalClickAttached) {
+    window._lddGlobalClickAttached = true;
+    document.addEventListener('click', _lddCloseAll);
+}
+
+async function loadChequeStatus() {
+    initChequeBookForm();
+    await loadChequeBooks();
+    initChequeLeafSelectHandlers();
+}
+
+// ---- Init: Add Cheque Book form ----
+function initChequeBookForm() {
+    const toggleBtn     = document.getElementById('toggleAddBookFormBtn');
+    const formContainer = document.getElementById('addBookFormContainer');
+    const cancelBtn     = document.getElementById('cancelAddBookBtn');
+
+    // Always rebuild the bank logo picker (harmless to rebuild)
+    buildLogoDropdown('bankCustomSelect', 'chequeBank', BANK_ITEMS, '🏦 Select Bank', null);
+
+    if (toggleBtn && !toggleBtn._csInited) {
+        toggleBtn._csInited = true;
+        toggleBtn.addEventListener('click', () => {
+            formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+        });
+        cancelBtn.addEventListener('click', () => {
+            formContainer.style.display = 'none';
+            document.getElementById('addChequeBookForm').reset();
+            setLogoDropdownValue('bankCustomSelect', ''); // reset picker
+        });
+
+        document.getElementById('addChequeBookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!checkAdminAccess('add')) return;
+            await saveChequeBook();
+        });
+    }
+}
+
+// ---- Save a new cheque book + bulk insert leaves ----
+async function saveChequeBook() {
+    const bankName = document.getElementById('chequeBank').value.trim();
+    const leafFrom = parseInt(document.getElementById('chequeLeafFrom').value);
+    const leafTo   = parseInt(document.getElementById('chequeLeafTo').value);
+
+    if (!bankName) { alert('Please select a bank.'); return; }
+    if (isNaN(leafFrom) || isNaN(leafTo) || leafFrom < 1 || leafTo < leafFrom) {
+        alert('Please enter valid leaf numbers (From must be ≤ To).'); return;
+    }
+    const leafCount = leafTo - leafFrom + 1;
+    if (leafCount > 500) { alert('Maximum 500 leaves per book.'); return; }
+
+    const submitBtn = document.querySelector('#addChequeBookForm button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+        const uid = getQueryUserId();
+
+        // Insert cheque book
+        const { data: book, error: bookErr } = await supabaseClient
+            .from('cheque_books')
+            .insert([{ user_id: uid, bank_name: bankName, leaf_from: leafFrom, leaf_to: leafTo }])
+            .select()
+            .single();
+        if (bookErr) throw bookErr;
+
+        // Bulk insert leaves
+        const leaves = [];
+        for (let n = leafFrom; n <= leafTo; n++) {
+            leaves.push({ user_id: uid, book_id: book.id, leaf_number: n, status: 'not_issued' });
+        }
+        const { error: leavesErr } = await supabaseClient.from('cheque_leaves').insert(leaves);
+        if (leavesErr) throw leavesErr;
+
+        document.getElementById('addChequeBookForm').reset();
+        document.getElementById('addBookFormContainer').style.display = 'none';
+        showChequeToast(`✅ Cheque book added! ${leafCount} leaves created.`);
+        await loadChequeBooks();
+    } catch (err) {
+        console.error('Error saving cheque book:', err);
+        alert('Failed to save cheque book: ' + err.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '💾 Add Cheque Book';
+    }
+}
+
+// ---- Load all cheque books, render cards & populate leaf selector ----
+async function loadChequeBooks() {
+    const uid = getQueryUserId();
+    const grid = document.getElementById('chequeBooksGrid');
+    const bookSelect = document.getElementById('chequeBookSelect');
+
+    try {
+        const { data: books, error } = await supabaseClient
+            .from('cheque_books')
+            .select('*, cheque_leaves(status)')
+            .eq('user_id', uid)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        // ── Render book cards ──
+        grid.innerHTML = '';
+        if (!books || books.length === 0) {
+            grid.innerHTML = '<div class="cheque-no-books">No cheque books added yet. Click <strong>+ Add Cheque Book</strong> to get started.</div>';
+        } else {
+            books.forEach(book => {
+                const leaves = book.cheque_leaves || [];
+                const counts = { paid: 0, stopped: 0, returned: 0, not_issued: 0, issued: 0 };
+                leaves.forEach(l => { if (counts[l.status] !== undefined) counts[l.status]++; });
+                const total = leaves.length;
+                const emoji   = BANK_EMOJI_MAP[book.bank_name] || '🏦';
+                const logoUrl = BANK_LOGO_MAP[book.bank_name] || null;
+
+                // Build the icon block — real logo if available, emoji fallback otherwise
+                const iconHtml = logoUrl
+                    ? `<div class="cheque-book-logo-wrap"><img src="${logoUrl}" alt="${book.bank_name} logo" class="cheque-bank-logo" style="max-height:30px;width:auto;"></div>`
+                    : `<span class="cheque-book-emoji">${emoji}</span>`;
+
+                const card = document.createElement('div');
+                card.className = 'cheque-book-card';
+                card.innerHTML = `
+                    <div class="cheque-book-card-top">
+                        <div class="cheque-book-bank">
+                            ${iconHtml}
+                            <div>
+                                <div class="cheque-book-bank-name">${book.bank_name}</div>
+                                <div class="cheque-book-range">Leaves #${book.leaf_from} – #${book.leaf_to} &nbsp;·&nbsp; ${total} total</div>
+                            </div>
+                        </div>
+                        <button class="cheque-book-delete-btn" title="Delete Book" onclick="deleteChequeBook('${book.id}')">🗑️</button>
+                    </div>
+                    <div class="cheque-book-pills">
+                        <span class="cheque-pill cheque-pill-paid">✅ ${counts.paid} Paid</span>
+                        <span class="cheque-pill cheque-pill-issued">🟠 ${counts.issued} Issued</span>
+                        <span class="cheque-pill cheque-pill-stopped">🔵 ${counts.stopped} Stopped</span>
+                        <span class="cheque-pill cheque-pill-returned">🔴 ${counts.returned} Returned</span>
+                        <span class="cheque-pill cheque-pill-notissued">⚫ ${counts.not_issued} Not Issued</span>
+                    </div>
+                    <button class="cheque-book-view-btn" onclick="selectChequeBook('${book.id}')">
+                        📋 View Leaves
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ── Populate book logo-dropdown in leaves section ──
+        const prevBookId = document.getElementById('chequeBookSelect').value;
+        const bookItems = (books || []).map(book => ({
+            value:   book.id,
+            label:   `${book.bank_name}  ( ${book.leaf_from}–${book.leaf_to} )`,
+            logoUrl: BANK_LOGO_MAP[book.bank_name] || null,
+            emoji:   BANK_EMOJI_MAP[book.bank_name] || '🏦',
+        }));
+        buildLogoDropdown('bookCustomSelect', 'chequeBookSelect', bookItems,
+            '— Select a Cheque Book —',
+            (bookId) => {
+                document.getElementById('chequeLeafEditContainer').style.display = 'none';
+                if (bookId) loadChequeLeaves(bookId);
+                else {
+                    document.getElementById('chequeLeavesTable').style.display = 'none';
+                    document.getElementById('chequeLeavesEmpty').style.display = 'flex';
+                }
+            }
+        );
+        if (prevBookId) setLogoDropdownValue('bookCustomSelect', prevBookId);
+
+        // ── Update global summary strip ──
+        await updateChequeSummaryStrip(uid);
+
+    } catch (err) {
+        console.error('Error loading cheque books:', err);
+        grid.innerHTML = '<div class="cheque-no-books" style="color:var(--brand-red);">Error loading cheque books.</div>';
+    }
+}
+
+// ---- Summary strip counts (all books) ----
+async function updateChequeSummaryStrip(uid) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('cheque_leaves')
+            .select('status')
+            .eq('user_id', uid);
+        if (error) throw error;
+
+        const total     = data.length;
+        const paid      = data.filter(l => l.status === 'paid').length;
+        const issued    = data.filter(l => l.status === 'issued').length;
+        const stopped   = data.filter(l => l.status === 'stopped').length;
+        const returned  = data.filter(l => l.status === 'returned').length;
+        const notIssued = data.filter(l => l.status === 'not_issued').length;
+
+        document.getElementById('csTotal').textContent    = total;
+        document.getElementById('csPaid').textContent     = paid;
+        document.getElementById('csIssued').textContent   = issued;
+        document.getElementById('csStopped').textContent  = stopped;
+        document.getElementById('csReturned').textContent = returned;
+        document.getElementById('csNotIssued').textContent= notIssued;
+    } catch (err) {
+        console.error('Error updating cheque summary strip:', err);
+    }
+}
+
+// ---- Quick-select a book from its card's "View Leaves" button ----
+function selectChequeBook(bookId) {
+    setLogoDropdownValue('bookCustomSelect', bookId);
+    document.getElementById('chequeBookSelect').value = bookId; // keep hidden in sync
+    loadChequeLeaves(bookId);
+    document.getElementById('chequeLeafEditContainer').style.display = 'none';
+    document.querySelector('.cheque-panel:last-of-type')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---- Init status-filter + edit form handlers (book selector now handled by ldd onChange) ----
+function initChequeLeafSelectHandlers() {
+    const statusFilter = document.getElementById('chequeStatusFilter');
+    if (statusFilter && !statusFilter._csInited) {
+        statusFilter._csInited = true;
+        statusFilter.addEventListener('change', () => {
+            const bookId = document.getElementById('chequeBookSelect').value;
+            if (bookId) loadChequeLeaves(bookId);
+        });
+    }
+
+    // Cancel edit button
+    const cancelEditBtn = document.getElementById('cancelLeafEditBtn');
+    if (cancelEditBtn && !cancelEditBtn._csInited) {
+        cancelEditBtn._csInited = true;
+        cancelEditBtn.addEventListener('click', () => {
+            document.getElementById('chequeLeafEditContainer').style.display = 'none';
+            document.getElementById('chequeLeafEditForm').reset();
+        });
+    }
+
+    // Edit form submit
+    const editForm = document.getElementById('chequeLeafEditForm');
+    if (editForm && !editForm._csInited) {
+        editForm._csInited = true;
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!checkAdminAccess('edit')) return;
+            await saveChequeLeaf();
+        });
+    }
+}
+
+// ---- Load leaves for a specific book ----
+async function loadChequeLeaves(bookId) {
+    const uid          = getQueryUserId();
+    const statusFilter = document.getElementById('chequeStatusFilter').value;
+    const tbody        = document.getElementById('chequeLeavesBody');
+    const table        = document.getElementById('chequeLeavesTable');
+    const emptyState   = document.getElementById('chequeLeavesEmpty');
+
+    emptyState.style.display = 'none';
+    table.style.display = 'none';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">Loading…</td></tr>';
+    table.style.display = 'table';
+
+    try {
+        let query = supabaseClient
+            .from('cheque_leaves')
+            .select('*')
+            .eq('user_id', uid)
+            .eq('book_id', bookId)
+            .order('leaf_number', { ascending: true });
+
+        if (statusFilter) query = query.eq('status', statusFilter);
+
+        const { data: leaves, error } = await query;
+        if (error) throw error;
+
+        tbody.innerHTML = '';
+
+        if (!leaves || leaves.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">No leaves match the selected filter.</td></tr>';
+            return;
+        }
+
+        leaves.forEach(leaf => {
+            const meta = CHEQUE_STATUS_META[leaf.status] || CHEQUE_STATUS_META.not_issued;
+            const tr = document.createElement('tr');
+            tr.className = `cheque-leaf-row cheque-row-${leaf.status}`;
+            tr.innerHTML = `
+                <td><strong class="cheque-leaf-num">#${leaf.leaf_number}</strong></td>
+                <td>${leaf.cheque_date ? new Date(leaf.cheque_date + 'T00:00:00').toLocaleDateString('en-GB') : '<span class="text-muted">—</span>'}</td>
+                <td>${leaf.amount != null ? 'LKR ' + Number(leaf.amount).toLocaleString('en-LK', {minimumFractionDigits:2}) : '<span class="text-muted">—</span>'}</td>
+                <td>${leaf.payee || '<span class="text-muted">—</span>'}</td>
+                <td>${leaf.notes || '<span class="text-muted">—</span>'}</td>
+                <td>
+                    <span class="cheque-status-badge" style="background:${meta.bg};color:${meta.color};border-color:${meta.color}20;">
+                        ${meta.icon} ${meta.label}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editChequeLeaf('${leaf.id}')">✏️ Edit</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error('Error loading cheque leaves:', err);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--brand-red);padding:20px;">Error: ${err.message}</td></tr>`;
+    }
+}
+
+// ---- Open inline edit form for a leaf ----
+async function editChequeLeaf(leafId) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data: leaf, error } = await supabaseClient
+            .from('cheque_leaves')
+            .select('*')
+            .eq('id', leafId)
+            .single();
+        if (error) throw error;
+
+        document.getElementById('editLeafId').value          = leaf.id;
+        document.getElementById('editLeafNumberDisplay').textContent = leaf.leaf_number;
+        document.getElementById('editChequeDate').value      = leaf.cheque_date || '';
+        document.getElementById('editChequeAmount').value    = leaf.amount != null ? leaf.amount : '';
+        document.getElementById('editChequePayee').value     = leaf.payee || '';
+        document.getElementById('editChequeStatus').value    = leaf.status || 'not_issued';
+        document.getElementById('editChequeNotes').value     = leaf.notes || '';
+
+        const container = document.getElementById('chequeLeafEditContainer');
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+        alert('Error loading leaf: ' + err.message);
+    }
+}
+
+// ---- Save changes to a cheque leaf ----
+async function saveChequeLeaf() {
+    const id      = document.getElementById('editLeafId').value;
+    const updates = {
+        cheque_date: document.getElementById('editChequeDate').value || null,
+        amount:      document.getElementById('editChequeAmount').value !== '' ? parseFloat(document.getElementById('editChequeAmount').value) : null,
+        payee:       document.getElementById('editChequePayee').value.trim() || null,
+        status:      document.getElementById('editChequeStatus').value,
+        notes:       document.getElementById('editChequeNotes').value.trim() || null,
+    };
+
+    const submitBtn = document.querySelector('#chequeLeafEditForm button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+
+    try {
+        const { error } = await supabaseClient
+            .from('cheque_leaves')
+            .update(updates)
+            .eq('id', id);
+        if (error) throw error;
+
+        document.getElementById('chequeLeafEditContainer').style.display = 'none';
+        document.getElementById('chequeLeafEditForm').reset();
+        showChequeToast('✅ Cheque leaf updated!');
+
+        const bookId = document.getElementById('chequeBookSelect').value;
+        await loadChequeLeaves(bookId);
+        await loadChequeBooks(); // refresh cards + summary
+    } catch (err) {
+        alert('Error saving leaf: ' + err.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '💾 Save Changes';
+    }
+}
+
+// ---- Delete a cheque book (and all its leaves via cascade) ----
+async function deleteChequeBook(bookId) {
+    if (!checkAdminAccess('delete')) return;
+    if (!confirm('Delete this cheque book and ALL its leaves? This cannot be undone.')) return;
+    try {
+        const { error } = await supabaseClient.from('cheque_books').delete().eq('id', bookId);
+        if (error) throw error;
+
+        // If deleted book was selected in leaves section, reset
+        const bookHidden = document.getElementById('chequeBookSelect');
+        if (bookHidden.value === bookId) {
+            setLogoDropdownValue('bookCustomSelect', '');
+            document.getElementById('chequeLeavesTable').style.display = 'none';
+            document.getElementById('chequeLeavesEmpty').style.display = 'flex';
+            document.getElementById('chequeLeafEditContainer').style.display = 'none';
+        }
+        showChequeToast('🗑️ Cheque book deleted.');
+        await loadChequeBooks();
+    } catch (err) {
+        alert('Error deleting cheque book: ' + err.message);
+    }
+}
+
+// ---- Toast notification ----
+function showChequeToast(msg) {
+    const existing = document.getElementById('chequeToast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'chequeToast';
+    toast.className = 'cheque-toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('cheque-toast-show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('cheque-toast-show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
 }

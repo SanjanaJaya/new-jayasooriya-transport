@@ -3379,3 +3379,687 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
     color: #fff;
     transform: rotate(90deg);
 }
+
+/* =====================================================
+   CHEQUE STATUS MODULE
+   ===================================================== */
+
+/* ── Summary Strip ── */
+.cheque-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+    .cheque-summary-strip {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    .cheque-summary-strip {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.cheque-strip-item {
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--ease-base), box-shadow var(--ease-base);
+    animation: fadeSlideUp 0.4s var(--ease-base) both;
+}
+
+.cheque-strip-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.cheque-strip-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.cheque-strip-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.cheque-strip-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+/* Strip accent colours */
+.cheque-strip-paid   { border-color: rgba(0,179,126,0.35); }
+.cheque-strip-paid .cheque-strip-value { color: var(--green); }
+
+.cheque-strip-stopped { border-color: rgba(0,114,206,0.35); }
+.cheque-strip-stopped .cheque-strip-value { color: var(--blue); }
+
+.cheque-strip-returned { border-color: rgba(209,0,31,0.35); }
+.cheque-strip-returned .cheque-strip-value { color: var(--brand-red); }
+
+.cheque-strip-notissued { border-color: rgba(138,146,163,0.35); }
+.cheque-strip-notissued .cheque-strip-value { color: var(--text-muted); }
+
+.cheque-strip-issued { border-color: rgba(224,123,0,0.35); }
+.cheque-strip-issued .cheque-strip-value { color: var(--amber); }
+
+/* ── Panel ── */
+.cheque-panel {
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    box-shadow: var(--shadow-sm);
+    animation: fadeSlideUp 0.42s var(--ease-base) both;
+}
+
+.cheque-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px solid var(--surface-border);
+}
+
+.cheque-panel-icon {
+    font-size: 24px;
+}
+
+.cheque-panel-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* ── Cheque Book Cards ── */
+.cheque-books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 16px;
+    margin-top: 6px;
+}
+
+.cheque-no-books {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 24px;
+    text-align: center;
+    background: var(--surface-bg);
+    border-radius: var(--radius-md);
+    border: 1.5px dashed var(--surface-border);
+    grid-column: 1 / -1;
+}
+
+.cheque-book-card {
+    background: var(--surface-raised);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+    animation: scaleIn 0.28s var(--ease-spring) both;
+}
+
+.cheque-book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--brand-red-light);
+}
+
+.cheque-book-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.cheque-book-bank {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cheque-book-emoji {
+    font-size: 32px;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    background: var(--surface-bg);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Real bank logo wrapper — always white background for logo clarity */
+.cheque-book-logo-wrap {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    background: #ffffff;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    transition: box-shadow var(--ease-base), transform var(--ease-base);
+    overflow: hidden;
+}
+
+.cheque-book-logo-wrap:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+    transform: scale(1.05);
+}
+
+.cheque-bank-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.cheque-book-bank-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.cheque-book-range {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.cheque-book-delete-btn {
+    background: rgba(209,0,31,0.08);
+    border: none;
+    color: var(--brand-red);
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all var(--ease-base);
+    flex-shrink: 0;
+}
+
+.cheque-book-delete-btn:hover {
+    background: var(--brand-red);
+    color: #fff;
+    transform: scale(1.1);
+}
+
+/* ── Status pills on book card ── */
+.cheque-book-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cheque-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid transparent;
+}
+
+.cheque-pill-paid      { background: rgba(0,179,126,0.12); color: var(--green);      border-color: rgba(0,179,126,0.30); }
+.cheque-pill-issued    { background: rgba(224,123,0,0.12);  color: var(--amber);       border-color: rgba(224,123,0,0.30); }
+.cheque-pill-stopped   { background: rgba(0,114,206,0.12); color: var(--blue);        border-color: rgba(0,114,206,0.30); }
+.cheque-pill-returned  { background: rgba(209,0,31,0.10);  color: var(--brand-red);   border-color: rgba(209,0,31,0.25); }
+.cheque-pill-notissued { background: rgba(138,146,163,0.10); color: var(--text-muted); border-color: rgba(138,146,163,0.25); }
+
+/* View Leaves button */
+.cheque-book-view-btn {
+    background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--ease-base);
+    box-shadow: var(--shadow-red);
+    width: 100%;
+}
+
+.cheque-book-view-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-red-lg);
+}
+
+.cheque-book-view-btn:active {
+    transform: translateY(0);
+}
+
+/* ── Cheque Leaf Table Row Tinting ── */
+.cheque-leaf-row {
+    transition: background var(--ease-fast);
+}
+
+.cheque-row-paid {
+    background: rgba(0, 179, 126, 0.04);
+}
+
+.cheque-row-paid:hover {
+    background: rgba(0, 179, 126, 0.09) !important;
+}
+
+.cheque-row-stopped {
+    background: rgba(0, 114, 206, 0.04);
+}
+
+.cheque-row-stopped:hover {
+    background: rgba(0, 114, 206, 0.09) !important;
+}
+
+.cheque-row-returned {
+    background: rgba(209, 0, 31, 0.04);
+}
+
+.cheque-row-returned:hover {
+    background: rgba(209, 0, 31, 0.09) !important;
+}
+
+.cheque-row-not_issued {
+    background: transparent;
+}
+
+.cheque-row-issued {
+    background: rgba(224, 123, 0, 0.04);
+}
+
+.cheque-row-issued:hover {
+    background: rgba(224, 123, 0, 0.09) !important;
+}
+
+/* ── Status Badge ── */
+.cheque-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+/* ── Leaf Number in table ── */
+.cheque-leaf-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--brand-red);
+}
+
+/* ── Inline Edit Banner ── */
+.cheque-edit-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(90deg, var(--brand-red-glow), transparent);
+    border-left: 4px solid var(--brand-red);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cheque-edit-banner-label {
+    font-size: 14px;
+}
+
+.cheque-edit-banner-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--brand-red);
+}
+
+/* ── Empty State ── */
+.cheque-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--text-muted);
+    font-size: 15px;
+    text-align: center;
+}
+
+.cheque-empty-icon {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+/* ── Toast Notification ── */
+.cheque-toast {
+    position: fixed;
+    bottom: 90px;
+    right: 28px;
+    background: var(--surface-card);
+    color: var(--text-primary);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 14px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    max-width: 320px;
+}
+
+.cheque-toast.cheque-toast-show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── Dark Mode Adjustments ── */
+body.dark-mode .cheque-book-card {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .cheque-book-emoji {
+    background: var(--surface-bg);
+}
+
+body.dark-mode .cheque-row-paid     { background: rgba(0,179,126,0.06); }
+body.dark-mode .cheque-row-stopped  { background: rgba(0,114,206,0.06); }
+body.dark-mode .cheque-row-returned { background: rgba(209,0,31,0.06); }
+
+body.dark-mode .cheque-edit-banner {
+    background: linear-gradient(90deg, rgba(255,32,64,0.12), transparent);
+}
+
+body.dark-mode .cheque-strip-paid .cheque-strip-value   { color: #2ecc71; }
+body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
+
+/* ── Responsive (mobile) ── */
+@media (max-width: 640px) {
+    .cheque-panel {
+        padding: 18px 16px;
+    }
+
+    .cheque-book-card {
+        padding: 14px 16px;
+    }
+
+    .cheque-books-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =====================================================
+   LOGO DROPDOWN (ldd-*) — custom select with images
+   ===================================================== */
+
+.ldd-container {
+    position: relative;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Trigger button ── */
+.ldd-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface-raised);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--ease-base), box-shadow var(--ease-base);
+    min-height: 46px;
+    user-select: none;
+    outline: none;
+}
+
+.ldd-trigger:hover,
+.ldd-trigger:focus {
+    border-color: var(--brand-red-light);
+    box-shadow: 0 0 0 3px rgba(209,0,31,0.08);
+}
+
+.ldd-trigger.ldd-active {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(209,0,31,0.12);
+}
+
+/* Selected content area */
+.ldd-selected-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.ldd-placeholder {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.ldd-sel-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Chevron */
+.ldd-chevron {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.25s var(--ease-spring);
+}
+
+.ldd-trigger.ldd-active .ldd-chevron {
+    transform: rotate(180deg);
+}
+
+/* ── Dropdown panel ── */
+.ldd-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1200;
+    overflow: hidden;
+    animation: lddFadeIn 0.18s var(--ease-base) both;
+}
+
+.ldd-dropdown.ldd-open {
+    display: block;
+}
+
+@keyframes lddFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Search bar */
+.ldd-search-wrap {
+    padding: 10px 10px 6px;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.ldd-search {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    transition: border-color var(--ease-base);
+    box-sizing: border-box;
+}
+
+.ldd-search:focus {
+    border-color: var(--brand-red-light);
+}
+
+/* Scrollable list */
+.ldd-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-border) transparent;
+}
+
+.ldd-list::-webkit-scrollbar { width: 5px; }
+.ldd-list::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 99px; }
+
+/* ── Each option row ── */
+.ldd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--ease-fast);
+}
+
+.ldd-item:hover {
+    background: var(--surface-raised);
+}
+
+.ldd-item.ldd-item-active {
+    background: rgba(209,0,31,0.07);
+}
+
+.ldd-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Logo / emoji icon boxes ── */
+.ldd-logo-wrap {
+    flex-shrink: 0;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+/* Larger version shown in trigger after selection */
+.ldd-sel-logo {
+    width: 34px !important;
+    height: 34px !important;
+    padding: 4px;
+}
+
+.ldd-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.ldd-emoji-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: var(--surface-bg);
+    border-radius: 6px;
+    border: 1px solid var(--surface-border);
+}
+
+.ldd-sel-emoji {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 20px;
+}
+
+/* ── Dark mode ── */
+body.dark-mode .ldd-trigger {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .ldd-dropdown {
+    background: var(--surface-card);
+}
+
+body.dark-mode .ldd-logo-wrap {
+    /* Keep white background — logos need it */
+    background: #ffffff;
+    border-color: rgba(255,255,255,0.15);
+}
+
+body.dark-mode .ldd-item:hover {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .ldd-search {
+    background: var(--surface-raised);
+}
+

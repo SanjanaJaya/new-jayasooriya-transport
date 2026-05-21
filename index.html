@@ -140,6 +140,14 @@
 
                 <div class="nav-divider"></div>
 
+                <!-- Cheque Status — standalone -->
+                <button class="nav-item" data-page="cheque-status">
+                    <span class="nav-icon">🏦</span>
+                    <span>Cheque Status</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
 
                 <div class="nav-group" id="navGroupStaff">
                     <button class="nav-group-header" data-group="staff" aria-expanded="false">
@@ -550,6 +558,197 @@
                     <div class="performance-section">
                         <h3>📈 Top Performing Vehicles (All-Time)</h3>
                         <div id="topVehicles" class="top-vehicles-grid"></div>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════
+                     CHEQUE STATUS PAGE
+                ═══════════════════════════════════════════════ -->
+                <div id="cheque-status" class="page">
+
+                    <!-- ── SUMMARY STRIP ── -->
+                    <div class="cheque-summary-strip" id="chequeSummaryStrip">
+                        <div class="cheque-strip-item cheque-strip-total">
+                            <span class="cheque-strip-icon">📋</span>
+                            <div>
+                                <div class="cheque-strip-label">Total Leaves</div>
+                                <div class="cheque-strip-value" id="csTotal">0</div>
+                            </div>
+                        </div>
+                        <div class="cheque-strip-item cheque-strip-paid">
+                            <span class="cheque-strip-icon">✅</span>
+                            <div>
+                                <div class="cheque-strip-label">Paid</div>
+                                <div class="cheque-strip-value" id="csPaid">0</div>
+                            </div>
+                        </div>
+                        <div class="cheque-strip-item cheque-strip-stopped">
+                            <span class="cheque-strip-icon">🛑</span>
+                            <div>
+                                <div class="cheque-strip-label">Stopped</div>
+                                <div class="cheque-strip-value" id="csStopped">0</div>
+                            </div>
+                        </div>
+                        <div class="cheque-strip-item cheque-strip-returned">
+                            <span class="cheque-strip-icon">↩️</span>
+                            <div>
+                                <div class="cheque-strip-label">Returned</div>
+                                <div class="cheque-strip-value" id="csReturned">0</div>
+                            </div>
+                        </div>
+                        <div class="cheque-strip-item cheque-strip-notissued">
+                            <span class="cheque-strip-icon">📝</span>
+                            <div>
+                                <div class="cheque-strip-label">Not Issued</div>
+                                <div class="cheque-strip-value" id="csNotIssued">0</div>
+                            </div>
+                        </div>
+                        <div class="cheque-strip-item cheque-strip-issued">
+                            <span class="cheque-strip-icon">🟠</span>
+                            <div>
+                                <div class="cheque-strip-label">Issued</div>
+                                <div class="cheque-strip-value" id="csIssued">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── ADD CHEQUE BOOK ── -->
+                    <div class="cheque-panel">
+                        <div class="cheque-panel-header">
+                            <span class="cheque-panel-icon">📒</span>
+                            <h3 class="cheque-panel-title">Cheque Books</h3>
+                            <button class="btn btn-primary btn-sm" id="toggleAddBookFormBtn">+ Add Cheque Book</button>
+                        </div>
+
+                        <div class="form-container" id="addBookFormContainer" style="display:none;">
+                            <form id="addChequeBookForm">
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:2;">
+                                        <label style="font-size:12px;color:#666;">🏦 Bank Name</label>
+                                        <div class="ldd-container" id="bankCustomSelect">
+                                            <input type="hidden" id="chequeBank">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="chequeLeafFrom" style="font-size:12px;color:#666;">📄 Leaf Number From</label>
+                                        <input type="number" id="chequeLeafFrom" placeholder="e.g. 001" min="1" required>
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="chequeLeafTo" style="font-size:12px;color:#666;">📄 Leaf Number To</label>
+                                        <input type="number" id="chequeLeafTo" placeholder="e.g. 050" min="1" required>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-success">💾 Add Cheque Book</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelAddBookBtn">✖ Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Cheque Book Cards -->
+                        <div id="chequeBooksGrid" class="cheque-books-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- ── CHEQUE LEAVES ── -->
+                    <div class="cheque-panel" style="margin-top:24px;">
+                        <div class="cheque-panel-header">
+                            <span class="cheque-panel-icon">📋</span>
+                            <h3 class="cheque-panel-title">Cheque Leaves</h3>
+                        </div>
+
+                        <!-- Book Selector -->
+                        <div class="dashboard-controls" style="margin-bottom:16px;">
+                            <div class="control-group" style="flex:2;">
+                                <label>📒 Select Cheque Book</label>
+                                <div class="ldd-container" id="bookCustomSelect">
+                                    <input type="hidden" id="chequeBookSelect">
+                                </div>
+                            </div>
+                            <div class="control-group" style="flex:1;">
+                                <label for="chequeStatusFilter">🔍 Filter by Status</label>
+                                <select id="chequeStatusFilter" title="Filter leaves by status">
+                                    <option value="">All Statuses</option>
+                                    <option value="not_issued">⚫ Not Issued</option>
+                                    <option value="issued">🟠 Issued</option>
+                                    <option value="paid">🟢 Paid</option>
+                                    <option value="stopped">🔵 Stopped</option>
+                                    <option value="returned">🔴 Returned / Bounced</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Inline Edit Form -->
+                        <div class="form-container" id="chequeLeafEditContainer" style="display:none;">
+                            <form id="chequeLeafEditForm">
+                                <input type="hidden" id="editLeafId">
+                                <div class="cheque-edit-banner">
+                                    <span class="cheque-edit-banner-label">✏️ Editing Cheque Leaf #</span>
+                                    <span id="editLeafNumberDisplay" class="cheque-edit-banner-num"></span>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="editChequeDate" style="font-size:12px;color:#666;">📅 Cheque Date</label>
+                                        <input type="date" id="editChequeDate">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="editChequeAmount" style="font-size:12px;color:#666;">💰 Amount (LKR)</label>
+                                        <input type="number" id="editChequeAmount" placeholder="0.00" step="0.01" min="0">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:2;">
+                                        <label for="editChequePayee" style="font-size:12px;color:#666;">👤 To Whom (Payee)</label>
+                                        <input type="text" id="editChequePayee" placeholder="Name of person / company">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="editChequeStatus" style="font-size:12px;color:#666;">🔖 Status</label>
+                                        <select id="editChequeStatus">
+                                            <option value="not_issued">⚫ Not Issued</option>
+                                            <option value="issued">🟠 Issued</option>
+                                            <option value="paid">🟢 Paid</option>
+                                            <option value="stopped">🔵 Stopped</option>
+                                            <option value="returned">🔴 Returned / Bounced</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row full">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="editChequeNotes" style="font-size:12px;color:#666;">📝 Notes (Optional)</label>
+                                        <input type="text" id="editChequeNotes" placeholder="Any additional notes...">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-success">💾 Save Changes</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelLeafEditBtn">✖ Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Leaves Table -->
+                        <div class="table-responsive" id="chequeLeavesTableWrap">
+                            <div class="cheque-empty-state" id="chequeLeavesEmpty">
+                                <div class="cheque-empty-icon">🏦</div>
+                                <p>Select a cheque book above to view its leaves.</p>
+                            </div>
+                            <table id="chequeLeavesTable" style="display:none;">
+                                <thead>
+                                    <tr>
+                                        <th>Leaf #</th>
+                                        <th>Cheque Date</th>
+                                        <th>Amount (LKR)</th>
+                                        <th>Payee</th>
+                                        <th>Notes</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="chequeLeavesBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
