@@ -235,6 +235,22 @@
                     <h2 id="pageTitle">Dashboard</h2>
                 </div>
                 <div class="header-right">
+                    <!-- Notification Center -->
+                    <div class="notification-center" id="notificationCenter">
+                        <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Toggle notifications" title="Notifications">
+                            <span class="bell-icon">🔔</span>
+                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-dropdown" id="notificationDropdown" style="display: none;">
+                            <div class="notification-header">
+                                <h3>🔔 Notifications</h3>
+                                <button class="clear-notifications-btn" id="clearNotificationsBtn" title="Clear all temporary/read alerts">Clear All</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-empty">No active notifications</div>
+                            </div>
+                        </div>
+                    </div>
                     <span id="userEmail" class="user-email"></span>
                 </div>
             </header>

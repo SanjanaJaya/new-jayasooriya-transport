@@ -226,6 +226,7 @@ async function initializeApp() {
             showApp();
             setDefaultMonths();
             initServiceTracking(); // Initialize Service Tracking
+            initNotificationCenter(); // Initialize Notification Center
             await loadDashboard();
             preloadAllData(); // Preload other tabs
         } else {
@@ -821,6 +822,7 @@ window.removeTrackedVehicle = async function(baseName) {
                 
             if (error) throw error;
             renderTrackedVehicles();
+            if (typeof loadNotifications === 'function') loadNotifications();
         } catch (e) {
             console.error('Error removing tracked vehicle:', e);
             alert('Failed to remove tracker. Please try again.');
@@ -894,6 +896,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
                 if(metricBox) metricBox.classList.remove('danger');
             }
         }
+        if (typeof loadNotifications === 'function') loadNotifications();
     } catch (e) {
         console.error('Error calculating service KMs for', tracker.base_name, e);
         kmDisplay.textContent = 'Error';
@@ -4016,6 +4019,7 @@ async function loadDriverAdvances() {
         });
 
         await updateAdvanceDriverSelectors();
+        if (typeof loadNotifications === 'function') loadNotifications();
     } catch (error) {
         console.error('Error loading advances:', error.message);
     }
@@ -6492,6 +6496,7 @@ async function saveChequeBook() {
         document.getElementById('addBookFormContainer').style.display = 'none';
         showChequeToast(`✅ Cheque book added! ${leafCount} leaves created.`);
         await loadChequeBooks();
+        if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
         console.error('Error saving cheque book:', err);
         alert('Failed to save cheque book: ' + err.message);
@@ -6788,6 +6793,7 @@ async function saveChequeLeaf() {
         const bookId = document.getElementById('chequeBookSelect').value;
         await loadChequeLeaves(bookId);
         await loadChequeBooks(); // refresh cards + summary
+        if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
         alert('Error saving leaf: ' + err.message);
     } finally {
@@ -6814,6 +6820,7 @@ async function deleteChequeBook(bookId) {
         }
         showChequeToast('🗑️ Cheque book deleted.');
         await loadChequeBooks();
+        if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
         alert('Error deleting cheque book: ' + err.message);
     }
@@ -6833,4 +6840,384 @@ function showChequeToast(msg) {
         toast.classList.remove('cheque-toast-show');
         setTimeout(() => toast.remove(), 400);
     }, 3000);
+}
+
+// ============ UNIFIED NOTIFICATION CENTER ============
+
+// Keep track of active alerts in memory
+let activeAlerts = [];
+
+function initNotificationCenter() {
+    const bellBtn = document.getElementById('notificationBellBtn');
+    const dropdown = document.getElementById('notificationDropdown');
+    const clearBtn = document.getElementById('clearNotificationsBtn');
+
+    if (!bellBtn || !dropdown) return;
+
+    // Toggle dropdown
+    bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const show = dropdown.style.display === 'none';
+        dropdown.style.display = show ? 'block' : 'none';
+        if (show) {
+            loadNotifications();
+        }
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+        const center = document.getElementById('notificationCenter');
+        if (dropdown.style.display === 'block' && center && !center.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Clear all / dismiss all active alerts
+    if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dismissed = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
+            activeAlerts.forEach(alert => {
+                if (!dismissed.includes(alert.id)) {
+                    dismissed.push(alert.id);
+                }
+            });
+            localStorage.setItem('jtms_dismissed_alerts', JSON.stringify(dismissed));
+            loadNotifications();
+            dropdown.style.display = 'none';
+        });
+    }
+
+    // Initial load of alerts count
+    loadNotifications();
+}
+
+async function loadNotifications() {
+    const badge = document.getElementById('notificationBadge');
+    const list = document.getElementById('notificationList');
+    if (!badge || !list) return;
+
+    const userId = getQueryUserId();
+    if (!userId) return;
+
+    try {
+        // Fetch background vehicles once for service tracking calculations
+        const [{ data: hireV }, { data: commV }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url').eq('user_id', userId),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url').eq('user_id', userId)
+        ]);
+
+        const allHireVehicles = hireV || [];
+        const allCommVehicles = commV || [];
+
+        // Concurrently run alert fetches
+        const [chequeAlerts, serviceAlerts, advanceAlerts] = await Promise.all([
+            fetchChequeAlerts(userId),
+            fetchServiceAlerts(userId, allHireVehicles, allCommVehicles),
+            fetchAdvanceAlerts(userId)
+        ]);
+
+        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts];
+        
+        // Filter out dismissed alerts from localStorage
+        const dismissedIds = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
+        activeAlerts = allAlerts.filter(alert => !dismissedIds.includes(alert.id));
+
+        // Update badge count
+        if (activeAlerts.length > 0) {
+            badge.textContent = activeAlerts.length;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        // Render notifications list
+        list.innerHTML = '';
+        if (activeAlerts.length === 0) {
+            list.innerHTML = '<div class="notification-empty">No active notifications</div>';
+            return;
+        }
+
+        activeAlerts.forEach(alert => {
+            const item = document.createElement('div');
+            item.className = 'notification-item';
+            item.innerHTML = `
+                <div class="notification-item-icon">${alert.icon}</div>
+                <div class="notification-item-content">
+                    <div class="notification-item-title">${alert.title}</div>
+                    <div class="notification-item-desc">${alert.desc}</div>
+                    <span class="notification-item-time">${alert.date ? 'Target Date: ' + alert.date : ''}</span>
+                </div>
+                <button class="remove-tracker-btn" style="padding: 2px 5px; font-size: 10px; margin-left: 8px; border:none; background:none; cursor:pointer;" title="Dismiss alert">✖</button>
+            `;
+
+            // Click listener for navigation
+            item.addEventListener('click', (e) => {
+                // If clicked dismiss button, ignore navigation
+                if (e.target.tagName === 'BUTTON' || e.target.classList.contains('remove-tracker-btn')) return;
+                
+                // Hide dropdown
+                document.getElementById('notificationDropdown').style.display = 'none';
+                
+                // Handle navigation shortcuts
+                if (alert.type === 'cheque') {
+                    currentPage = 'cheque-status';
+                    setActiveNavItem('cheque-status');
+                    switchPage('cheque-status');
+                    setTimeout(() => {
+                        if (alert.bookId) {
+                            selectChequeBook(alert.bookId);
+                        }
+                        document.getElementById('chequeLeavesTable')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 200);
+                } else if (alert.type === 'service') {
+                    currentPage = 'dashboard';
+                    setActiveNavItem('dashboard');
+                    switchPage('dashboard');
+                    setTimeout(() => {
+                        document.getElementById('trackedVehiclesGrid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 200);
+                } else if (alert.type === 'advance') {
+                    currentPage = 'driver-advances';
+                    setActiveNavItem('driver-advances');
+                    switchPage('driver-advances');
+                    setTimeout(() => {
+                        const filterSelect = document.getElementById('advanceDriverFilter');
+                        if (filterSelect) {
+                            filterSelect.value = alert.driverId;
+                            filterSelect.dispatchEvent(new Event('change'));
+                        }
+                        document.getElementById('advancesTable')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 200);
+                }
+            });
+
+            // Individual dismiss click handler
+            const dismissBtn = item.querySelector('button');
+            dismissBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dismissed = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
+                if (!dismissed.includes(alert.id)) {
+                    dismissed.push(alert.id);
+                }
+                localStorage.setItem('jtms_dismissed_alerts', JSON.stringify(dismissed));
+                loadNotifications();
+            });
+
+            list.appendChild(item);
+        });
+    } catch (err) {
+        console.error('Error loading notifications:', err);
+    }
+}
+
+async function fetchChequeAlerts(userId) {
+    try {
+        const [{ data: books }, { data: leaves }] = await Promise.all([
+            supabaseClient.from('cheque_books').select('id, bank_name').eq('user_id', userId),
+            supabaseClient.from('cheque_leaves').select('*').eq('user_id', userId).in('status', ['returned', 'issued'])
+        ]);
+
+        const alerts = [];
+        if (!leaves || !books) return alerts;
+
+        leaves.forEach(leaf => {
+            const book = books.find(b => b.id === leaf.book_id);
+            const bankName = book ? book.bank_name : 'Cheque Book';
+            const amountStr = leaf.amount != null ? 'LKR ' + leaf.amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'LKR 0.00';
+            const payeeName = leaf.payee ? leaf.payee : 'Unknown Payee';
+
+            if (leaf.status === 'returned') {
+                alerts.push({
+                    id: `cheque_returned_${leaf.id}`,
+                    title: `⚠️ Bounced Cheque: ${bankName}`,
+                    desc: `Cheque #${leaf.leaf_number} for ${amountStr} to ${payeeName} is returned.`,
+                    icon: `⚠️`,
+                    type: 'cheque',
+                    bookId: leaf.book_id,
+                    date: leaf.cheque_date || ''
+                });
+            } else if (leaf.status === 'issued' && leaf.cheque_date) {
+                const date = new Date(leaf.cheque_date);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                
+                // Calculate days remaining
+                const diffTime = date - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 7) {
+                    let descText = `Cheque #${leaf.leaf_number} for ${amountStr} to ${payeeName} matures in ${diffDays} days.`;
+                    if (diffDays < 0) {
+                        descText = `Cheque #${leaf.leaf_number} for ${amountStr} to ${payeeName} is overdue (matured on ${leaf.cheque_date}).`;
+                    } else if (diffDays === 0) {
+                        descText = `Cheque #${leaf.leaf_number} for ${amountStr} to ${payeeName} matures today!`;
+                    }
+                    
+                    alerts.push({
+                        id: `cheque_due_${leaf.id}`,
+                        title: `🏦 Cheque Due: ${bankName}`,
+                        desc: descText,
+                        icon: `📅`,
+                        type: 'cheque',
+                        bookId: leaf.book_id,
+                        date: leaf.cheque_date
+                    });
+                }
+            }
+        });
+
+        return alerts;
+    } catch (e) {
+        console.error('Error fetching cheque alerts:', e);
+        return [];
+    }
+}
+
+async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
+    try {
+        const { data: trackers, error } = await supabaseClient
+            .from('service_trackers')
+            .select('*')
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        if (!trackers || trackers.length === 0) return [];
+        
+        const alertPromises = trackers.map(async (tracker) => {
+            const targetHireIds = allHireVehicles
+                .filter(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name))
+                .map(v => v.id);
+                
+            const targetCommIds = allCommVehicles
+                .filter(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name))
+                .map(v => v.id);
+                
+            let totalKm = 0;
+            const queries = [];
+            
+            if (targetHireIds.length > 0) {
+                queries.push(
+                    supabaseClient
+                        .from('hire_to_pay_records')
+                        .select('distance')
+                        .in('vehicle_id', targetHireIds)
+                        .gte('hire_date', tracker.service_date)
+                        .then(res => res.data || [])
+                        .catch(err => { console.error("Error fetching hire_to_pay_records for notification:", err); return []; })
+                );
+            } else {
+                queries.push(Promise.resolve([]));
+            }
+            
+            if (targetCommIds.length > 0) {
+                queries.push(
+                    supabaseClient
+                        .from('commitment_records')
+                        .select('distance')
+                        .in('vehicle_id', targetCommIds)
+                        .gte('hire_date', tracker.service_date)
+                        .then(res => res.data || [])
+                        .catch(err => { console.error("Error fetching commitment_records for notification:", err); return []; })
+                );
+            } else {
+                queries.push(Promise.resolve([]));
+            }
+            
+            queries.push(
+                supabaseClient
+                    .from('other_operation_hires')
+                    .select('distance')
+                    .eq('base_lorry_number', tracker.base_name)
+                    .gte('hire_date', tracker.service_date)
+                    .then(res => res.data || [])
+                    .catch(err => { console.error("Error fetching other_operation_hires for notification:", err); return []; })
+            );
+            
+            const [hireRecords, commRecords, otherOpHires] = await Promise.all(queries);
+            
+            totalKm += hireRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            totalKm += commRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            totalKm += otherOpHires.reduce((sum, r) => sum + (r.distance || 0), 0);
+            
+            const target = tracker.target_kms || 5000;
+            if (totalKm >= target) {
+                return {
+                    id: `service_${tracker.base_name}_${tracker.service_date}`,
+                    title: `🚨 Service Overdue: ${tracker.base_name}`,
+                    desc: `Driven ${totalKm.toLocaleString()} KM since service on ${tracker.service_date} (Limit: ${target.toLocaleString()} KM).`,
+                    icon: `🔧`,
+                    type: 'service',
+                    date: tracker.service_date
+                };
+            }
+            return null;
+        });
+        
+        const results = await Promise.all(alertPromises);
+        return results.filter(a => a !== null);
+    } catch (e) {
+        console.error('Error fetching service alerts:', e);
+        return [];
+    }
+}
+
+async function fetchAdvanceAlerts(userId) {
+    try {
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id, name, basic_salary, salary_type')
+            .eq('user_id', userId)
+            .neq('terminated', true);
+
+        if (!drivers || drivers.length === 0) return [];
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const endDate = `${year}-${month}-${lastDay}`;
+
+        const { data: advances } = await supabaseClient
+            .from('driver_advances')
+            .select('driver_id, amount')
+            .eq('user_id', userId)
+            .gte('advance_date', startDate)
+            .lte('advance_date', endDate);
+
+        const advanceMap = {};
+        advances?.forEach(adv => {
+            const dId = adv.driver_id;
+            advanceMap[dId] = (advanceMap[dId] || 0) + (adv.amount || 0);
+        });
+
+        const alerts = [];
+        drivers.forEach(driver => {
+            const totalAdv = advanceMap[driver.id] || 0;
+            let threshold = 25000;
+            if (driver.salary_type === 'fixed' && driver.basic_salary) {
+                threshold = driver.basic_salary * 0.5;
+            }
+
+            if (totalAdv > threshold) {
+                const totalAdvStr = 'LKR ' + totalAdv.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const thresholdStr = 'LKR ' + threshold.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                alerts.push({
+                    id: `advance_${driver.id}_${year}_${month}`,
+                    title: `💸 High Advance: ${driver.name}`,
+                    desc: `Accumulated ${totalAdvStr} in advances this month, exceeding 50% basic limit (${thresholdStr}).`,
+                    icon: `💵`,
+                    type: 'advance',
+                    driverId: driver.id,
+                    date: startDate
+                });
+            }
+        });
+
+        return alerts;
+    } catch (e) {
+        console.error('Error fetching advance alerts:', e);
+        return [];
+    }
 }
