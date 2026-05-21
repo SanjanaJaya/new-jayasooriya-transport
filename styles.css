@@ -4062,4 +4062,107 @@ body.dark-mode .ldd-item:hover {
 body.dark-mode .ldd-search {
     background: var(--surface-raised);
 }
+
+/* =====================================================
+   CHEQUE FINANCIAL AMOUNT STRIP
+   ===================================================== */
+.cheque-amount-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .cheque-amount-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cheque-amount-card {
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--ease-base), box-shadow var(--ease-base);
+    animation: fadeSlideUp 0.45s var(--ease-base) both;
+}
+
+.cheque-amount-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.cheque-amount-icon {
+    font-size: 26px;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Green paid theme */
+.cheque-amount-card.card-paid {
+    border-left: 4px solid #00B37E;
+}
+.cheque-amount-card.card-paid .cheque-amount-icon {
+    background: rgba(0, 179, 126, 0.1);
+    color: #00B37E;
+}
+
+/* Blue stopped theme */
+.cheque-amount-card.card-stopped {
+    border-left: 4px solid #0072CE;
+}
+.cheque-amount-card.card-stopped .cheque-amount-icon {
+    background: rgba(0, 114, 206, 0.1);
+    color: #0072CE;
+}
+
+/* Red returned theme */
+.cheque-amount-card.card-returned {
+    border-left: 4px solid #D1001F;
+}
+.cheque-amount-card.card-returned .cheque-amount-icon {
+    background: rgba(209, 0, 31, 0.1);
+    color: #D1001F;
+}
+
+.cheque-amount-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cheque-amount-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.cheque-amount-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+body.dark-mode .cheque-amount-card.card-paid .cheque-amount-icon {
+    background: rgba(0, 179, 126, 0.18);
+}
+body.dark-mode .cheque-amount-card.card-stopped .cheque-amount-icon {
+    background: rgba(0, 114, 206, 0.18);
+}
+body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
+    background: rgba(209, 0, 31, 0.18);
+}
 

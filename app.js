@@ -6591,12 +6591,12 @@ async function loadChequeBooks() {
     }
 }
 
-// ---- Summary strip counts (all books) ----
+// ---- Summary strip counts & amount metrics (all books) ----
 async function updateChequeSummaryStrip(uid) {
     try {
         const { data, error } = await supabaseClient
             .from('cheque_leaves')
-            .select('status')
+            .select('status, amount')
             .eq('user_id', uid);
         if (error) throw error;
 
@@ -6613,6 +6613,17 @@ async function updateChequeSummaryStrip(uid) {
         document.getElementById('csStopped').textContent  = stopped;
         document.getElementById('csReturned').textContent = returned;
         document.getElementById('csNotIssued').textContent= notIssued;
+
+        // Financial sum calculations
+        const paidAmt     = data.filter(l => l.status === 'paid').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+        const stoppedAmt  = data.filter(l => l.status === 'stopped').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+        const returnedAmt = data.filter(l => l.status === 'returned').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+
+        const formatLKR = val => 'LKR ' + val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        document.getElementById('amtPaid').textContent     = formatLKR(paidAmt);
+        document.getElementById('amtStopped').textContent  = formatLKR(stoppedAmt);
+        document.getElementById('amtReturned').textContent = formatLKR(returnedAmt);
     } catch (err) {
         console.error('Error updating cheque summary strip:', err);
     }
