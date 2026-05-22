@@ -606,7 +606,7 @@ async function loadDashboard() {
         await loadDailyFuelChart(monthValue);
         
         // NEW: Load Service KMs
-        await calculateServiceKMs();
+        await renderTrackedVehicles();
 
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
@@ -1543,6 +1543,12 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
         }
         
         loadHireRecords();
+        if (typeof renderTrackedVehicles === 'function') {
+            renderTrackedVehicles();
+        }
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
         document.getElementById('hireRecordFormContainer').style.display = 'none';
     } catch (error) {
         alert('Error saving hire record: ' + error.message);
@@ -1767,6 +1773,12 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
         }
         
         loadOtherOperationHires();
+        if (typeof renderTrackedVehicles === 'function') {
+            renderTrackedVehicles();
+        }
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
         document.getElementById('otherOperationHireFormContainer').style.display = 'none';
     } catch (error) {
         alert('Error saving record: ' + error.message);
@@ -2168,6 +2180,12 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
         }
         
         loadCommitmentRecords();
+        if (typeof renderTrackedVehicles === 'function') {
+            renderTrackedVehicles();
+        }
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
         document.getElementById('commitmentRecordFormContainer').style.display = 'none';
     } catch (error) {
         alert('Error saving commitment record: ' + error.message);
