@@ -4370,4 +4370,252 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
         max-width: none;
     }
 }
+
+/* =====================================================
+   VEHICLE PERFORMANCE GROUP STYLES
+   ===================================================== */
+.vehicle-group-section {
+    margin-bottom: 28px;
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--surface-border);
+    padding: 22px;
+    animation: scaleIn 0.35s var(--ease-base) both;
+}
+
+.vehicle-group-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.vehicle-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--surface-border);
+}
+
+.vehicle-group-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.vehicle-group-badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: var(--radius-pill);
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Custom table responsive override inside vehicle groups to avoid double styling */
+.vehicle-group-section .table-responsive {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    border-radius: 0;
+    margin-top: 10px;
+}
+
+.vehicle-group-section table {
+    min-width: 100%;
+}
+
+/* Commitment styling theme */
+.group-commitment {
+    border-left: 4px solid var(--blue);
+}
+.group-commitment .vehicle-group-title {
+    color: var(--blue);
+}
+.group-commitment .vehicle-group-badge {
+    background: var(--blue);
+}
+.group-commitment table thead {
+    background: linear-gradient(135deg, var(--blue) 0%, #1a5b9c 100%);
+}
+
+/* Hire-to-Pay styling theme */
+.group-hire-to-pay {
+    border-left: 4px solid var(--amber);
+}
+.group-hire-to-pay .vehicle-group-title {
+    color: var(--amber);
+}
+.group-hire-to-pay .vehicle-group-badge {
+    background: var(--amber);
+}
+.group-hire-to-pay table thead {
+    background: linear-gradient(135deg, var(--amber) 0%, #a85d00 100%);
+}
+
+/* Other Operations styling theme */
+.group-other-operations {
+    border-left: 4px solid var(--purple);
+}
+.group-other-operations .vehicle-group-title {
+    color: var(--purple);
+}
+.group-other-operations .vehicle-group-badge {
+    background: var(--purple);
+}
+.group-other-operations table thead {
+    background: linear-gradient(135deg, var(--purple) 0%, #5d2596 100%);
+}
+
+/* Dark mode adjustment for group sections and headers */
+body.dark-mode .group-commitment {
+    border-left-color: #3498db;
+}
+body.dark-mode .group-commitment .vehicle-group-title {
+    color: #5bb8ff;
+}
+body.dark-mode .group-commitment .vehicle-group-badge {
+    background: #2980b9;
+}
+body.dark-mode .group-commitment table thead {
+    background: linear-gradient(135deg, #1b3d61 0%, #11273f 100%);
+}
+
+body.dark-mode .group-hire-to-pay {
+    border-left-color: #f39c12;
+}
+body.dark-mode .group-hire-to-pay .vehicle-group-title {
+    color: #ffb84d;
+}
+body.dark-mode .group-hire-to-pay .vehicle-group-badge {
+    background: #d35400;
+}
+body.dark-mode .group-hire-to-pay table thead {
+    background: linear-gradient(135deg, #6b3e09 0%, #462702 100%);
+}
+
+body.dark-mode .group-other-operations {
+    border-left-color: #9b59b6;
+}
+body.dark-mode .group-other-operations .vehicle-group-title {
+    color: #c47fff;
+}
+body.dark-mode .group-other-operations .vehicle-group-badge {
+    background: #8e44ad;
+}
+body.dark-mode .group-other-operations table thead {
+    background: linear-gradient(135deg, #4c206d 0%, #301148 100%);
+}
+
+/* Footer / Totals styling */
+.group-table tfoot tr {
+    background: var(--surface-bg) !important;
+    border-top: 2px solid var(--surface-border);
+}
+.group-table tfoot td {
+    padding: 14px 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+/* =====================================================
+   VEHICLE PERFORMANCE GROUP RESPONSIVE STYLES
+   ===================================================== */
+@media (max-width: 768px) {
+    .performance-section {
+        padding: 16px 12px !important;
+    }
+    
+    .vehicle-group-section {
+        padding: 14px 12px;
+        margin-bottom: 20px;
+        border-radius: var(--radius-md);
+    }
+    
+    .vehicle-group-header {
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+    
+    .vehicle-group-title {
+        font-size: 16px;
+        gap: 8px;
+    }
+    
+    .vehicle-group-badge {
+        font-size: 10px;
+        padding: 4px 10px;
+    }
+    
+    .vehicle-group-section .table-responsive {
+        margin-top: 6px;
+        overflow-x: auto !important;
+    }
+    
+    /* Ensure tables have enough width to scroll cleanly on mobile without squishing columns */
+    .vehicle-group-section table.commitment-table {
+        min-width: 920px !important;
+    }
+    
+    .vehicle-group-section table.hire-to-pay-table {
+        min-width: 820px !important;
+    }
+    
+    .vehicle-group-section table.other-operations-table {
+        min-width: 680px !important;
+    }
+    
+    /* Optimize cell padding and sizes for compact readability */
+    .group-table th {
+        padding: 10px 8px !important;
+        font-size: 11px !important;
+    }
+    
+    .group-table td {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+    
+    .group-table tfoot td {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .performance-section {
+        padding: 14px 8px !important;
+    }
+    
+    .vehicle-group-section {
+        padding: 12px 8px;
+        margin-bottom: 16px;
+    }
+    
+    .vehicle-group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding-bottom: 8px;
+    }
+    
+    .vehicle-group-title {
+        font-size: 15px;
+    }
+    
+    .vehicle-group-badge {
+        font-size: 9px;
+        padding: 3px 8px;
+    }
+}
+
+
 

@@ -2878,10 +2878,22 @@ async function loadVehiclePerformance(monthValue) {
             }
         }
 
-        // Sort by profit (highest first)
-        vehiclesWithData.sort((a, b) => b.profit - a.profit);
+        // Sort by type (Commitment, then Hire-to-Pay, then Other Operation) and then by profit (highest first)
+        const typeOrder = {
+            'Commitment': 1,
+            'Hire-to-Pay': 2,
+            'Other Operation': 3
+        };
+        vehiclesWithData.sort((a, b) => {
+            const orderA = typeOrder[a.type] || 99;
+            const orderB = typeOrder[b.type] || 99;
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            return b.profit - a.profit;
+        });
 
-        // Generate HTML with Classes instead of Inline Styles
+        // Generate HTML with separate sections per vehicle type
         let performanceHtml = '';
         
         if (vehiclesWithData.length === 0) {
@@ -2893,69 +2905,263 @@ async function loadVehiclePerformance(monthValue) {
                 </div>
             `;
         } else {
-            // Using 'table-responsive' class wrapper ensures dark mode background applies correctly
-            performanceHtml = `
-                <div class="table-responsive">
-                    <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>Vehicle</th>
-                                <th>Type</th>
-                                <th>Model</th>
-                                <th>Ownership</th>
-                                <th style="text-align: right;">Total KM</th>
-                                <th style="text-align: center;">KM Progress</th>
-                                <th style="text-align: center;">Hires</th>
-                                <th style="text-align: right;">Total Revenue</th>
-                                <th style="text-align: right;">Fuel Cost</th>
-                                <th style="text-align: right;">Fuel Litres</th>
-                                <th style="text-align: right;">Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
+            // Split by groups
+            const commitmentVehicles = vehiclesWithData.filter(v => v.type === 'Commitment');
+            const hireToPayVehicles = vehiclesWithData.filter(v => v.type === 'Hire-to-Pay');
+            const otherOpVehicles = vehiclesWithData.filter(v => v.type === 'Other Operation');
 
-            vehiclesWithData.forEach(vehicle => {
-                // Adjust profit color for dark/light mode visibility if needed, 
-                // but standard colors usually work on both.
-                const profitColor = vehicle.profit >= 0 ? 'var(--success-green)' : 'var(--primary-red)';
-                
+            // 1. Commitment Section
+            if (commitmentVehicles.length > 0) {
+                const totalKm = commitmentVehicles.reduce((sum, v) => sum + v.totalKm, 0);
+                const totalHires = commitmentVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
+                const totalRevenue = commitmentVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
+                const totalFuel = commitmentVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
+                const totalFuelLitres = commitmentVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
+                const totalProfit = commitmentVehicles.reduce((sum, v) => sum + v.profit, 0);
+
                 performanceHtml += `
-                    <tr>
-                        <td style="font-weight: bold;">${vehicle.number}</td>
-                        <td>${vehicle.type}</td>
-                        <td>${vehicle.model}</td>
-                        <td>${vehicle.ownership}</td>
-                        <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
-                        <td style="min-width:140px;">
-                            ${vehicle.type === 'Commitment' && vehicle.commitmentKmPct !== null ? `
-                                <div style="font-size:11px;color:#7f8c8d;margin-bottom:3px;text-align:center;">
-                                    ${vehicle.totalKm.toFixed(0)} / ${vehicle.kmLimit} km (${vehicle.commitmentKmPct.toFixed(0)}%)
-                                </div>
-                                <div style="background:#e0e0e0;border-radius:6px;height:10px;overflow:hidden;">
-                                    <div style="width:${vehicle.commitmentKmPct}%;height:100%;border-radius:6px;background:${vehicle.commitmentKmPct >= 100 ? '#E74C3C' : vehicle.commitmentKmPct >= 75 ? '#F39C12' : '#27AE60'};transition:width 0.4s;"></div>
-                                </div>
-                            ` : '<span style="color:#bdc3c7;font-size:11px;">—</span>'}
-                        </td>
-                        <td style="text-align: center;">
-                            <span style="background: #3498db; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                ${vehicle.recordsCount}
-                            </span>
-                        </td>
-                        <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
-                        <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
-                        <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
-                        <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                            LKR ${vehicle.profit.toFixed(2)}
-                        </td>
-                    </tr>
+                    <div class="vehicle-group-section group-commitment">
+                        <div class="vehicle-group-header">
+                            <div class="vehicle-group-title">🏢 Commitment Operations</div>
+                            <span class="vehicle-group-badge">${commitmentVehicles.length} Vehicle(s)</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="group-table commitment-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vehicle</th>
+                                        <th>Model</th>
+                                        <th>Ownership</th>
+                                        <th style="text-align: right;">Total KM</th>
+                                        <th style="text-align: center;">KM Progress</th>
+                                        <th style="text-align: center;">Hires</th>
+                                        <th style="text-align: right;">Total Revenue</th>
+                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Litres</th>
+                                        <th style="text-align: right;">Profit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
-            });
+
+                commitmentVehicles.forEach(vehicle => {
+                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
+                    performanceHtml += `
+                        <tr>
+                            <td style="font-weight: bold;">${vehicle.number}</td>
+                            <td>${vehicle.model}</td>
+                            <td>${vehicle.ownership}</td>
+                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="min-width:140px;">
+                                ${vehicle.commitmentKmPct !== null ? `
+                                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-align:center;">
+                                        ${vehicle.totalKm.toFixed(0)} / ${vehicle.kmLimit} km (${vehicle.commitmentKmPct.toFixed(0)}%)
+                                    </div>
+                                    <div style="background:var(--surface-border);border-radius:6px;height:10px;overflow:hidden;">
+                                        <div style="width:${vehicle.commitmentKmPct}%;height:100%;border-radius:6px;background:${vehicle.commitmentKmPct >= 100 ? '#E74C3C' : vehicle.commitmentKmPct >= 75 ? '#F39C12' : '#27AE60'};transition:width 0.4s;"></div>
+                                    </div>
+                                ` : '<span style="color:#bdc3c7;font-size:11px;">—</span>'}
+                            </td>
+                            <td style="text-align: center;">
+                                <span style="background: var(--blue-bg); color: var(--blue); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                    ${vehicle.recordsCount}
+                                </span>
+                            </td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
+                                LKR ${vehicle.profit.toFixed(2)}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                performanceHtml += `
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3">Total</td>
+                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td></td>
+                                        <td style="text-align: center;">
+                                            <span style="background: var(--blue-bg); color: var(--blue); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                                ${totalHires}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
+                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
+                                            LKR ${totalProfit.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 2. Hire-to-Pay Section
+            if (hireToPayVehicles.length > 0) {
+                const totalKm = hireToPayVehicles.reduce((sum, v) => sum + v.totalKm, 0);
+                const totalHires = hireToPayVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
+                const totalRevenue = hireToPayVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
+                const totalFuel = hireToPayVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
+                const totalFuelLitres = hireToPayVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
+                const totalProfit = hireToPayVehicles.reduce((sum, v) => sum + v.profit, 0);
+
+                performanceHtml += `
+                    <div class="vehicle-group-section group-hire-to-pay">
+                        <div class="vehicle-group-header">
+                            <div class="vehicle-group-title">🛣️ Hire-to-Pay Operations</div>
+                            <span class="vehicle-group-badge">${hireToPayVehicles.length} Vehicle(s)</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="group-table hire-to-pay-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vehicle</th>
+                                        <th>Model</th>
+                                        <th>Ownership</th>
+                                        <th style="text-align: right;">Total KM</th>
+                                        <th style="text-align: center;">Hires</th>
+                                        <th style="text-align: right;">Total Revenue</th>
+                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Litres</th>
+                                        <th style="text-align: right;">Profit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                hireToPayVehicles.forEach(vehicle => {
+                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
+                    performanceHtml += `
+                        <tr>
+                            <td style="font-weight: bold;">${vehicle.number}</td>
+                            <td>${vehicle.model}</td>
+                            <td>${vehicle.ownership}</td>
+                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="text-align: center;">
+                                <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                    ${vehicle.recordsCount}
+                                </span>
+                            </td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
+                                LKR ${vehicle.profit.toFixed(2)}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                performanceHtml += `
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3">Total</td>
+                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td style="text-align: center;">
+                                            <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                                ${totalHires}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
+                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
+                                            LKR ${totalProfit.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 3. Other Operations Section
+            if (otherOpVehicles.length > 0) {
+                const totalKm = otherOpVehicles.reduce((sum, v) => sum + v.totalKm, 0);
+                const totalHires = otherOpVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
+                const totalRevenue = otherOpVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
+                const totalFuel = otherOpVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
+                const totalFuelLitres = otherOpVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
+                const totalProfit = otherOpVehicles.reduce((sum, v) => sum + v.profit, 0);
+
+                performanceHtml += `
+                    <div class="vehicle-group-section group-other-operations">
+                        <div class="vehicle-group-header">
+                            <div class="vehicle-group-title">💼 Other Operations</div>
+                            <span class="vehicle-group-badge">${otherOpVehicles.length} Vehicle(s)</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="group-table other-operations-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vehicle</th>
+                                        <th style="text-align: right;">Total KM</th>
+                                        <th style="text-align: center;">Hires</th>
+                                        <th style="text-align: right;">Total Revenue</th>
+                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Litres</th>
+                                        <th style="text-align: right;">Profit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                otherOpVehicles.forEach(vehicle => {
+                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
+                    performanceHtml += `
+                        <tr>
+                            <td style="font-weight: bold;">${vehicle.number}</td>
+                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="text-align: center;">
+                                <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                    ${vehicle.recordsCount}
+                                </span>
+                            </td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
+                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
+                                LKR ${vehicle.profit.toFixed(2)}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                performanceHtml += `
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Total</td>
+                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td style="text-align: center;">
+                                            <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                                ${totalHires}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
+                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
+                                            LKR ${totalProfit.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
 
             performanceHtml += `
-                        </tbody>
-                    </table>
-                </div>
                 <div class="text-muted text-center" style="margin-top: 15px; font-size: 12px; text-align: center;">
                     Showing ${vehiclesWithData.length} vehicle(s) with hire activity in ${monthValue}
                 </div>
@@ -2968,7 +3174,7 @@ async function loadVehiclePerformance(monthValue) {
         console.error('Error loading vehicle performance:', error.message);
         const perfEl = document.getElementById('vehiclePerformance');
         if (perfEl) perfEl.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--primary-red);">
+            <div style="text-align: center; padding: 20px; color: var(--brand-red);">
                 Error loading vehicle performance data
             </div>
         `;
