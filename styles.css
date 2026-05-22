@@ -770,7 +770,7 @@ body.dark-mode .dark-mode-toggle .dark-icon  { display: block; }
     border: 1px solid var(--surface-border);
     margin-bottom: 24px;
     animation: fadeSlideLeft 0.4s var(--ease-base) both;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .date-selector,
@@ -3839,6 +3839,11 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
     position: relative;
     width: 100%;
     font-family: 'DM Sans', sans-serif;
+    z-index: 10;
+}
+
+.ldd-container:focus-within {
+    z-index: 100;
 }
 
 /* ── Trigger button ── */
