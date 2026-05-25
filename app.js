@@ -3391,7 +3391,7 @@ async function loadDashboardCharts() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { display: true, position: 'top' }
                     },
@@ -3428,7 +3428,7 @@ async function loadDashboardCharts() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { display: true, position: 'top' },
                         tooltip: {
@@ -3464,7 +3464,7 @@ async function loadDashboardCharts() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { display: true, position: 'top' }
                     },
@@ -3521,7 +3521,7 @@ async function loadDashboardCharts() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
@@ -4730,6 +4730,7 @@ async function loadAdvancedDashboardStats(monthValue) {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: { 
                         title: { display: true, text: 'Jobs by Distance' },
                         legend: { display: false }
@@ -4802,6 +4803,7 @@ async function loadAdvancedDashboardStats(monthValue) {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: { 
                         title: { display: true, text: 'Fuel Efficiency Trend (Last 6 Months)' }
                     },
@@ -4929,7 +4931,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     title: {
                         display: true,
@@ -5036,7 +5038,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 cutout: '55%',
                 plugins: {
                     title: {
@@ -5164,7 +5166,7 @@ async function loadTopRoutesChart(monthValue) {
             options: {
                 indexAxis: 'y',
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     title: {
                         display: true,
@@ -5282,7 +5284,7 @@ async function loadDailyActivityChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     title: {
                         display: true,
@@ -5445,7 +5447,7 @@ async function loadCostVsRevenueChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     title: {
                         display: true,
@@ -5558,7 +5560,7 @@ async function loadDailyKmChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     title: {
                         display: true,
@@ -5684,7 +5686,7 @@ async function loadDailyFuelChart(monthValue) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     title: {

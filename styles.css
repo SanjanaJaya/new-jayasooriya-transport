@@ -991,7 +991,8 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     margin-bottom: 22px;
     border: 1px solid var(--surface-border);
     animation: fadeSlideUp 0.4s var(--ease-base) both;
-    overflow: hidden;
+    /* overflow:hidden removed — it clips Chart.js tooltips and renders */
+    overflow: visible;
 }
 
 .performance-section h3 {
@@ -1031,16 +1032,22 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     border-radius: var(--radius-md);
     border: 1px solid var(--surface-border);
     position: relative;
-    overflow: hidden;
-    /* Prevent charts from collapsing to 0 height on mobile */
-    min-height: 260px;
+    /* overflow: visible — Chart.js tooltips should not be clipped */
+    overflow: visible;
+    /* Explicit height required when maintainAspectRatio: false */
+    height: 320px;
     box-sizing: border-box;
     width: 100%;
 }
 
+/* Taller wrapper for charts with many horizontal labels (e.g. top towns bar) */
+.chart-wrapper.chart-tall {
+    height: 420px;
+}
+
 .chart-wrapper canvas {
     max-width: 100% !important;
-    height: auto !important;
+    /* Chart.js manages canvas height internally when maintainAspectRatio: false */
     display: block;
 }
 
@@ -3147,8 +3154,10 @@ body.dark-mode .driver-archive-row td {
    ===================================================== */
 .chart-wrapper {
     position: relative;
-    overflow: hidden;
+    /* overflow: visible — Chart.js tooltips and renders should not be clipped */
+    overflow: visible;
     transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+    /* Note: height is set in the CHARTS section above (320px default) */
 }
 
 /* Subtle shimmer accent on top-right */
@@ -3178,7 +3187,8 @@ body.dark-mode .driver-archive-row td {
 
 /* Min height for charts to prevent squishing */
 .chart-wrapper canvas {
-    min-height: 220px;
+    /* min-height set via JS options (maintainAspectRatio: false + explicit height) */
+    /* Do NOT set min-height here — it overrides Chart.js internal sizing */
 }
 
 /* Section header badge accent */
@@ -3212,15 +3222,21 @@ body.dark-mode .driver-archive-row td {
 @media (max-width: 768px) {
     .chart-wrapper {
         padding: 12px 10px;
-        min-height: 240px;
+        /* Explicit height for Chart.js (maintainAspectRatio: false) on mobile */
+        height: 280px;
         /* Full width on mobile */
         width: 100% !important;
         max-width: 100% !important;
+        overflow: visible;
+    }
+
+    /* Taller charts on mobile */
+    .chart-wrapper.chart-tall {
+        height: 380px;
     }
 
     .chart-wrapper canvas {
-        min-height: 200px !important;
-        max-height: 300px !important;
+        /* Let Chart.js control canvas dimensions */
         width: 100% !important;
     }
 
@@ -3229,7 +3245,8 @@ body.dark-mode .driver-archive-row td {
         /* Force single column on phones */
         grid-template-columns: 1fr !important;
         width: 100%;
-        overflow: hidden;
+        /* overflow: visible — clips chart tooltips if hidden */
+        overflow: visible;
     }
 
     /* Remove hover transform on touch devices */
