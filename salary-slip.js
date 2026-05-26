@@ -333,7 +333,25 @@ async function loadDriverSalaryData() {
             isEditMode = false;
             // Clear form for new salary
             document.getElementById('salaryId').value = '';
-            document.getElementById('totalKm').value = '';
+            
+            // Auto-populate Total KM from KM records if available
+            let totalLoggedKm = 0;
+            try {
+                const { data: kmRecords, error: kmError } = await supabaseClient
+                    .from('driver_km_records')
+                    .select('km_amount')
+                    .eq('driver_id', driverId)
+                    .gte('record_date', startDate)
+                    .lte('record_date', endDate);
+                    
+                if (!kmError && kmRecords) {
+                    totalLoggedKm = kmRecords.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0);
+                }
+            } catch (kmErr) {
+                console.error('Error pre-populating KM amount:', kmErr);
+            }
+            
+            document.getElementById('totalKm').value = totalLoggedKm > 0 ? totalLoggedKm.toFixed(2) : '';
             document.getElementById('additionalAllowance').value = 0;
             document.getElementById('otherDeductions').value = currentDeductions.reduce((s, d) => s + (d.amount || 0), 0);
             document.getElementById('tipCount').value = 0;

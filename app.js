@@ -227,6 +227,7 @@ async function initializeApp() {
             setDefaultMonths();
             initServiceTracking(); // Initialize Service Tracking
             initNotificationCenter(); // Initialize Notification Center
+            initDriverKmLog(); // Initialize Driver KM Log
             await loadDashboard();
             preloadAllData(); // Preload other tabs
         } else {
@@ -329,7 +330,8 @@ function setDefaultMonths() {
         'salaryMonth',
         'driverDayOffMonth', // ADDED: New Driver Day Off filter
         'maintenanceMonth',  // ADDED: Lorry Maintenance filter
-        'otherOperationHiresMonth' // ADDED: Other Operation Hires filter
+        'otherOperationHiresMonth', // ADDED: Other Operation Hires filter
+        'driverKmMonthFilter' // ADDED: Driver KM Log filter
     ];
     
     elements.forEach(id => {
@@ -405,6 +407,7 @@ const PAGE_GROUP_MAP = {
     'drivers':               'navGroupStaff',
     'driver-advances':       'navGroupStaff',
     'driver-dayoffs':        'navGroupStaff',
+    'driver-km-log':         'navGroupStaff',
     'driver-salary':         'navGroupStaff',
     'hire-vehicles':         'navGroupFleet',
     'hire-records':          'navGroupFleet',
@@ -490,6 +493,7 @@ function switchPage(page) {
         'commitment-records': 'Commitment Vehicle Hires',
         'commitment-dayoffs': 'Day Offs',
         'driver-dayoffs': 'Staff Day Offs',
+        'driver-km-log': 'Driver KM Log',
         'lorry-maintenance': 'Lorry Maintenance',
         'other-operation-hires': 'Other Operation Hires',
     };
@@ -513,6 +517,7 @@ function switchPage(page) {
     if (page === 'commitment-records') loadCommitmentRecords();
     if (page === 'commitment-dayoffs') loadDayOffs();
     if (page === 'driver-dayoffs') { ensureMonthValue('driverDayOffMonth'); loadDriverDayOffs(); }
+    if (page === 'driver-km-log') { ensureMonthValue('driverKmMonthFilter'); loadDriverKmLogPage(); }
     if (page === 'lorry-maintenance') {
         const mEl = document.getElementById('maintenanceMonth');
         if (mEl && !mEl.value) {
@@ -562,6 +567,10 @@ async function preloadAllData() {
             (async () => {
                 ensureMonthValue('otherOperationHiresMonth');
                 if (typeof loadOtherOperationHires === 'function') await loadOtherOperationHires();
+            })(),
+            (async () => {
+                ensureMonthValue('driverKmMonthFilter');
+                if (typeof loadDriverKmRecords === 'function') await loadDriverKmRecords();
             })()
         ]).then(() => console.log("Background preloading complete."));
     } catch (e) {
@@ -7370,3 +7379,408 @@ async function fetchAdvanceAlerts(userId) {
         return [];
     }
 }
+
+// ============ DRIVER KM TRACKER & PROJECTED SALARY WIDGET ============
+
+function initDriverKmLog() {
+    // Add KM Record button (toggles form)
+    document.getElementById('addDriverKmBtn')?.addEventListener('click', () => {
+        if (!checkAdminAccess('add')) return;
+        const container = document.getElementById('driverKmFormContainer');
+        if (container) {
+            if (container.style.display === 'none') {
+                showDriverKmForm();
+            } else {
+                hideDriverKmForm();
+            }
+        }
+    });
+
+    // Form submit
+    document.getElementById('driverKmForm')?.addEventListener('submit', saveDriverKmRecord);
+
+    // Cancel form
+    document.getElementById('cancelDriverKmBtn')?.addEventListener('click', hideDriverKmForm);
+
+    // Filter changes
+    document.getElementById('driverKmMonthFilter')?.addEventListener('change', () => {
+        loadDriverKmRecords();
+        updateKmSalaryWidget();
+    });
+
+    document.getElementById('driverKmDriverFilter')?.addEventListener('change', () => {
+        loadDriverKmRecords();
+        updateKmSalaryWidget();
+    });
+}
+
+async function updateDriverKmSelectors() {
+    try {
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', getQueryUserId())
+            .neq('terminated', true)
+            .order('name');
+
+        const formSelect = document.getElementById('driverKmDriverSelect');
+        const filterSelect = document.getElementById('driverKmDriverFilter');
+
+        if (formSelect) {
+            const currentVal = formSelect.value;
+            formSelect.innerHTML = '<option value="">Select Driver</option>';
+            drivers?.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                formSelect.appendChild(opt);
+            });
+            if (currentVal) formSelect.value = currentVal;
+        }
+
+        if (filterSelect) {
+            const currentVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">Select a Driver</option>';
+            drivers?.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                filterSelect.appendChild(opt);
+            });
+            if (currentVal) filterSelect.value = currentVal;
+        }
+    } catch (err) {
+        console.error('Error updating driver KM selectors:', err.message);
+    }
+}
+
+function showDriverKmForm(record = null) {
+    const container = document.getElementById('driverKmFormContainer');
+    if (!container) return;
+    
+    container.style.display = 'block';
+    
+    if (record) {
+        document.getElementById('driverKmRecordId').value = record.id;
+        document.getElementById('driverKmDriverSelect').value = record.driver_id;
+        document.getElementById('driverKmDateInput').value = record.record_date;
+        document.getElementById('driverKmAmountInput').value = record.km_amount;
+        document.getElementById('saveDriverKmBtn').textContent = '💾 Update KM Record';
+    } else {
+        document.getElementById('driverKmRecordId').value = '';
+        // Set default driver from filter if selected
+        const filterDriver = document.getElementById('driverKmDriverFilter').value;
+        document.getElementById('driverKmDriverSelect').value = filterDriver || '';
+        
+        // Set default date to today
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        document.getElementById('driverKmDateInput').value = dateStr;
+        document.getElementById('driverKmAmountInput').value = '';
+        document.getElementById('saveDriverKmBtn').textContent = '💾 Save KM Record';
+    }
+    container.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideDriverKmForm() {
+    const container = document.getElementById('driverKmFormContainer');
+    if (container) container.style.display = 'none';
+    document.getElementById('driverKmRecordId').value = '';
+    document.getElementById('driverKmForm').reset();
+}
+
+async function loadDriverKmLogPage() {
+    ensureMonthValue('driverKmMonthFilter');
+    await updateDriverKmSelectors();
+    await loadDriverKmRecords();
+    updateKmSalaryWidget();
+}
+
+async function loadDriverKmRecords() {
+    try {
+        const monthVal = document.getElementById('driverKmMonthFilter')?.value;
+        const driverFilter = document.getElementById('driverKmDriverFilter')?.value;
+
+        const tbody = document.querySelector('#driverKmTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Loading KM records...</td></tr>';
+
+        let query = supabaseClient
+            .from('driver_km_records')
+            .select('*, drivers(name)')
+            .eq('user_id', getQueryUserId());
+
+        if (monthVal) {
+            const [year, month] = monthVal.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            query = query.gte('record_date', startDate).lte('record_date', endDate);
+        }
+
+        if (driverFilter) {
+            query = query.eq('driver_id', driverFilter);
+        }
+
+        const { data, error } = await query.order('record_date', { ascending: false });
+        if (error) throw error;
+
+        tbody.innerHTML = '';
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #7F8C8D;">No KM records found for the selected criteria.</td></tr>';
+            return;
+        }
+
+        data.forEach(rec => {
+            const row = document.createElement('tr');
+            const actionsHtml = userRole === 'viewer' ? '' : `
+                <td class="action-buttons">
+                    <button class="btn btn-edit" onclick="editDriverKmRecord(${rec.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteDriverKmRecord(${rec.id})">Delete</button>
+                </td>
+            `;
+            
+            row.innerHTML = `
+                <td>${rec.drivers?.name || 'Unknown'}</td>
+                <td>${rec.record_date}</td>
+                <td>${parseFloat(rec.km_amount).toFixed(2)} km</td>
+                ${actionsHtml}
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Error loading driver KM records:', err.message);
+    }
+}
+
+async function saveDriverKmRecord(e) {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
+    const recordId = document.getElementById('driverKmRecordId').value;
+    const driverId = document.getElementById('driverKmDriverSelect').value;
+    const recordDate = document.getElementById('driverKmDateInput').value;
+    const kmAmount = parseFloat(document.getElementById('driverKmAmountInput').value);
+
+    if (!driverId || !recordDate || isNaN(kmAmount) || kmAmount <= 0) {
+        alert('Please fill out all fields with valid data.');
+        return;
+    }
+
+    const saveBtn = document.getElementById('saveDriverKmBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+        const payload = {
+            user_id: getQueryUserId(),
+            driver_id: parseInt(driverId),
+            record_date: recordDate,
+            km_amount: kmAmount
+        };
+
+        if (recordId) {
+            const { error } = await supabaseClient
+                .from('driver_km_records')
+                .update(payload)
+                .eq('id', recordId)
+                .eq('user_id', getQueryUserId());
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient
+                .from('driver_km_records')
+                .insert([payload]);
+            if (error) throw error;
+        }
+
+        hideDriverKmForm();
+        await loadDriverKmRecords();
+        updateKmSalaryWidget();
+    } catch (err) {
+        console.error('Error saving driver KM record:', err.message);
+        alert('Failed to save record: ' + err.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save KM Record';
+    }
+}
+
+async function editDriverKmRecord(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('driver_km_records')
+            .select('*')
+            .eq('id', id)
+            .eq('user_id', getQueryUserId())
+            .single();
+
+        if (error) throw error;
+        showDriverKmForm(data);
+    } catch (err) {
+        console.error('Error loading record for edit:', err.message);
+        alert('Error: ' + err.message);
+    }
+}
+
+async function deleteDriverKmRecord(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (!confirm('Are you sure you want to delete this KM record?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('driver_km_records')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', getQueryUserId());
+
+        if (error) throw error;
+        await loadDriverKmRecords();
+        updateKmSalaryWidget();
+    } catch (err) {
+        console.error('Error deleting record:', err.message);
+        alert('Failed to delete: ' + err.message);
+    }
+}
+
+async function updateKmSalaryWidget() {
+    const widget = document.getElementById('kmSalaryWidget');
+    if (!widget) return;
+
+    const driverId = document.getElementById('driverKmDriverFilter')?.value;
+    const monthVal = document.getElementById('driverKmMonthFilter')?.value;
+
+    if (!driverId || !monthVal) {
+        widget.style.display = 'none';
+        widget.innerHTML = '';
+        return;
+    }
+
+    try {
+        widget.style.display = 'flex';
+        widget.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; text-align: center; width: 100%;">Calculating salary projection...</div>';
+
+        const { data: driver, error: driverError } = await supabaseClient
+            .from('drivers')
+            .select('*')
+            .eq('id', driverId)
+            .eq('user_id', getQueryUserId())
+            .single();
+
+        if (driverError) throw driverError;
+
+        const [year, month] = monthVal.split('-');
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+        const { data: kmRecords, error: kmError } = await supabaseClient
+            .from('driver_km_records')
+            .select('km_amount')
+            .eq('driver_id', driverId)
+            .gte('record_date', startDate)
+            .lte('record_date', endDate);
+
+        if (kmError) throw kmError;
+
+        const totalKm = kmRecords?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
+
+        const { data: advances, error: advError } = await supabaseClient
+            .from('driver_advances')
+            .select('amount')
+            .eq('driver_id', driverId)
+            .gte('advance_date', startDate)
+            .lte('advance_date', endDate);
+
+        if (advError) throw advError;
+        const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
+
+        const { data: deductions, error: dedError } = await supabaseClient
+            .from('staff_deductions')
+            .select('amount')
+            .eq('driver_id', driverId)
+            .eq('salary_month', monthVal);
+
+        const totalDeductions = deductions?.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) || 0;
+
+        const isPerTip = driver.salary_type === 'per_tip';
+        let html = '';
+
+        if (isPerTip) {
+            const rate = driver.per_tip_charge || 0;
+            html = `
+                <div class="km-widget-main">
+                    <div class="km-widget-title">Projected Salary Card (Per Tip)</div>
+                    <div class="km-widget-driver-name">${driver.name}</div>
+                    <div class="km-widget-month">📆 ${monthVal}</div>
+                </div>
+                <div class="km-widget-details">
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Total Distance</span>
+                        <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+                    </div>
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Salary Type</span>
+                        <span class="km-widget-detail-value highlight-amber">Per Tip</span>
+                    </div>
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Rate / Tip</span>
+                        <span class="km-widget-detail-value">LKR ${rate.toFixed(2)}</span>
+                    </div>
+                    <div class="km-widget-detail-card km-widget-net-salary-card">
+                        <span class="km-widget-detail-label">Total Mileage Logged</span>
+                        <span class="km-widget-detail-value">${totalKm.toFixed(0)} KM</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            const basicSalary = driver.basic_salary || 0;
+            const kmLimit = driver.km_limit || 0;
+            const extraKmRate = driver.extra_km_rate || 0;
+
+            const extraKm = Math.max(0, totalKm - kmLimit);
+            const extraKmSalary = extraKm * extraKmRate;
+            const grossSalary = basicSalary + extraKmSalary;
+            const netSalary = grossSalary - totalAdvances - totalDeductions;
+
+            html = `
+                <div class="km-widget-main">
+                    <div class="km-widget-title">Projected Salary Card (Mileage Log)</div>
+                    <div class="km-widget-driver-name">${driver.name}</div>
+                    <div class="km-widget-month">📆 ${monthVal}</div>
+                </div>
+                <div class="km-widget-details">
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Total Distance</span>
+                        <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+                    </div>
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Basic Salary</span>
+                        <span class="km-widget-detail-value">LKR ${basicSalary.toFixed(2)}</span>
+                    </div>
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Extra KM (Rate)</span>
+                        <span class="km-widget-detail-value highlight-amber">${extraKm.toFixed(2)} km (LKR ${extraKmRate}/km)</span>
+                    </div>
+                    <div class="km-widget-detail-card">
+                        <span class="km-widget-detail-label">Advances & Deds</span>
+                        <span class="km-widget-detail-value highlight-purple">LKR ${(totalAdvances + totalDeductions).toFixed(2)}</span>
+                    </div>
+                    <div class="km-widget-detail-card km-widget-net-salary-card">
+                        <span class="km-widget-detail-label">Est. Net Salary</span>
+                        <span class="km-widget-detail-value">LKR ${netSalary.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        widget.innerHTML = html;
+    } catch (err) {
+        console.error('Error updating salary widget:', err.message);
+        widget.innerHTML = `<div style="color: var(--brand-red); font-size: 14px; text-align: center; width: 100%;">Failed to load salary widget: ${err.message}</div>`;
+    }
+}
+
+window.editDriverKmRecord = editDriverKmRecord;
+window.deleteDriverKmRecord = deleteDriverKmRecord;
