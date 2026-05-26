@@ -7884,13 +7884,15 @@ async function loadDriverPerformance(monthValue) {
             { data: kmRecords, error: kmError },
             { data: advances, error: advError },
             { data: deductions, error: dedError },
-            { data: dayOffs, error: dayOffError }
+            { data: dayOffs, error: dayOffError },
+            { data: savedSalaries, error: salaryError }
         ] = await Promise.all([
             supabaseClient.from('drivers').select('*').eq('user_id', currentQueryUserId).neq('terminated', true),
             supabaseClient.from('driver_km_records').select('*').eq('user_id', currentQueryUserId).gte('record_date', startDate).lte('record_date', endDate),
             supabaseClient.from('driver_advances').select('*').eq('user_id', currentQueryUserId).gte('advance_date', startDate).lte('advance_date', endDate),
             supabaseClient.from('staff_deductions').select('*').eq('user_id', currentQueryUserId).eq('salary_month', monthValue),
-            supabaseClient.from('driver_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate).lte('day_off_date', endDate)
+            supabaseClient.from('driver_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate).lte('day_off_date', endDate),
+            supabaseClient.from('driver_salary').select('*').eq('user_id', currentQueryUserId).eq('salary_month', monthValue)
         ]);
 
         if (driverError) throw driverError;
@@ -7898,6 +7900,7 @@ async function loadDriverPerformance(monthValue) {
         if (advError) throw advError;
         if (dedError) throw dedError;
         if (dayOffError) throw dayOffError;
+        if (salaryError) console.error('Error fetching driver salaries:', salaryError);
 
         const tableDiv = document.getElementById('driverPerformance');
         if (!tableDiv) return;
@@ -7930,6 +7933,11 @@ async function loadDriverPerformance(monthValue) {
             dayOffByDriver[d.driver_id] = (dayOffByDriver[d.driver_id] || 0) + parseFloat(d.deduction_amount || 0);
         });
 
+        const savedSalaryMap = {};
+        savedSalaries?.forEach(s => {
+            savedSalaryMap[s.driver_id] = s;
+        });
+
         // Sort drivers by total KM logged descending
         driversOnly.sort((a, b) => {
             const kmA = kmByDriver[a.id] || 0;
@@ -7945,6 +7953,7 @@ async function loadDriverPerformance(monthValue) {
                         <th style="padding: 12px; text-align: left;">Driver</th>
                         <th style="padding: 12px; text-align: left;">Salary Type</th>
                         <th style="padding: 12px; text-align: right;">Total KM Logged</th>
+                        <th style="padding: 12px; text-align: right;">Full Salary</th>
                         <th style="padding: 12px; text-align: right;">Advances</th>
                         <th style="padding: 12px; text-align: right;">Deductions</th>
                         <th style="padding: 12px; text-align: right; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">Projected Net Salary</th>
@@ -7972,6 +7981,7 @@ async function loadDriverPerformance(monthValue) {
 
             let advText = '-';
             let dedText = '-';
+            let fullSalaryText = '-';
             let netSalaryText = '-';
 
             if (!skipSalary) {
@@ -7997,17 +8007,25 @@ async function loadDriverPerformance(monthValue) {
                 }
                 dedText = `LKR ${totalDed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${dedDetails}`;
 
+                const savedSalary = savedSalaryMap[driver.id];
                 const isPerTip = driver.salary_type === 'per_tip';
-                if (!isPerTip) {
+
+                if (savedSalary) {
+                    fullSalaryText = `LKR ${savedSalary.gross_salary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    netSalaryText = `LKR ${savedSalary.net_salary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                } else if (!isPerTip) {
                     const basicSalary = driver.basic_salary || 0;
                     const extraKmRate = driver.extra_km_rate || 0;
                     const extraKm = Math.max(0, totalKm - kmLimit);
                     const extraKmSalary = extraKm * extraKmRate;
                     const grossSalary = basicSalary + extraKmSalary;
                     const netSalary = grossSalary - totalAdv - totalDed;
+                    
+                    fullSalaryText = `LKR ${grossSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     netSalaryText = `LKR ${netSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 } else {
                     const rate = driver.per_tip_charge || 0;
+                    fullSalaryText = `Per Tip (LKR ${rate.toFixed(2)})`;
                     netSalaryText = `Per Tip (LKR ${rate.toFixed(2)})`;
                 }
             }
@@ -8023,6 +8041,7 @@ async function loadDriverPerformance(monthValue) {
                     <td style="padding: 12px; font-weight: 600;">${driver.name}</td>
                     <td style="padding: 12px;">${salaryTypeBadge}</td>
                     <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--blue);">${totalKm.toFixed(2)} km</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 600; color: ${skipSalary ? 'var(--text-secondary)' : 'var(--blue)'};">${fullSalaryText}</td>
                     <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e74c3c'};">${advText}</td>
                     <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e67e22'};">${dedText}</td>
                     <td style="padding: 12px; text-align: right; font-weight: 700; color: ${skipSalary ? 'var(--text-secondary)' : 'var(--green)'};">${netSalaryText}</td>
