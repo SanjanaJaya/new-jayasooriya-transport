@@ -493,7 +493,7 @@ function switchPage(page) {
         'commitment-records': 'Commitment Vehicle Hires',
         'commitment-dayoffs': 'Day Offs',
         'driver-dayoffs': 'Staff Day Offs',
-        'driver-km-log': 'Driver KM Log',
+        'driver-km-log': "Driver's KM Log",
         'lorry-maintenance': 'Lorry Maintenance',
         'other-operation-hires': 'Other Operation Hires',
     };
@@ -597,6 +597,7 @@ async function loadDashboard() {
         await Promise.all([
             loadDashboardData(monthValue),
             loadVehiclePerformance(monthValue), 
+            loadDriverPerformance(monthValue),
             loadDashboardCharts(),
             loadAllTimeStatistics(),
             loadFleetOverview(),
@@ -7418,10 +7419,12 @@ async function updateDriverKmSelectors() {
     try {
         const { data: drivers } = await supabaseClient
             .from('drivers')
-            .select('id, name')
+            .select('id, name, role')
             .eq('user_id', getQueryUserId())
             .neq('terminated', true)
             .order('name');
+
+        const driversOnly = drivers?.filter(d => (d.role || '').toLowerCase() === 'driver') || [];
 
         const formSelect = document.getElementById('driverKmDriverSelect');
         const filterSelect = document.getElementById('driverKmDriverFilter');
@@ -7429,7 +7432,7 @@ async function updateDriverKmSelectors() {
         if (formSelect) {
             const currentVal = formSelect.value;
             formSelect.innerHTML = '<option value="">Select Driver</option>';
-            drivers?.forEach(d => {
+            driversOnly.forEach(d => {
                 const opt = document.createElement('option');
                 opt.value = d.id;
                 opt.textContent = d.name;
@@ -7441,7 +7444,7 @@ async function updateDriverKmSelectors() {
         if (filterSelect) {
             const currentVal = filterSelect.value;
             filterSelect.innerHTML = '<option value="">Select a Driver</option>';
-            drivers?.forEach(d => {
+            driversOnly.forEach(d => {
                 const opt = document.createElement('option');
                 opt.value = d.id;
                 opt.textContent = d.name;
@@ -7651,7 +7654,7 @@ async function updateKmSalaryWidget() {
     const driverId = document.getElementById('driverKmDriverFilter')?.value;
     const monthVal = document.getElementById('driverKmMonthFilter')?.value;
 
-    if (!driverId || !monthVal) {
+    if (!monthVal) {
         widget.style.display = 'none';
         widget.innerHTML = '';
         return;
@@ -7659,126 +7662,384 @@ async function updateKmSalaryWidget() {
 
     try {
         widget.style.display = 'flex';
-        widget.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; text-align: center; width: 100%;">Calculating salary projection...</div>';
-
-        const { data: driver, error: driverError } = await supabaseClient
-            .from('drivers')
-            .select('*')
-            .eq('id', driverId)
-            .eq('user_id', getQueryUserId())
-            .single();
-
-        if (driverError) throw driverError;
+        widget.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; text-align: center; width: 100%;">Calculating mileage summary...</div>';
 
         const [year, month] = monthVal.split('-');
         const startDate = `${year}-${month}-01`;
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        const { data: kmRecords, error: kmError } = await supabaseClient
-            .from('driver_km_records')
-            .select('km_amount')
-            .eq('driver_id', driverId)
-            .gte('record_date', startDate)
-            .lte('record_date', endDate);
+        if (!driverId) {
+            // Display summary cards for EACH active driver's KM amount
+            const [
+                { data: drivers, error: driverError },
+                { data: kmRecords, error: kmError }
+            ] = await Promise.all([
+                supabaseClient.from('drivers').select('id, name, role, salary_type, per_tip_charge').eq('user_id', getQueryUserId()).neq('terminated', true).order('name'),
+                supabaseClient.from('driver_km_records').select('driver_id, km_amount').eq('user_id', getQueryUserId()).gte('record_date', startDate).lte('record_date', endDate)
+            ]);
 
-        if (kmError) throw kmError;
+            if (driverError) throw driverError;
+            if (kmError) throw kmError;
 
-        const totalKm = kmRecords?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
+            const driversOnly = drivers?.filter(d => (d.role || '').toLowerCase() === 'driver') || [];
 
-        const { data: advances, error: advError } = await supabaseClient
-            .from('driver_advances')
-            .select('amount')
-            .eq('driver_id', driverId)
-            .gte('advance_date', startDate)
-            .lte('advance_date', endDate);
+            const kmByDriver = {};
+            kmRecords?.forEach(r => {
+                kmByDriver[r.driver_id] = (kmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
+            });
 
-        if (advError) throw advError;
-        const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
+            if (driversOnly.length === 0) {
+                widget.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; text-align: center; width: 100%;">No active drivers found.</div>';
+                return;
+            }
 
-        const { data: deductions, error: dedError } = await supabaseClient
-            .from('staff_deductions')
-            .select('amount')
-            .eq('driver_id', driverId)
-            .eq('salary_month', monthVal);
+            let html = `
+                <div style="width: 100%;">
+                    <h4 style="margin-bottom: 15px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.25rem;">📊 Driver Mileage Summary for ${monthVal}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+            `;
 
-        const totalDeductions = deductions?.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) || 0;
+            driversOnly.forEach(d => {
+                const totalKm = kmByDriver[d.id] || 0;
+                const isPerTip = d.salary_type === 'per_tip';
+                const salaryTypeBadge = isPerTip
+                    ? '<span style="background:#E67E22;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;">Per Tip</span>'
+                    : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;">Fixed</span>';
 
-        const isPerTip = driver.salary_type === 'per_tip';
-        let html = '';
-
-        if (isPerTip) {
-            const rate = driver.per_tip_charge || 0;
-            html = `
-                <div class="km-widget-main">
-                    <div class="km-widget-title">Projected Salary Card (Per Tip)</div>
-                    <div class="km-widget-driver-name">${driver.name}</div>
-                    <div class="km-widget-month">📆 ${monthVal}</div>
-                </div>
-                <div class="km-widget-details">
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Total Distance</span>
-                        <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+                html += `
+                    <div class="km-widget-detail-card" style="cursor: pointer;" onclick="document.getElementById('driverKmDriverFilter').value='${d.id}'; document.getElementById('driverKmDriverFilter').dispatchEvent(new Event('change'));">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <span style="font-weight: 700; color: var(--text-primary); font-size: 14px;">${d.name}</span>
+                            ${salaryTypeBadge}
+                        </div>
+                        <span class="km-widget-detail-label">KM Accumulated</span>
+                        <span class="km-widget-detail-value highlight-blue" style="font-size: 18px;">${totalKm.toFixed(2)} km</span>
                     </div>
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Salary Type</span>
-                        <span class="km-widget-detail-value highlight-amber">Per Tip</span>
-                    </div>
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Rate / Tip</span>
-                        <span class="km-widget-detail-value">LKR ${rate.toFixed(2)}</span>
-                    </div>
-                    <div class="km-widget-detail-card km-widget-net-salary-card">
-                        <span class="km-widget-detail-label">Total Mileage Logged</span>
-                        <span class="km-widget-detail-value">${totalKm.toFixed(0)} KM</span>
+                `;
+            });
+
+            html += `
                     </div>
                 </div>
             `;
+
+            widget.innerHTML = html;
         } else {
-            const basicSalary = driver.basic_salary || 0;
+            // Display a single driver's detailed Projected Salary Card
+            const { data: driver, error: driverError } = await supabaseClient
+                .from('drivers')
+                .select('*')
+                .eq('id', driverId)
+                .eq('user_id', getQueryUserId())
+                .single();
+
+            if (driverError) throw driverError;
+
+            const [
+                { data: kmRecords, error: kmError },
+                { data: advances, error: advError },
+                { data: deductions, error: dedError },
+                { data: dayOffs, error: dayOffError }
+            ] = await Promise.all([
+                supabaseClient.from('driver_km_records').select('km_amount').eq('driver_id', driverId).gte('record_date', startDate).lte('record_date', endDate),
+                supabaseClient.from('driver_advances').select('amount').eq('driver_id', driverId).gte('advance_date', startDate).lte('advance_date', endDate),
+                supabaseClient.from('staff_deductions').select('amount').eq('driver_id', driverId).eq('salary_month', monthVal),
+                supabaseClient.from('driver_day_offs').select('deduction_amount').eq('driver_id', driverId).gte('day_off_date', startDate).lte('day_off_date', endDate)
+            ]);
+
+            if (kmError) throw kmError;
+            if (advError) throw advError;
+            if (dedError) throw dedError;
+            if (dayOffError) throw dayOffError;
+
+            const totalKm = kmRecords?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
+            const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
+            const baseDeductions = deductions?.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) || 0;
+            const totalDayOffDeductions = dayOffs?.reduce((sum, d) => sum + parseFloat(d.deduction_amount || 0), 0) || 0;
+
             const kmLimit = driver.km_limit || 0;
-            const extraKmRate = driver.extra_km_rate || 0;
+            const isFixed = driver.salary_type === 'fixed';
+            const didNotMeetMinKm = isFixed && (totalKm < kmLimit);
+            const appliedDayOffDeductions = didNotMeetMinKm ? totalDayOffDeductions : 0;
+            const totalDeductions = baseDeductions + appliedDayOffDeductions;
 
-            const extraKm = Math.max(0, totalKm - kmLimit);
-            const extraKmSalary = extraKm * extraKmRate;
-            const grossSalary = basicSalary + extraKmSalary;
-            const netSalary = grossSalary - totalAdvances - totalDeductions;
+            const nameClean = (driver.name || '').trim();
+            const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
 
-            html = `
-                <div class="km-widget-main">
-                    <div class="km-widget-title">Projected Salary Card (Mileage Log)</div>
-                    <div class="km-widget-driver-name">${driver.name}</div>
-                    <div class="km-widget-month">📆 ${monthVal}</div>
-                </div>
-                <div class="km-widget-details">
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Total Distance</span>
-                        <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+            let html = '';
+            if (skipSalary) {
+                html = `
+                    <div class="km-widget-main">
+                        <div class="km-widget-title">Projected Salary Card</div>
+                        <div class="km-widget-driver-name">${driver.name}</div>
+                        <div class="km-widget-month">📆 ${monthVal}</div>
                     </div>
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Basic Salary</span>
-                        <span class="km-widget-detail-value">LKR ${basicSalary.toFixed(2)}</span>
+                    <div class="km-widget-details">
+                        <div class="km-widget-detail-card" style="grid-column: span 2;">
+                            <span class="km-widget-detail-label">Total Distance</span>
+                            <span class="km-widget-detail-value highlight-blue" style="font-size: 20px;">${totalKm.toFixed(2)} km</span>
+                        </div>
+                        <div class="km-widget-detail-card km-widget-net-salary-card" style="grid-column: span 2;">
+                            <span class="km-widget-detail-label">Salary Info</span>
+                            <span class="km-widget-detail-value">Salary Calculation Excluded</span>
+                        </div>
                     </div>
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Extra KM (Rate)</span>
-                        <span class="km-widget-detail-value highlight-amber">${extraKm.toFixed(2)} km (LKR ${extraKmRate}/km)</span>
-                    </div>
-                    <div class="km-widget-detail-card">
-                        <span class="km-widget-detail-label">Advances & Deds</span>
-                        <span class="km-widget-detail-value highlight-purple">LKR ${(totalAdvances + totalDeductions).toFixed(2)}</span>
-                    </div>
-                    <div class="km-widget-detail-card km-widget-net-salary-card">
-                        <span class="km-widget-detail-label">Est. Net Salary</span>
-                        <span class="km-widget-detail-value">LKR ${netSalary.toFixed(2)}</span>
-                    </div>
-                </div>
-            `;
+                `;
+            } else {
+                const isPerTip = driver.salary_type === 'per_tip';
+                if (isPerTip) {
+                    const rate = driver.per_tip_charge || 0;
+                    html = `
+                        <div class="km-widget-main">
+                            <div class="km-widget-title">Projected Salary Card (Per Tip)</div>
+                            <div class="km-widget-driver-name">${driver.name}</div>
+                            <div class="km-widget-month">📆 ${monthVal}</div>
+                        </div>
+                        <div class="km-widget-details">
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Total Distance</span>
+                                <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+                            </div>
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Salary Type</span>
+                                <span class="km-widget-detail-value highlight-amber">Per Tip</span>
+                            </div>
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Rate / Tip</span>
+                                <span class="km-widget-detail-value">LKR ${rate.toFixed(2)}</span>
+                            </div>
+                            <div class="km-widget-detail-card km-widget-net-salary-card">
+                                <span class="km-widget-detail-label">Total Mileage Logged</span>
+                                <span class="km-widget-detail-value">${totalKm.toFixed(0)} KM</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const basicSalary = driver.basic_salary || 0;
+                    const extraKmRate = driver.extra_km_rate || 0;
+
+                    const extraKm = Math.max(0, totalKm - kmLimit);
+                    const extraKmSalary = extraKm * extraKmRate;
+                    const grossSalary = basicSalary + extraKmSalary;
+                    const netSalary = grossSalary - totalAdvances - totalDeductions;
+
+                    html = `
+                        <div class="km-widget-main">
+                            <div class="km-widget-title">Projected Salary Card (Mileage Log)</div>
+                            <div class="km-widget-driver-name">${driver.name}</div>
+                            <div class="km-widget-month">📆 ${monthVal}</div>
+                        </div>
+                        <div class="km-widget-details">
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Total Distance</span>
+                                <span class="km-widget-detail-value highlight-blue">${totalKm.toFixed(2)} km</span>
+                            </div>
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Basic Salary</span>
+                                <span class="km-widget-detail-value">LKR ${basicSalary.toFixed(2)}</span>
+                            </div>
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Extra KM (Rate)</span>
+                                <span class="km-widget-detail-value highlight-amber">${extraKm.toFixed(2)} km (LKR ${extraKmRate}/km)</span>
+                            </div>
+                            <div class="km-widget-detail-card">
+                                <span class="km-widget-detail-label">Advances & Deds</span>
+                                <span class="km-widget-detail-value highlight-purple">LKR ${(totalAdvances + totalDeductions).toFixed(2)}</span>
+                                ${totalDayOffDeductions > 0 ? `
+                                    <span style="font-size: 10px; display: block; margin-top: 4px; color: ${didNotMeetMinKm ? 'var(--brand-red)' : 'var(--green)'}; font-weight: 600;">
+                                        ${didNotMeetMinKm ? `⚠️ LKR ${totalDayOffDeductions.toFixed(2)} Day-Off Deductions Applied (KM < Min)` : `✅ LKR ${totalDayOffDeductions.toFixed(2)} Day-Off Deductions Waived (KM ≥ Min)`}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="km-widget-detail-card km-widget-net-salary-card">
+                                <span class="km-widget-detail-label">Est. Net Salary</span>
+                                <span class="km-widget-detail-value">LKR ${netSalary.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            widget.innerHTML = html;
         }
-
-        widget.innerHTML = html;
     } catch (err) {
         console.error('Error updating salary widget:', err.message);
         widget.innerHTML = `<div style="color: var(--brand-red); font-size: 14px; text-align: center; width: 100%;">Failed to load salary widget: ${err.message}</div>`;
+    }
+}
+
+async function loadDriverPerformance(monthValue) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+        
+        const currentQueryUserId = getQueryUserId();
+
+        const [
+            { data: drivers, error: driverError },
+            { data: kmRecords, error: kmError },
+            { data: advances, error: advError },
+            { data: deductions, error: dedError },
+            { data: dayOffs, error: dayOffError }
+        ] = await Promise.all([
+            supabaseClient.from('drivers').select('*').eq('user_id', currentQueryUserId).neq('terminated', true),
+            supabaseClient.from('driver_km_records').select('*').eq('user_id', currentQueryUserId).gte('record_date', startDate).lte('record_date', endDate),
+            supabaseClient.from('driver_advances').select('*').eq('user_id', currentQueryUserId).gte('advance_date', startDate).lte('advance_date', endDate),
+            supabaseClient.from('staff_deductions').select('*').eq('user_id', currentQueryUserId).eq('salary_month', monthValue),
+            supabaseClient.from('driver_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate).lte('day_off_date', endDate)
+        ]);
+
+        if (driverError) throw driverError;
+        if (kmError) throw kmError;
+        if (advError) throw advError;
+        if (dedError) throw dedError;
+        if (dayOffError) throw dayOffError;
+
+        const tableDiv = document.getElementById('driverPerformance');
+        if (!tableDiv) return;
+
+        const driversOnly = drivers?.filter(d => (d.role || '').toLowerCase() === 'driver') || [];
+
+        if (driversOnly.length === 0) {
+            tableDiv.innerHTML = '<div style="color: #7f8c8d; padding: 20px; text-align: center; background: var(--surface-card); border-radius: var(--radius-md); border: 1px solid var(--surface-border);">No active drivers found.</div>';
+            return;
+        }
+
+        // Group KM records, advances, and deductions by driver_id
+        const kmByDriver = {};
+        kmRecords?.forEach(r => {
+            kmByDriver[r.driver_id] = (kmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
+        });
+
+        const advByDriver = {};
+        advances?.forEach(a => {
+            advByDriver[a.driver_id] = (advByDriver[a.driver_id] || 0) + parseFloat(a.amount || 0);
+        });
+
+        const dedByDriver = {};
+        deductions?.forEach(d => {
+            dedByDriver[d.driver_id] = (dedByDriver[d.driver_id] || 0) + parseFloat(d.amount || 0);
+        });
+
+        const dayOffByDriver = {};
+        dayOffs?.forEach(d => {
+            dayOffByDriver[d.driver_id] = (dayOffByDriver[d.driver_id] || 0) + parseFloat(d.deduction_amount || 0);
+        });
+
+        // Sort drivers by total KM logged descending
+        driversOnly.sort((a, b) => {
+            const kmA = kmByDriver[a.id] || 0;
+            const kmB = kmByDriver[b.id] || 0;
+            return kmB - kmA;
+        });
+
+        let html = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--brand-red); color: white;">
+                        <th style="padding: 12px; text-align: center; width: 80px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);">Rank</th>
+                        <th style="padding: 12px; text-align: left;">Driver</th>
+                        <th style="padding: 12px; text-align: left;">Salary Type</th>
+                        <th style="padding: 12px; text-align: right;">Total KM Logged</th>
+                        <th style="padding: 12px; text-align: right;">Advances</th>
+                        <th style="padding: 12px; text-align: right;">Deductions</th>
+                        <th style="padding: 12px; text-align: right; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">Projected Net Salary</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        driversOnly.forEach((driver, index) => {
+            const totalKm = kmByDriver[driver.id] || 0;
+            const nameClean = (driver.name || '').trim();
+            const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
+
+            const rank = index + 1;
+            let rankDisplay = '';
+            if (rank === 1) {
+                rankDisplay = '🥇 <span style="font-weight: 700; color: #f1c40f;">1</span>';
+            } else if (rank === 2) {
+                rankDisplay = '🥈 <span style="font-weight: 700; color: #7f8c8d;">2</span>';
+            } else if (rank === 3) {
+                rankDisplay = '🥉 <span style="font-weight: 700; color: #d35400;">3</span>';
+            } else {
+                rankDisplay = `<span style="font-weight: 600; color: var(--text-secondary); padding-left: 8px;">${rank}</span>`;
+            }
+
+            let advText = '-';
+            let dedText = '-';
+            let netSalaryText = '-';
+
+            if (!skipSalary) {
+                const totalAdv = advByDriver[driver.id] || 0;
+                const baseDed = dedByDriver[driver.id] || 0;
+                const dayOffDed = dayOffByDriver[driver.id] || 0;
+
+                const kmLimit = driver.km_limit || 0;
+                const isFixed = driver.salary_type === 'fixed';
+                const didNotMeetMinKm = isFixed && (totalKm < kmLimit);
+                const appliedDayOffDeductions = didNotMeetMinKm ? dayOffDed : 0;
+                const totalDed = baseDed + appliedDayOffDeductions;
+                
+                advText = `LKR ${totalAdv.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                
+                let dedDetails = '';
+                if (dayOffDed > 0) {
+                    if (didNotMeetMinKm) {
+                        dedDetails = ` <span title="Includes LKR ${dayOffDed.toFixed(2)} Day-Off Deductions (KM < Min ${kmLimit} km)" style="cursor:help;color:var(--brand-red);font-weight:bold;">⚠️</span>`;
+                    } else {
+                        dedDetails = ` <span title="LKR ${dayOffDed.toFixed(2)} Day-Off Deductions waived (KM ≥ Min ${kmLimit} km)" style="cursor:help;color:var(--green);font-weight:bold;">✅</span>`;
+                    }
+                }
+                dedText = `LKR ${totalDed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${dedDetails}`;
+
+                const isPerTip = driver.salary_type === 'per_tip';
+                if (!isPerTip) {
+                    const basicSalary = driver.basic_salary || 0;
+                    const extraKmRate = driver.extra_km_rate || 0;
+                    const extraKm = Math.max(0, totalKm - kmLimit);
+                    const extraKmSalary = extraKm * extraKmRate;
+                    const grossSalary = basicSalary + extraKmSalary;
+                    const netSalary = grossSalary - totalAdv - totalDed;
+                    netSalaryText = `LKR ${netSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                } else {
+                    const rate = driver.per_tip_charge || 0;
+                    netSalaryText = `Per Tip (LKR ${rate.toFixed(2)})`;
+                }
+            }
+
+            const isPerTip = driver.salary_type === 'per_tip';
+            const salaryTypeBadge = isPerTip
+                ? '<span style="background:#E67E22;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Per Tip</span>'
+                : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Fixed</span>';
+
+            html += `
+                <tr style="border-bottom: 1px solid var(--surface-border);">
+                    <td style="padding: 12px; text-align: center;">${rankDisplay}</td>
+                    <td style="padding: 12px; font-weight: 600;">${driver.name}</td>
+                    <td style="padding: 12px;">${salaryTypeBadge}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--blue);">${totalKm.toFixed(2)} km</td>
+                    <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e74c3c'};">${advText}</td>
+                    <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e67e22'};">${dedText}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 700; color: ${skipSalary ? 'var(--text-secondary)' : 'var(--green)'};">${netSalaryText}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        tableDiv.innerHTML = html;
+    } catch (e) {
+        console.error('Error loading driver performance dashboard section:', e);
+        const tableDiv = document.getElementById('driverPerformance');
+        if (tableDiv) tableDiv.innerHTML = '<div style="color: #e74c3c; padding: 20px; text-align: center;">Error loading driver performance data.</div>';
     }
 }
 
