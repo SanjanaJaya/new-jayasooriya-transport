@@ -241,10 +241,7 @@
                 <div class="header-right">
                     <!-- Last Synced Label -->
                     <span class="last-synced-label" id="lastSyncedLabel">🟢 Live</span>
-                    <!-- Global Search -->
-                    <button class="global-search-btn" id="globalSearchBtn" title="Search anything" aria-label="Global Search">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    </button>
+
                     <!-- Notification Center -->
                     <div class="notification-center" id="notificationCenter">
                         <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Toggle notifications" title="Notifications">
@@ -278,53 +275,6 @@
             <div class="pages-container">
 
                 <div id="dashboard" class="page active">
-                    <!-- TODAY'S KPI STRIP -->
-                    <div class="today-kpi-strip" id="todayKpiStrip">
-                        <div class="today-kpi-card today-kpi-vehicles">
-                            <div class="today-kpi-icon">🚛</div>
-                            <div class="today-kpi-content">
-                                <div class="today-kpi-label">On Road Today</div>
-                                <div class="today-kpi-value" id="todayVehicles">—</div>
-                            </div>
-                        </div>
-                        <div class="today-kpi-card today-kpi-hires">
-                            <div class="today-kpi-icon">🎫</div>
-                            <div class="today-kpi-content">
-                                <div class="today-kpi-label">Hires Today</div>
-                                <div class="today-kpi-value" id="todayHires">—</div>
-                            </div>
-                        </div>
-                        <div class="today-kpi-card today-kpi-revenue">
-                            <div class="today-kpi-icon">💰</div>
-                            <div class="today-kpi-content">
-                                <div class="today-kpi-label">Revenue Today</div>
-                                <div class="today-kpi-value" id="todayRevenue">—</div>
-                            </div>
-                        </div>
-                        <div class="today-kpi-card today-kpi-fuel">
-                            <div class="today-kpi-icon">⛽</div>
-                            <div class="today-kpi-content">
-                                <div class="today-kpi-label">Fuel Used Today</div>
-                                <div class="today-kpi-value" id="todayFuel">—</div>
-                            </div>
-                        </div>
-                        <div class="today-kpi-card today-kpi-dayoff">
-                            <div class="today-kpi-icon">💸</div>
-                            <div class="today-kpi-content">
-                                <div class="today-kpi-label">Day-Off Deductions</div>
-                                <div class="today-kpi-value" id="todayDayOffImpact">—</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SMART ALERTS WIDGET -->
-                    <div class="alerts-widget" id="alertsWidget" style="display:none;">
-                        <div class="alerts-widget-header">
-                            <span class="alerts-widget-title">⚡ Action Required</span>
-                            <span class="alerts-count-badge" id="alertsCountBadge">0</span>
-                        </div>
-                        <div class="alerts-list" id="alertsList"></div>
-                    </div>
 
                     <div class="dashboard-controls">
                         <div class="date-selector">
@@ -441,16 +391,6 @@
                         </div>
                         <div id="trackedVehiclesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
                             <!-- Tracked vehicles will be displayed here -->
-                        </div>
-                    </div>
-
-                    <!-- REVENUE BY SEGMENT CHART -->
-                    <div class="performance-section">
-                        <h3>📊 Revenue by Business Segment (12 Months)</h3>
-                        <div class="charts-container">
-                            <div class="chart-wrapper chart-wide">
-                                <canvas id="revenueSegmentChart"></canvas>
-                            </div>
                         </div>
                     </div>
 
@@ -1657,6 +1597,10 @@
                                 <option value="">All Vehicles</option>
                             </select>
                         </div>
+                        <div class="control-group">
+                            <label for="hireRecordsTownSearch">🏙️ Search by Town</label>
+                            <input type="text" id="hireRecordsTownSearch" placeholder="Search by town..." title="Search by From or To location">
+                        </div>
                     </div>
 
                     <div class="form-container" id="hireRecordFormContainer" style="display:none;">
@@ -1732,6 +1676,10 @@
                             <select id="otherOperationHiresVehicleFilter" title="Filter by Base Vehicle">
                                 <option value="">All Base Vehicles</option>
                             </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="otherOperationHiresTownSearch">🏙️ Search by Town</label>
+                            <input type="text" id="otherOperationHiresTownSearch" placeholder="Search by town..." title="Search by From or To location">
                         </div>
                     </div>
 
@@ -1893,6 +1841,10 @@
                             <select id="commitmentRecordsVehicleFilter" title="Filter by Vehicle">
                                 <option value="">All Vehicles</option>
                             </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="commitmentRecordsTownSearch">🏙️ Search by Town</label>
+                            <input type="text" id="commitmentRecordsTownSearch" placeholder="Search by town..." title="Search by From or To location">
                         </div>
                     </div>
 
@@ -2210,20 +2162,7 @@
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
 
-    <!-- GLOBAL SEARCH MODAL -->
-    <div class="global-search-modal" id="globalSearchModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Global Search">
-        <div class="global-search-overlay" id="globalSearchOverlay"></div>
-        <div class="global-search-container">
-            <div class="global-search-input-row">
-                <svg class="global-search-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Search staff, vehicles, job numbers, routes..." autocomplete="off" aria-label="Search">
-                <button class="global-search-close" id="globalSearchClose" aria-label="Close Search">✕</button>
-            </div>
-            <div class="global-search-results" id="globalSearchResults">
-                <div class="global-search-hint">Type at least 2 characters to search across all data...</div>
-            </div>
-        </div>
-    </div>
+
 </body>
 
 </html>

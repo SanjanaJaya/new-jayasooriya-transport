@@ -1480,6 +1480,7 @@ document.getElementById('cancelHireRecordBtn')?.addEventListener('click', () => 
 
 document.getElementById('hireRecordsMonth')?.addEventListener('change', loadHireRecords);
 document.getElementById('hireRecordsVehicleFilter')?.addEventListener('change', loadHireRecords);
+document.getElementById('hireRecordsTownSearch')?.addEventListener('input', loadHireRecords);
 
 document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1604,7 +1605,17 @@ async function loadHireRecords() {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        data.forEach(record => {
+        const townSearch = document.getElementById('hireRecordsTownSearch')?.value || '';
+        const lowercaseSearch = townSearch.toLowerCase().trim();
+
+        const filteredData = (data || []).filter(record => {
+            if (!lowercaseSearch) return true;
+            const fromLoc = (record.from_location || '').toLowerCase();
+            const toLoc = (record.to_location || '').toLowerCase();
+            return fromLoc.includes(lowercaseSearch) || toLoc.includes(lowercaseSearch);
+        });
+
+        filteredData.forEach(record => {
             const row = document.createElement('tr');
             
             let distanceCharge = 0;
@@ -1745,6 +1756,7 @@ document.getElementById('cancelOtherOperationHireBtn')?.addEventListener('click'
 
 document.getElementById('otherOperationHiresMonth')?.addEventListener('change', loadOtherOperationHires);
 document.getElementById('otherOperationHiresVehicleFilter')?.addEventListener('change', loadOtherOperationHires);
+document.getElementById('otherOperationHiresTownSearch')?.addEventListener('input', loadOtherOperationHires);
 
 document.getElementById('otherOperationHireForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1832,7 +1844,18 @@ async function loadOtherOperationHires() {
             const tbody = document.querySelector('#otherOperationHiresTable tbody');
             if (tbody) {
                 tbody.innerHTML = '';
-                data.forEach(record => {
+                
+                const townSearch = document.getElementById('otherOperationHiresTownSearch')?.value || '';
+                const lowercaseSearch = townSearch.toLowerCase().trim();
+
+                const filteredData = data.filter(record => {
+                    if (!lowercaseSearch) return true;
+                    const fromLoc = (record.from_location || '').toLowerCase();
+                    const toLoc = (record.to_location || '').toLowerCase();
+                    return fromLoc.includes(lowercaseSearch) || toLoc.includes(lowercaseSearch);
+                });
+
+                filteredData.forEach(record => {
                     const row = document.createElement('tr');
                     const actionButtons = userRole === 'viewer' ? '' : `
                         <td class="action-buttons">
@@ -2156,6 +2179,7 @@ document.getElementById('cancelCommitmentRecordBtn')?.addEventListener('click', 
 
 document.getElementById('commitmentRecordsMonth')?.addEventListener('change', loadCommitmentRecords);
 document.getElementById('commitmentRecordsVehicleFilter')?.addEventListener('change', loadCommitmentRecords);
+document.getElementById('commitmentRecordsTownSearch')?.addEventListener('input', loadCommitmentRecords);
 
 document.getElementById('commitmentRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2272,8 +2296,10 @@ async function loadCommitmentRecords() {
         // Track running KM totals per vehicle for display
         const vehicleRunningKm = {};
 
+        const townSearch = document.getElementById('commitmentRecordsTownSearch')?.value || '';
+        const lowercaseSearch = townSearch.toLowerCase().trim();
+
         data.forEach(record => {
-            const row = document.createElement('tr');
             const kmLimit = record.commitment_vehicles.km_limit_per_month;
             const vid = record.vehicle_id;
 
@@ -2284,6 +2310,16 @@ async function loadCommitmentRecords() {
             const monthlyExtraKmCharge = vehicleMonthlyExtraKmCharge[vid] || 0;
             const totalKmForVehicle = vehicleTotalKm[vid] || 0;
             const exceedingKm = Math.max(0, totalKmForVehicle - kmLimit);
+
+            if (lowercaseSearch) {
+                const fromLoc = (record.from_location || '').toLowerCase();
+                const toLoc = (record.to_location || '').toLowerCase();
+                if (!fromLoc.includes(lowercaseSearch) && !toLoc.includes(lowercaseSearch)) {
+                    return; // Skip rendering this row, but running KM increments correctly
+                }
+            }
+
+            const row = document.createElement('tr');
 
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
@@ -8165,7 +8201,6 @@ window.deleteDriverKmRecord = deleteDriverKmRecord;
 // =====================================================================
 
 // ── New chart variables ──
-let revenueSegmentChart = null;
 let advanceTrendChartInstance = null;
 let maintenancePieChartInstance = null;
 let maintenanceVehicleBarChartInstance = null;
@@ -8177,52 +8212,7 @@ function getTodayStr() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// =====================================================================
-// #1  TODAY'S KPI STRIP
-// =====================================================================
-async function loadTodayKpiStrip() {
-    try {
-        const today = getTodayStr();
-        const uid = getQueryUserId();
-        const [
-            { data: hireToday },
-            { data: commitToday },
-            { data: otherOpToday },
-            { data: dayOffToday }
-        ] = await Promise.all([
-            supabaseClient.from('hire_to_pay_records').select('hire_amount, fuel_litres, vehicle_id').eq('user_id', uid).eq('hire_date', today),
-            supabaseClient.from('commitment_records').select('fuel_litres, vehicle_id').eq('user_id', uid).eq('hire_date', today),
-            supabaseClient.from('other_operation_hires').select('hire_amount, fuel_litres').eq('user_id', uid).eq('hire_date', today),
-            supabaseClient.from('driver_day_offs').select('deduction_amount').eq('user_id', uid).eq('day_off_date', today)
-        ]);
 
-        const totalHires = (hireToday?.length || 0) + (commitToday?.length || 0) + (otherOpToday?.length || 0);
-        const totalRevenue = [
-            ...(hireToday || []).map(r => r.hire_amount || 0),
-            ...(otherOpToday || []).map(r => r.hire_amount || 0)
-        ].reduce((s, v) => s + v, 0);
-        const totalFuel = [
-            ...(hireToday || []).map(r => r.fuel_litres || 0),
-            ...(commitToday || []).map(r => r.fuel_litres || 0),
-            ...(otherOpToday || []).map(r => r.fuel_litres || 0)
-        ].reduce((s, v) => s + v, 0);
-        const uniqueVehicles = new Set([
-            ...(hireToday || []).map(r => `h_${r.vehicle_id}`),
-            ...(commitToday || []).map(r => `c_${r.vehicle_id}`)
-        ]).size;
-        const dayOffImpact = (dayOffToday || []).reduce((s, r) => s + (r.deduction_amount || 0), 0);
-
-        const fmt = n => 'LKR ' + n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-        document.getElementById('todayVehicles').textContent = uniqueVehicles;
-        document.getElementById('todayHires').textContent = totalHires;
-        document.getElementById('todayRevenue').textContent = fmt(totalRevenue);
-        document.getElementById('todayFuel').textContent = totalFuel.toFixed(1) + ' L';
-        document.getElementById('todayDayOffImpact').textContent = fmt(dayOffImpact);
-    } catch (e) {
-        console.error('Error loading today KPI strip:', e);
-    }
-}
 
 // ── Last-synced label (updates every 30 s) ──
 let _lastSyncedAt = null;
@@ -8238,149 +8228,8 @@ function startLastSyncedTimer() {
     }, 5000);
 }
 
-// =====================================================================
-// #3  SMART ALERTS WIDGET
-// =====================================================================
-async function loadSmartAlerts() {
-    try {
-        const uid = getQueryUserId();
-        const today = getTodayStr();
-        const in7Days = new Date(); in7Days.setDate(in7Days.getDate() + 7);
-        const in7Str = in7Days.toISOString().slice(0, 10);
 
-        const alerts = [];
 
-        // Cheques due in next 7 days
-        const { data: dueLeaves } = await supabaseClient
-            .from('cheque_leaves')
-            .select('leaf_number, due_date, amount, status')
-            .eq('user_id', uid)
-            .eq('status', 'issued')
-            .gte('due_date', today)
-            .lte('due_date', in7Str);
-        if (dueLeaves && dueLeaves.length > 0) {
-            alerts.push({ severity: 'warning', icon: '🏦', msg: `${dueLeaves.length} cheque(s) due in the next 7 days` });
-        }
-
-        // Vehicles with no commitment records this month
-        const thisMonth = today.slice(0, 7);
-        const [yr, mo] = thisMonth.split('-');
-        const start = `${yr}-${mo}-01`;
-        const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-        const end = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
-
-        const { data: commitVehicles } = await supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', uid).eq('terminated', false);
-        const { data: commitRec } = await supabaseClient.from('commitment_records').select('vehicle_id').eq('user_id', uid).gte('hire_date', start).lte('hire_date', end);
-        const vehiclesWithRecs = new Set((commitRec || []).map(r => r.vehicle_id));
-        const missing = (commitVehicles || []).filter(v => !vehiclesWithRecs.has(v.id));
-        if (missing.length > 0) {
-            alerts.push({ severity: 'info', icon: '📋', msg: `${missing.length} commitment vehicle(s) have no hires recorded this month` });
-        }
-
-        const alertsWidget = document.getElementById('alertsWidget');
-        const alertsList = document.getElementById('alertsList');
-        const badge = document.getElementById('alertsCountBadge');
-
-        if (alerts.length === 0) {
-            if (alertsWidget) alertsWidget.style.display = 'none';
-            return;
-        }
-
-        if (badge) badge.textContent = alerts.length;
-        if (alertsWidget) alertsWidget.style.display = '';
-        if (alertsList) {
-            alertsList.innerHTML = alerts.map(a => `
-                <div class="alert-item alert-${a.severity}">
-                    <span class="alert-icon">${a.icon}</span>
-                    <span class="alert-msg">${a.msg}</span>
-                </div>
-            `).join('');
-        }
-    } catch(e) {
-        console.error('Error loading smart alerts:', e);
-    }
-}
-
-// =====================================================================
-// #2  REVENUE BY SEGMENT — 12-MONTH STACKED BAR CHART
-// =====================================================================
-async function loadRevenueSegmentChart() {
-    try {
-        const uid = getQueryUserId();
-        const now = new Date();
-        const labels = [];
-        const hireData = [], commitData = [], otherData = [];
-
-        const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-01`;
-        const endStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
-
-        const [
-            { data: allHire },
-            { data: allCommit },
-            { data: allOther },
-            { data: allCommVehicles }
-        ] = await Promise.all([
-            supabaseClient.from('hire_to_pay_records').select('hire_date, hire_amount').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
-            supabaseClient.from('commitment_records').select('hire_date, vehicle_id, distance').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
-            supabaseClient.from('other_operation_hires').select('hire_date, hire_amount').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
-            supabaseClient.from('commitment_vehicles').select('id, fixed_monthly_payment, km_limit_per_month, extra_km_charge').eq('user_id', uid)
-        ]);
-
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            labels.push(d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-
-            const hire = (allHire || []).filter(r => r.hire_date?.startsWith(key)).reduce((s, r) => s + (r.hire_amount || 0), 0);
-            hireData.push(hire);
-
-            const commitRecs = (allCommit || []).filter(r => r.hire_date?.startsWith(key));
-            const commitVehicleIds = [...new Set(commitRecs.map(r => r.vehicle_id))];
-            const monthVehicles = (allCommVehicles || []).filter(v => commitVehicleIds.includes(v.id));
-            let commitRev = monthVehicles.reduce((s, v) => s + (v.fixed_monthly_payment || 0), 0);
-            monthVehicles.forEach(v => {
-                const km = commitRecs.filter(r => r.vehicle_id === v.id).reduce((s, r) => s + (r.distance || 0), 0);
-                const exc = Math.max(0, km - (v.km_limit_per_month || 0));
-                commitRev += exc * (v.extra_km_charge || 0);
-            });
-            commitData.push(commitRev);
-
-            const other = (allOther || []).filter(r => r.hire_date?.startsWith(key)).reduce((s, r) => s + (r.hire_amount || 0), 0);
-            otherData.push(other);
-        }
-
-        const ctx = document.getElementById('revenueSegmentChart')?.getContext('2d');
-        if (!ctx) return;
-        if (revenueSegmentChart) revenueSegmentChart.destroy();
-
-        const theme = getChartTheme ? getChartTheme() : {};
-        revenueSegmentChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    { label: 'Hire-to-Pay', data: hireData, backgroundColor: 'rgba(220,20,60,0.75)', borderColor: '#DC143C', borderWidth: 1, borderRadius: 4 },
-                    { label: 'Commitment', data: commitData, backgroundColor: 'rgba(0,179,126,0.75)', borderColor: '#00B37E', borderWidth: 1, borderRadius: 4 },
-                    { label: 'Other Ops', data: otherData, backgroundColor: 'rgba(230,126,34,0.75)', borderColor: '#E67E22', borderWidth: 1, borderRadius: 4 }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { callbacks: { label: ctx => `LKR ${Math.round(ctx.parsed.y).toLocaleString()}` } }
-                },
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, beginAtZero: true, ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` } }
-                }
-            }
-        });
-    } catch(e) {
-        console.error('Error loading revenue segment chart:', e);
-    }
-}
 
 // =====================================================================
 // #13 FLEET UTILIZATION HEATMAP
@@ -8912,120 +8761,7 @@ async function loadChequesDueSoonBanner() {
 }
 
 
-// =====================================================================
-// #17 GLOBAL SEARCH
-// =====================================================================
-(function initGlobalSearch() {
-    const btn = document.getElementById('globalSearchBtn');
-    const modal = document.getElementById('globalSearchModal');
-    const overlay = document.getElementById('globalSearchOverlay');
-    const closeBtn = document.getElementById('globalSearchClose');
-    const input = document.getElementById('globalSearchInput');
-    const results = document.getElementById('globalSearchResults');
 
-    if (!btn || !modal) return;
-
-    let searchTimeout = null;
-
-    function openSearch() {
-        modal.style.display = '';
-        setTimeout(() => { input?.focus(); }, 80);
-    }
-    function closeSearch() {
-        modal.style.display = 'none';
-        if (input) { input.value = ''; }
-        if (results) results.innerHTML = '<div class="global-search-hint">Type at least 2 characters to search across all data...</div>';
-    }
-
-    btn.addEventListener('click', openSearch);
-    closeBtn?.addEventListener('click', closeSearch);
-    overlay?.addEventListener('click', closeSearch);
-
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && modal.style.display !== 'none') closeSearch();
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
-    });
-
-    input?.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        const q = input.value.trim();
-        if (q.length < 2) {
-            results.innerHTML = '<div class="global-search-hint">Type at least 2 characters to search...</div>';
-            return;
-        }
-        results.innerHTML = '<div class="global-search-hint">Searching...</div>';
-        searchTimeout = setTimeout(() => performGlobalSearch(q), 400);
-    });
-})();
-
-async function performGlobalSearch(query) {
-    const results = document.getElementById('globalSearchResults');
-    if (!results) return;
-    const uid = getQueryUserId();
-    const q = query.toLowerCase();
-    const hits = [];
-
-    try {
-        const [
-            { data: drivers },
-            { data: hireVehicles },
-            { data: commitVehicles },
-            { data: hireRecs },
-            { data: commitRecs }
-        ] = await Promise.all([
-            supabaseClient.from('drivers').select('id, name, contact, license_number, role').eq('user_id', uid),
-            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, ownership').eq('user_id', uid),
-            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, ownership').eq('user_id', uid),
-            supabaseClient.from('hire_to_pay_records').select('id, job_number, hire_date, from_location, to_location, hire_amount').eq('user_id', uid).order('hire_date', { ascending: false }).limit(200),
-            supabaseClient.from('commitment_records').select('id, job_number, hire_date, from_location, to_location').eq('user_id', uid).order('hire_date', { ascending: false }).limit(200)
-        ]);
-
-        (drivers || []).forEach(d => {
-            if ([d.name, d.contact, d.license_number, d.role].some(v => v && v.toLowerCase().includes(q))) {
-                hits.push({ category: 'Staff', icon: '👤', title: d.name, sub: `${d.role || 'Driver'} · ${d.contact || ''}`, action: `switchPage('drivers')` });
-            }
-        });
-        (hireVehicles || []).forEach(v => {
-            if ([v.lorry_number, v.vehicle_model, v.ownership].some(val => val && val.toLowerCase().includes(q))) {
-                hits.push({ category: 'Vehicle', icon: '🚛', title: v.lorry_number, sub: `${v.vehicle_model || ''} · ${v.ownership || ''}`, action: `switchPage('hire-vehicles')` });
-            }
-        });
-        (commitVehicles || []).forEach(v => {
-            if ([v.vehicle_number, v.vehicle_model, v.ownership].some(val => val && val.toLowerCase().includes(q))) {
-                hits.push({ category: 'Vehicle', icon: '🏢', title: v.vehicle_number, sub: `${v.vehicle_model || ''} · ${v.ownership || ''}`, action: `switchPage('commitment-vehicles')` });
-            }
-        });
-        (hireRecs || []).forEach(r => {
-            if ([r.job_number, r.from_location, r.to_location].some(v => v && v.toLowerCase().includes(q))) {
-                hits.push({ category: 'Hire Record', icon: '📋', title: `Job ${r.job_number}`, sub: `${r.hire_date} · ${r.from_location} → ${r.to_location} · LKR ${(r.hire_amount || 0).toLocaleString()}`, action: `switchPage('hire-records')` });
-            }
-        });
-        (commitRecs || []).forEach(r => {
-            if ([r.job_number, r.from_location, r.to_location].some(v => v && v.toLowerCase().includes(q))) {
-                hits.push({ category: 'Commitment', icon: '📝', title: `Job ${r.job_number}`, sub: `${r.hire_date} · ${r.from_location} → ${r.to_location}`, action: `switchPage('commitment-records')` });
-            }
-        });
-
-        if (hits.length === 0) {
-            results.innerHTML = `<div class="global-search-empty">No results for "<strong>${query}</strong>"</div>`;
-            return;
-        }
-
-        results.innerHTML = hits.slice(0, 30).map(h => `
-            <div class="global-search-item" onclick="${h.action}; document.getElementById('globalSearchModal').style.display='none';">
-                <span class="global-search-item-icon">${h.icon}</span>
-                <div class="global-search-item-content">
-                    <div class="global-search-item-title">${h.title}</div>
-                    <div class="global-search-item-sub">${h.sub}</div>
-                </div>
-                <span class="global-search-item-cat">${h.category}</span>
-            </div>
-        `).join('');
-    } catch(e) {
-        console.error('Error performing global search:', e);
-        results.innerHTML = '<div class="global-search-empty">Search error. Please try again.</div>';
-    }
-}
 
 // =====================================================================
 // HOOK INTO EXISTING FUNCTIONS
@@ -9054,8 +8790,6 @@ document.getElementById('fleetUtilMonth')?.addEventListener('change', function()
 
 // Called when dashboard loads
 async function loadDashboardExtras() {
-    await loadTodayKpiStrip();
-    await loadSmartAlerts();
     startLastSyncedTimer();
     _lastSyncedAt = Date.now();
 
@@ -9066,8 +8800,6 @@ async function loadDashboardExtras() {
         fleetMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     }
     if (fleetMonthEl?.value) loadFleetUtilizationHeatmap(fleetMonthEl.value);
-
-    await loadRevenueSegmentChart();
 }
 
 // ── Auto-load driver breakdown when staff page loads ──
