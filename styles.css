@@ -1295,6 +1295,14 @@ body.dark-mode .lorry-assign-select {
     box-shadow: var(--shadow-md);
 }
 
+/* Disable slide-out transform on touch/mobile — prevents clipping */
+@media (max-width: 768px) {
+    .detail-metric:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
 .detail-label {
     font-size: 11px;
     font-weight: 700;
@@ -2032,7 +2040,8 @@ input[type="file"]::-webkit-file-upload-button:hover {
    ===================================================== */
 .top-vehicles-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    /* min() keeps the card from exceeding 100% width on very narrow phones */
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     gap: 24px;
     margin-top: 24px;
 }
@@ -3069,6 +3078,40 @@ body.dark-mode .dark-mode-toggle button {
     /* Performance sections mobile */
     .performance-section {
         border-radius: var(--radius-md);
+    }
+
+    /* ── Service Tracking form: stack controls & fix button margin ── */
+    #serviceTrackingSection .dashboard-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #serviceTrackingSection .control-group {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* Remove the desktop top-offset from the Track Vehicle button */
+    #addServiceTrackingBtn {
+        margin-top: 0 !important;
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Tracked vehicle cards: disable hover translate that clips on mobile */
+    .tracked-vehicle-card:hover,
+    .km-widget-detail-card:hover {
+        transform: none !important;
+    }
+
+    /* Report controls: full width on narrow screens */
+    .report-controls {
+        flex-direction: column;
+    }
+
+    .report-controls .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -4263,7 +4306,15 @@ body.dark-mode .ldd-search {
     margin-bottom: 24px;
 }
 
-@media (max-width: 768px) {
+/* Mid-range: 2 columns for cheque amount strip */
+@media (min-width: 481px) and (max-width: 768px) {
+    .cheque-amount-strip {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Small phones: single column */
+@media (max-width: 480px) {
     .cheque-amount-strip {
         grid-template-columns: 1fr;
     }
@@ -4885,6 +4936,36 @@ body.dark-mode .group-other-operations table thead {
     .vehicle-group-badge {
         font-size: 9px;
         padding: 3px 8px;
+    }
+
+    /* Reduce chart height on very small phones */
+    .chart-wrapper {
+        height: 240px !important;
+    }
+
+    .chart-wrapper.chart-tall {
+        height: 300px !important;
+    }
+
+    /* Top vehicles grid — single column on tiny screens */
+    .top-vehicles-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    /* Tighter metric cards on tiny screens */
+    .metric-card {
+        padding: 12px 10px;
+        gap: 10px;
+    }
+
+    .metric-icon {
+        font-size: 26px;
+        min-width: 28px;
+    }
+
+    .metric-value {
+        font-size: 20px;
     }
 }
 
