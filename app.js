@@ -7945,22 +7945,9 @@ async function loadDriverPerformance(monthValue) {
             return kmB - kmA;
         });
 
-        let html = `
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: var(--brand-red); color: white;">
-                        <th style="padding: 12px; text-align: center; width: 80px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);">Rank</th>
-                        <th style="padding: 12px; text-align: left;">Driver</th>
-                        <th style="padding: 12px; text-align: left;">Salary Type</th>
-                        <th style="padding: 12px; text-align: right;">Total KM Logged</th>
-                        <th style="padding: 12px; text-align: right;">Full Salary</th>
-                        <th style="padding: 12px; text-align: right;">Advances</th>
-                        <th style="padding: 12px; text-align: right;">Deductions</th>
-                        <th style="padding: 12px; text-align: right; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">Projected Net Salary</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+        // Build per-driver data for both table rows and mobile cards
+        let tableRows = '';
+        let mobileCards = '';
 
         driversOnly.forEach((driver, index) => {
             const totalKm = kmByDriver[driver.id] || 0;
@@ -7968,21 +7955,31 @@ async function loadDriverPerformance(monthValue) {
             const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
 
             const rank = index + 1;
+            let rankEmoji = '';
             let rankDisplay = '';
             if (rank === 1) {
+                rankEmoji = '🥇';
                 rankDisplay = '🥇 <span style="font-weight: 700; color: #f1c40f;">1</span>';
             } else if (rank === 2) {
+                rankEmoji = '🥈';
                 rankDisplay = '🥈 <span style="font-weight: 700; color: #7f8c8d;">2</span>';
             } else if (rank === 3) {
+                rankEmoji = '🥉';
                 rankDisplay = '🥉 <span style="font-weight: 700; color: #d35400;">3</span>';
             } else {
+                rankEmoji = `#${rank}`;
                 rankDisplay = `<span style="font-weight: 600; color: var(--text-secondary); padding-left: 8px;">${rank}</span>`;
             }
 
             let advText = '-';
             let dedText = '-';
+            let dedTextPlain = '-';
             let fullSalaryText = '-';
             let netSalaryText = '-';
+            let advColor = 'var(--text-secondary)';
+            let dedColor = 'var(--text-secondary)';
+            let salaryColor = 'var(--text-secondary)';
+            let netColor = 'var(--text-secondary)';
 
             if (!skipSalary) {
                 const totalAdv = advByDriver[driver.id] || 0;
@@ -7994,8 +7991,14 @@ async function loadDriverPerformance(monthValue) {
                 const didNotMeetMinKm = isFixed && (totalKm < kmLimit);
                 const appliedDayOffDeductions = didNotMeetMinKm ? dayOffDed : 0;
                 const totalDed = baseDed + appliedDayOffDeductions;
+
+                advColor = '#e74c3c';
+                dedColor = '#e67e22';
+                salaryColor = 'var(--blue)';
+                netColor = 'var(--green)';
                 
                 advText = `LKR ${totalAdv.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                dedTextPlain = `LKR ${totalDed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 
                 let dedDetails = '';
                 if (dayOffDed > 0) {
@@ -8035,23 +8038,84 @@ async function loadDriverPerformance(monthValue) {
                 ? '<span style="background:#E67E22;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Per Tip</span>'
                 : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Fixed</span>';
 
-            html += `
+            // Desktop table row
+            tableRows += `
                 <tr style="border-bottom: 1px solid var(--surface-border);">
                     <td style="padding: 12px; text-align: center;">${rankDisplay}</td>
                     <td style="padding: 12px; font-weight: 600;">${driver.name}</td>
                     <td style="padding: 12px;">${salaryTypeBadge}</td>
                     <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--blue);">${totalKm.toFixed(2)} km</td>
-                    <td style="padding: 12px; text-align: right; font-weight: 600; color: ${skipSalary ? 'var(--text-secondary)' : 'var(--blue)'};">${fullSalaryText}</td>
-                    <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e74c3c'};">${advText}</td>
-                    <td style="padding: 12px; text-align: right; color: ${skipSalary ? 'var(--text-secondary)' : '#e67e22'};">${dedText}</td>
-                    <td style="padding: 12px; text-align: right; font-weight: 700; color: ${skipSalary ? 'var(--text-secondary)' : 'var(--green)'};">${netSalaryText}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 600; color: ${salaryColor};">${fullSalaryText}</td>
+                    <td style="padding: 12px; text-align: right; color: ${advColor};">${advText}</td>
+                    <td style="padding: 12px; text-align: right; color: ${dedColor};">${dedText}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 700; color: ${netColor};">${netSalaryText}</td>
                 </tr>
+            `;
+
+            // Mobile card
+            const rankBadgeStyle = rank === 1
+                ? 'background: linear-gradient(135deg,#f1c40f,#e67e22); color:#fff;'
+                : rank === 2
+                    ? 'background: linear-gradient(135deg,#95a5a6,#7f8c8d); color:#fff;'
+                    : rank === 3
+                        ? 'background: linear-gradient(135deg,#e67e22,#c0392b); color:#fff;'
+                        : 'background: var(--surface-hover); color: var(--text-secondary);';
+
+            mobileCards += `
+                <div class="driver-perf-card">
+                    <div class="driver-perf-card-header">
+                        <span class="driver-perf-rank-badge" style="${rankBadgeStyle}">${rankEmoji}</span>
+                        <div class="driver-perf-name-wrap">
+                            <span class="driver-perf-name">${driver.name}</span>
+                            ${salaryTypeBadge}
+                        </div>
+                    </div>
+                    <div class="driver-perf-card-grid">
+                        <div class="driver-perf-stat">
+                            <span class="driver-perf-stat-label">KM Logged</span>
+                            <span class="driver-perf-stat-value" style="color:var(--blue);">${totalKm.toFixed(2)} km</span>
+                        </div>
+                        <div class="driver-perf-stat">
+                            <span class="driver-perf-stat-label">Full Salary</span>
+                            <span class="driver-perf-stat-value" style="color:${salaryColor};">${fullSalaryText}</span>
+                        </div>
+                        <div class="driver-perf-stat">
+                            <span class="driver-perf-stat-label">Advances</span>
+                            <span class="driver-perf-stat-value" style="color:${advColor};">${advText}</span>
+                        </div>
+                        <div class="driver-perf-stat">
+                            <span class="driver-perf-stat-label">Deductions</span>
+                            <span class="driver-perf-stat-value" style="color:${dedColor};">${dedTextPlain}</span>
+                        </div>
+                    </div>
+                    <div class="driver-perf-net-row">
+                        <span class="driver-perf-net-label">Projected Net Salary</span>
+                        <span class="driver-perf-net-value" style="color:${netColor};">${netSalaryText}</span>
+                    </div>
+                </div>
             `;
         });
 
-        html += `
-                </tbody>
-            </table>
+        // Assemble: desktop table (scrollable) + mobile cards
+        const html = `
+            <div class="driver-perf-table-wrap table-responsive">
+                <table style="width: 100%; border-collapse: collapse; min-width: 700px;">
+                    <thead>
+                        <tr style="background: var(--brand-red); color: white;">
+                            <th style="padding: 12px; text-align: center; width: 80px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);">Rank</th>
+                            <th style="padding: 12px; text-align: left;">Driver</th>
+                            <th style="padding: 12px; text-align: left;">Salary Type</th>
+                            <th style="padding: 12px; text-align: right;">Total KM Logged</th>
+                            <th style="padding: 12px; text-align: right;">Full Salary</th>
+                            <th style="padding: 12px; text-align: right;">Advances</th>
+                            <th style="padding: 12px; text-align: right;">Deductions</th>
+                            <th style="padding: 12px; text-align: right; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">Projected Net Salary</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+            <div class="driver-perf-cards">${mobileCards}</div>
         `;
 
         tableDiv.innerHTML = html;

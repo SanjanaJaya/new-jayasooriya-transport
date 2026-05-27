@@ -5025,5 +5025,151 @@ body.dark-mode .group-other-operations table thead {
 }
 
 
+/* =====================================================
+   DRIVER PERFORMANCE — MOBILE CARD VIEW
+   ===================================================== */
 
+/* Desktop: show table, hide cards */
+.driver-perf-table-wrap { display: block; }
+.driver-perf-cards      { display: none; }
+
+/* Mobile card list container */
+.driver-perf-cards {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Individual card */
+.driver-perf-card {
+    background: var(--surface-bg);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: box-shadow var(--ease-base), transform var(--ease-base);
+}
+
+.driver-perf-card:active {
+    transform: scale(0.99);
+}
+
+/* Card header — rank badge + name + salary type */
+.driver-perf-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.driver-perf-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    flex-shrink: 0;
+    padding: 0 6px;
+}
+
+.driver-perf-name-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.driver-perf-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
+}
+
+/* 2x2 stat grid */
+.driver-perf-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.driver-perf-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 14px;
+    border-right: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+/* Remove right border from every even child */
+.driver-perf-stat:nth-child(even)     { border-right: none; }
+/* Remove bottom border from last two */
+.driver-perf-stat:nth-last-child(-n+2) { border-bottom: none; }
+
+.driver-perf-stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.driver-perf-stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+/* Net salary footer row */
+.driver-perf-net-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
+    gap: 8px;
+}
+
+.driver-perf-net-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: rgba(255, 255, 255, 0.85);
+    flex-shrink: 0;
+}
+
+.driver-perf-net-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    color: #fff !important;
+    text-align: right;
+}
+
+/* Dark mode card tweaks */
+body.dark-mode .driver-perf-card {
+    border-color: var(--surface-border);
+}
+body.dark-mode .driver-perf-card-header {
+    background: var(--surface-raised);
+}
+
+/* Switch views at mobile breakpoint */
+@media (max-width: 768px) {
+    .driver-perf-table-wrap { display: none !important; }
+    .driver-perf-cards      { display: flex !important; }
+}
 
