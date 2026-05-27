@@ -1542,7 +1542,6 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             vehicle_id: vehicleId,
             from_location: document.getElementById('hireFrom').value,
             to_location: document.getElementById('hireTo').value,
-            customer_name: (document.getElementById('hireCustomerName')?.value || '').trim() || null,
             distance: distance,
             fuel_litres: fuelLitres,
             fuel_price_per_litre: fuelPrice,
@@ -1635,7 +1634,6 @@ async function loadHireRecords() {
                 <td>${record.hire_to_pay_vehicles.lorry_number}</td>
                 <td>${record.from_location}</td>
                 <td>${record.to_location}</td>
-                <td><span style="font-size:12px;color:var(--text-muted);">${record.customer_name || '—'}</span></td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
                 <td><small>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Hrs: ${record.waiting_hours}</small></td>
@@ -1708,7 +1706,6 @@ async function editHireRecord(id) {
         document.getElementById('hireToPayVehicle').value = data.vehicle_id;
         document.getElementById('hireFrom').value = data.from_location;
         document.getElementById('hireTo').value = data.to_location;
-        if (document.getElementById('hireCustomerName')) document.getElementById('hireCustomerName').value = data.customer_name || '';
         document.getElementById('hireDistance').value = data.distance;
         document.getElementById('hireFuel').value = data.fuel_litres;
         document.getElementById('hireFuelPrice').value = data.fuel_price_per_litre;
@@ -8914,13 +8911,6 @@ async function loadChequesDueSoonBanner() {
     }
 }
 
-// =====================================================================
-// #18 CUSTOMER FIELD — hook into hire record save/display
-// =====================================================================
-// Extend hire record display to show customer name in table
-function getHireCustomerValue() {
-    return (document.getElementById('hireCustomerName')?.value || '').trim();
-}
 
 // =====================================================================
 // #17 GLOBAL SEARCH
@@ -9248,16 +9238,6 @@ if (typeof loadChequeStatus === 'function') {
     };
 }
 
-// ── Patch hire record form save to include customer name ──
-(function patchHireRecordSave() {
-    const hireForm = document.getElementById('hireRecordForm');
-    if (!hireForm || hireForm._customerPatched) return;
-    hireForm._customerPatched = true;
-    const originalSubmit = hireForm.onsubmit;
-    // We handle this by patching the recordData construction
-    // The form submit already fires with the existing handler, so we hook on completion
-    // via a MutationObserver on the form container
-})();
 
 // Initial load for dashboard page (if it's already active on load)
 document.addEventListener('DOMContentLoaded', function() {
