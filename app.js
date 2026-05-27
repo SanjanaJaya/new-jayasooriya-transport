@@ -1542,6 +1542,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             vehicle_id: vehicleId,
             from_location: document.getElementById('hireFrom').value,
             to_location: document.getElementById('hireTo').value,
+            customer_name: (document.getElementById('hireCustomerName')?.value || '').trim() || null,
             distance: distance,
             fuel_litres: fuelLitres,
             fuel_price_per_litre: fuelPrice,
@@ -1634,6 +1635,7 @@ async function loadHireRecords() {
                 <td>${record.hire_to_pay_vehicles.lorry_number}</td>
                 <td>${record.from_location}</td>
                 <td>${record.to_location}</td>
+                <td><span style="font-size:12px;color:var(--text-muted);">${record.customer_name || '—'}</span></td>
                 <td>${record.distance} km</td>
                 <td>LKR ${record.fuel_cost.toFixed(2)}</td>
                 <td><small>Wait: LKR ${record.waiting_charge.toFixed(2)}<br>Hrs: ${record.waiting_hours}</small></td>
@@ -1706,6 +1708,7 @@ async function editHireRecord(id) {
         document.getElementById('hireToPayVehicle').value = data.vehicle_id;
         document.getElementById('hireFrom').value = data.from_location;
         document.getElementById('hireTo').value = data.to_location;
+        if (document.getElementById('hireCustomerName')) document.getElementById('hireCustomerName').value = data.customer_name || '';
         document.getElementById('hireDistance').value = data.distance;
         document.getElementById('hireFuel').value = data.fuel_litres;
         document.getElementById('hireFuelPrice').value = data.fuel_price_per_litre;
@@ -2675,11 +2678,11 @@ async function loadDashboardData(monthValue) {
             }
         });
 
-        // Calculate Fuel Allowance (16.00% of Fuel Cost) - Display only, not affecting profit
+        // Calculate Fuel Allowance (16.00% of Fuel Cost)
         const fuelAllowance = totalFuelCost * 0.1600;
 
-        // Net Profit = Revenue - Fuel Cost ONLY (no maintenance, no fuel allowance)
-        const netProfit = totalRevenue - totalFuelCost;
+        // Net Profit = Revenue - Fuel Cost + Fuel Allowance
+        const netProfit = totalRevenue - totalFuelCost + fuelAllowance;
 
         // --- UPDATE UI ELEMENTS ---
 
@@ -2695,11 +2698,11 @@ async function loadDashboardData(monthValue) {
         setText('totalDistance', `${totalDistance.toLocaleString()} km`);
         setText('totalDieselLitres', `${totalFuelLitres.toFixed(0)} L`);
 
-        // Profit (Revenue - Fuel Cost only)
+        // Profit (Revenue - Fuel Cost + Fuel Allowance)
         setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
 
-        // Total Credit Amount = Net Profit + Fuel Allowance
-        const totalCreditAmount = netProfit + fuelAllowance;
+        // Total Credit Amount = Net Profit
+        const totalCreditAmount = netProfit;
         setText('totalCreditAmount', `LKR ${totalCreditAmount.toFixed(2)}`);
 
         // Trigger Charts
@@ -6208,64 +6211,99 @@ async function loadMaintenanceRecords() {
 async function renderMaintenanceWidgets(monthValue) {
     try {
         if (!adminUserId) return; // Already waited in loadMaintenanceRecords
-        // Query all records (no month filter) for total, then filtered for period total
-        let allQuery = supabaseClient
+        
+        // Fetch all maintenance records for all-time totals and filtering
+        const { data, error } = await supabaseClient
             .from('lorry_maintenance')
-            .select('vehicle_ref, amount')
+            .select('vehicle_ref, amount, maintenance_date')
             .eq('user_id', getQueryUserId());
 
+        if (error) throw error;
+        if (!data) return;
+
+        const labelMap = await getVehicleLabelMap();
+
+        // Calculate period totals and all-time totals
+        const totals = {};
+        const allTimeTotals = {};
+
+        // Date range boundaries for current month filter
+        let startDateStr = null;
+        let endDateStr = null;
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${month}-${lastDay}`;
-            allQuery = allQuery.gte('maintenance_date', startDate).lte('maintenance_date', endDate);
+            startDateStr = startDate;
+            endDateStr = endDate;
         }
 
-        const { data } = await allQuery;
-        if (!data) return;
-
-        const labelMap = await getVehicleLabelMap();
-
-        // Group by vehicle (mapping old IDs to base names)
-        const totals = {};
         data.forEach(row => {
             const baseName = labelMap[row.vehicle_ref] || row.vehicle_ref;
-            totals[baseName] = (totals[baseName] || 0) + row.amount;
+            allTimeTotals[baseName] = (allTimeTotals[baseName] || 0) + row.amount;
+
+            // Check if record is within the filtered month period
+            if (row.maintenance_date && (!startDateStr || (row.maintenance_date >= startDateStr && row.maintenance_date <= endDateStr))) {
+                totals[baseName] = (totals[baseName] || 0) + row.amount;
+            }
         });
 
         const container = document.getElementById('maintenanceVehicleWidgets');
         if (!container) return;
         container.innerHTML = '';
 
-        if (Object.keys(totals).length === 0) {
-            container.innerHTML = '<p style="color:#7F8C8D;padding:10px;">No data for selected period.</p>';
+        const allVehicles = Array.from(new Set([
+            ...Object.keys(totals),
+            ...Object.keys(allTimeTotals)
+        ])).sort();
+
+        if (allVehicles.length === 0) {
+            container.innerHTML = '<p style="color:#7F8C8D;padding:10px;">No maintenance data available.</p>';
             return;
         }
 
-        Object.entries(totals).forEach(([baseName, total]) => {
+        allVehicles.forEach(baseName => {
+            const periodTotal = totals[baseName] || 0;
+            const allTimeTotal = allTimeTotals[baseName] || 0;
+
+            // Only show cards for vehicles that have either all-time cost or period cost
+            if (allTimeTotal === 0) return;
+
             const card = document.createElement('div');
             card.className = 'metric-card';
             card.innerHTML = `
                 <div class="metric-icon">🔧</div>
                 <div class="metric-content">
                     <div class="metric-label">${baseName}</div>
-                    <div class="metric-value" style="color:#E74C3C;">LKR ${total.toFixed(2)}</div>
+                    <div class="metric-value" style="color:#E74C3C;font-size:16px;">
+                        LKR ${periodTotal.toFixed(2)} 
+                        <span style="font-size:12px;color:var(--text-muted);font-weight:normal;">(period)</span>
+                    </div>
+                    <div class="metric-value" style="color:var(--text-muted);font-size:12px;margin-top:2px;font-weight:normal;">
+                        All-Time: <strong style="color:var(--text-primary);">LKR ${allTimeTotal.toFixed(2)}</strong>
+                    </div>
                 </div>
             `;
             container.appendChild(card);
         });
 
-        // Overall total widget
+        // Overall total widget (for this period)
         const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+        const grandAllTimeTotal = Object.values(allTimeTotals).reduce((a, b) => a + b, 0);
         const totalCard = document.createElement('div');
         totalCard.className = 'metric-card';
         totalCard.style.borderLeft = '4px solid #8E44AD';
         totalCard.innerHTML = `
             <div class="metric-icon">💰</div>
             <div class="metric-content">
-                <div class="metric-label">Total Maintenance</div>
-                <div class="metric-value" style="color:#8E44AD;">LKR ${grandTotal.toFixed(2)}</div>
+                <div class="metric-label">Total Maintenance (Period)</div>
+                <div class="metric-value" style="color:#8E44AD;font-size:16px;">
+                    LKR ${grandTotal.toFixed(2)}
+                </div>
+                <div class="metric-value" style="color:var(--text-muted);font-size:12px;margin-top:2px;font-weight:normal;">
+                    All-Time Total: <strong style="color:var(--text-primary);">LKR ${grandAllTimeTotal.toFixed(2)}</strong>
+                </div>
             </div>
         `;
         container.appendChild(totalCard);
@@ -8128,3 +8166,1114 @@ async function loadDriverPerformance(monthValue) {
 
 window.editDriverKmRecord = editDriverKmRecord;
 window.deleteDriverKmRecord = deleteDriverKmRecord;
+
+// =====================================================================
+// ============ NEW FEATURES — ALL 20 IMPROVEMENTS =====================
+// =====================================================================
+
+// ── New chart variables ──
+let revenueSegmentChart = null;
+let advanceTrendChartInstance = null;
+let maintenancePieChartInstance = null;
+let maintenanceVehicleBarChartInstance = null;
+let driverKmDailyChartInstance = null;
+
+// ── Utility: get today's date string YYYY-MM-DD (local) ──
+function getTodayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// =====================================================================
+// #1  TODAY'S KPI STRIP
+// =====================================================================
+async function loadTodayKpiStrip() {
+    try {
+        const today = getTodayStr();
+        const uid = getQueryUserId();
+        const [
+            { data: hireToday },
+            { data: commitToday },
+            { data: otherOpToday },
+            { data: dayOffToday }
+        ] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_amount, fuel_litres, vehicle_id').eq('user_id', uid).eq('hire_date', today),
+            supabaseClient.from('commitment_records').select('fuel_litres, vehicle_id').eq('user_id', uid).eq('hire_date', today),
+            supabaseClient.from('other_operation_hires').select('hire_amount, fuel_litres').eq('user_id', uid).eq('hire_date', today),
+            supabaseClient.from('driver_day_offs').select('deduction_amount').eq('user_id', uid).eq('day_off_date', today)
+        ]);
+
+        const totalHires = (hireToday?.length || 0) + (commitToday?.length || 0) + (otherOpToday?.length || 0);
+        const totalRevenue = [
+            ...(hireToday || []).map(r => r.hire_amount || 0),
+            ...(otherOpToday || []).map(r => r.hire_amount || 0)
+        ].reduce((s, v) => s + v, 0);
+        const totalFuel = [
+            ...(hireToday || []).map(r => r.fuel_litres || 0),
+            ...(commitToday || []).map(r => r.fuel_litres || 0),
+            ...(otherOpToday || []).map(r => r.fuel_litres || 0)
+        ].reduce((s, v) => s + v, 0);
+        const uniqueVehicles = new Set([
+            ...(hireToday || []).map(r => `h_${r.vehicle_id}`),
+            ...(commitToday || []).map(r => `c_${r.vehicle_id}`)
+        ]).size;
+        const dayOffImpact = (dayOffToday || []).reduce((s, r) => s + (r.deduction_amount || 0), 0);
+
+        const fmt = n => 'LKR ' + n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+        document.getElementById('todayVehicles').textContent = uniqueVehicles;
+        document.getElementById('todayHires').textContent = totalHires;
+        document.getElementById('todayRevenue').textContent = fmt(totalRevenue);
+        document.getElementById('todayFuel').textContent = totalFuel.toFixed(1) + ' L';
+        document.getElementById('todayDayOffImpact').textContent = fmt(dayOffImpact);
+    } catch (e) {
+        console.error('Error loading today KPI strip:', e);
+    }
+}
+
+// ── Last-synced label (updates every 30 s) ──
+let _lastSyncedAt = null;
+function startLastSyncedTimer() {
+    _lastSyncedAt = Date.now();
+    const el = document.getElementById('lastSyncedLabel');
+    if (!el) return;
+    clearInterval(window._lastSyncedInterval);
+    window._lastSyncedInterval = setInterval(() => {
+        if (!_lastSyncedAt) return;
+        const sec = Math.round((Date.now() - _lastSyncedAt) / 1000);
+        el.textContent = sec < 60 ? `🟢 ${sec}s ago` : `🟡 ${Math.floor(sec/60)}m ago`;
+    }, 5000);
+}
+
+// =====================================================================
+// #3  SMART ALERTS WIDGET
+// =====================================================================
+async function loadSmartAlerts() {
+    try {
+        const uid = getQueryUserId();
+        const today = getTodayStr();
+        const in7Days = new Date(); in7Days.setDate(in7Days.getDate() + 7);
+        const in7Str = in7Days.toISOString().slice(0, 10);
+
+        const alerts = [];
+
+        // Cheques due in next 7 days
+        const { data: dueLeaves } = await supabaseClient
+            .from('cheque_leaves')
+            .select('leaf_number, due_date, amount, status')
+            .eq('user_id', uid)
+            .eq('status', 'issued')
+            .gte('due_date', today)
+            .lte('due_date', in7Str);
+        if (dueLeaves && dueLeaves.length > 0) {
+            alerts.push({ severity: 'warning', icon: '🏦', msg: `${dueLeaves.length} cheque(s) due in the next 7 days` });
+        }
+
+        // Vehicles with no commitment records this month
+        const thisMonth = today.slice(0, 7);
+        const [yr, mo] = thisMonth.split('-');
+        const start = `${yr}-${mo}-01`;
+        const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+        const end = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
+
+        const { data: commitVehicles } = await supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', uid).eq('terminated', false);
+        const { data: commitRec } = await supabaseClient.from('commitment_records').select('vehicle_id').eq('user_id', uid).gte('hire_date', start).lte('hire_date', end);
+        const vehiclesWithRecs = new Set((commitRec || []).map(r => r.vehicle_id));
+        const missing = (commitVehicles || []).filter(v => !vehiclesWithRecs.has(v.id));
+        if (missing.length > 0) {
+            alerts.push({ severity: 'info', icon: '📋', msg: `${missing.length} commitment vehicle(s) have no hires recorded this month` });
+        }
+
+        const alertsWidget = document.getElementById('alertsWidget');
+        const alertsList = document.getElementById('alertsList');
+        const badge = document.getElementById('alertsCountBadge');
+
+        if (alerts.length === 0) {
+            if (alertsWidget) alertsWidget.style.display = 'none';
+            return;
+        }
+
+        if (badge) badge.textContent = alerts.length;
+        if (alertsWidget) alertsWidget.style.display = '';
+        if (alertsList) {
+            alertsList.innerHTML = alerts.map(a => `
+                <div class="alert-item alert-${a.severity}">
+                    <span class="alert-icon">${a.icon}</span>
+                    <span class="alert-msg">${a.msg}</span>
+                </div>
+            `).join('');
+        }
+    } catch(e) {
+        console.error('Error loading smart alerts:', e);
+    }
+}
+
+// =====================================================================
+// #2  REVENUE BY SEGMENT — 12-MONTH STACKED BAR CHART
+// =====================================================================
+async function loadRevenueSegmentChart() {
+    try {
+        const uid = getQueryUserId();
+        const now = new Date();
+        const labels = [];
+        const hireData = [], commitData = [], otherData = [];
+
+        const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-01`;
+        const endStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
+
+        const [
+            { data: allHire },
+            { data: allCommit },
+            { data: allOther },
+            { data: allCommVehicles }
+        ] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, hire_amount').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
+            supabaseClient.from('commitment_records').select('hire_date, vehicle_id, distance').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
+            supabaseClient.from('other_operation_hires').select('hire_date, hire_amount').eq('user_id', uid).gte('hire_date', startStr).lte('hire_date', endStr),
+            supabaseClient.from('commitment_vehicles').select('id, fixed_monthly_payment, km_limit_per_month, extra_km_charge').eq('user_id', uid)
+        ]);
+
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            labels.push(d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+
+            const hire = (allHire || []).filter(r => r.hire_date?.startsWith(key)).reduce((s, r) => s + (r.hire_amount || 0), 0);
+            hireData.push(hire);
+
+            const commitRecs = (allCommit || []).filter(r => r.hire_date?.startsWith(key));
+            const commitVehicleIds = [...new Set(commitRecs.map(r => r.vehicle_id))];
+            const monthVehicles = (allCommVehicles || []).filter(v => commitVehicleIds.includes(v.id));
+            let commitRev = monthVehicles.reduce((s, v) => s + (v.fixed_monthly_payment || 0), 0);
+            monthVehicles.forEach(v => {
+                const km = commitRecs.filter(r => r.vehicle_id === v.id).reduce((s, r) => s + (r.distance || 0), 0);
+                const exc = Math.max(0, km - (v.km_limit_per_month || 0));
+                commitRev += exc * (v.extra_km_charge || 0);
+            });
+            commitData.push(commitRev);
+
+            const other = (allOther || []).filter(r => r.hire_date?.startsWith(key)).reduce((s, r) => s + (r.hire_amount || 0), 0);
+            otherData.push(other);
+        }
+
+        const ctx = document.getElementById('revenueSegmentChart')?.getContext('2d');
+        if (!ctx) return;
+        if (revenueSegmentChart) revenueSegmentChart.destroy();
+
+        const theme = getChartTheme ? getChartTheme() : {};
+        revenueSegmentChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Hire-to-Pay', data: hireData, backgroundColor: 'rgba(220,20,60,0.75)', borderColor: '#DC143C', borderWidth: 1, borderRadius: 4 },
+                    { label: 'Commitment', data: commitData, backgroundColor: 'rgba(0,179,126,0.75)', borderColor: '#00B37E', borderWidth: 1, borderRadius: 4 },
+                    { label: 'Other Ops', data: otherData, backgroundColor: 'rgba(230,126,34,0.75)', borderColor: '#E67E22', borderWidth: 1, borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { callbacks: { label: ctx => `LKR ${Math.round(ctx.parsed.y).toLocaleString()}` } }
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` } }
+                }
+            }
+        });
+    } catch(e) {
+        console.error('Error loading revenue segment chart:', e);
+    }
+}
+
+// =====================================================================
+// #13 FLEET UTILIZATION HEATMAP
+// =====================================================================
+async function loadFleetUtilizationHeatmap(monthValue) {
+    const grid = document.getElementById('fleetUtilizationGrid');
+    if (!grid) return;
+    try {
+        const uid = getQueryUserId();
+        if (!monthValue) {
+            const now = new Date();
+            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        }
+        const [yr, mo] = monthValue.split('-');
+        const startDate = `${yr}-${mo}-01`;
+        const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+
+        const [
+            { data: hireRecords },
+            { data: commitRecords },
+            { data: otherRecords },
+            { data: hireVehicles },
+            { data: commitVehicles }
+        ] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, vehicle_id').eq('user_id', uid).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_records').select('hire_date, vehicle_id').eq('user_id', uid).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('other_operation_hires').select('hire_date, base_lorry_number').eq('user_id', uid).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, terminated').eq('user_id', uid),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, terminated').eq('user_id', uid)
+        ]);
+
+        // Build per-vehicle active days map and track termination status
+        const vehicleActiveDays = {};
+        const vehicleTerminated = {};
+        const ensureVehicle = (key) => { if (!vehicleActiveDays[key]) vehicleActiveDays[key] = new Set(); };
+
+        (hireVehicles || []).forEach(v => {
+            const base = extractBaseVehicleName ? extractBaseVehicleName(v.lorry_number) : v.lorry_number;
+            ensureVehicle(base);
+            if (vehicleTerminated[base] === undefined) {
+                vehicleTerminated[base] = v.terminated;
+            } else {
+                vehicleTerminated[base] = vehicleTerminated[base] && v.terminated;
+            }
+        });
+        (commitVehicles || []).forEach(v => {
+            const base = extractBaseVehicleName ? extractBaseVehicleName(v.vehicle_number) : v.vehicle_number;
+            ensureVehicle(base);
+            if (vehicleTerminated[base] === undefined) {
+                vehicleTerminated[base] = v.terminated;
+            } else {
+                vehicleTerminated[base] = vehicleTerminated[base] && v.terminated;
+            }
+        });
+
+        const hireIdToBase = {};
+        (hireVehicles || []).forEach(v => { hireIdToBase[v.id] = extractBaseVehicleName ? extractBaseVehicleName(v.lorry_number) : v.lorry_number; });
+        const commitIdToBase = {};
+        (commitVehicles || []).forEach(v => { commitIdToBase[v.id] = extractBaseVehicleName ? extractBaseVehicleName(v.vehicle_number) : v.vehicle_number; });
+
+        (hireRecords || []).forEach(r => { const base = hireIdToBase[r.vehicle_id]; if (base) { ensureVehicle(base); vehicleActiveDays[base].add(r.hire_date); } });
+        (commitRecords || []).forEach(r => { const base = commitIdToBase[r.vehicle_id]; if (base) { ensureVehicle(base); vehicleActiveDays[base].add(r.hire_date); } });
+        (otherRecords || []).forEach(r => { if (r.base_lorry_number) { ensureVehicle(r.base_lorry_number); vehicleActiveDays[r.base_lorry_number].add(r.hire_date); } });
+
+        // Filter vehicles based on active status or presence of activity/old month request
+        const now = new Date();
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        const isOldMonth = monthValue < currentMonthStr;
+
+        const filteredVehicles = Object.keys(vehicleActiveDays).filter(vehicle => {
+            const isTerminated = vehicleTerminated[vehicle];
+            if (!isTerminated) return true;
+            const activeCount = vehicleActiveDays[vehicle]?.size || 0;
+            return activeCount > 0 || isOldMonth;
+        });
+
+        if (filteredVehicles.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;text-align:center;">No vehicle data for this month.</p>';
+            return;
+        }
+
+        // Generate day headers
+        const days = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+            const dow = new Date(dateStr).getDay(); // 0=Sun
+            days.push({ d, dateStr, dow });
+        }
+
+        let html = '<div class="fleet-heatmap-wrap">';
+        const sortedVehicles = filteredVehicles.sort();
+        sortedVehicles.forEach(vehicle => {
+            const activeDays = vehicleActiveDays[vehicle];
+            const activeCount = activeDays.size;
+            const pct = Math.round((activeCount / daysInMonth) * 100);
+            const color = pct >= 70 ? '#27AE60' : pct >= 40 ? '#F39C12' : pct >= 20 ? '#E67E22' : '#E74C3C';
+            const isTerminated = vehicleTerminated[vehicle];
+            const displayLabel = isTerminated ? `${vehicle} [T]` : vehicle;
+            const labelTitle = isTerminated ? `${vehicle} (Deactivated)` : vehicle;
+
+            html += `<div class="fleet-heatmap-row">
+                <div class="fleet-heatmap-label" title="${labelTitle}" style="${isTerminated ? 'color:var(--text-muted);text-decoration:line-through;' : ''}">${displayLabel}</div>
+                <div class="fleet-heatmap-dots">
+                    ${days.map(({ d, dateStr, dow }) => {
+                        const isActive = activeDays.has(dateStr);
+                        const isWeekend = dow === 0 || dow === 6;
+                        const title = `${dateStr}${isActive ? ' — Active' : isWeekend ? ' — Weekend' : ' — Idle'}`;
+                        const dotClass = isActive ? 'util-dot util-active' : isWeekend ? 'util-dot util-weekend' : 'util-dot util-idle';
+                        return `<div class="${dotClass}" title="${title}" data-date="${dateStr}"></div>`;
+                    }).join('')}
+                </div>
+                <div class="fleet-heatmap-stat" style="color:${color};">${pct}%</div>
+            </div>`;
+        });
+        html += `<div class="fleet-heatmap-legend">
+            <span><span class="util-dot util-active" style="display:inline-block;"></span> Active</span>
+            <span><span class="util-dot util-idle" style="display:inline-block;"></span> Idle</span>
+            <span><span class="util-dot util-weekend" style="display:inline-block;"></span> Weekend</span>
+        </div>`;
+        html += '</div>';
+        grid.innerHTML = html;
+    } catch(e) {
+        console.error('Error loading fleet utilization heatmap:', e);
+        if (grid) grid.innerHTML = '<p style="color:var(--brand-red);padding:20px;text-align:center;">Error loading fleet data.</p>';
+    }
+}
+
+// =====================================================================
+// #8  HIRE RECORDS SUMMARY STRIP
+// =====================================================================
+function renderHireRecordsSummaryStrip(records) {
+    const strip = document.getElementById('hireRecordsSummaryStrip');
+    if (!strip) return;
+    if (!records || records.length === 0) { strip.innerHTML = ''; return; }
+
+    const totalJobs = records.length;
+    const totalRevenue = records.reduce((s, r) => s + (r.hire_amount || 0), 0);
+    const totalFuelCost = records.reduce((s, r) => s + (r.fuel_cost || 0), 0);
+    const totalDistance = records.reduce((s, r) => s + (r.distance || 0), 0);
+    const grossProfit = totalRevenue - totalFuelCost;
+    const avgRevenue = totalJobs > 0 ? totalRevenue / totalJobs : 0;
+
+    const fmt = n => 'LKR ' + n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    strip.innerHTML = `
+        <div class="summary-strip-inner">
+            <div class="rss-card">
+                <span class="rss-icon">📋</span>
+                <span class="rss-label">Total Jobs</span>
+                <span class="rss-value">${totalJobs}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">💰</span>
+                <span class="rss-label">Total Revenue</span>
+                <span class="rss-value rss-green">${fmt(totalRevenue)}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">⛽</span>
+                <span class="rss-label">Total Fuel</span>
+                <span class="rss-value rss-red">${fmt(totalFuelCost)}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">📈</span>
+                <span class="rss-label">Gross Profit</span>
+                <span class="rss-value" style="color:${grossProfit>=0?'var(--green)':'var(--brand-red)'};">${fmt(grossProfit)}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">🛣️</span>
+                <span class="rss-label">Total Distance</span>
+                <span class="rss-value">${totalDistance.toFixed(0)} km</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">🎯</span>
+                <span class="rss-label">Avg Per Job</span>
+                <span class="rss-value">${fmt(avgRevenue)}</span>
+            </div>
+        </div>
+    `;
+}
+
+// =====================================================================
+// #9  COMMITMENT RECORDS SUMMARY STRIP
+// =====================================================================
+function renderCommitmentSummaryStrip(records) {
+    const strip = document.getElementById('commitmentSummaryStrip');
+    if (!strip) return;
+    if (!records || records.length === 0) { strip.innerHTML = ''; return; }
+
+    const totalJobs = records.length;
+    const totalFuelCost = records.reduce((s, r) => s + (r.fuel_cost || 0), 0);
+    const totalDistance = records.reduce((s, r) => s + (r.distance || 0), 0);
+    const totalFuelLitres = records.reduce((s, r) => s + (r.fuel_litres || 0), 0);
+    const avgFuelPerKm = totalDistance > 0 ? totalFuelLitres / totalDistance : 0;
+    const uniqueVehicles = new Set(records.map(r => r.vehicle_id)).size;
+
+    const fmt = n => 'LKR ' + n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    strip.innerHTML = `
+        <div class="summary-strip-inner">
+            <div class="rss-card">
+                <span class="rss-icon">📋</span>
+                <span class="rss-label">Total Trips</span>
+                <span class="rss-value">${totalJobs}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">🚛</span>
+                <span class="rss-label">Active Vehicles</span>
+                <span class="rss-value">${uniqueVehicles}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">⛽</span>
+                <span class="rss-label">Total Fuel Cost</span>
+                <span class="rss-value rss-red">${fmt(totalFuelCost)}</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">🛣️</span>
+                <span class="rss-label">Total Distance</span>
+                <span class="rss-value">${totalDistance.toFixed(0)} km</span>
+            </div>
+            <div class="rss-card">
+                <span class="rss-icon">📊</span>
+                <span class="rss-label">Avg Fuel/km</span>
+                <span class="rss-value">${(avgFuelPerKm * 100).toFixed(1)} L/100km</span>
+            </div>
+        </div>
+    `;
+}
+
+// =====================================================================
+// #6  MAINTENANCE EXPENSE PIE CHART + VEHICLE BAR CHART
+// =====================================================================
+async function loadMaintenancePieChart(monthValue) {
+    try {
+        const uid = getQueryUserId();
+        if (!monthValue) {
+            const now = new Date();
+            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        }
+        const [yr, mo] = monthValue.split('-');
+        const startDate = `${yr}-${mo}-01`;
+        const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
+
+        const { data } = await supabaseClient.from('lorry_maintenance').select('expense_type, amount, vehicle_ref').eq('user_id', uid).gte('maintenance_date', startDate).lte('maintenance_date', endDate);
+        if (!data || data.length === 0) return;
+
+        // Group by expense type
+        const expenseMap = {};
+        const vehicleMap = {};
+        data.forEach(r => {
+            expenseMap[r.expense_type] = (expenseMap[r.expense_type] || 0) + (r.amount || 0);
+            vehicleMap[r.vehicle_ref] = (vehicleMap[r.vehicle_ref] || 0) + (r.amount || 0);
+        });
+
+        const theme = getChartTheme ? getChartTheme() : {};
+        const COLORS = ['#DC143C','#E67E22','#3498DB','#27AE60','#9B59B6','#F1C40F','#1ABC9C','#E91E63'];
+
+        // Pie chart — expense type
+        const pieCtx = document.getElementById('maintenancePieChart')?.getContext('2d');
+        if (pieCtx) {
+            if (maintenancePieChartInstance) maintenancePieChartInstance.destroy();
+            const pieLabels = Object.keys(expenseMap);
+            const pieData = Object.values(expenseMap);
+            maintenancePieChartInstance = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: pieLabels,
+                    datasets: [{ data: pieData, backgroundColor: COLORS.slice(0, pieLabels.length), borderColor: theme.borderColor || '#fff', borderWidth: 2, hoverOffset: 10 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: `Expense Breakdown — ${monthValue}`, color: theme.titleColor, font: { size: 14, weight: 'bold' } },
+                        legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } },
+                        tooltip: { callbacks: { label: ctx => `${ctx.label}: LKR ${Math.round(ctx.parsed).toLocaleString()}` } }
+                    }
+                }
+            });
+        }
+
+        // Bar chart — by vehicle
+        const barCtx = document.getElementById('maintenanceVehicleBarChart')?.getContext('2d');
+        if (barCtx) {
+            if (maintenanceVehicleBarChartInstance) maintenanceVehicleBarChartInstance.destroy();
+            const sorted = Object.entries(vehicleMap).sort((a, b) => b[1] - a[1]);
+            maintenanceVehicleBarChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(s => s[0]),
+                    datasets: [{ label: 'Maintenance Cost', data: sorted.map(s => s[1]), backgroundColor: 'rgba(220,20,60,0.7)', borderColor: '#DC143C', borderWidth: 1, borderRadius: 5 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: `Cost by Vehicle — ${monthValue}`, color: theme.titleColor, font: { size: 14, weight: 'bold' } },
+                        legend: { display: false }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => `LKR ${v.toLocaleString()}` } } }
+                }
+            });
+        }
+    } catch(e) {
+        console.error('Error loading maintenance pie chart:', e);
+    }
+}
+
+// =====================================================================
+// #4  DRIVER KM DAILY CHART
+// =====================================================================
+async function loadDriverKmDailyChart(monthValue, driverFilter) {
+    const chartSection = document.getElementById('driverKmChartSection');
+    if (!driverFilter || !monthValue) { if (chartSection) chartSection.style.display = 'none'; return; }
+
+    try {
+        const uid = getQueryUserId();
+        const [yr, mo] = monthValue.split('-');
+        const startDate = `${yr}-${mo}-01`;
+        const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+
+        const { data: kmRecs } = await supabaseClient.from('driver_km_records').select('record_date, km_amount').eq('user_id', uid).eq('driver_id', driverFilter).gte('record_date', startDate).lte('record_date', endDate);
+
+        if (!kmRecs || kmRecs.length === 0) { if (chartSection) chartSection.style.display = 'none'; return; }
+        if (chartSection) chartSection.style.display = '';
+
+        const dayMap = {};
+        kmRecs.forEach(r => { dayMap[r.record_date] = (dayMap[r.record_date] || 0) + (r.km_amount || 0); });
+
+        const labels = [];
+        const values = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const ds = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+            labels.push(d.toString());
+            values.push(dayMap[ds] || 0);
+        }
+
+        const ctx = document.getElementById('driverKmDailyChart')?.getContext('2d');
+        if (!ctx) return;
+        if (driverKmDailyChartInstance) driverKmDailyChartInstance.destroy();
+
+        driverKmDailyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ label: 'KM Logged', data: values, backgroundColor: 'rgba(0,114,206,0.7)', borderColor: '#0072CE', borderWidth: 1, borderRadius: 4 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y.toFixed(1)} km` } } },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => `${v} km` } } }
+            }
+        });
+    } catch(e) {
+        console.error('Error loading driver KM daily chart:', e);
+    }
+}
+
+// =====================================================================
+// #5  ADVANCE TREND CHART (last 6 months)
+// =====================================================================
+async function loadAdvanceTrendChart() {
+    try {
+        const uid = getQueryUserId();
+        const now = new Date();
+        const labels = [];
+        const advData = [];
+
+        const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-01`;
+        const endStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
+
+        const { data: advances } = await supabaseClient.from('driver_advances').select('advance_date, amount').eq('user_id', uid).gte('advance_date', startStr).lte('advance_date', endStr);
+
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            labels.push(d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+            const total = (advances || []).filter(a => a.advance_date?.startsWith(key)).reduce((s, a) => s + (a.amount || 0), 0);
+            advData.push(total);
+        }
+
+        const ctx = document.getElementById('advanceTrendChart')?.getContext('2d');
+        if (!ctx) return;
+        if (advanceTrendChartInstance) advanceTrendChartInstance.destroy();
+        const theme = getChartTheme ? getChartTheme() : {};
+
+        advanceTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{ label: 'Total Advances', data: advData, borderColor: '#9B59B6', backgroundColor: 'rgba(155,89,182,0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#9B59B6', pointRadius: 5 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => `LKR ${Math.round(ctx.parsed.y).toLocaleString()}` } } },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` } } }
+            }
+        });
+    } catch(e) {
+        console.error('Error loading advance trend chart:', e);
+    }
+}
+
+// =====================================================================
+// #10 STAFF BREAKDOWN WIDGETS
+// =====================================================================
+function renderStaffBreakdownWidgets(allDrivers) {
+    if (!allDrivers) return;
+    const drivers = allDrivers.filter(d => !d.terminated && (d.role || 'Driver').toLowerCase() === 'driver').length;
+    const helpers = allDrivers.filter(d => !d.terminated && (d.role || '').toLowerCase() === 'helper').length;
+    const other = allDrivers.filter(d => !d.terminated && !['driver', 'helper'].includes((d.role || 'driver').toLowerCase())).length;
+    const terminated = allDrivers.filter(d => d.terminated).length;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('staffCountDrivers', drivers);
+    set('staffCountHelpers', helpers);
+    set('staffCountOther', other);
+    set('staffCountTerminated', terminated);
+}
+
+// =====================================================================
+// #11 DAY-OFF CALENDAR HEATMAP
+// =====================================================================
+function renderDayOffCalendar(dayOffRecords, monthValue, driverName) {
+    const section = document.getElementById('dayOffCalendarSection');
+    const container = document.getElementById('dayOffCalendar');
+    if (!section || !container || !dayOffRecords || dayOffRecords.length === 0 || !monthValue) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    if (section) section.style.display = '';
+
+    const [yr, mo] = monthValue.split('-');
+    const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+    const firstDow = new Date(`${yr}-${mo}-01`).getDay(); // 0=Sun
+
+    const dayOffDates = new Set(dayOffRecords.map(r => r.day_off_date));
+
+    let html = `<div class="dayoff-calendar-title">${driverName ? driverName + ' — ' : ''}${monthValue}</div>`;
+    html += '<div class="dayoff-calendar-grid">';
+    // Day headers
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="dayoff-cal-head">${d}</div>`; });
+    // Empty cells for first week
+    for (let i = 0; i < firstDow; i++) { html += '<div class="dayoff-cal-cell dayoff-cal-empty"></div>'; }
+    // Days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const ds = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+        const isDayOff = dayOffDates.has(ds);
+        const dow = (firstDow + d - 1) % 7;
+        const isWeekend = dow === 0 || dow === 6;
+        const cls = isDayOff ? 'dayoff-cal-cell dayoff-marked' : isWeekend ? 'dayoff-cal-cell dayoff-weekend' : 'dayoff-cal-cell dayoff-worked';
+        const title = isDayOff ? 'Day Off' : isWeekend ? 'Weekend' : 'Worked';
+        html += `<div class="${cls}" title="${ds} — ${title}">${d}</div>`;
+    }
+    html += '</div>';
+    html += '<div class="dayoff-cal-legend"><span class="dayoff-legend-item"><span class="dayoff-cal-cell dayoff-worked" style="width:16px;height:16px;display:inline-block;"></span> Worked</span><span class="dayoff-legend-item"><span class="dayoff-cal-cell dayoff-marked" style="width:16px;height:16px;display:inline-block;"></span> Day Off</span><span class="dayoff-legend-item"><span class="dayoff-cal-cell dayoff-weekend" style="width:16px;height:16px;display:inline-block;"></span> Weekend</span></div>';
+
+    container.innerHTML = html;
+}
+
+// =====================================================================
+// #12 SALARY YTD SUMMARY
+// =====================================================================
+async function loadSalaryYtdSummary(driverId, currentMonth) {
+    const block = document.getElementById('salaryYtdBlock');
+    const grid = document.getElementById('salaryYtdGrid');
+    if (!block || !grid || !driverId) return;
+
+    try {
+        const uid = getQueryUserId();
+        const year = (currentMonth || '').split('-')[0] || new Date().getFullYear().toString();
+
+        const { data: salaries } = await supabaseClient.from('driver_salary').select('salary_month, gross_salary, net_salary').eq('user_id', uid).eq('driver_id', driverId).like('salary_month', `${year}-%`).order('salary_month', { ascending: true });
+
+        if (!salaries || salaries.length === 0) { block.style.display = 'none'; return; }
+
+        const fmt = n => 'LKR ' + n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const totalGross = salaries.reduce((s, r) => s + (r.gross_salary || 0), 0);
+        const totalNet = salaries.reduce((s, r) => s + (r.net_salary || 0), 0);
+
+        grid.innerHTML = salaries.map(s => `
+            <div class="ytd-salary-row">
+                <span class="ytd-month">${s.salary_month}</span>
+                <span class="ytd-gross">${fmt(s.gross_salary || 0)}</span>
+                <span class="ytd-net">${fmt(s.net_salary || 0)}</span>
+            </div>
+        `).join('') + `
+            <div class="ytd-salary-row ytd-total">
+                <span class="ytd-month">YTD Total</span>
+                <span class="ytd-gross">${fmt(totalGross)}</span>
+                <span class="ytd-net" style="color:var(--green);font-weight:700;">${fmt(totalNet)}</span>
+            </div>
+        `;
+
+        block.style.display = '';
+    } catch(e) {
+        console.error('Error loading salary YTD:', e);
+        if (block) block.style.display = 'none';
+    }
+}
+
+// =====================================================================
+// #14 CHEQUES DUE SOON BANNER
+// =====================================================================
+async function loadChequesDueSoonBanner() {
+    const banner = document.getElementById('chequesDueBanner');
+    const list = document.getElementById('chequesDueBannerList');
+    if (!banner || !list) return;
+
+    try {
+        const uid = getQueryUserId();
+        const today = getTodayStr();
+        const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+        const in7Str = in7.toISOString().slice(0, 10);
+
+        const { data } = await supabaseClient.from('cheque_leaves').select('leaf_number, due_date, amount').eq('user_id', uid).eq('status', 'issued').gte('due_date', today).lte('due_date', in7Str).order('due_date', { ascending: true });
+
+        if (!data || data.length === 0) { banner.style.display = 'none'; return; }
+
+        banner.style.display = '';
+        list.innerHTML = data.map(l => {
+            const daysLeft = Math.round((new Date(l.due_date) - new Date(today)) / 86400000);
+            return `<span class="cheque-due-item">Leaf #${l.leaf_number} — ${l.due_date} (${daysLeft}d) — LKR ${(l.amount || 0).toLocaleString()}</span>`;
+        }).join('');
+    } catch(e) {
+        console.error('Error loading cheques due banner:', e);
+    }
+}
+
+// =====================================================================
+// #18 CUSTOMER FIELD — hook into hire record save/display
+// =====================================================================
+// Extend hire record display to show customer name in table
+function getHireCustomerValue() {
+    return (document.getElementById('hireCustomerName')?.value || '').trim();
+}
+
+// =====================================================================
+// #17 GLOBAL SEARCH
+// =====================================================================
+(function initGlobalSearch() {
+    const btn = document.getElementById('globalSearchBtn');
+    const modal = document.getElementById('globalSearchModal');
+    const overlay = document.getElementById('globalSearchOverlay');
+    const closeBtn = document.getElementById('globalSearchClose');
+    const input = document.getElementById('globalSearchInput');
+    const results = document.getElementById('globalSearchResults');
+
+    if (!btn || !modal) return;
+
+    let searchTimeout = null;
+
+    function openSearch() {
+        modal.style.display = '';
+        setTimeout(() => { input?.focus(); }, 80);
+    }
+    function closeSearch() {
+        modal.style.display = 'none';
+        if (input) { input.value = ''; }
+        if (results) results.innerHTML = '<div class="global-search-hint">Type at least 2 characters to search across all data...</div>';
+    }
+
+    btn.addEventListener('click', openSearch);
+    closeBtn?.addEventListener('click', closeSearch);
+    overlay?.addEventListener('click', closeSearch);
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.style.display !== 'none') closeSearch();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+    });
+
+    input?.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        const q = input.value.trim();
+        if (q.length < 2) {
+            results.innerHTML = '<div class="global-search-hint">Type at least 2 characters to search...</div>';
+            return;
+        }
+        results.innerHTML = '<div class="global-search-hint">Searching...</div>';
+        searchTimeout = setTimeout(() => performGlobalSearch(q), 400);
+    });
+})();
+
+async function performGlobalSearch(query) {
+    const results = document.getElementById('globalSearchResults');
+    if (!results) return;
+    const uid = getQueryUserId();
+    const q = query.toLowerCase();
+    const hits = [];
+
+    try {
+        const [
+            { data: drivers },
+            { data: hireVehicles },
+            { data: commitVehicles },
+            { data: hireRecs },
+            { data: commitRecs }
+        ] = await Promise.all([
+            supabaseClient.from('drivers').select('id, name, contact, license_number, role').eq('user_id', uid),
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, ownership').eq('user_id', uid),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, ownership').eq('user_id', uid),
+            supabaseClient.from('hire_to_pay_records').select('id, job_number, hire_date, from_location, to_location, hire_amount').eq('user_id', uid).order('hire_date', { ascending: false }).limit(200),
+            supabaseClient.from('commitment_records').select('id, job_number, hire_date, from_location, to_location').eq('user_id', uid).order('hire_date', { ascending: false }).limit(200)
+        ]);
+
+        (drivers || []).forEach(d => {
+            if ([d.name, d.contact, d.license_number, d.role].some(v => v && v.toLowerCase().includes(q))) {
+                hits.push({ category: 'Staff', icon: '👤', title: d.name, sub: `${d.role || 'Driver'} · ${d.contact || ''}`, action: `switchPage('drivers')` });
+            }
+        });
+        (hireVehicles || []).forEach(v => {
+            if ([v.lorry_number, v.vehicle_model, v.ownership].some(val => val && val.toLowerCase().includes(q))) {
+                hits.push({ category: 'Vehicle', icon: '🚛', title: v.lorry_number, sub: `${v.vehicle_model || ''} · ${v.ownership || ''}`, action: `switchPage('hire-vehicles')` });
+            }
+        });
+        (commitVehicles || []).forEach(v => {
+            if ([v.vehicle_number, v.vehicle_model, v.ownership].some(val => val && val.toLowerCase().includes(q))) {
+                hits.push({ category: 'Vehicle', icon: '🏢', title: v.vehicle_number, sub: `${v.vehicle_model || ''} · ${v.ownership || ''}`, action: `switchPage('commitment-vehicles')` });
+            }
+        });
+        (hireRecs || []).forEach(r => {
+            if ([r.job_number, r.from_location, r.to_location].some(v => v && v.toLowerCase().includes(q))) {
+                hits.push({ category: 'Hire Record', icon: '📋', title: `Job ${r.job_number}`, sub: `${r.hire_date} · ${r.from_location} → ${r.to_location} · LKR ${(r.hire_amount || 0).toLocaleString()}`, action: `switchPage('hire-records')` });
+            }
+        });
+        (commitRecs || []).forEach(r => {
+            if ([r.job_number, r.from_location, r.to_location].some(v => v && v.toLowerCase().includes(q))) {
+                hits.push({ category: 'Commitment', icon: '📝', title: `Job ${r.job_number}`, sub: `${r.hire_date} · ${r.from_location} → ${r.to_location}`, action: `switchPage('commitment-records')` });
+            }
+        });
+
+        if (hits.length === 0) {
+            results.innerHTML = `<div class="global-search-empty">No results for "<strong>${query}</strong>"</div>`;
+            return;
+        }
+
+        results.innerHTML = hits.slice(0, 30).map(h => `
+            <div class="global-search-item" onclick="${h.action}; document.getElementById('globalSearchModal').style.display='none';">
+                <span class="global-search-item-icon">${h.icon}</span>
+                <div class="global-search-item-content">
+                    <div class="global-search-item-title">${h.title}</div>
+                    <div class="global-search-item-sub">${h.sub}</div>
+                </div>
+                <span class="global-search-item-cat">${h.category}</span>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.error('Error performing global search:', e);
+        results.innerHTML = '<div class="global-search-empty">Search error. Please try again.</div>';
+    }
+}
+
+// =====================================================================
+// HOOK INTO EXISTING FUNCTIONS
+// =====================================================================
+
+// Hook into loadHireRecords to render summary strip
+const _origLoadHireRecords = typeof loadHireRecords === 'function' ? loadHireRecords : null;
+if (_origLoadHireRecords) {
+    // Patch via intercepting the table population
+    const origFunc = loadHireRecords;
+    window._hireRecordsPatchApplied = true;
+}
+
+// Hook into loadCommitmentRecords to render summary strip
+const _origLoadCommitmentRecords = typeof loadCommitmentRecords === 'function' ? loadCommitmentRecords : null;
+
+// ──────────────────────────────────────────────
+// DASHBOARD: augment page switch to load new widgets
+// ──────────────────────────────────────────────
+const _origSwitchPage = window.switchPage;
+
+// Hook fleet utilization month change
+document.getElementById('fleetUtilMonth')?.addEventListener('change', function() {
+    loadFleetUtilizationHeatmap(this.value);
+});
+
+// Called when dashboard loads
+async function loadDashboardExtras() {
+    await loadTodayKpiStrip();
+    await loadSmartAlerts();
+    startLastSyncedTimer();
+    _lastSyncedAt = Date.now();
+
+    // Set fleet util to current month
+    const fleetMonthEl = document.getElementById('fleetUtilMonth');
+    if (fleetMonthEl && !fleetMonthEl.value) {
+        const now = new Date();
+        fleetMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    }
+    if (fleetMonthEl?.value) loadFleetUtilizationHeatmap(fleetMonthEl.value);
+
+    await loadRevenueSegmentChart();
+}
+
+// ── Auto-load driver breakdown when staff page loads ──
+const _origLoadDrivers = window.loadDrivers || (typeof loadDrivers === 'function' ? loadDrivers : null);
+
+// ── Auto-load maintenance charts when page loads ──
+const _origLoadMaintenanceRecords = window.loadMaintenanceRecords || (typeof loadMaintenanceRecords === 'function' ? loadMaintenanceRecords : null);
+
+// ── Load advance trend when advances page loads ──
+const _origLoadAdvances = window.loadAdvances || (typeof loadAdvances === 'function' ? loadAdvances : null);
+
+// ── Load cheques due banner when cheque page loads ──
+const _origLoadChequeStatus = window.loadChequeStatus || (typeof loadChequeStatus === 'function' ? loadChequeStatus : null);
+
+// ── Observe page switches using MutationObserver on active class ──
+(function() {
+    const pagesContainer = document.querySelector('.pages-container');
+    if (!pagesContainer) return;
+
+    const pageObserver = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const page = mutation.target;
+                if (page.classList.contains('active')) {
+                    const id = page.id;
+                    // Load extras for each page
+                    setTimeout(() => {
+                        if (id === 'dashboard') { loadDashboardExtras(); }
+                        if (id === 'drivers') {
+                            // Staff breakdown already handled inside loadDrivers
+                        }
+                        if (id === 'lorry-maintenance') {
+                            const monthEl = document.getElementById('maintenanceMonth');
+                            const mv = monthEl?.value || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+                            loadMaintenancePieChart(mv);
+                        }
+                        if (id === 'driver-advances') {
+                            loadAdvanceTrendChart();
+                        }
+                        if (id === 'cheque-status') {
+                            loadChequesDueSoonBanner();
+                        }
+                    }, 300);
+                }
+            }
+        });
+    });
+
+    pagesContainer.querySelectorAll('.page').forEach(page => {
+        pageObserver.observe(page, { attributes: true });
+    });
+})();
+
+// Listen for maintenance month change to reload pie chart
+document.getElementById('maintenanceMonth')?.addEventListener('change', function() {
+    loadMaintenancePieChart(this.value);
+});
+
+// Listen for KM log driver filter change to show daily chart
+document.getElementById('driverKmDriverFilter')?.addEventListener('change', function() {
+    const month = document.getElementById('driverKmMonthFilter')?.value;
+    loadDriverKmDailyChart(month, this.value);
+});
+document.getElementById('driverKmMonthFilter')?.addEventListener('change', function() {
+    const driver = document.getElementById('driverKmDriverFilter')?.value;
+    loadDriverKmDailyChart(this.value, driver);
+});
+
+// Hook salary calculator to show YTD when driver and month are selected
+document.getElementById('salaryDriverSelect')?.addEventListener('change', function() {
+    const month = document.getElementById('salaryMonth')?.value;
+    if (this.value && month) loadSalaryYtdSummary(this.value, month);
+});
+document.getElementById('salaryMonth')?.addEventListener('change', function() {
+    const driver = document.getElementById('salaryDriverSelect')?.value;
+    if (driver && this.value) loadSalaryYtdSummary(driver, this.value);
+});
+
+// Hook day-off driver/month filter to show calendar
+function tryRenderDayOffCalendar() {
+    const driver = document.getElementById('driverDayOffDriver')?.value;
+    const month = document.getElementById('driverDayOffMonth')?.value;
+    if (!driver || !month) return;
+    const uid = getQueryUserId();
+    const [yr, mo] = month.split('-');
+    const startDate = `${yr}-${mo}-01`;
+    const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+    const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+    supabaseClient.from('driver_day_offs').select('day_off_date').eq('user_id', uid).eq('driver_id', driver).gte('day_off_date', startDate).lte('day_off_date', endDate)
+        .then(({ data }) => {
+            const driverName = document.getElementById('driverDayOffDriver')?.selectedOptions?.[0]?.textContent || '';
+            renderDayOffCalendar(data || [], month, driverName);
+        });
+}
+document.getElementById('driverDayOffDriver')?.addEventListener('change', tryRenderDayOffCalendar);
+document.getElementById('driverDayOffMonth')?.addEventListener('change', tryRenderDayOffCalendar);
+
+// ── Patch loadDrivers to also call renderStaffBreakdownWidgets ──
+if (typeof loadDrivers === 'function') {
+    const _origLD = loadDrivers;
+    window.loadDrivers = async function() {
+        await _origLD.apply(this, arguments);
+        // Fetch all drivers for breakdown
+        try {
+            const { data: allD } = await supabaseClient.from('drivers').select('id, role, terminated').eq('user_id', getQueryUserId());
+            renderStaffBreakdownWidgets(allD || []);
+        } catch(e) {}
+    };
+}
+
+// ── Patch loadHireRecords to also render summary strip ──
+if (typeof loadHireRecords === 'function') {
+    const _origLHR = loadHireRecords;
+    window.loadHireRecords = async function() {
+        await _origLHR.apply(this, arguments);
+        // Re-fetch to pass to strip
+        try {
+            const monthValue = document.getElementById('hireRecordsMonth')?.value;
+            const vehicleFilter = document.getElementById('hireRecordsVehicleFilter')?.value;
+            let q = supabaseClient.from('hire_to_pay_records').select('hire_amount, fuel_cost, distance, vehicle_id').eq('user_id', getQueryUserId());
+            if (monthValue) {
+                const [yr, mo] = monthValue.split('-');
+                q = q.gte('hire_date', `${yr}-${mo}-01`).lte('hire_date', `${yr}-${mo}-${new Date(yr, mo, 0).getDate()}`);
+            }
+            if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter);
+            const { data } = await q;
+            renderHireRecordsSummaryStrip(data || []);
+        } catch(e) {}
+    };
+}
+
+// ── Patch loadCommitmentRecords to also render summary strip ──
+if (typeof loadCommitmentRecords === 'function') {
+    const _origLCR = loadCommitmentRecords;
+    window.loadCommitmentRecords = async function() {
+        await _origLCR.apply(this, arguments);
+        try {
+            const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
+            const vehicleFilter = document.getElementById('commitmentRecordsVehicleFilter')?.value;
+            let q = supabaseClient.from('commitment_records').select('fuel_cost, distance, vehicle_id, fuel_litres').eq('user_id', getQueryUserId());
+            if (monthValue) {
+                const [yr, mo] = monthValue.split('-');
+                q = q.gte('hire_date', `${yr}-${mo}-01`).lte('hire_date', `${yr}-${mo}-${new Date(yr, mo, 0).getDate()}`);
+            }
+            if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter);
+            const { data } = await q;
+            renderCommitmentSummaryStrip(data || []);
+        } catch(e) {}
+    };
+}
+
+// ── Patch loadMaintenanceRecords to also load charts ──
+if (typeof loadMaintenanceRecords === 'function') {
+    const _origLMR = loadMaintenanceRecords;
+    window.loadMaintenanceRecords = async function() {
+        await _origLMR.apply(this, arguments);
+        const mv = document.getElementById('maintenanceMonth')?.value;
+        if (mv) loadMaintenancePieChart(mv);
+    };
+}
+
+// ── Patch loadChequeStatus to also load cheques due banner ──
+if (typeof loadChequeStatus === 'function') {
+    const _origLCS = loadChequeStatus;
+    window.loadChequeStatus = async function() {
+        await _origLCS.apply(this, arguments);
+        await loadChequesDueSoonBanner();
+    };
+}
+
+// ── Patch hire record form save to include customer name ──
+(function patchHireRecordSave() {
+    const hireForm = document.getElementById('hireRecordForm');
+    if (!hireForm || hireForm._customerPatched) return;
+    hireForm._customerPatched = true;
+    const originalSubmit = hireForm.onsubmit;
+    // We handle this by patching the recordData construction
+    // The form submit already fires with the existing handler, so we hook on completion
+    // via a MutationObserver on the form container
+})();
+
+// Initial load for dashboard page (if it's already active on load)
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const dashPage = document.getElementById('dashboard');
+        if (dashPage && dashPage.classList.contains('active')) {
+            loadDashboardExtras();
+        }
+        // Load advance trend and cheque banner on relevant pages too
+        const advancePage = document.getElementById('driver-advances');
+        if (advancePage && advancePage.classList.contains('active')) {
+            loadAdvanceTrendChart();
+        }
+    }, 2000); // Wait for auth + data to initialize
+});

@@ -5253,4 +5253,584 @@ body.dark-mode .driver-perf-card-header {
     .driver-perf-table-wrap { display: none !important; }
     .driver-perf-cards      { display: flex !important; }
 }
+
+/* ===========================================================
+   NEW FEATURES CSS — ALL 20 IMPROVEMENTS
+   =========================================================== */
+
+/* ── Global Search Button in header ── */
+.global-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: var(--surface-hover);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--ease-base);
+}
+.global-search-btn:hover {
+    background: var(--brand-red);
+    border-color: var(--brand-red);
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: var(--shadow-red);
+}
+
+/* ── Last Synced Label ── */
+.last-synced-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 4px 10px;
+    background: var(--surface-hover);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--surface-border);
+    transition: all var(--ease-base);
+}
+
+/* ── GLOBAL SEARCH MODAL ── */
+.global-search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+}
+.global-search-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.global-search-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--surface-border);
+    overflow: hidden;
+    animation: scaleIn 0.2s var(--ease-spring) both;
+    margin: 0 16px;
+}
+.global-search-input-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    gap: 12px;
+    border-bottom: 1px solid var(--surface-border);
+}
+.global-search-input-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.global-search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-user-select: text;
+    user-select: text;
+}
+.global-search-input::placeholder { color: var(--text-muted); }
+.global-search-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: all var(--ease-base);
+}
+.global-search-close:hover { background: var(--surface-hover); color: var(--brand-red); }
+.global-search-results {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 8px;
+}
+.global-search-hint, .global-search-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 24px;
+}
+.global-search-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--ease-base);
+}
+.global-search-item:hover { background: var(--surface-hover); }
+.global-search-item-icon { font-size: 22px; flex-shrink: 0; }
+.global-search-item-content { flex: 1; min-width: 0; }
+.global-search-item-title { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+.global-search-item-sub { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.global-search-item-cat {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background: var(--brand-red);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+}
+
+/* ── TODAY KPI STRIP ── */
+.today-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+    width: 100%;
+}
+.today-kpi-strip::-webkit-scrollbar { display: none; }
+.today-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    min-width: 190px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+    animation: cardPop 0.5s var(--ease-spring) both;
+    border: 1px solid transparent;
+    transition: all var(--ease-base);
+    cursor: default;
+}
+.today-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+.today-kpi-icon { font-size: 28px; line-height: 1; }
+.today-kpi-content { display: flex; flex-direction: column; gap: 2px; }
+.today-kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.8; }
+.today-kpi-value { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; }
+
+.today-kpi-vehicles { background: linear-gradient(135deg, #0072CE 0%, #0055a5 100%); color: #fff; }
+.today-kpi-hires    { background: linear-gradient(135deg, #9B59B6 0%, #7B35C4 100%); color: #fff; }
+.today-kpi-revenue  { background: linear-gradient(135deg, #00B37E 0%, #007A54 100%); color: #fff; }
+.today-kpi-fuel     { background: linear-gradient(135deg, #E67E22 0%, #c96a0d 100%); color: #fff; }
+.today-kpi-dayoff   { background: linear-gradient(135deg, #DC143C 0%, #A8001A 100%); color: #fff; }
+
+body.dark-mode .today-kpi-card { border-color: rgba(255,255,255,0.08); }
+
+/* ── SMART ALERTS WIDGET ── */
+.alerts-widget {
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--amber);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(224, 123, 0, 0.12);
+    animation: slideInBottom 0.4s var(--ease-spring) both;
+}
+.alerts-widget-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.alerts-widget-title { font-weight: 700; font-size: 14px; color: var(--amber); }
+.alerts-count-badge {
+    background: var(--amber);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+.alerts-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+}
+.alert-icon { font-size: 18px; flex-shrink: 0; }
+.alert-warning { background: rgba(224, 123, 0, 0.10); border: 1px solid rgba(224, 123, 0, 0.20); color: var(--amber); }
+.alert-info { background: var(--blue-bg); border: 1px solid rgba(0, 114, 206, 0.20); color: var(--blue); }
+.alert-danger { background: var(--brand-red-glow); border: 1px solid rgba(209,0,31,0.20); color: var(--brand-red); }
+
+/* ── REVENUE SEGMENT CHART (wide canvas) ── */
+.chart-wrapper.chart-wide { width: 100%; min-height: 280px; }
+.chart-wrapper.chart-wide canvas { height: 280px !important; max-height: 280px; }
+
+/* ── FLEET UTILIZATION HEATMAP ── */
+.fleet-heatmap-wrap { display: flex; flex-direction: column; gap: 6px; overflow-x: auto; }
+.fleet-heatmap-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 28px;
+}
+.fleet-heatmap-label {
+    min-width: 90px;
+    max-width: 90px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+.fleet-heatmap-dots {
+    display: flex;
+    gap: 3px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+}
+@media (min-width: 769px) {
+    .fleet-heatmap-dots {
+        justify-content: space-between;
+    }
+}
+.fleet-heatmap-dots::-webkit-scrollbar { display: none; }
+.fleet-heatmap-stat {
+    min-width: 38px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: right;
+    flex-shrink: 0;
+}
+.util-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+.util-dot:hover { transform: scale(1.4); }
+.util-active  { background: #27AE60; }
+.util-idle    { background: var(--surface-border); }
+.util-weekend { background: rgba(0,114,206,0.2); }
+
+.fleet-heatmap-legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding-top: 8px;
+    margin-top: 6px;
+    border-top: 1px solid var(--surface-border);
+    flex-wrap: wrap;
+}
+.fleet-heatmap-legend span { display: flex; align-items: center; gap: 6px; }
+
+@media (max-width: 768px) {
+    .fleet-heatmap-label { min-width: 70px; max-width: 70px; }
+    .util-dot { width: 12px; height: 12px; }
+}
+
+/* ── RECORDS SUMMARY STRIP ── */
+.records-summary-strip { margin-bottom: 16px; }
+.summary-strip-inner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    width: 100%;
+}
+.summary-strip-inner::-webkit-scrollbar { display: none; }
+.rss-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    min-width: 130px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-xs);
+    transition: all var(--ease-base);
+    text-align: center;
+    animation: cardPop 0.4s var(--ease-spring) both;
+}
+.rss-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.rss-icon { font-size: 22px; }
+.rss-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+.rss-value { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.rss-green { color: var(--green) !important; }
+.rss-red { color: var(--brand-red) !important; }
+
+/* ── STAFF BREAKDOWN WIDGETS ── */
+.staff-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.staff-bw-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-sm);
+    animation: cardPop 0.5s var(--ease-spring) both;
+    transition: all var(--ease-base);
+}
+.staff-bw-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.staff-bw-icon { font-size: 26px; }
+.staff-bw-content { display: flex; flex-direction: column; gap: 2px; }
+.staff-bw-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; opacity: 0.85; }
+.staff-bw-value { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; }
+
+.staff-bw-driver     { background: linear-gradient(135deg, #0072CE 0%, #0055a5 100%); color: #fff; }
+.staff-bw-helper     { background: linear-gradient(135deg, #00B37E 0%, #007A54 100%); color: #fff; }
+.staff-bw-other      { background: linear-gradient(135deg, #9B59B6 0%, #7B35C4 100%); color: #fff; }
+.staff-bw-terminated { background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: #fff; }
+
+@media (max-width: 768px) {
+    .staff-breakdown-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── DAY-OFF CALENDAR HEATMAP ── */
+.dayoff-calendar-wrap {
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid var(--surface-border);
+}
+.dayoff-calendar-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    text-align: center;
+}
+.dayoff-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 12px;
+}
+.dayoff-cal-head {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 4px 0;
+}
+.dayoff-cal-cell {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: default;
+    transition: transform 0.15s ease;
+}
+.dayoff-cal-cell:hover { transform: scale(1.2); }
+.dayoff-cal-empty { background: transparent; }
+.dayoff-worked  { background: var(--green-bg); color: var(--green); border: 1px solid rgba(0,179,126,0.2); }
+.dayoff-marked  { background: var(--brand-red-glow); color: var(--brand-red); border: 1px solid rgba(209,0,31,0.25); font-weight: 700; }
+.dayoff-weekend { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(0,114,206,0.15); }
+.dayoff-cal-legend {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.dayoff-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ── SALARY YTD SUMMARY ── */
+.ytd-summary-block {
+    background: linear-gradient(135deg, var(--surface-card) 0%, var(--surface-hover) 100%);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-top: 16px;
+    animation: fadeSlideUp 0.4s var(--ease-base) both;
+}
+.ytd-summary-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--brand-red);
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+}
+.ytd-salary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    transition: background var(--ease-base);
+    border-bottom: 1px solid var(--surface-border);
+}
+.ytd-salary-row:hover { background: var(--surface-hover); }
+.ytd-month { color: var(--text-muted); font-weight: 600; }
+.ytd-gross { color: var(--text-primary); font-weight: 600; text-align: right; }
+.ytd-net   { color: var(--green); font-weight: 600; text-align: right; }
+.ytd-total {
+    background: var(--brand-red-glow);
+    border: 1.5px solid var(--brand-red);
+    border-radius: var(--radius-sm);
+    margin-top: 6px;
+    font-weight: 700;
+}
+.ytd-total .ytd-month { color: var(--brand-red); font-weight: 800; }
+
+/* ── CHEQUES DUE SOON BANNER ── */
+.cheques-due-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(224,123,0,0.12) 0%, rgba(224,123,0,0.06) 100%);
+    border: 2px solid var(--amber);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    animation: slideInBottom 0.4s var(--ease-spring) both;
+    box-shadow: 0 4px 16px rgba(224,123,0,0.12);
+}
+.cheques-due-banner-icon { font-size: 28px; flex-shrink: 0; }
+.cheques-due-banner-content { flex: 1; }
+.cheques-due-banner-title {
+    font-weight: 700;
+    color: var(--amber);
+    font-size: 14px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.cheques-due-banner-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.cheque-due-item {
+    background: var(--surface-card);
+    border: 1px solid rgba(224,123,0,0.25);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--amber);
+    white-space: nowrap;
+}
+
+/* ── MAINTENANCE PIE CHART section tweaks ── */
+#maintenancePieChart, #maintenanceVehicleBarChart {
+    height: 260px !important;
+    max-height: 260px;
+}
+
+/* ── DRIVER KM DAILY CHART ── */
+#driverKmDailyChart { height: 220px !important; max-height: 220px; }
+
+/* ── ADVANCE TREND CHART ── */
+#advanceTrendChart { height: 240px !important; max-height: 240px; }
+
+/* ── REVENUE SEGMENT CHART ── */
+#revenueSegmentChart { height: 280px !important; max-height: 280px; }
+
+/* dark mode tweaks for new components */
+body.dark-mode .rss-card { border-color: var(--surface-border); }
+body.dark-mode .global-search-container { border-color: var(--surface-border); }
+body.dark-mode .ytd-summary-block { border-color: var(--surface-border); }
+body.dark-mode .today-kpi-card { border-color: rgba(255,255,255,0.06); }
+body.dark-mode .alerts-widget { border-color: var(--amber); }
+body.dark-mode .cheques-due-banner { background: linear-gradient(135deg, rgba(224,123,0,0.18) 0%, rgba(224,123,0,0.08) 100%); }
+body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
+
+/* Mobile responsive overrides */
+@media (max-width: 768px) {
+    .today-kpi-strip {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+    }
+    .today-kpi-card  { min-width: 150px; padding: 12px 14px; }
+    .today-kpi-value { font-size: 18px; }
+    .today-kpi-icon  { font-size: 22px; }
+
+    .summary-strip-inner {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+    }
+    .rss-card   { min-width: 110px; padding: 10px 12px; }
+    .rss-value  { font-size: 15px; }
+
+    .global-search-container { margin: 0 8px; }
+    .global-search-modal     { padding-top: 20px; }
+
+    .ytd-salary-row { grid-template-columns: 1fr 1fr; font-size: 12px; }
+    .ytd-total .ytd-net { grid-column: span 2; text-align: left; }
+    .ytd-month { display: none; }
+    .ytd-total .ytd-month { display: block; }
+
+    .cheques-due-banner { flex-direction: column; gap: 8px; }
+    .cheques-due-banner-icon { display: none; }
+
+    .alerts-widget { padding: 12px 14px; }
+    .alert-item { padding: 8px 10px; font-size: 12px; }
+
+    .dayoff-calendar-grid { gap: 3px; }
+    .dayoff-cal-cell { font-size: 10px; border-radius: 4px; }
+
+    .fleet-heatmap-row { gap: 6px; }
+    .fleet-heatmap-label { min-width: 55px; max-width: 55px; font-size: 10px; }
+    .util-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    .staff-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .staff-bw-card { padding: 12px 14px; gap: 10px; }
+    .staff-bw-value { font-size: 24px; }
+
+    .last-synced-label { display: none; }
+}
+
+@media (max-width: 480px) {
+    .today-kpi-card  { min-width: 130px; }
+    .rss-card        { min-width: 100px; }
+    .staff-breakdown-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
 

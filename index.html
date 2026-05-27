@@ -239,6 +239,12 @@
                     <h2 id="pageTitle">Dashboard</h2>
                 </div>
                 <div class="header-right">
+                    <!-- Last Synced Label -->
+                    <span class="last-synced-label" id="lastSyncedLabel">🟢 Live</span>
+                    <!-- Global Search -->
+                    <button class="global-search-btn" id="globalSearchBtn" title="Search anything" aria-label="Global Search">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </button>
                     <!-- Notification Center -->
                     <div class="notification-center" id="notificationCenter">
                         <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Toggle notifications" title="Notifications">
@@ -272,6 +278,54 @@
             <div class="pages-container">
 
                 <div id="dashboard" class="page active">
+                    <!-- TODAY'S KPI STRIP -->
+                    <div class="today-kpi-strip" id="todayKpiStrip">
+                        <div class="today-kpi-card today-kpi-vehicles">
+                            <div class="today-kpi-icon">🚛</div>
+                            <div class="today-kpi-content">
+                                <div class="today-kpi-label">On Road Today</div>
+                                <div class="today-kpi-value" id="todayVehicles">—</div>
+                            </div>
+                        </div>
+                        <div class="today-kpi-card today-kpi-hires">
+                            <div class="today-kpi-icon">🎫</div>
+                            <div class="today-kpi-content">
+                                <div class="today-kpi-label">Hires Today</div>
+                                <div class="today-kpi-value" id="todayHires">—</div>
+                            </div>
+                        </div>
+                        <div class="today-kpi-card today-kpi-revenue">
+                            <div class="today-kpi-icon">💰</div>
+                            <div class="today-kpi-content">
+                                <div class="today-kpi-label">Revenue Today</div>
+                                <div class="today-kpi-value" id="todayRevenue">—</div>
+                            </div>
+                        </div>
+                        <div class="today-kpi-card today-kpi-fuel">
+                            <div class="today-kpi-icon">⛽</div>
+                            <div class="today-kpi-content">
+                                <div class="today-kpi-label">Fuel Used Today</div>
+                                <div class="today-kpi-value" id="todayFuel">—</div>
+                            </div>
+                        </div>
+                        <div class="today-kpi-card today-kpi-dayoff">
+                            <div class="today-kpi-icon">💸</div>
+                            <div class="today-kpi-content">
+                                <div class="today-kpi-label">Day-Off Deductions</div>
+                                <div class="today-kpi-value" id="todayDayOffImpact">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMART ALERTS WIDGET -->
+                    <div class="alerts-widget" id="alertsWidget" style="display:none;">
+                        <div class="alerts-widget-header">
+                            <span class="alerts-widget-title">⚡ Action Required</span>
+                            <span class="alerts-count-badge" id="alertsCountBadge">0</span>
+                        </div>
+                        <div class="alerts-list" id="alertsList"></div>
+                    </div>
+
                     <div class="dashboard-controls">
                         <div class="date-selector">
                             <label for="dashboardMonth">📆 Select Month & Year</label>
@@ -349,6 +403,8 @@
                         </div>
                     </div>
 
+                    <!-- DAY-OFF IMPACT CARD in metrics-grid is added via JS -->
+
                     <div class="report-controls">
                         <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
                         <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export
@@ -393,6 +449,28 @@
                         <div id="trackedVehiclesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
                             <!-- Tracked vehicles will be displayed here -->
                         </div>
+                    </div>
+
+                    <!-- REVENUE BY SEGMENT CHART -->
+                    <div class="performance-section">
+                        <h3>📊 Revenue by Business Segment (12 Months)</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper chart-wide">
+                                <canvas id="revenueSegmentChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FLEET UTILIZATION HEATMAP -->
+                    <div class="performance-section" id="fleetUtilizationSection">
+                        <h3>🚛 Fleet Utilization Heatmap</h3>
+                        <div class="dashboard-controls" style="margin-bottom:12px;">
+                            <div class="control-group">
+                                <label for="fleetUtilMonth">📆 Month</label>
+                                <input type="month" id="fleetUtilMonth" title="Select Month">
+                            </div>
+                        </div>
+                        <div id="fleetUtilizationGrid"></div>
                     </div>
 
                     <div class="performance-section">
@@ -590,6 +668,15 @@
                      CHEQUE STATUS PAGE
                 ═══════════════════════════════════════════════ -->
                 <div id="cheque-status" class="page">
+
+                    <!-- CHEQUES DUE SOON BANNER -->
+                    <div class="cheques-due-banner" id="chequesDueBanner" style="display:none;">
+                        <div class="cheques-due-banner-icon">⚠️</div>
+                        <div class="cheques-due-banner-content">
+                            <div class="cheques-due-banner-title">Cheques Due This Week!</div>
+                            <div class="cheques-due-banner-list" id="chequesDueBannerList"></div>
+                        </div>
+                    </div>
 
                     <!-- ── SUMMARY STRIP ── -->
                     <div class="cheque-summary-strip" id="chequeSummaryStrip">
@@ -803,6 +890,37 @@
                 </div>
 
                 <div id="drivers" class="page">
+                    <!-- STAFF BREAKDOWN WIDGETS -->
+                    <div class="staff-breakdown-grid" id="staffBreakdownWidgets">
+                        <div class="staff-bw-card staff-bw-driver">
+                            <div class="staff-bw-icon">🧑‍✈️</div>
+                            <div class="staff-bw-content">
+                                <div class="staff-bw-label">Drivers</div>
+                                <div class="staff-bw-value" id="staffCountDrivers">0</div>
+                            </div>
+                        </div>
+                        <div class="staff-bw-card staff-bw-helper">
+                            <div class="staff-bw-icon">🧑‍🔧</div>
+                            <div class="staff-bw-content">
+                                <div class="staff-bw-label">Helpers</div>
+                                <div class="staff-bw-value" id="staffCountHelpers">0</div>
+                            </div>
+                        </div>
+                        <div class="staff-bw-card staff-bw-other">
+                            <div class="staff-bw-icon">👤</div>
+                            <div class="staff-bw-content">
+                                <div class="staff-bw-label">Other Roles</div>
+                                <div class="staff-bw-value" id="staffCountOther">0</div>
+                            </div>
+                        </div>
+                        <div class="staff-bw-card staff-bw-terminated">
+                            <div class="staff-bw-icon">🔒</div>
+                            <div class="staff-bw-content">
+                                <div class="staff-bw-label">Archived</div>
+                                <div class="staff-bw-value" id="staffCountTerminated">0</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="page-header">
                         <h3>👤 Manage Staff (<span id="activeStaffCount">0</span> Active)</h3>
                         <button class="btn btn-primary" id="addDriverBtn">+ Add Staff</button>
@@ -972,6 +1090,16 @@
                         </div>
                     </div>
 
+                    <!-- ADVANCE TREND CHART -->
+                    <div class="performance-section">
+                        <h3>📈 Monthly Advance Trend (Last 6 Months)</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="advanceTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="dashboard-controls">
                         <div class="control-group">
                             <label for="advanceMonth">📆 Month</label>
@@ -1057,6 +1185,12 @@
                         <div id="driverDayOffWidgets" class="advance-summary-grid"></div>
                     </div>
 
+                    <!-- DAY OFF CALENDAR HEATMAP -->
+                    <div class="performance-section" id="dayOffCalendarSection" style="display:none;">
+                        <h3>📅 Attendance Calendar</h3>
+                        <div id="dayOffCalendar" class="dayoff-calendar-wrap"></div>
+                    </div>
+
                     <div class="table-responsive">
                         <table id="driverDayOffsTable">
                             <thead>
@@ -1074,6 +1208,15 @@
                 </div>
 
                 <div id="driver-km-log" class="page">
+                    <!-- DRIVER KM DAILY CHART -->
+                    <div class="performance-section" id="driverKmChartSection" style="display:none;">
+                        <h3>📈 Daily KM Log Chart</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="driverKmDailyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                     <div class="page-header">
                         <h3>🛣️ Driver's KM Log</h3>
                         <button class="btn btn-primary" id="addDriverKmBtn">+ Add KM Record</button>
@@ -1360,6 +1503,12 @@
                                 </div>
                             </div>
 
+                            <!-- YTD SALARY SUMMARY -->
+                            <div class="ytd-summary-block" id="salaryYtdBlock" style="display:none;">
+                                <div class="ytd-summary-title">📊 Year-to-Date Summary</div>
+                                <div class="ytd-summary-grid" id="salaryYtdGrid"></div>
+                            </div>
+
                             <div class="form-actions">
                                 <button type="button" class="btn btn-success" id="calculateSalaryBtn">🧮 Calculate
                                     Salary</button>
@@ -1497,6 +1646,8 @@
                 </div>
 
                 <div id="hire-records" class="page">
+                    <!-- HIRE RECORDS SUMMARY STRIP -->
+                    <div class="records-summary-strip" id="hireRecordsSummaryStrip"></div>
                     <div class="page-header">
                         <h3>📋 Hire-to-Pay Records</h3>
                         <button class="btn btn-primary" id="addHireRecordBtn">+ Add Record</button>
@@ -1530,6 +1681,9 @@
                                 <input type="text" id="hireTo" placeholder="To Location" required>
                             </div>
                             <div class="form-row">
+                                <input type="text" id="hireCustomerName" placeholder="Customer / Client Name (Optional)">  
+                            </div>
+                            <div class="form-row">
                                 <input type="number" id="hireDistance" placeholder="Distance (km)" step="0.01" required>
                                 <input type="number" id="hireFuel" placeholder="Fuel (L)" step="0.01" required>
                             </div>
@@ -1560,6 +1714,7 @@
                                     <th>Vehicle</th>
                                     <th>From</th>
                                     <th>To</th>
+                                    <th>Customer</th>
                                     <th>Distance</th>
                                     <th>Fuel Cost</th>
                                     <th>Waiting</th>
@@ -1732,6 +1887,8 @@
                 </div>
 
                 <div id="commitment-records" class="page">
+                    <!-- COMMITMENT RECORDS SUMMARY STRIP -->
+                    <div class="records-summary-strip" id="commitmentSummaryStrip"></div>
                     <div class="page-header">
                         <h3>📝 Commitment Vehicle Hires</h3>
                         <button class="btn btn-primary" id="addCommitmentRecordBtn">+ Add Record</button>
@@ -1862,6 +2019,19 @@
                     <div class="performance-section">
                         <h3>🚛 Maintenance Cost Per Vehicle</h3>
                         <div id="maintenanceVehicleWidgets" class="metrics-grid" style="margin-top:0;"></div>
+                    </div>
+
+                    <!-- MAINTENANCE EXPENSE PIE CHART -->
+                    <div class="performance-section">
+                        <h3>🥧 Expense Category Breakdown</h3>
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <canvas id="maintenancePieChart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="maintenanceVehicleBarChart"></canvas>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Filters -->
@@ -2004,7 +2174,7 @@
                     <input type="date" id="exportEndDate" />
                 </div>
                 <p style="font-size:12px;margin:0;color:var(--text-muted)">
-                    The exported Excel file will contain 4 sheets covering the selected range.
+                    The exported Excel file will contain 8 sheets covering the selected range.
                 </p>
                 <div class="form-actions" style="margin:0;gap:10px;display:flex">
                     <button class="btn btn-success" id="exportConfirmBtn" style="flex:1">✅ Export Now</button>
@@ -2050,6 +2220,21 @@
     <script src="excel-export.js"></script>
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
+
+    <!-- GLOBAL SEARCH MODAL -->
+    <div class="global-search-modal" id="globalSearchModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Global Search">
+        <div class="global-search-overlay" id="globalSearchOverlay"></div>
+        <div class="global-search-container">
+            <div class="global-search-input-row">
+                <svg class="global-search-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Search staff, vehicles, job numbers, routes..." autocomplete="off" aria-label="Search">
+                <button class="global-search-close" id="globalSearchClose" aria-label="Close Search">✕</button>
+            </div>
+            <div class="global-search-results" id="globalSearchResults">
+                <div class="global-search-hint">Type at least 2 characters to search across all data...</div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
