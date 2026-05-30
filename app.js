@@ -82,32 +82,32 @@ function initDarkMode() {
     `;
     toggleBtn.title = 'Toggle Dark Mode';
     toggleBtn.ariaLabel = 'Toggle Dark Mode';
-    
+
     // Create container
     const toggleContainer = document.createElement('div');
     toggleContainer.className = 'dark-mode-toggle';
     toggleContainer.appendChild(toggleBtn);
     document.body.appendChild(toggleContainer);
-    
+
     // Check for saved theme or prefer-color-scheme
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedTheme = localStorage.getItem('theme');
-    
+
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
         document.body.classList.add('dark-mode');
     }
-    
+
     // Toggle function
     toggleBtn.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
-        
+
         if (document.body.classList.contains('dark-mode')) {
             localStorage.setItem('theme', 'dark');
         } else {
             localStorage.setItem('theme', 'light');
         }
     });
-    
+
     // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (!localStorage.getItem('theme')) {
@@ -128,7 +128,7 @@ async function checkUserRole() {
             .select('role, admin_id')
             .eq('user_id', currentUser.id)
             .single();
-        
+
         if (error) {
             console.error('Error fetching user role:', error);
             userRole = 'admin';
@@ -138,7 +138,7 @@ async function checkUserRole() {
             // If admin_id is null (common for the main admin), use their own ID
             adminUserId = data.admin_id || currentUser.id;
         }
-        
+
         console.log('User role:', userRole, 'Admin ID:', adminUserId);
         updateUIForRole();
     } catch (error) {
@@ -156,7 +156,7 @@ function getQueryUserId() {
 // Update UI based on user role
 function updateUIForRole() {
     const isViewer = userRole === 'viewer';
-    
+
     // Hide/disable all add buttons
     const addButtons = document.querySelectorAll('[id$="Btn"]:not(#logoutBtn)');
     addButtons.forEach(btn => {
@@ -166,7 +166,7 @@ function updateUIForRole() {
             btn.style.display = '';
         }
     });
-    
+
     // Handle CSS for viewer mode
     if (isViewer) {
         const style = document.createElement('style');
@@ -182,7 +182,7 @@ function updateUIForRole() {
             existingStyle.remove();
         }
     }
-    
+
     // Add viewer indicator
     if (isViewer) {
         const header = document.querySelector('.header-right');
@@ -210,7 +210,7 @@ async function initializeApp() {
     initSupabase();
     initHamburgerMenu();
     initDarkMode(); // Initialize Dark Mode
-    
+
     if (!supabaseClient) {
         console.error('Supabase not initialized');
         showLogin();
@@ -219,7 +219,7 @@ async function initializeApp() {
 
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
-        
+
         if (session) {
             currentUser = session.user;
             await checkUserRole();
@@ -284,9 +284,9 @@ if (loginForm) {
         try {
             errorEl.textContent = '';
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            
+
             if (error) throw error;
-            
+
             currentUser = data.user;
             await checkUserRole();
             showApp();
@@ -320,7 +320,7 @@ function setDefaultMonths() {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0'); // +1 because months are 0-indexed
     const monthStr = `${year}-${month}`;
-    
+
     const elements = [
         'dashboardMonth',
         'hireRecordsMonth',
@@ -333,7 +333,7 @@ function setDefaultMonths() {
         'otherOperationHiresMonth', // ADDED: Other Operation Hires filter
         'driverKmMonthFilter' // ADDED: Driver KM Log filter
     ];
-    
+
     elements.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = monthStr;
@@ -378,8 +378,8 @@ function initHamburgerMenu() {
     }
 
     document.addEventListener('click', (e) => {
-        if (sidebar?.classList.contains('mobile-open') && 
-            !sidebar.contains(e.target) && 
+        if (sidebar?.classList.contains('mobile-open') &&
+            !sidebar.contains(e.target) &&
             !hamburger.contains(e.target)) {
             closeMobileMenu();
         }
@@ -402,26 +402,26 @@ function openMobileMenu() {
 
 // Map of page -> group id (null = no group / standalone)
 const PAGE_GROUP_MAP = {
-    'dashboard':             null,
-    'cheque-status':         null,
-    'drivers':               'navGroupStaff',
-    'driver-advances':       'navGroupStaff',
-    'driver-dayoffs':        'navGroupStaff',
-    'driver-km-log':         'navGroupStaff',
-    'driver-salary':         'navGroupStaff',
-    'hire-vehicles':         'navGroupFleet',
-    'hire-records':          'navGroupFleet',
+    'dashboard': null,
+    'cheque-status': null,
+    'drivers': 'navGroupStaff',
+    'driver-advances': 'navGroupStaff',
+    'driver-dayoffs': 'navGroupStaff',
+    'driver-km-log': 'navGroupStaff',
+    'driver-salary': 'navGroupStaff',
+    'hire-vehicles': 'navGroupFleet',
+    'hire-records': 'navGroupFleet',
     'other-operation-hires': 'navGroupFleet',
-    'commitment-vehicles':   'navGroupFleet',
-    'commitment-records':    'navGroupFleet',
-    'commitment-dayoffs':    'navGroupFleet',
-    'lorry-maintenance':     'navGroupFleet',
+    'commitment-vehicles': 'navGroupFleet',
+    'commitment-records': 'navGroupFleet',
+    'commitment-dayoffs': 'navGroupFleet',
+    'lorry-maintenance': 'navGroupFleet',
 };
 
 function openNavGroup(groupId) {
-    const group  = document.getElementById(groupId);
+    const group = document.getElementById(groupId);
     const header = group?.querySelector('.nav-group-header');
-    const items  = group?.querySelector('.nav-group-items');
+    const items = group?.querySelector('.nav-group-items');
     if (!group || !header || !items) return;
     header.setAttribute('aria-expanded', 'true');
     items.classList.add('open');
@@ -429,9 +429,9 @@ function openNavGroup(groupId) {
 }
 
 function closeNavGroup(groupId) {
-    const group  = document.getElementById(groupId);
+    const group = document.getElementById(groupId);
     const header = group?.querySelector('.nav-group-header');
-    const items  = group?.querySelector('.nav-group-items');
+    const items = group?.querySelector('.nav-group-items');
     if (!group || !header || !items) return;
     header.setAttribute('aria-expanded', 'false');
     items.classList.remove('open');
@@ -454,7 +454,7 @@ function setActiveNavItem(page) {
 // Group header — toggle expand/collapse
 document.querySelectorAll('.nav-group-header').forEach(header => {
     header.addEventListener('click', () => {
-        const key     = header.dataset.group; // 'staff' or 'fleet'
+        const key = header.dataset.group; // 'staff' or 'fleet'
         const groupId = 'navGroup' + key.charAt(0).toUpperCase() + key.slice(1);
         const expanded = header.getAttribute('aria-expanded') === 'true';
         if (expanded) {
@@ -480,13 +480,13 @@ function switchPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pageEl = document.getElementById(page);
     if (pageEl) pageEl.classList.add('active');
-    
+
     const titles = {
         'dashboard': 'Dashboard',
         'cheque-status': 'Cheque Status',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
-        'driver-salary': 'Staff Salary Calculator & Salary Slips', 
+        'driver-salary': 'Staff Salary Calculator & Salary Slips',
         'hire-vehicles': 'Hire-to-Pay Vehicles',
         'hire-records': 'Hire-to-Pay Records',
         'commitment-vehicles': 'Commitment Vehicles',
@@ -497,20 +497,20 @@ function switchPage(page) {
         'lorry-maintenance': 'Lorry Maintenance',
         'other-operation-hires': 'Other Operation Hires',
     };
-    
+
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
-    
+
     if (page === 'dashboard') loadDashboard();
     if (page === 'cheque-status') loadChequeStatus();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
-    
+
     if (page === 'driver-salary') {
         if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
         if (typeof loadSalaryHistory === 'function') loadSalaryHistory();
     }
-    
+
     if (page === 'hire-vehicles') loadHireVehicles();
     if (page === 'hire-records') loadHireRecords();
     if (page === 'commitment-vehicles') loadCommitmentVehicles();
@@ -522,7 +522,7 @@ function switchPage(page) {
         const mEl = document.getElementById('maintenanceMonth');
         if (mEl && !mEl.value) {
             const n = new Date();
-            mEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+            mEl.value = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
         }
         loadMaintenanceRecords();
     }
@@ -554,7 +554,7 @@ async function preloadAllData() {
                 const mEl = document.getElementById('maintenanceMonth');
                 if (mEl && !mEl.value) {
                     const n = new Date();
-                    mEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+                    mEl.value = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
                 }
                 if (typeof loadMaintenanceRecords === 'function') await loadMaintenanceRecords();
             })(),
@@ -582,21 +582,21 @@ async function preloadAllData() {
 async function loadDashboard() {
     try {
         let monthValue = document.getElementById('dashboardMonth')?.value;
-        
+
         // FIXED: Use Local Time for fallback
         if (!monthValue) {
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             monthValue = `${year}-${month}`;
-            
+
             const dashboardMonthEl = document.getElementById('dashboardMonth');
             if (dashboardMonthEl) dashboardMonthEl.value = monthValue;
         }
 
         await Promise.all([
             loadDashboardData(monthValue),
-            loadVehiclePerformance(monthValue), 
+            loadVehiclePerformance(monthValue),
             loadDriverPerformance(monthValue),
             loadDashboardCharts(),
             loadAllTimeStatistics(),
@@ -638,9 +638,9 @@ async function initServiceTracking() {
     const dateInput = document.getElementById('serviceDateInput');
     const locationInput = document.getElementById('serviceLocationInput');
     const addBtn = document.getElementById('addServiceTrackingBtn');
-    
-    if(!dateInput || !addBtn || !lorryNoSelect) return;
-    
+
+    if (!dateInput || !addBtn || !lorryNoSelect) return;
+
     // Populate dropdown
     const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
     if (currentQueryUserId) {
@@ -649,13 +649,13 @@ async function initServiceTracking() {
                 supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, terminated').eq('user_id', currentQueryUserId),
                 supabaseClient.from('commitment_vehicles').select('vehicle_number, terminated').eq('user_id', currentQueryUserId)
             ]);
-            
+
             const baseNames = new Set();
             if (hireV) hireV.filter(v => !v.terminated).forEach(v => baseNames.add(extractBaseVehicleName(v.lorry_number)));
             if (commV) commV.filter(v => !v.terminated).forEach(v => baseNames.add(extractBaseVehicleName(v.vehicle_number)));
-            
+
             const sortedNames = Array.from(baseNames).sort();
-            
+
             lorryNoSelect.innerHTML = '<option value="">Select Vehicle</option>';
             sortedNames.forEach(name => {
                 const opt = document.createElement('option');
@@ -667,14 +667,14 @@ async function initServiceTracking() {
             console.error('Error loading service tracking vehicles:', e);
         }
     }
-    
+
     addBtn.addEventListener('click', async () => {
-        if(!lorryNoSelect.value) { alert('Please select a vehicle.'); return; }
-        if(!dateInput.value) { alert('Please select a service date.'); return; }
-        
+        if (!lorryNoSelect.value) { alert('Please select a vehicle.'); return; }
+        if (!dateInput.value) { alert('Please select a service date.'); return; }
+
         const targetKmsInput = document.getElementById('serviceTargetKms');
         const targetKms = targetKmsInput ? parseInt(targetKmsInput.value) || 5000 : 5000;
-        
+
         const currentUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
         if (!currentUserId) {
             alert('User authentication error. Cannot save.');
@@ -690,7 +690,7 @@ async function initServiceTracking() {
                 .delete()
                 .eq('user_id', currentUserId)
                 .eq('base_name', lorryNoSelect.value);
-            
+
             // Insert new tracker
             const { error } = await supabaseClient.from('service_trackers')
                 .insert([{
@@ -706,8 +706,8 @@ async function initServiceTracking() {
             lorryNoSelect.value = '';
             dateInput.value = '';
             locationInput.value = '';
-            if(targetKmsInput) targetKmsInput.value = 5000;
-            
+            if (targetKmsInput) targetKmsInput.value = 5000;
+
             renderTrackedVehicles();
         } catch (e) {
             console.error('Error saving service tracker:', e);
@@ -717,7 +717,7 @@ async function initServiceTracking() {
             addBtn.textContent = '➕ Track Vehicle';
         }
     });
-    
+
     // Auto-load on initialize
     renderTrackedVehicles();
 }
@@ -725,21 +725,21 @@ async function initServiceTracking() {
 async function renderTrackedVehicles() {
     const grid = document.getElementById('trackedVehiclesGrid');
     if (!grid) return;
-    
+
     const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
     if (!currentQueryUserId) return;
-    
+
     if (grid.children.length === 0) {
         grid.innerHTML = '<div style="color: #7f8c8d; padding: 10px; text-align: center; grid-column: 1 / -1;">Loading trackers...</div>';
     }
-    
+
     let trackedVehicles = [];
     try {
         const { data, error } = await supabaseClient.from('service_trackers')
             .select('*')
             .eq('user_id', currentQueryUserId)
             .order('created_at', { ascending: false });
-            
+
         if (error) throw error;
         trackedVehicles = data || [];
     } catch (e) {
@@ -747,12 +747,12 @@ async function renderTrackedVehicles() {
         grid.innerHTML = '<div style="color: #e74c3c; padding: 10px; text-align: center; grid-column: 1 / -1;">Error loading trackers from database.</div>';
         return;
     }
-    
+
     if (trackedVehicles.length === 0) {
         grid.innerHTML = '<div style="color: #7f8c8d; padding: 10px; text-align: center; grid-column: 1 / -1;">No vehicles are currently being tracked.</div>';
         return;
     }
-    
+
     // Fetch all vehicles once to map IDs and Vector Art
     let allHireVehicles = [];
     let allCommVehicles = [];
@@ -763,26 +763,26 @@ async function renderTrackedVehicles() {
         ]);
         allHireVehicles = hireV || [];
         allCommVehicles = commV || [];
-    } catch(e) {
+    } catch (e) {
         console.error('Error fetching vehicles for calculation:', e);
     }
-    
+
     const fragment = document.createDocumentFragment();
-    
+
     trackedVehicles.forEach((tracker, index) => {
         const safeId = 'tracker_' + index;
         const card = document.createElement('div');
         card.className = 'tracked-vehicle-card';
-        
+
         // Find vector art url for this vehicle
         let artUrl = '';
         const foundHire = allHireVehicles.find(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name));
         const foundComm = allCommVehicles.find(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name));
         if (foundHire && foundHire.vector_art_url) artUrl = foundHire.vector_art_url;
         else if (foundComm && foundComm.vector_art_url) artUrl = foundComm.vector_art_url;
-        
+
         const artHtml = artUrl ? `<img src="${artUrl}" class="tracked-vehicle-art" alt="${tracker.base_name}">` : `<div class="tracked-vehicle-art" style="font-size: 32px; display:flex; align-items:center; justify-content:center; opacity:0.5;">🚚</div>`;
-        
+
         card.innerHTML = `
             <div class="tracked-vehicle-header">
                 <div class="tracked-vehicle-title">
@@ -811,34 +811,34 @@ async function renderTrackedVehicles() {
         `;
         fragment.appendChild(card);
     });
-    
+
     grid.innerHTML = '';
     grid.appendChild(fragment);
-    
+
     // Now that they are in the DOM, execute the calculations concurrently
     const kmPromises = trackedVehicles.map((tracker, index) => {
         const safeId = 'tracker_' + index;
         return calculateIndividualServiceKMs(tracker, safeId, allHireVehicles, allCommVehicles);
     });
-    
+
     await Promise.all(kmPromises);
-    
+
     if (typeof loadNotifications === 'function') {
         loadNotifications();
     }
 }
 
-window.removeTrackedVehicle = async function(baseName) {
-    if(confirm('Stop tracking this vehicle?')) {
+window.removeTrackedVehicle = async function (baseName) {
+    if (confirm('Stop tracking this vehicle?')) {
         const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
         if (!currentQueryUserId) return;
-        
+
         try {
             const { error } = await supabaseClient.from('service_trackers')
                 .delete()
                 .eq('user_id', currentQueryUserId)
                 .eq('base_name', baseName);
-                
+
             if (error) throw error;
             renderTrackedVehicles();
             if (typeof loadNotifications === 'function') loadNotifications();
@@ -852,19 +852,19 @@ window.removeTrackedVehicle = async function(baseName) {
 async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles, allCommVehicles) {
     const kmDisplay = document.getElementById(elementId + '_kms');
     const statusDisplay = document.getElementById(elementId + '_status');
-    if(!kmDisplay) return;
-    
+    if (!kmDisplay) return;
+
     try {
         const targetHireIds = allHireVehicles
             .filter(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name))
             .map(v => v.id);
-            
+
         const targetCommIds = allCommVehicles
             .filter(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name))
             .map(v => v.id);
-            
+
         let totalKm = 0;
-        
+
         if (targetHireIds.length > 0) {
             const { data: hireRecords } = await supabaseClient
                 .from('hire_to_pay_records')
@@ -875,7 +875,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
                 totalKm += hireRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             }
         }
-        
+
         if (targetCommIds.length > 0) {
             const { data: commRecords } = await supabaseClient
                 .from('commitment_records')
@@ -886,7 +886,7 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
                 totalKm += commRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             }
         }
-        
+
         // ADD: Fetch other operation hires for this base name
         const { data: otherOpHires } = await supabaseClient
             .from('other_operation_hires')
@@ -896,23 +896,23 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
         if (otherOpHires) {
             totalKm += otherOpHires.reduce((sum, r) => sum + (r.distance || 0), 0);
         }
-        
+
         kmDisplay.textContent = totalKm.toLocaleString() + ' KM';
-        
+
         if (statusDisplay) {
             const target = tracker.target_kms || 5000;
             const metricBox = document.getElementById(elementId + '_kms_metric');
-            
+
             if (totalKm >= target) {
                 statusDisplay.textContent = 'Service Due!';
                 statusDisplay.style.color = 'var(--brand-red)';
                 statusDisplay.style.fontWeight = '700';
-                if(metricBox) metricBox.classList.add('danger');
+                if (metricBox) metricBox.classList.add('danger');
             } else {
                 statusDisplay.textContent = (target - totalKm).toLocaleString() + ' KM Remaining';
                 statusDisplay.style.color = 'var(--green)';
                 statusDisplay.style.fontWeight = '500';
-                if(metricBox) metricBox.classList.remove('danger');
+                if (metricBox) metricBox.classList.remove('danger');
             }
         }
     } catch (e) {
@@ -1030,8 +1030,8 @@ async function loadDrivers() {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-             tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
-             return;
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
+            return;
         }
 
         // Build assignment map: driverId -> { lorry_number, driver_role }
@@ -1186,7 +1186,7 @@ async function loadDrivers() {
 }
 
 
-window.assignLorry = async function(driverId, selectEl, driverRole) {
+window.assignLorry = async function (driverId, selectEl, driverRole) {
     const lorryNumber = selectEl.value;
     if (!lorryNumber) return;
     if (!checkAdminAccess('assign')) return;
@@ -1209,7 +1209,7 @@ window.assignLorry = async function(driverId, selectEl, driverRole) {
 };
 
 // Remove lorry assignment from a staff member
-window.unassignLorry = async function(driverId) {
+window.unassignLorry = async function (driverId) {
     if (!checkAdminAccess('unassign')) return;
     if (!confirm('Remove this lorry assignment?')) return;
     try {
@@ -1238,7 +1238,7 @@ async function editDriver(id) {
     try {
         const { data, error } = await supabaseClient.from('drivers').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('driverId').value = data.id;
         document.getElementById('driverName').value = data.name;
         document.getElementById('driverContact').value = data.contact;
@@ -1281,7 +1281,7 @@ document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
     document.getElementById('hireVehicleForm').reset();
     document.getElementById('hireVehicleId').value = '';
     // Reset terminated checkbox
-    if(document.getElementById('hireVehicleTerminated')) {
+    if (document.getElementById('hireVehicleTerminated')) {
         document.getElementById('hireVehicleTerminated').checked = false;
     }
     document.getElementById('hireVehicleFormContainer').style.display = 'block';
@@ -1370,13 +1370,13 @@ async function loadHireVehicles() {
             .select('*')
             .eq('user_id', getQueryUserId())
             .order('created_at', { ascending: false });
-        
+
         if (error) throw error;
-        
+
         const tbody = document.querySelector('#hireVehiclesTable tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
@@ -1408,7 +1408,7 @@ async function loadHireVehicles() {
                 tbody.appendChild(row);
             });
         }
-        
+
         updateVehicleSelectors();
     } catch (error) {
         console.error('Error loading vehicles:', error.message);
@@ -1428,7 +1428,7 @@ async function editHireVehicle(id) {
     try {
         const { data, error } = await supabaseClient.from('hire_to_pay_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('hireVehicleId').value = data.id;
         document.getElementById('lorryNumber').value = data.lorry_number;
         document.getElementById('hireVehicleModel').value = data.vehicle_model || '';
@@ -1443,10 +1443,10 @@ async function editHireVehicle(id) {
         document.getElementById('waitingChargeExtra').value = data.waiting_charge_extra;
         document.getElementById('minimumHireAmount').value = data.minimum_hire_amount;
         document.getElementById('ownership').value = data.ownership;
-        if(document.getElementById('hireVehicleTerminated')) {
+        if (document.getElementById('hireVehicleTerminated')) {
             document.getElementById('hireVehicleTerminated').checked = data.terminated || false;
         }
-        
+
         document.getElementById('hireVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -1502,30 +1502,30 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             .select('*')
             .eq('id', vehicleId)
             .single();
-        
+
         if (vehicleError) throw vehicleError;
 
         let hireAmount = 0;
         if (distance <= 100) {
             hireAmount = distance * vehicleData.price_0_100km;
         } else if (distance <= 250) {
-            hireAmount = (100 * vehicleData.price_0_100km) + 
-                        ((distance - 100) * vehicleData.price_100_250km);
+            hireAmount = (100 * vehicleData.price_0_100km) +
+                ((distance - 100) * vehicleData.price_100_250km);
         } else {
-            hireAmount = (100 * vehicleData.price_0_100km) + 
-                        (150 * vehicleData.price_100_250km) +
-                        ((distance - 250) * vehicleData.price_250km_plus);
+            hireAmount = (100 * vehicleData.price_0_100km) +
+                (150 * vehicleData.price_100_250km) +
+                ((distance - 250) * vehicleData.price_250km_plus);
         }
 
         if (hasLoading) hireAmount += vehicleData.loading_charge;
-        
+
         let waitingCharge = 0;
         if (waitingHours > 0) {
             if (waitingHours <= 24) {
                 waitingCharge = vehicleData.waiting_charge_24hrs * waitingHours;
             } else {
-                waitingCharge = (vehicleData.waiting_charge_24hrs * 24) + 
-                              ((waitingHours - 24) * vehicleData.waiting_charge_extra);
+                waitingCharge = (vehicleData.waiting_charge_24hrs * 24) +
+                    ((waitingHours - 24) * vehicleData.waiting_charge_extra);
             }
         }
         hireAmount += waitingCharge;
@@ -1560,7 +1560,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
         } else {
             await supabaseClient.from('hire_to_pay_records').insert([recordData]);
         }
-        
+
         loadHireRecords();
         if (typeof renderTrackedVehicles === 'function') {
             renderTrackedVehicles();
@@ -1578,19 +1578,19 @@ async function loadHireRecords() {
     try {
         const monthValue = document.getElementById('hireRecordsMonth')?.value;
         const vehicleFilter = document.getElementById('hireRecordsVehicleFilter')?.value;
-        
+
         let query = supabaseClient
             .from('hire_to_pay_records')
             .select('*, hire_to_pay_vehicles(lorry_number, price_0_100km, price_100_250km, price_250km_plus, minimum_hire_amount)')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
             // FIXED:
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${month}-${lastDay}`;
-            
+
             query = query.gte('hire_date', startDate).lte('hire_date', endDate);
         }
 
@@ -1617,19 +1617,19 @@ async function loadHireRecords() {
 
         filteredData.forEach(record => {
             const row = document.createElement('tr');
-            
+
             let distanceCharge = 0;
             const distance = record.distance;
-            
+
             if (distance <= 100) {
                 distanceCharge = distance * record.hire_to_pay_vehicles.price_0_100km;
             } else if (distance <= 250) {
-                distanceCharge = (100 * record.hire_to_pay_vehicles.price_0_100km) + 
-                                ((distance - 100) * record.hire_to_pay_vehicles.price_100_250km);
+                distanceCharge = (100 * record.hire_to_pay_vehicles.price_0_100km) +
+                    ((distance - 100) * record.hire_to_pay_vehicles.price_100_250km);
             } else {
-                distanceCharge = (100 * record.hire_to_pay_vehicles.price_0_100km) + 
-                                (150 * record.hire_to_pay_vehicles.price_100_250km) +
-                                ((distance - 250) * record.hire_to_pay_vehicles.price_250km_plus);
+                distanceCharge = (100 * record.hire_to_pay_vehicles.price_0_100km) +
+                    (150 * record.hire_to_pay_vehicles.price_100_250km) +
+                    ((distance - 250) * record.hire_to_pay_vehicles.price_250km_plus);
             }
 
             const actionButtons = userRole === 'viewer' ? '' : `
@@ -1686,10 +1686,10 @@ async function updateHireRecordVehicleFilter() {
 
         const filterSelect = document.getElementById('hireRecordsVehicleFilter');
         if (!filterSelect) return;
-        
+
         const currentValue = filterSelect.value;
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
-        
+
         hireVehicles?.forEach(v => {
             // Skip terminated vehicles that have no hires in the selected month
             if (v.terminated && monthValue && !vehicleIdsWithHires.has(v.id)) return;
@@ -1710,7 +1710,7 @@ async function editHireRecord(id) {
     try {
         const { data, error } = await supabaseClient.from('hire_to_pay_records').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('hireRecordId').value = data.id;
         document.getElementById('jobNumber').value = data.job_number;
         document.getElementById('hireDate').value = data.hire_date;
@@ -1767,7 +1767,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
     const distance = parseFloat(document.getElementById('otherOpDistance').value) || 0;
     const first100Rate = parseFloat(document.getElementById('otherOpFirst100Rate').value) || 0;
     const restRate = parseFloat(document.getElementById('otherOpRestKmRate').value) || 0;
-    
+
     let hireAmount = 0;
     if (distance <= 100) {
         hireAmount = distance * first100Rate;
@@ -1801,7 +1801,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
         } else {
             await supabaseClient.from('other_operation_hires').insert([recordData]);
         }
-        
+
         loadOtherOperationHires();
         if (typeof renderTrackedVehicles === 'function') {
             renderTrackedVehicles();
@@ -1819,12 +1819,12 @@ async function loadOtherOperationHires() {
     try {
         const monthValue = document.getElementById('otherOperationHiresMonth')?.value;
         const vehicleFilter = document.getElementById('otherOperationHiresVehicleFilter')?.value;
-        
+
         let query = supabaseClient
             .from('other_operation_hires')
             .select('*')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
@@ -1844,7 +1844,7 @@ async function loadOtherOperationHires() {
             const tbody = document.querySelector('#otherOperationHiresTable tbody');
             if (tbody) {
                 tbody.innerHTML = '';
-                
+
                 const townSearch = document.getElementById('otherOperationHiresTownSearch')?.value || '';
                 const lowercaseSearch = townSearch.toLowerCase().trim();
 
@@ -1913,7 +1913,7 @@ async function updateOtherOperationHireVehicleFilter() {
 
         const filterSelect = document.getElementById('otherOperationHiresVehicleFilter');
         const formSelect = document.getElementById('otherOpBaseVehicle');
-        
+
         if (filterSelect) {
             const currentValue = filterSelect.value;
             filterSelect.innerHTML = '<option value="">All Base Vehicles</option>';
@@ -1947,7 +1947,7 @@ async function editOtherOperationHire(id) {
     try {
         const { data, error } = await supabaseClient.from('other_operation_hires').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         // Ensure vehicle exists in select
         const formSelect = document.getElementById('otherOpBaseVehicle');
         if (formSelect && ![...formSelect.options].some(opt => opt.value == data.base_lorry_number)) {
@@ -1968,7 +1968,7 @@ async function editOtherOperationHire(id) {
         document.getElementById('otherOpRestKmRate').value = data.rest_km_rate;
         document.getElementById('otherOpFuel').value = data.fuel_litres;
         document.getElementById('otherOpFuelPrice').value = data.fuel_price_per_litre;
-        
+
         document.getElementById('otherOperationHireFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -1994,7 +1994,7 @@ document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', ()
     document.getElementById('commitmentVehicleForm').reset();
     document.getElementById('commitmentVehicleId').value = '';
     // Reset terminated checkbox
-    if(document.getElementById('commitmentVehicleTerminated')) {
+    if (document.getElementById('commitmentVehicleTerminated')) {
         document.getElementById('commitmentVehicleTerminated').checked = false;
     }
     document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
@@ -2075,13 +2075,13 @@ async function loadCommitmentVehicles() {
             .select('*')
             .eq('user_id', getQueryUserId())
             .order('created_at', { ascending: false });
-        
+
         if (error) throw error;
-        
+
         const tbody = document.querySelector('#commitmentVehiclesTable tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
@@ -2111,7 +2111,7 @@ async function loadCommitmentVehicles() {
                 tbody.appendChild(row);
             });
         }
-        
+
         updateVehicleSelectors();
     } catch (error) {
         console.error('Error loading commitment vehicles:', error.message);
@@ -2131,7 +2131,7 @@ async function editCommitmentVehicle(id) {
     try {
         const { data, error } = await supabaseClient.from('commitment_vehicles').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('commitmentVehicleId').value = data.id;
         document.getElementById('commitmentVehicleNumber').value = data.vehicle_number;
         document.getElementById('commitmentVehicleModel').value = data.vehicle_model || '';
@@ -2141,11 +2141,11 @@ async function editCommitmentVehicle(id) {
         document.getElementById('kmLimit').value = data.km_limit_per_month;
         document.getElementById('extraKmCharge').value = data.extra_km_charge;
         document.getElementById('commitmentLoadingCharge').value = data.loading_charge;
-    document.getElementById('commitmentOwnership').value = data.ownership || '';
-        if(document.getElementById('commitmentVehicleTerminated')) {
+        document.getElementById('commitmentOwnership').value = data.ownership || '';
+        if (document.getElementById('commitmentVehicleTerminated')) {
             document.getElementById('commitmentVehicleTerminated').checked = data.terminated || false;
         }
-        
+
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
@@ -2220,7 +2220,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             const { error: insertError } = await supabaseClient.from('commitment_records').insert([recordData]);
             if (insertError) throw insertError;
         }
-        
+
         loadCommitmentRecords();
         if (typeof renderTrackedVehicles === 'function') {
             renderTrackedVehicles();
@@ -2238,12 +2238,12 @@ async function loadCommitmentRecords() {
     try {
         const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
         const vehicleFilter = document.getElementById('commitmentRecordsVehicleFilter')?.value;
-        
+
         let query = supabaseClient
             .from('commitment_records')
             .select('*, commitment_vehicles(vehicle_number, km_limit_per_month, extra_km_charge)')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
@@ -2374,10 +2374,10 @@ async function updateCommitmentRecordVehicleFilter() {
 
         const filterSelect = document.getElementById('commitmentRecordsVehicleFilter');
         if (!filterSelect) return;
-        
+
         const currentValue = filterSelect.value;
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
-        
+
         commitmentVehicles?.forEach(v => {
             // Skip terminated vehicles that have no records in the selected month
             if (v.terminated && monthValue && !vehicleIdsWithHires.has(v.id)) return;
@@ -2398,7 +2398,7 @@ async function editCommitmentRecord(id) {
     try {
         const { data, error } = await supabaseClient.from('commitment_records').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('commitmentRecordId').value = data.id;
         document.getElementById('commitmentJobNumber').value = data.job_number;
         document.getElementById('commitmentDate').value = data.hire_date;
@@ -2475,7 +2475,7 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
             const { error: insertError } = await supabaseClient.from('commitment_day_offs').insert([dayOffData]);
             if (insertError) throw insertError;
         }
-        
+
         loadDayOffs();
         document.getElementById('dayOffFormContainer').style.display = 'none';
     } catch (error) {
@@ -2487,12 +2487,12 @@ async function loadDayOffs() {
     try {
         const monthValue = document.getElementById('dayOffMonth')?.value;
         const vehicleFilter = document.getElementById('dayOffVehicleFilter')?.value;
-        
+
         let query = supabaseClient
             .from('commitment_day_offs')
             .select('*, commitment_vehicles(vehicle_number)')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
@@ -2546,10 +2546,10 @@ async function updateDayOffVehicleFilter() {
 
         const filterSelect = document.getElementById('dayOffVehicleFilter');
         if (!filterSelect) return;
-        
+
         const currentValue = filterSelect.value;
         filterSelect.innerHTML = '<option value="">All Vehicles</option>';
-        
+
         commitmentVehicles?.forEach(v => {
             const option = document.createElement('option');
             option.value = v.id;
@@ -2568,7 +2568,7 @@ async function editDayOff(id) {
     try {
         const { data, error } = await supabaseClient.from('commitment_day_offs').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('dayOffId').value = data.id;
         document.getElementById('dayOffVehicle').value = data.vehicle_id;
         document.getElementById('dayOffDate').value = data.day_off_date;
@@ -2599,7 +2599,7 @@ async function loadDashboardData(monthValue) {
         const startDate = `${year}-${monthPadded}-01`;
 
         // Get last day correctly without timezone shift
-        const lastDay = new Date(year, month, 0).getDate(); 
+        const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
 
         const currentQueryUserId = getQueryUserId();
@@ -2639,7 +2639,7 @@ async function loadDashboardData(monthValue) {
 
         // Set to track unique active vehicles (merged by base number plate)
         const activeVehiclesSet = new Set();
-        
+
         // Map to quickly get base names for records
         const hireVehicleBaseMap = {};
         const commitVehicleBaseMap = {};
@@ -2654,7 +2654,7 @@ async function loadDashboardData(monthValue) {
             totalDistance += record.distance || 0;
             totalFuelLitres += record.fuel_litres || 0;
             totalHires++;
-            if(record.vehicle_id) {
+            if (record.vehicle_id) {
                 const baseName = hireVehicleBaseMap[record.vehicle_id] || `hire_${record.vehicle_id}`;
                 activeVehiclesSet.add(baseName);
             }
@@ -2685,15 +2685,15 @@ async function loadDashboardData(monthValue) {
 
         // Process Commitment Records for Distance & Activity
         commitmentRecords?.forEach(record => {
-             totalDistance += record.distance || 0;
-             totalFuelLitres += record.fuel_litres || 0;
-             if(record.vehicle_id) {
-                 const baseName = commitVehicleBaseMap[record.vehicle_id] || `commit_${record.vehicle_id}`;
-                 activeVehiclesSet.add(baseName);
-             }
+            totalDistance += record.distance || 0;
+            totalFuelLitres += record.fuel_litres || 0;
+            if (record.vehicle_id) {
+                const baseName = commitVehicleBaseMap[record.vehicle_id] || `commit_${record.vehicle_id}`;
+                activeVehiclesSet.add(baseName);
+            }
         });
 
-       
+
 
         totalRevenue += (commitmentPayment - dayOffDeductions + extraKmCharges);
         totalFuelCost += commitmentFuelCost;
@@ -2706,20 +2706,20 @@ async function loadDashboardData(monthValue) {
             totalDistance += record.distance || 0;
             totalFuelLitres += record.fuel_litres || 0;
             totalHires++;
-            if(record.base_lorry_number) {
+            if (record.base_lorry_number) {
                 activeVehiclesSet.add(record.base_lorry_number);
             }
         });
 
         // Calculate Fuel Allowance (16.00% of Fuel Cost)
-        const fuelAllowance = totalFuelCost * 0.1600;
+        const fuelAllowance = totalFuelCost * 0.1800;
 
         // Net Profit = Revenue - Fuel Cost + Fuel Allowance
         const netProfit = totalRevenue - totalFuelCost + fuelAllowance;
 
         // --- UPDATE UI ELEMENTS ---
 
-        const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
         setText('totalRevenue', `LKR ${totalRevenue.toFixed(2)}`);
         setText('fuelCost', `LKR ${totalFuelCost.toFixed(2)}`);
@@ -2736,7 +2736,7 @@ async function loadDashboardData(monthValue) {
 
         // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
-             await loadVehicleRevenueChart(monthValue);
+            await loadVehicleRevenueChart(monthValue);
         }
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
@@ -2749,10 +2749,10 @@ async function loadVehiclePerformance(monthValue) {
         const [year, month] = monthValue.split('-');
         const monthPadded = String(month).padStart(2, '0');
         const startDate = `${year}-${monthPadded}-01`;
-        
+
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
-        
+
         const currentQueryUserId = getQueryUserId();
 
         const [
@@ -2924,7 +2924,7 @@ async function loadVehiclePerformance(monthValue) {
 
         // Generate HTML with separate sections per vehicle type
         let performanceHtml = '';
-        
+
         if (vehiclesWithData.length === 0) {
             performanceHtml = `
                 <div class="empty-state">
@@ -3213,7 +3213,7 @@ async function loadVehiclePerformance(monthValue) {
 async function updateVehicleSelectors() {
     try {
         const currentQueryUserId = getQueryUserId();
-        
+
         // Filter out terminated vehicles for selectors
         const { data: hireVehicles } = await supabaseClient
             .from('hire_to_pay_vehicles')
@@ -3294,7 +3294,7 @@ async function loadDashboardCharts() {
 
         // Selected month breakdown range calculation
         const selMonth = document.getElementById('dashboardMonth')?.value;
-        const selMonthStr = selMonth || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+        const selMonthStr = selMonth || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
         const [selYear, selMon] = selMonthStr.split('-');
         const selMonPadded = String(selMon).padStart(2, '0');
         const selStart = `${selYear}-${selMonPadded}-01`;
@@ -3331,12 +3331,12 @@ async function loadDashboardCharts() {
             date.setDate(1); // FIX: Set to 1st of month to avoid month skipping
             date.setMonth(date.getMonth() - i);
             const year = date.getFullYear();
-            
+
             // Ensure month is 2 digits for the string
             const monthRaw = date.getMonth() + 1;
             const month = String(monthRaw).padStart(2, '0');
             const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-            
+
             const targetMonthKey = `${year}-${month}`; // YYYY-MM
 
             // Filter 6-month datasets in-memory
@@ -3359,7 +3359,7 @@ async function loadDashboardCharts() {
             const commitmentPayment = commitmentVehicles?.reduce((sum, v) => sum + v.fixed_monthly_payment, 0) || 0;
             const dayOffDeductions = dayOffs?.reduce((sum, d) => sum + d.deduction_amount, 0) || 0;
             const commitmentFuelCost = commitmentRecords?.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-            
+
             // FIXED: Calculate extra km charges at vehicle+month level
             let extraKmCharges = 0;
             if (commitmentVehicles && commitmentRecords && commitmentVehicles.length > 0 && commitmentRecords.length > 0) {
@@ -3440,7 +3440,7 @@ async function loadDashboardCharts() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                            ticks: { callback: v => `LKR ${(v / 1000).toFixed(0)}K` }
                         }
                     }
                 }
@@ -3482,7 +3482,7 @@ async function loadDashboardCharts() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                            ticks: { callback: v => `LKR ${(v / 1000).toFixed(0)}K` }
                         }
                     }
                 }
@@ -3513,7 +3513,7 @@ async function loadDashboardCharts() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` }
+                            ticks: { callback: v => `LKR ${(v / 1000).toFixed(0)}K` }
                         }
                     }
                 }
@@ -3573,7 +3573,7 @@ async function loadDashboardCharts() {
                         legend: { position: 'bottom' },
                         tooltip: {
                             callbacks: {
-                                label: function(ctx) {
+                                label: function (ctx) {
                                     const pct = totalBreakdown > 0 ? ((ctx.parsed / totalBreakdown) * 100).toFixed(1) : 0;
                                     return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
                                 }
@@ -3596,7 +3596,7 @@ async function loadDashboardCharts() {
 async function loadAllTimeStatistics() {
     try {
         const currentQueryUserId = getQueryUserId();
-        
+
         const [
             { data: allHireRecords },
             { data: allCommitmentRecords },
@@ -3733,7 +3733,7 @@ async function loadFleetOverview() {
 async function loadTopPerformingVehicles() {
     try {
         const currentQueryUserId = getQueryUserId();
-        
+
         // 3. Fetch Basic Vehicle Data and all records concurrently
         const [
             { data: hireVehicles },
@@ -3781,7 +3781,7 @@ async function loadTopPerformingVehicles() {
 
             // --- Metrics (All-Time) ---
             const recentRecords = allRecords;
-            
+
             const rev6m = recentRecords.reduce((sum, r) => sum + (r.hire_amount || 0), 0);
             const fuelCost6m = recentRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
             const profit6m = rev6m - fuelCost6m;
@@ -3869,9 +3869,9 @@ async function loadTopPerformingVehicles() {
                     allTimeKm: 0, allTimeHiresTotal: 0, allTimeDist: 0, allTimeFuel: 0, vectorArt: null
                 };
             } else if (mergedMap[baseName].type !== 'Other Operation' && mergedMap[baseName].type !== 'Mixed') {
-                 mergedMap[baseName].type = 'Mixed';
+                mergedMap[baseName].type = 'Mixed';
             }
-            
+
             const revenue = r.hire_amount || 0;
             const fuelCost = r.fuel_cost || 0;
             const distance = r.distance || 0;
@@ -3923,8 +3923,8 @@ async function loadTopPerformingVehicles() {
 
         container.innerHTML = topVehicles.map((vehicle, index) => {
             const rankEmoji = `#${index + 1}`;
-            
-            const iconHtml = vehicle.vectorArt 
+
+            const iconHtml = vehicle.vectorArt
                 ? `<img src="${vehicle.vectorArt}" alt="Vehicle Art">`
                 : (vehicle.type === 'Hire-to-Pay' ? '🚚' : '🚛');
 
@@ -3949,11 +3949,11 @@ async function loadTopPerformingVehicles() {
                         
                         <div class="premium-metric-row">
                             <span class="metric-label">Revenue</span>
-                            <span class="metric-value">LKR ${vehicle.revenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                            <span class="metric-value">LKR ${vehicle.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
                         <div class="premium-metric-row">
                             <span class="metric-label">Profit</span>
-                            <span class="metric-value ${profitClass}">LKR ${vehicle.profit.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                            <span class="metric-value ${profitClass}">LKR ${vehicle.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
                         <div class="premium-metric-row">
                             <span class="metric-label">Margin</span>
@@ -3961,7 +3961,7 @@ async function loadTopPerformingVehicles() {
                         </div>
                         <div class="premium-metric-row">
                             <span class="metric-label">Total KM</span>
-                            <span class="metric-value">${vehicle.km.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                            <span class="metric-value">${vehicle.km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km</span>
                         </div>
                         <div class="premium-metric-row">
                             <span class="metric-label">Total Hires</span>
@@ -4043,44 +4043,44 @@ document.getElementById('removeReceiptBtn')?.addEventListener('click', async () 
 // Upload receipt to Supabase Storage
 async function uploadReceipt(file, advanceId) {
     if (!file) return null;
-    
+
     try {
         const progressDiv = document.getElementById('uploadProgress');
         const progressBar = document.getElementById('uploadProgressBar');
         const progressText = document.getElementById('uploadProgressText');
-        
+
         progressDiv.style.display = 'block';
         progressBar.style.width = '30%';
         progressText.textContent = 'Uploading receipt...';
-        
+
         const timestamp = Date.now();
         const filename = `${adminUserId}/${advanceId}_${timestamp}_${file.name}`;
-        
+
         progressBar.style.width = '60%';
-        
+
         const { data, error } = await supabaseClient.storage
             .from('advance-receipts')
             .upload(filename, file, {
                 cacheControl: '3600',
                 upsert: false
             });
-        
+
         if (error) throw error;
-        
+
         progressBar.style.width = '90%';
-        
+
         const { data: urlData } = supabaseClient.storage
             .from('advance-receipts')
             .getPublicUrl(filename);
-        
+
         progressBar.style.width = '100%';
         progressText.textContent = 'Upload complete!';
-        
+
         setTimeout(() => {
             progressDiv.style.display = 'none';
             progressBar.style.width = '0%';
         }, 1000);
-        
+
         return urlData.publicUrl;
     } catch (error) {
         console.error('Error uploading receipt:', error);
@@ -4093,14 +4093,14 @@ async function uploadReceipt(file, advanceId) {
 // Delete receipt from storage
 async function deleteReceipt(receiptUrl) {
     if (!receiptUrl) return;
-    
+
     try {
         const urlParts = receiptUrl.split('/');
         const bucketIndex = urlParts.findIndex(part => part === 'advance-receipts');
         if (bucketIndex === -1) return;
-        
+
         const filename = urlParts.slice(bucketIndex + 1).join('/');
-        
+
         await supabaseClient.storage
             .from('advance-receipts')
             .remove([filename]);
@@ -4122,15 +4122,15 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
 
     try {
         let receiptUrl = existingReceiptUrl;
-        
+
         // If editing and removing old receipt, delete it
         if (id && existingReceiptUrl && !currentReceiptFile) {
             await deleteReceipt(existingReceiptUrl);
             receiptUrl = null;
         }
-        
+
         let savedAdvanceId = id;
-        
+
         const advanceData = {
             driver_id: driverId,
             advance_date: advanceDate,
@@ -4147,18 +4147,18 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
                 .insert([advanceData])
                 .select()
                 .single();
-            
+
             if (insertError) throw insertError;
             savedAdvanceId = newAdvance.id;
         }
-        
+
         if (currentReceiptFile) {
             if (existingReceiptUrl) {
                 await deleteReceipt(existingReceiptUrl);
             }
-            
+
             receiptUrl = await uploadReceipt(currentReceiptFile, savedAdvanceId);
-            
+
             if (receiptUrl) {
                 await supabaseClient
                     .from('driver_advances')
@@ -4166,7 +4166,7 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
                     .eq('id', savedAdvanceId);
             }
         }
-        
+
         loadDriverAdvances();
         document.getElementById('advanceFormContainer').style.display = 'none';
         currentReceiptFile = null;
@@ -4181,14 +4181,14 @@ async function loadDriverAdvances() {
     try {
         const monthValue = document.getElementById('advanceMonth')?.value;
         const driverFilter = document.getElementById('advanceDriverFilter')?.value;
-        
+
         await loadAdvanceSummary();
-        
+
         let query = supabaseClient
             .from('driver_advances')
             .select('*, drivers(name)')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
@@ -4211,13 +4211,13 @@ async function loadDriverAdvances() {
 
         data.forEach(advance => {
             const row = document.createElement('tr');
-            
-            const receiptColumn = advance.receipt_url ? 
+
+            const receiptColumn = advance.receipt_url ?
                 `<a href="${advance.receipt_url}" target="_blank" class="receipt-link" title="View Receipt">
                     📄 View PDF
-                </a>` : 
+                </a>` :
                 '<span style="color: #95A5A6;">No receipt</span>';
-            
+
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
                     <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
@@ -4246,7 +4246,7 @@ async function loadDriverAdvances() {
 async function loadAdvanceSummary() {
     try {
         const currentQueryUserId = getQueryUserId();
-        
+
         // 1. Get current filter values
         const monthValue = document.getElementById('advanceMonth')?.value;
         const driverFilter = document.getElementById('advanceDriverFilter')?.value;
@@ -4269,7 +4269,7 @@ async function loadAdvanceSummary() {
             const startDate = `${year}-${month}-01`;
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${month}-${lastDay}`;
-            
+
             query = query.gte('advance_date', startDate).lte('advance_date', endDate);
         }
 
@@ -4317,9 +4317,9 @@ async function loadAdvanceSummary() {
         const topHtml = topRanked.length > 0 ? `
             <div style="display:flex;flex-direction:column;gap:5px;min-width:160px;">
                 <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;font-weight:700;">🏆 Highest This Period</div>
-                ${topRanked.map((s,i) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;background:rgba(255,255,255,0.13);border-radius:8px;padding:5px 10px;">
+                ${topRanked.map((s, i) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;background:rgba(255,255,255,0.13);border-radius:8px;padding:5px 10px;">
                     <span>${medals[i]} ${s.name}</span>
-                    <span style="font-weight:800;font-family:'Barlow Condensed',sans-serif;font-size:14px;">LKR ${s.total.toLocaleString('en-LK',{minimumFractionDigits:2})}</span>
+                    <span style="font-weight:800;font-family:'Barlow Condensed',sans-serif;font-size:14px;">LKR ${s.total.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
                 </div>`).join('')}
             </div>` : '';
         const topWidget = document.createElement('div');
@@ -4328,8 +4328,8 @@ async function loadAdvanceSummary() {
             <div style="font-size:44px;flex-shrink:0;">💳</div>
             <div style="flex:1;min-width:180px;">
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Staff Advances — ${monthLabel}</div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandTotal.toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-                <div style="font-size:12px;opacity:.75;margin-top:5px;">${advCount} advance transaction${advCount!==1?'s':''} recorded</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandTotal.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style="font-size:12px;opacity:.75;margin-top:5px;">${advCount} advance transaction${advCount !== 1 ? 's' : ''} recorded</div>
             </div>
             ${topHtml}
         </div>`;
@@ -4361,7 +4361,7 @@ async function loadAdvanceSummary() {
                         📋 Copy SMS
                     </button>
                 `;
-                card.querySelector('.btn-copy-sms').addEventListener('click', function() {
+                card.querySelector('.btn-copy-sms').addEventListener('click', function () {
                     copyAdvanceSms(this, smsMessage);
                 });
                 summaryEl.appendChild(card);
@@ -4415,7 +4415,7 @@ function fallbackCopyText(text, btn) {
     ta.focus();
     ta.select();
     // Also try setSelectionRange for mobile
-    try { ta.setSelectionRange(0, 99999); } catch(e) {}
+    try { ta.setSelectionRange(0, 99999); } catch (e) { }
     let success = false;
     try {
         success = document.execCommand('copy');
@@ -4484,23 +4484,23 @@ async function editAdvance(id) {
     try {
         const { data, error } = await supabaseClient.from('driver_advances').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         document.getElementById('advanceId').value = data.id;
         document.getElementById('advanceDriver').value = data.driver_id;
         document.getElementById('advanceDate').value = data.advance_date;
         document.getElementById('advanceAmount').value = data.amount;
         document.getElementById('advanceNotes').value = data.notes || '';
-        
+
         existingReceiptUrl = data.receipt_url;
         currentReceiptFile = null;
-        
+
         if (data.receipt_url) {
             document.getElementById('currentReceipt').style.display = 'block';
             document.getElementById('currentReceiptLink').href = data.receipt_url;
         } else {
             document.getElementById('currentReceipt').style.display = 'none';
         }
-        
+
         document.getElementById('advanceReceipt').value = '';
         document.getElementById('uploadProgress').style.display = 'none';
         document.getElementById('advanceFormContainer').style.display = 'block';
@@ -4519,11 +4519,11 @@ async function deleteAdvance(id) {
                 .select('receipt_url')
                 .eq('id', id)
                 .single();
-            
+
             if (advance?.receipt_url) {
                 await deleteReceipt(advance.receipt_url);
             }
-            
+
             await supabaseClient.from('driver_advances').delete().eq('id', id);
             loadDriverAdvances();
         } catch (error) {
@@ -4562,32 +4562,32 @@ function closePhotoLightbox() {
     }
 }
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closePhotoLightbox();
     }
 });
 
-document.addEventListener('touchstart', function(e) {
+document.addEventListener('touchstart', function (e) {
     if (e.touches.length > 1) {
         e.preventDefault();
     }
 }, { passive: false });
 
-document.addEventListener('touchmove', function(e) {
+document.addEventListener('touchmove', function (e) {
     if (e.touches.length > 1) {
         e.preventDefault();
     }
 }, { passive: false });
 
-document.addEventListener('touchend', function(e) {
+document.addEventListener('touchend', function (e) {
     if (e.touches.length > 0) {
         e.preventDefault();
     }
 }, { passive: false });
 
 let lastTouchEnd = 0;
-document.addEventListener('touchend', function(event) {
+document.addEventListener('touchend', function (event) {
     const now = (new Date()).getTime();
     if (now - lastTouchEnd <= 300) {
         event.preventDefault();
@@ -4595,7 +4595,7 @@ document.addEventListener('touchend', function(event) {
     lastTouchEnd = now;
 }, false);
 
-document.addEventListener('contextmenu', function(e) {
+document.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     return false;
 });
@@ -4625,7 +4625,7 @@ async function loadAdvancedDashboardStats(monthValue) {
         ]);
 
         const baseNames = new Set();
-        const vehicleMap = {}; 
+        const vehicleMap = {};
 
         if (allVehicles) {
             allVehicles.forEach(v => {
@@ -4673,21 +4673,21 @@ async function loadAdvancedDashboardStats(monthValue) {
         let totalWaitingRev = 0;
         let totalJobs = combinedRecords.length;
         let totalFuelLitres = 0;
-        
+
         // Utilization Set: Store "BaseName-Date" strings
         const activeVehicleDays = new Set();
 
         combinedRecords.forEach(r => {
             // Financials
-            const revenue = r.hire_amount || 0; 
-            
+            const revenue = r.hire_amount || 0;
+
             // Operational totals:
             totalDistance += (r.distance || 0);
             totalFuelCost += (r.fuel_cost || 0);
             totalFuelLitres += (r.fuel_litres || 0);
-            
+
             if (r.waiting_charge) totalWaitingRev += r.waiting_charge;
-            
+
             // Utilization
             let baseName = 'unknown';
             if (r._recordType === 'other') {
@@ -4721,19 +4721,19 @@ async function loadAdvancedDashboardStats(monthValue) {
 
         // 6. Jobs per Vehicle
         const jobsPerVeh = fleetCount > 0 ? (totalJobs / fleetCount) : 0;
-        
+
         // 7. Distance per Vehicle
         const distPerVeh = fleetCount > 0 ? (totalDistance / fleetCount) : 0;
 
         // --- UPDATE UI ---
-        
-        const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
         setText('profitPerKm', `LKR ${profitPerKm.toFixed(2)}`);
         setText('utilizationRate', `${utilizationRate.toFixed(1)}%`);
         setText('revPerVehicleDay', `LKR ${revPerVehDay.toFixed(2)}`);
         setText('avgFuelEfficiency', `${avgEfficiency.toFixed(2)} Km/L`);
-        
+
         setText('avgTripDistance', `${avgTripDist.toFixed(1)} km`);
         setText('waitingRevenue', `LKR ${totalWaitingRev.toFixed(2)}`);
         setText('jobsPerVehicle', jobsPerVeh.toFixed(1));
@@ -4741,10 +4741,10 @@ async function loadAdvancedDashboardStats(monthValue) {
 
 
         // --- CHARTS GENERATION ---
-        
+
         // Chart 1: Distance Distribution (Histogram bucket logic)
         const buckets = { '0-50km': 0, '51-100km': 0, '101-200km': 0, '200km+': 0 };
-        
+
         combinedRecords.forEach(r => {
             const d = r.distance || 0;
             if (d <= 50) buckets['0-50km']++;
@@ -4773,7 +4773,7 @@ async function loadAdvancedDashboardStats(monthValue) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
+                    plugins: {
                         title: { display: true, text: 'Jobs by Distance' },
                         legend: { display: false }
                     },
@@ -4786,16 +4786,16 @@ async function loadAdvancedDashboardStats(monthValue) {
         // We need to fetch 6 months of data aggregated
         const months = [];
         const efficiencyData = [];
-        
+
         for (let i = 5; i >= 0; i--) {
             const date = new Date();
-            date.setDate(1); 
+            date.setDate(1);
             date.setMonth(date.getMonth() - i);
             const mYear = date.getFullYear();
             const mRaw = date.getMonth() + 1;
             const mStr = String(mRaw).padStart(2, '0');
             const mLabel = date.toLocaleDateString('en-US', { month: 'short' });
-            
+
             const startD = `${mYear}-${mStr}-01`;
             const endD = `${mYear}-${mStr}-${new Date(mYear, mRaw, 0).getDate()}`;
 
@@ -4803,7 +4803,7 @@ async function loadAdvancedDashboardStats(monthValue) {
             const { data: hRecs } = await supabaseClient.from('hire_to_pay_records')
                 .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
                 .gte('hire_date', startD).lte('hire_date', endD);
-                
+
             const { data: cRecs } = await supabaseClient.from('commitment_records')
                 .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
                 .gte('hire_date', startD).lte('hire_date', endD);
@@ -4812,10 +4812,10 @@ async function loadAdvancedDashboardStats(monthValue) {
                 .select('distance, fuel_litres').eq('user_id', currentQueryUserId)
                 .gte('hire_date', startD).lte('hire_date', endD);
 
-            let mDist = 0; 
+            let mDist = 0;
             let mFuel = 0;
-            
-            [...(hRecs||[]), ...(cRecs||[]), ...(oRecs||[])].forEach(r => {
+
+            [...(hRecs || []), ...(cRecs || []), ...(oRecs || [])].forEach(r => {
                 mDist += (r.distance || 0);
                 mFuel += (r.fuel_litres || 0);
             });
@@ -4846,7 +4846,7 @@ async function loadAdvancedDashboardStats(monthValue) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
+                    plugins: {
                         title: { display: true, text: 'Fuel Efficiency Trend (Last 6 Months)' }
                     },
                     scales: { y: { beginAtZero: false } }
@@ -4912,7 +4912,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
             const name = extractBaseVehicleName(rawName);
             vehicleRevMap[name] = (vehicleRevMap[name] || 0) + (r.hire_amount || 0);
         });
-        
+
         otherOpRecords?.forEach(r => {
             if (r.base_lorry_number) {
                 const name = extractBaseVehicleName(r.base_lorry_number);
@@ -4939,7 +4939,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
                 let rev = data.vehicle.fixed_monthly_payment || 0;
                 const exceed = Math.max(0, data.totalKm - (data.vehicle.km_limit_per_month || 0));
                 rev += exceed * (data.vehicle.extra_km_charge || 0);
-                
+
                 const baseName = extractBaseVehicleName(rawName);
                 vehicleRevMap[baseName] = (vehicleRevMap[baseName] || 0) + rev;
             }
@@ -4994,7 +4994,7 @@ async function loadVehicleRevenuePieChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                                 const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
                                 return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
@@ -5065,7 +5065,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
 
         const totalRev = hireRevenue + commRevenue + otherOpRevenue;
         const theme2 = getChartTheme();
-        
+
         window.revenueTypeSplitChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -5102,7 +5102,7 @@ async function loadRevenueTypeSplitChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 const pct = totalRev > 0 ? ((ctx.parsed / totalRev) * 100).toFixed(1) : 0;
                                 return `${ctx.label}: LKR ${ctx.parsed.toLocaleString()} (${pct}%)`;
                             }
@@ -5131,30 +5131,30 @@ async function loadTopRoutesChart(monthValue) {
             if (!loc) return;
             const lowerLoc = loc.toLowerCase();
             let townsPart = loc;
-            
+
             // Check if "via" exists
             const viaIndex = lowerLoc.indexOf('via');
             if (viaIndex !== -1) {
                 // Extract everything after "via"
                 townsPart = loc.substring(viaIndex + 3);
             }
-            
+
             // Split by comma
             const towns = townsPart.split(',');
             towns.forEach(t => {
                 const cleanTown = t.trim();
                 if (!cleanTown) return;
-                
+
                 // Exclude "ederamulla" specifically as requested
                 if (cleanTown.toLowerCase().includes('ederamulla')) return;
                 if (cleanTown.toLowerCase() === 'via') return;
-                
+
                 if (cleanTown.length > 1) {
                     // Title case formatting
                     const formattedTown = cleanTown.split(' ')
                         .map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '')
                         .join(' ');
-                        
+
                     if (!townMap[formattedTown]) townMap[formattedTown] = 0;
                     townMap[formattedTown]++;
                 }
@@ -5226,7 +5226,7 @@ async function loadTopRoutesChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 return `Visits: ${ctx.parsed.x}`;
                             }
                         }
@@ -5344,10 +5344,10 @@ async function loadDailyActivityChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            title: function(ctx) {
+                            title: function (ctx) {
                                 return `Day ${ctx[0].label}, ${monthValue}`;
                             },
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 return `${ctx.parsed.y} job(s)`;
                             }
                         }
@@ -5432,7 +5432,7 @@ async function loadCostVsRevenueChart(monthValue) {
                 let rev = d.vehicle.fixed_monthly_payment || 0;
                 const exc = Math.max(0, d.totalKm - (d.vehicle.km_limit_per_month || 0));
                 rev += exc * (d.vehicle.extra_km_charge || 0);
-                
+
                 const name = extractBaseVehicleName(rawName);
                 if (!vehicleData[name]) vehicleData[name] = { revenue: 0, fuelCost: 0 };
                 vehicleData[name].revenue += rev;
@@ -5507,7 +5507,7 @@ async function loadCostVsRevenueChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 return `${ctx.dataset.label}: LKR ${ctx.parsed.y.toLocaleString()}`;
                             }
                         }
@@ -5620,10 +5620,10 @@ async function loadDailyKmChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            title: function(ctx) {
+                            title: function (ctx) {
                                 return `Day ${ctx[0].label} — ${monthValue}`;
                             },
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 return `Distance: ${ctx.parsed.y.toLocaleString()} km`;
                             }
                         }
@@ -5750,10 +5750,10 @@ async function loadDailyFuelChart(monthValue) {
                         cornerRadius: 8,
                         padding: 12,
                         callbacks: {
-                            title: function(ctx) {
+                            title: function (ctx) {
                                 return `Day ${ctx[0].label} — ${monthValue}`;
                             },
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 if (ctx.dataset.yAxisID === 'yLitres') {
                                     return `Fuel Used: ${ctx.parsed.y.toFixed(2)} Litres`;
                                 } else {
@@ -5820,9 +5820,9 @@ document.getElementById('addDriverDayOffBtn')?.addEventListener('click', () => {
     document.getElementById('driverDayOffId').value = '';
     document.getElementById('suggestedDeduction').textContent = '';
     document.getElementById('driverDayOffFormContainer').style.display = 'block';
-    
+
     // Populate the dropdown inside the form
-    updateDriverDayOffSelectors(); 
+    updateDriverDayOffSelectors();
 });
 
 document.getElementById('cancelDriverDayOffBtn')?.addEventListener('click', () => {
@@ -5838,7 +5838,7 @@ document.getElementById('driverDayOffDriver')?.addEventListener('change', async 
     const driverId = e.target.value;
     const amountInput = document.getElementById('driverDayOffAmount');
     const suggestionText = document.getElementById('suggestedDeduction');
-    
+
     if (!driverId) return;
 
     try {
@@ -5868,7 +5868,7 @@ document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e
     if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
 
     const id = document.getElementById('driverDayOffId').value;
-    
+
     const data = {
         driver_id: document.getElementById('driverDayOffDriver').value,
         day_off_date: document.getElementById('driverDayOffDate').value,
@@ -5885,7 +5885,7 @@ document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e
             const { error: insertError } = await supabaseClient.from('driver_day_offs').insert([data]);
             if (insertError) throw insertError;
         }
-        
+
         loadDriverDayOffs();
         document.getElementById('driverDayOffFormContainer').style.display = 'none';
     } catch (error) {
@@ -5898,12 +5898,12 @@ async function loadDriverDayOffs() {
     try {
         const monthValue = document.getElementById('driverDayOffMonth')?.value;
         const driverFilter = document.getElementById('driverDayOffFilter')?.value;
-        
+
         let query = supabaseClient
             .from('driver_day_offs')
             .select('*, drivers(name)')
             .eq('user_id', getQueryUserId());
-        
+
         if (monthValue) {
             const [year, month] = monthValue.split('-');
             const startDate = `${year}-${month}-01`;
@@ -5997,8 +5997,8 @@ async function renderDayOffWidgets(dayOffData) {
         <div style="font-size:44px;flex-shrink:0;">⛔</div>
         <div style="flex:1;min-width:180px;">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Day Off Deductions — ${monthLabel}</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandDeduction.toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            <div style="font-size:12px;opacity:.75;margin-top:5px;">${totalDayOffs} day off record${totalDayOffs!==1?'s':''} across ${driverCount} staff member${driverCount!==1?'s':''}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandDeduction.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style="font-size:12px;opacity:.75;margin-top:5px;">${totalDayOffs} day off record${totalDayOffs !== 1 ? 's' : ''} across ${driverCount} staff member${driverCount !== 1 ? 's' : ''}</div>
         </div>
     </div>`;
     container.appendChild(topWidget);
@@ -6014,7 +6014,7 @@ async function renderDayOffWidgets(dayOffData) {
                 <div class="advance-card-content">
                     <div class="advance-card-name">${d.name}</div>
                     <div class="advance-card-amount" style="color:#E74C3C;">LKR ${d.totalDeduction.toFixed(2)}</div>
-                    <div class="advance-card-label">${d.count} day off${d.count!==1?'s':''} — ${monthLabel}</div>
+                    <div class="advance-card-label">${d.count} day off${d.count !== 1 ? 's' : ''} — ${monthLabel}</div>
                 </div>
             `;
             container.appendChild(card);
@@ -6076,9 +6076,9 @@ async function editDriverDayOff(id) {
             .select('*')
             .eq('id', id)
             .single();
-            
+
         if (error) throw error;
-        
+
         // Ensure selectors are loaded before setting value (preserves form value after population)
         await updateDriverDayOffSelectors(false);
 
@@ -6135,17 +6135,17 @@ document.getElementById('maintenanceForm')?.addEventListener('submit', async (e)
 
     const id = document.getElementById('maintenanceId').value;
     const vehicleRaw = document.getElementById('maintenanceVehicle').value;
-    
+
     // We now save the base name directly.
     const data = {
-        vehicle_ref:    vehicleRaw,
-        vehicle_type:   'merged',
-        vehicle_id:     0,
-        expense_type:   document.getElementById('maintenanceExpense').value,
-        amount:         parseFloat(document.getElementById('maintenanceAmount').value) || 0,
+        vehicle_ref: vehicleRaw,
+        vehicle_type: 'merged',
+        vehicle_id: 0,
+        expense_type: document.getElementById('maintenanceExpense').value,
+        amount: parseFloat(document.getElementById('maintenanceAmount').value) || 0,
         maintenance_date: document.getElementById('maintenanceDate').value,
-        notes:          document.getElementById('maintenanceNotes').value || null,
-        user_id:        adminUserId
+        notes: document.getElementById('maintenanceNotes').value || null,
+        user_id: adminUserId
     };
 
     try {
@@ -6170,7 +6170,7 @@ async function loadMaintenanceRecords() {
         let monthValue = monthEl ? monthEl.value : '';
         if (!monthValue) {
             const now = new Date();
-            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            monthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             if (monthEl) monthEl.value = monthValue;
         }
 
@@ -6179,7 +6179,7 @@ async function loadMaintenanceRecords() {
         const [yr, mo] = monthValue.split('-');
         const startDate = `${yr}-${mo}-01`;
         const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
+        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2, '0')}`;
 
         let query = supabaseClient
             .from('lorry_maintenance')
@@ -6199,12 +6199,12 @@ async function loadMaintenanceRecords() {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found for this month.</td></tr>';
         } else {
             const labelMap = await getVehicleLabelMap();
-            
+
             // Filter locally to support merged base names for old records
-            const filteredData = vehicleFilter 
+            const filteredData = vehicleFilter
                 ? data.filter(item => (labelMap[item.vehicle_ref] || item.vehicle_ref) === vehicleFilter)
                 : data;
-                
+
             if (filteredData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7F8C8D;padding:20px;">No maintenance records found for the selected vehicle.</td></tr>';
             } else {
@@ -6240,7 +6240,7 @@ async function loadMaintenanceRecords() {
 async function renderMaintenanceWidgets(monthValue) {
     try {
         if (!adminUserId) return; // Already waited in loadMaintenanceRecords
-        
+
         // Fetch all maintenance records for all-time totals and filtering
         const { data, error } = await supabaseClient
             .from('lorry_maintenance')
@@ -6466,46 +6466,46 @@ async function deleteMaintenanceRecord(id) {
 
 // Sri Lankan bank → fallback emoji
 const BANK_EMOJI_MAP = {
-    'Bank of Ceylon (BOC)':       '🏗️',
-    "People's Bank":              '🏗️',
+    'Bank of Ceylon (BOC)': '🏗️',
+    "People's Bank": '🏗️',
     'Hatton National Bank (HNB)': '🏦',
-    'Commercial Bank of Ceylon':  '🏦',
-    'Sampath Bank':               '💼',
-    'Seylan Bank':                '💳',
-    'Nations Trust Bank (NTB)':   '🔷',
-    'DFCC Bank':                  '🏗️',
-    'Pan Asia Bank':              '🌏',
-    'Union Bank':                 '🤝',
+    'Commercial Bank of Ceylon': '🏦',
+    'Sampath Bank': '💼',
+    'Seylan Bank': '💳',
+    'Nations Trust Bank (NTB)': '🔷',
+    'DFCC Bank': '🏗️',
+    'Pan Asia Bank': '🌏',
+    'Union Bank': '🤝',
 };
 
 // Sri Lankan bank → logo image URL
 const BANK_LOGO_MAP = {
-    'Bank of Ceylon (BOC)':       'https://i.postimg.cc/hPHVZvDK/bank-of-ceylon-seeklogo.png',
-    "People's Bank":              'https://i.postimg.cc/TPywzqCZ/peoples-bank-seeklogo.png',
+    'Bank of Ceylon (BOC)': 'https://i.postimg.cc/hPHVZvDK/bank-of-ceylon-seeklogo.png',
+    "People's Bank": 'https://i.postimg.cc/TPywzqCZ/peoples-bank-seeklogo.png',
     'Hatton National Bank (HNB)': 'https://i.postimg.cc/Qt1MtNLf/id-EGb-VVT5z.png',
-    'Commercial Bank of Ceylon':  'https://i.postimg.cc/fy3kN7zN/com-bank.png',
-    'Sampath Bank':               'https://i.postimg.cc/jq65Yj4Y/Sampath-Bank-id-Er-NN75DC-1.png',
-    'Seylan Bank':                'https://i.postimg.cc/xTzqpPp4/seylan.png',
-    'Nations Trust Bank (NTB)':   'https://i.postimg.cc/MZcyxVrd/tile-NTB.png',
-    'DFCC Bank':                  'https://i.postimg.cc/pLrXjJbz/DFCC-id6b-UJt-WD6-0.png',
-    'Pan Asia Bank':              'https://i.postimg.cc/13dRrVsW/500px-PAN-ASIA-BANK-LOGO-The-Truly-Sri-Lankan-ank.jpg',
-    'Union Bank':                 'https://i.postimg.cc/KYgGqcYX/Union-Bank-of-Colombo-id-Yqg-Xh2uk-0.png',
+    'Commercial Bank of Ceylon': 'https://i.postimg.cc/fy3kN7zN/com-bank.png',
+    'Sampath Bank': 'https://i.postimg.cc/jq65Yj4Y/Sampath-Bank-id-Er-NN75DC-1.png',
+    'Seylan Bank': 'https://i.postimg.cc/xTzqpPp4/seylan.png',
+    'Nations Trust Bank (NTB)': 'https://i.postimg.cc/MZcyxVrd/tile-NTB.png',
+    'DFCC Bank': 'https://i.postimg.cc/pLrXjJbz/DFCC-id6b-UJt-WD6-0.png',
+    'Pan Asia Bank': 'https://i.postimg.cc/13dRrVsW/500px-PAN-ASIA-BANK-LOGO-The-Truly-Sri-Lankan-ank.jpg',
+    'Union Bank': 'https://i.postimg.cc/KYgGqcYX/Union-Bank-of-Colombo-id-Yqg-Xh2uk-0.png',
 };
 
 // Flat items array used by the bank logo picker (static, all banks)
 const BANK_ITEMS = Object.keys(BANK_EMOJI_MAP).map(name => ({
-    value:   name,
-    label:   name,
+    value: name,
+    label: name,
     logoUrl: BANK_LOGO_MAP[name] || null,
-    emoji:   BANK_EMOJI_MAP[name] || '🏦',
+    emoji: BANK_EMOJI_MAP[name] || '🏦',
 }));
 
 const CHEQUE_STATUS_META = {
     not_issued: { label: 'Not Issued', color: '#8A92A3', bg: 'rgba(138,146,163,0.12)', icon: '⚫' },
-    issued:     { label: 'Issued',     color: '#E07B00', bg: 'rgba(224,123,0,0.12)',    icon: '🟠' },
-    paid:       { label: 'Paid',       color: '#00B37E', bg: 'rgba(0,179,126,0.12)',    icon: '🟢' },
-    stopped:    { label: 'Stopped',    color: '#0072CE', bg: 'rgba(0,114,206,0.12)',    icon: '🔵' },
-    returned:   { label: 'Returned',   color: '#D1001F', bg: 'rgba(209,0,31,0.12)',     icon: '🔴' },
+    issued: { label: 'Issued', color: '#E07B00', bg: 'rgba(224,123,0,0.12)', icon: '🟠' },
+    paid: { label: 'Paid', color: '#00B37E', bg: 'rgba(0,179,126,0.12)', icon: '🟢' },
+    stopped: { label: 'Stopped', color: '#0072CE', bg: 'rgba(0,114,206,0.12)', icon: '🔵' },
+    returned: { label: 'Returned', color: '#D1001F', bg: 'rgba(209,0,31,0.12)', icon: '🔴' },
 };
 
 // ============================================================
@@ -6523,7 +6523,7 @@ function _lddIconHtml(item, size) {
 
 function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) {
     const container = document.getElementById(containerId);
-    const hidden    = document.getElementById(hiddenId);
+    const hidden = document.getElementById(hiddenId);
     if (!container || !hidden) return;
 
     const currentVal = hidden.value || '';
@@ -6553,11 +6553,11 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
         </div>
     `;
 
-    const trigger  = document.getElementById(`${containerId}_trigger`);
+    const trigger = document.getElementById(`${containerId}_trigger`);
     const dropdown = document.getElementById(`${containerId}_drop`);
-    const selEl    = document.getElementById(`${containerId}_sel`);
-    const list     = document.getElementById(`${containerId}_list`);
-    const search   = document.getElementById(`${containerId}_srch`);
+    const selEl = document.getElementById(`${containerId}_sel`);
+    const list = document.getElementById(`${containerId}_list`);
+    const search = document.getElementById(`${containerId}_srch`);
 
     // Open / close
     trigger.addEventListener('click', e => {
@@ -6605,11 +6605,11 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
 }
 
 function _lddSelect(containerId, value, silent) {
-    const reg     = _lddRegistry[containerId];
+    const reg = _lddRegistry[containerId];
     if (!reg) return;
-    const hidden  = document.getElementById(reg.hiddenId);
-    const selEl   = document.getElementById(`${containerId}_sel`);
-    const list    = document.getElementById(`${containerId}_list`);
+    const hidden = document.getElementById(reg.hiddenId);
+    const selEl = document.getElementById(`${containerId}_sel`);
+    const list = document.getElementById(`${containerId}_list`);
     if (!hidden || !selEl || !list) return;
 
     hidden.value = value;
@@ -6620,7 +6620,7 @@ function _lddSelect(containerId, value, silent) {
     } else {
         const item = list.querySelector(`.ldd-item[data-value="${value}"]`);
         if (item) {
-            const logo  = item.dataset.logo;
+            const logo = item.dataset.logo;
             const emoji = item.dataset.emoji;
             const label = item.dataset.label;
             const iconHtml = logo
@@ -6656,9 +6656,9 @@ async function loadChequeStatus() {
 
 // ---- Init: Add Cheque Book form ----
 function initChequeBookForm() {
-    const toggleBtn     = document.getElementById('toggleAddBookFormBtn');
+    const toggleBtn = document.getElementById('toggleAddBookFormBtn');
     const formContainer = document.getElementById('addBookFormContainer');
-    const cancelBtn     = document.getElementById('cancelAddBookBtn');
+    const cancelBtn = document.getElementById('cancelAddBookBtn');
 
     // Always rebuild the bank logo picker (harmless to rebuild)
     buildLogoDropdown('bankCustomSelect', 'chequeBank', BANK_ITEMS, '🏦 Select Bank', null);
@@ -6686,7 +6686,7 @@ function initChequeBookForm() {
 async function saveChequeBook() {
     const bankName = document.getElementById('chequeBank').value.trim();
     const leafFrom = parseInt(document.getElementById('chequeLeafFrom').value);
-    const leafTo   = parseInt(document.getElementById('chequeLeafTo').value);
+    const leafTo = parseInt(document.getElementById('chequeLeafTo').value);
 
     if (!bankName) { alert('Please select a bank.'); return; }
     if (isNaN(leafFrom) || isNaN(leafTo) || leafFrom < 1 || leafTo < leafFrom) {
@@ -6756,7 +6756,7 @@ async function loadChequeBooks() {
                 const counts = { paid: 0, stopped: 0, returned: 0, not_issued: 0, issued: 0 };
                 leaves.forEach(l => { if (counts[l.status] !== undefined) counts[l.status]++; });
                 const total = leaves.length;
-                const emoji   = BANK_EMOJI_MAP[book.bank_name] || '🏦';
+                const emoji = BANK_EMOJI_MAP[book.bank_name] || '🏦';
                 const logoUrl = BANK_LOGO_MAP[book.bank_name] || null;
 
                 // Build the icon block — real logo if available, emoji fallback otherwise
@@ -6795,10 +6795,10 @@ async function loadChequeBooks() {
         // ── Populate book logo-dropdown in leaves section ──
         const prevBookId = document.getElementById('chequeBookSelect').value;
         const bookItems = (books || []).map(book => ({
-            value:   book.id,
-            label:   `${book.bank_name}  ( ${book.leaf_from}–${book.leaf_to} )`,
+            value: book.id,
+            label: `${book.bank_name}  ( ${book.leaf_from}–${book.leaf_to} )`,
             logoUrl: BANK_LOGO_MAP[book.bank_name] || null,
-            emoji:   BANK_EMOJI_MAP[book.bank_name] || '🏦',
+            emoji: BANK_EMOJI_MAP[book.bank_name] || '🏦',
         }));
         buildLogoDropdown('bookCustomSelect', 'chequeBookSelect', bookItems,
             '— Select a Cheque Book —',
@@ -6831,29 +6831,29 @@ async function updateChequeSummaryStrip(uid) {
             .eq('user_id', uid);
         if (error) throw error;
 
-        const total     = data.length;
-        const paid      = data.filter(l => l.status === 'paid').length;
-        const issued    = data.filter(l => l.status === 'issued').length;
-        const stopped   = data.filter(l => l.status === 'stopped').length;
-        const returned  = data.filter(l => l.status === 'returned').length;
+        const total = data.length;
+        const paid = data.filter(l => l.status === 'paid').length;
+        const issued = data.filter(l => l.status === 'issued').length;
+        const stopped = data.filter(l => l.status === 'stopped').length;
+        const returned = data.filter(l => l.status === 'returned').length;
         const notIssued = data.filter(l => l.status === 'not_issued').length;
 
-        document.getElementById('csTotal').textContent    = total;
-        document.getElementById('csPaid').textContent     = paid;
-        document.getElementById('csIssued').textContent   = issued;
-        document.getElementById('csStopped').textContent  = stopped;
+        document.getElementById('csTotal').textContent = total;
+        document.getElementById('csPaid').textContent = paid;
+        document.getElementById('csIssued').textContent = issued;
+        document.getElementById('csStopped').textContent = stopped;
         document.getElementById('csReturned').textContent = returned;
-        document.getElementById('csNotIssued').textContent= notIssued;
+        document.getElementById('csNotIssued').textContent = notIssued;
 
         // Financial sum calculations
-        const paidAmt     = data.filter(l => l.status === 'paid').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
-        const stoppedAmt  = data.filter(l => l.status === 'stopped').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+        const paidAmt = data.filter(l => l.status === 'paid').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+        const stoppedAmt = data.filter(l => l.status === 'stopped').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
         const returnedAmt = data.filter(l => l.status === 'returned').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
 
         const formatLKR = val => 'LKR ' + val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        document.getElementById('amtPaid').textContent     = formatLKR(paidAmt);
-        document.getElementById('amtStopped').textContent  = formatLKR(stoppedAmt);
+        document.getElementById('amtPaid').textContent = formatLKR(paidAmt);
+        document.getElementById('amtStopped').textContent = formatLKR(stoppedAmt);
         document.getElementById('amtReturned').textContent = formatLKR(returnedAmt);
     } catch (err) {
         console.error('Error updating cheque summary strip:', err);
@@ -6904,11 +6904,11 @@ function initChequeLeafSelectHandlers() {
 
 // ---- Load leaves for a specific book ----
 async function loadChequeLeaves(bookId) {
-    const uid          = getQueryUserId();
+    const uid = getQueryUserId();
     const statusFilter = document.getElementById('chequeStatusFilter').value;
-    const tbody        = document.getElementById('chequeLeavesBody');
-    const table        = document.getElementById('chequeLeavesTable');
-    const emptyState   = document.getElementById('chequeLeavesEmpty');
+    const tbody = document.getElementById('chequeLeavesBody');
+    const table = document.getElementById('chequeLeavesTable');
+    const emptyState = document.getElementById('chequeLeavesEmpty');
 
     emptyState.style.display = 'none';
     table.style.display = 'none';
@@ -6942,7 +6942,7 @@ async function loadChequeLeaves(bookId) {
             tr.innerHTML = `
                 <td><strong class="cheque-leaf-num">#${leaf.leaf_number}</strong></td>
                 <td>${leaf.cheque_date ? new Date(leaf.cheque_date + 'T00:00:00').toLocaleDateString('en-GB') : '<span class="text-muted">—</span>'}</td>
-                <td>${leaf.amount != null ? 'LKR ' + Number(leaf.amount).toLocaleString('en-LK', {minimumFractionDigits:2}) : '<span class="text-muted">—</span>'}</td>
+                <td>${leaf.amount != null ? 'LKR ' + Number(leaf.amount).toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '<span class="text-muted">—</span>'}</td>
                 <td>${leaf.payee || '<span class="text-muted">—</span>'}</td>
                 <td>${leaf.notes || '<span class="text-muted">—</span>'}</td>
                 <td>
@@ -6974,13 +6974,13 @@ async function editChequeLeaf(leafId) {
             .single();
         if (error) throw error;
 
-        document.getElementById('editLeafId').value          = leaf.id;
+        document.getElementById('editLeafId').value = leaf.id;
         document.getElementById('editLeafNumberDisplay').textContent = leaf.leaf_number;
-        document.getElementById('editChequeDate').value      = leaf.cheque_date || '';
-        document.getElementById('editChequeAmount').value    = leaf.amount != null ? leaf.amount : '';
-        document.getElementById('editChequePayee').value     = leaf.payee || '';
-        document.getElementById('editChequeStatus').value    = leaf.status || 'not_issued';
-        document.getElementById('editChequeNotes').value     = leaf.notes || '';
+        document.getElementById('editChequeDate').value = leaf.cheque_date || '';
+        document.getElementById('editChequeAmount').value = leaf.amount != null ? leaf.amount : '';
+        document.getElementById('editChequePayee').value = leaf.payee || '';
+        document.getElementById('editChequeStatus').value = leaf.status || 'not_issued';
+        document.getElementById('editChequeNotes').value = leaf.notes || '';
 
         const container = document.getElementById('chequeLeafEditContainer');
         container.style.display = 'block';
@@ -6992,13 +6992,13 @@ async function editChequeLeaf(leafId) {
 
 // ---- Save changes to a cheque leaf ----
 async function saveChequeLeaf() {
-    const id      = document.getElementById('editLeafId').value;
+    const id = document.getElementById('editLeafId').value;
     const updates = {
         cheque_date: document.getElementById('editChequeDate').value || null,
-        amount:      document.getElementById('editChequeAmount').value !== '' ? parseFloat(document.getElementById('editChequeAmount').value) : null,
-        payee:       document.getElementById('editChequePayee').value.trim() || null,
-        status:      document.getElementById('editChequeStatus').value,
-        notes:       document.getElementById('editChequeNotes').value.trim() || null,
+        amount: document.getElementById('editChequeAmount').value !== '' ? parseFloat(document.getElementById('editChequeAmount').value) : null,
+        payee: document.getElementById('editChequePayee').value.trim() || null,
+        status: document.getElementById('editChequeStatus').value,
+        notes: document.getElementById('editChequeNotes').value.trim() || null,
     };
 
     const submitBtn = document.querySelector('#chequeLeafEditForm button[type="submit"]');
@@ -7144,7 +7144,7 @@ async function loadNotifications() {
         ]);
 
         const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts];
-        
+
         // Filter out dismissed alerts from localStorage
         const dismissedIds = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
         activeAlerts = allAlerts.filter(alert => !dismissedIds.includes(alert.id));
@@ -7181,10 +7181,10 @@ async function loadNotifications() {
             item.addEventListener('click', (e) => {
                 // If clicked dismiss button, ignore navigation
                 if (e.target.tagName === 'BUTTON' || e.target.classList.contains('remove-tracker-btn')) return;
-                
+
                 // Hide dropdown
                 document.getElementById('notificationDropdown').style.display = 'none';
-                
+
                 // Handle navigation shortcuts
                 if (alert.type === 'cheque') {
                     currentPage = 'cheque-status';
@@ -7266,8 +7266,8 @@ async function fetchChequeAlerts(userId) {
             } else if (leaf.status === 'issued' && leaf.cheque_date) {
                 const date = new Date(leaf.cheque_date);
                 const today = new Date();
-                today.setHours(0,0,0,0);
-                
+                today.setHours(0, 0, 0, 0);
+
                 // Calculate days remaining
                 const diffTime = date - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -7279,7 +7279,7 @@ async function fetchChequeAlerts(userId) {
                     } else if (diffDays === 0) {
                         descText = `Cheque #${leaf.leaf_number} for ${amountStr} to ${payeeName} matures today!`;
                     }
-                    
+
                     alerts.push({
                         id: `cheque_due_${leaf.id}`,
                         title: `🏦 Cheque Due: ${bankName}`,
@@ -7306,22 +7306,22 @@ async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
             .from('service_trackers')
             .select('*')
             .eq('user_id', userId);
-        
+
         if (error) throw error;
         if (!trackers || trackers.length === 0) return [];
-        
+
         const alertPromises = trackers.map(async (tracker) => {
             const targetHireIds = allHireVehicles
                 .filter(v => (v.lorry_number || '').toUpperCase().startsWith(tracker.base_name))
                 .map(v => v.id);
-                
+
             const targetCommIds = allCommVehicles
                 .filter(v => (v.vehicle_number || '').toUpperCase().startsWith(tracker.base_name))
                 .map(v => v.id);
-                
+
             let totalKm = 0;
             const queries = [];
-            
+
             if (targetHireIds.length > 0) {
                 queries.push(
                     supabaseClient
@@ -7335,7 +7335,7 @@ async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
             } else {
                 queries.push(Promise.resolve([]));
             }
-            
+
             if (targetCommIds.length > 0) {
                 queries.push(
                     supabaseClient
@@ -7349,7 +7349,7 @@ async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
             } else {
                 queries.push(Promise.resolve([]));
             }
-            
+
             queries.push(
                 supabaseClient
                     .from('other_operation_hires')
@@ -7359,13 +7359,13 @@ async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
                     .then(res => res.data || [])
                     .catch(err => { console.error("Error fetching other_operation_hires for notification:", err); return []; })
             );
-            
+
             const [hireRecords, commRecords, otherOpHires] = await Promise.all(queries);
-            
+
             totalKm += hireRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             totalKm += commRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
             totalKm += otherOpHires.reduce((sum, r) => sum + (r.distance || 0), 0);
-            
+
             const target = tracker.target_kms || 5000;
             if (totalKm >= target) {
                 return {
@@ -7379,7 +7379,7 @@ async function fetchServiceAlerts(userId, allHireVehicles, allCommVehicles) {
             }
             return null;
         });
-        
+
         const results = await Promise.all(alertPromises);
         return results.filter(a => a !== null);
     } catch (e) {
@@ -7527,9 +7527,9 @@ async function updateDriverKmSelectors() {
 function showDriverKmForm(record = null) {
     const container = document.getElementById('driverKmFormContainer');
     if (!container) return;
-    
+
     container.style.display = 'block';
-    
+
     if (record) {
         document.getElementById('driverKmRecordId').value = record.id;
         document.getElementById('driverKmDriverSelect').value = record.driver_id;
@@ -7541,7 +7541,7 @@ function showDriverKmForm(record = null) {
         // Set default driver from filter if selected
         const filterDriver = document.getElementById('driverKmDriverFilter').value;
         document.getElementById('driverKmDriverSelect').value = filterDriver || '';
-        
+
         // Set default date to today
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -7610,7 +7610,7 @@ async function loadDriverKmRecords() {
                     <button class="btn btn-danger" onclick="deleteDriverKmRecord(${rec.id})">Delete</button>
                 </td>
             `;
-            
+
             row.innerHTML = `
                 <td>${rec.drivers?.name || 'Unknown'}</td>
                 <td>${rec.record_date}</td>
@@ -7943,7 +7943,7 @@ async function loadDriverPerformance(monthValue) {
         const startDate = `${year}-${monthPadded}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
-        
+
         const currentQueryUserId = getQueryUserId();
 
         const [
@@ -8063,10 +8063,10 @@ async function loadDriverPerformance(monthValue) {
                 dedColor = '#e67e22';
                 salaryColor = 'var(--blue)';
                 netColor = 'var(--green)';
-                
+
                 advText = `LKR ${totalAdv.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 dedTextPlain = `LKR ${totalDed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                
+
                 let dedDetails = '';
                 if (dayOffDed > 0) {
                     if (didNotMeetMinKm) {
@@ -8090,7 +8090,7 @@ async function loadDriverPerformance(monthValue) {
                     const extraKmSalary = extraKm * extraKmRate;
                     const grossSalary = basicSalary + extraKmSalary;
                     const netSalary = grossSalary - totalAdv - totalDed;
-                    
+
                     fullSalaryText = `LKR ${grossSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     netSalaryText = `LKR ${netSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 } else {
@@ -8209,7 +8209,7 @@ let driverKmDailyChartInstance = null;
 // ── Utility: get today's date string YYYY-MM-DD (local) ──
 function getTodayStr() {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 
@@ -8224,7 +8224,7 @@ function startLastSyncedTimer() {
     window._lastSyncedInterval = setInterval(() => {
         if (!_lastSyncedAt) return;
         const sec = Math.round((Date.now() - _lastSyncedAt) / 1000);
-        el.textContent = sec < 60 ? `🟢 ${sec}s ago` : `🟡 ${Math.floor(sec/60)}m ago`;
+        el.textContent = sec < 60 ? `🟢 ${sec}s ago` : `🟡 ${Math.floor(sec / 60)}m ago`;
     }, 5000);
 }
 
@@ -8241,12 +8241,12 @@ async function loadFleetUtilizationHeatmap(monthValue) {
         const uid = getQueryUserId();
         if (!monthValue) {
             const now = new Date();
-            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            monthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         }
         const [yr, mo] = monthValue.split('-');
         const startDate = `${yr}-${mo}-01`;
         const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2, '0')}`;
 
         const [
             { data: hireRecords },
@@ -8297,7 +8297,7 @@ async function loadFleetUtilizationHeatmap(monthValue) {
 
         // Filter vehicles based on active status or presence of activity/old month request
         const now = new Date();
-        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const isOldMonth = monthValue < currentMonthStr;
 
         const filteredVehicles = Object.keys(vehicleActiveDays).filter(vehicle => {
@@ -8315,7 +8315,7 @@ async function loadFleetUtilizationHeatmap(monthValue) {
         // Generate day headers
         const days = [];
         for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+            const dateStr = `${yr}-${mo}-${String(d).padStart(2, '0')}`;
             const dow = new Date(dateStr).getDay(); // 0=Sun
             days.push({ d, dateStr, dow });
         }
@@ -8335,12 +8335,12 @@ async function loadFleetUtilizationHeatmap(monthValue) {
                 <div class="fleet-heatmap-label" title="${labelTitle}" style="${isTerminated ? 'color:var(--text-muted);text-decoration:line-through;' : ''}">${displayLabel}</div>
                 <div class="fleet-heatmap-dots">
                     ${days.map(({ d, dateStr, dow }) => {
-                        const isActive = activeDays.has(dateStr);
-                        const isWeekend = dow === 0 || dow === 6;
-                        const title = `${dateStr}${isActive ? ' — Active' : isWeekend ? ' — Weekend' : ' — Idle'}`;
-                        const dotClass = isActive ? 'util-dot util-active' : isWeekend ? 'util-dot util-weekend' : 'util-dot util-idle';
-                        return `<div class="${dotClass}" title="${title}" data-date="${dateStr}"></div>`;
-                    }).join('')}
+                const isActive = activeDays.has(dateStr);
+                const isWeekend = dow === 0 || dow === 6;
+                const title = `${dateStr}${isActive ? ' — Active' : isWeekend ? ' — Weekend' : ' — Idle'}`;
+                const dotClass = isActive ? 'util-dot util-active' : isWeekend ? 'util-dot util-weekend' : 'util-dot util-idle';
+                return `<div class="${dotClass}" title="${title}" data-date="${dateStr}"></div>`;
+            }).join('')}
                 </div>
                 <div class="fleet-heatmap-stat" style="color:${color};">${pct}%</div>
             </div>`;
@@ -8352,7 +8352,7 @@ async function loadFleetUtilizationHeatmap(monthValue) {
         </div>`;
         html += '</div>';
         grid.innerHTML = html;
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading fleet utilization heatmap:', e);
         if (grid) grid.innerHTML = '<p style="color:var(--brand-red);padding:20px;text-align:center;">Error loading fleet data.</p>';
     }
@@ -8395,7 +8395,7 @@ function renderHireRecordsSummaryStrip(records) {
             <div class="rss-card">
                 <span class="rss-icon">📈</span>
                 <span class="rss-label">Gross Profit</span>
-                <span class="rss-value" style="color:${grossProfit>=0?'var(--green)':'var(--brand-red)'};">${fmt(grossProfit)}</span>
+                <span class="rss-value" style="color:${grossProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'};">${fmt(grossProfit)}</span>
             </div>
             <div class="rss-card">
                 <span class="rss-icon">🛣️</span>
@@ -8467,12 +8467,12 @@ async function loadMaintenancePieChart(monthValue) {
         const uid = getQueryUserId();
         if (!monthValue) {
             const now = new Date();
-            monthValue = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            monthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         }
         const [yr, mo] = monthValue.split('-');
         const startDate = `${yr}-${mo}-01`;
         const lastDay = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
+        const endDate = `${yr}-${mo}-${String(lastDay).padStart(2, '0')}`;
 
         const { data } = await supabaseClient.from('lorry_maintenance').select('expense_type, amount, vehicle_ref').eq('user_id', uid).gte('maintenance_date', startDate).lte('maintenance_date', endDate);
         if (!data || data.length === 0) return;
@@ -8486,7 +8486,7 @@ async function loadMaintenancePieChart(monthValue) {
         });
 
         const theme = getChartTheme ? getChartTheme() : {};
-        const COLORS = ['#DC143C','#E67E22','#3498DB','#27AE60','#9B59B6','#F1C40F','#1ABC9C','#E91E63'];
+        const COLORS = ['#DC143C', '#E67E22', '#3498DB', '#27AE60', '#9B59B6', '#F1C40F', '#1ABC9C', '#E91E63'];
 
         // Pie chart — expense type
         const pieCtx = document.getElementById('maintenancePieChart')?.getContext('2d');
@@ -8532,7 +8532,7 @@ async function loadMaintenancePieChart(monthValue) {
                 }
             });
         }
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading maintenance pie chart:', e);
     }
 }
@@ -8549,7 +8549,7 @@ async function loadDriverKmDailyChart(monthValue, driverFilter) {
         const [yr, mo] = monthValue.split('-');
         const startDate = `${yr}-${mo}-01`;
         const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+        const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2, '0')}`;
 
         const { data: kmRecs } = await supabaseClient.from('driver_km_records').select('record_date, km_amount').eq('user_id', uid).eq('driver_id', driverFilter).gte('record_date', startDate).lte('record_date', endDate);
 
@@ -8562,7 +8562,7 @@ async function loadDriverKmDailyChart(monthValue, driverFilter) {
         const labels = [];
         const values = [];
         for (let d = 1; d <= daysInMonth; d++) {
-            const ds = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+            const ds = `${yr}-${mo}-${String(d).padStart(2, '0')}`;
             labels.push(d.toString());
             values.push(dayMap[ds] || 0);
         }
@@ -8583,7 +8583,7 @@ async function loadDriverKmDailyChart(monthValue, driverFilter) {
                 scales: { y: { beginAtZero: true, ticks: { callback: v => `${v} km` } } }
             }
         });
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading driver KM daily chart:', e);
     }
 }
@@ -8599,14 +8599,14 @@ async function loadAdvanceTrendChart() {
         const advData = [];
 
         const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-01`;
-        const endStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
+        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-01`;
+        const endStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
 
         const { data: advances } = await supabaseClient.from('driver_advances').select('advance_date, amount').eq('user_id', uid).gte('advance_date', startStr).lte('advance_date', endStr);
 
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             labels.push(d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
             const total = (advances || []).filter(a => a.advance_date?.startsWith(key)).reduce((s, a) => s + (a.amount || 0), 0);
             advData.push(total);
@@ -8626,10 +8626,10 @@ async function loadAdvanceTrendChart() {
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: ctx => `LKR ${Math.round(ctx.parsed.y).toLocaleString()}` } } },
-                scales: { y: { beginAtZero: true, ticks: { callback: v => `LKR ${(v/1000).toFixed(0)}K` } } }
+                scales: { y: { beginAtZero: true, ticks: { callback: v => `LKR ${(v / 1000).toFixed(0)}K` } } }
             }
         });
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading advance trend chart:', e);
     }
 }
@@ -8672,12 +8672,12 @@ function renderDayOffCalendar(dayOffRecords, monthValue, driverName) {
     let html = `<div class="dayoff-calendar-title">${driverName ? driverName + ' — ' : ''}${monthValue}</div>`;
     html += '<div class="dayoff-calendar-grid">';
     // Day headers
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="dayoff-cal-head">${d}</div>`; });
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => { html += `<div class="dayoff-cal-head">${d}</div>`; });
     // Empty cells for first week
     for (let i = 0; i < firstDow; i++) { html += '<div class="dayoff-cal-cell dayoff-cal-empty"></div>'; }
     // Days
     for (let d = 1; d <= daysInMonth; d++) {
-        const ds = `${yr}-${mo}-${String(d).padStart(2,'0')}`;
+        const ds = `${yr}-${mo}-${String(d).padStart(2, '0')}`;
         const isDayOff = dayOffDates.has(ds);
         const dow = (firstDow + d - 1) % 7;
         const isWeekend = dow === 0 || dow === 6;
@@ -8726,7 +8726,7 @@ async function loadSalaryYtdSummary(driverId, currentMonth) {
         `;
 
         block.style.display = '';
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading salary YTD:', e);
         if (block) block.style.display = 'none';
     }
@@ -8755,7 +8755,7 @@ async function loadChequesDueSoonBanner() {
             const daysLeft = Math.round((new Date(l.due_date) - new Date(today)) / 86400000);
             return `<span class="cheque-due-item">Leaf #${l.leaf_number} — ${l.due_date} (${daysLeft}d) — LKR ${(l.amount || 0).toLocaleString()}</span>`;
         }).join('');
-    } catch(e) {
+    } catch (e) {
         console.error('Error loading cheques due banner:', e);
     }
 }
@@ -8784,7 +8784,7 @@ const _origLoadCommitmentRecords = typeof loadCommitmentRecords === 'function' ?
 const _origSwitchPage = window.switchPage;
 
 // Hook fleet utilization month change
-document.getElementById('fleetUtilMonth')?.addEventListener('change', function() {
+document.getElementById('fleetUtilMonth')?.addEventListener('change', function () {
     loadFleetUtilizationHeatmap(this.value);
 });
 
@@ -8797,7 +8797,7 @@ async function loadDashboardExtras() {
     const fleetMonthEl = document.getElementById('fleetUtilMonth');
     if (fleetMonthEl && !fleetMonthEl.value) {
         const now = new Date();
-        fleetMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        fleetMonthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     }
     if (fleetMonthEl?.value) loadFleetUtilizationHeatmap(fleetMonthEl.value);
 }
@@ -8815,7 +8815,7 @@ const _origLoadAdvances = window.loadAdvances || (typeof loadAdvances === 'funct
 const _origLoadChequeStatus = window.loadChequeStatus || (typeof loadChequeStatus === 'function' ? loadChequeStatus : null);
 
 // ── Observe page switches using MutationObserver on active class ──
-(function() {
+(function () {
     const pagesContainer = document.querySelector('.pages-container');
     if (!pagesContainer) return;
 
@@ -8833,7 +8833,7 @@ const _origLoadChequeStatus = window.loadChequeStatus || (typeof loadChequeStatu
                         }
                         if (id === 'lorry-maintenance') {
                             const monthEl = document.getElementById('maintenanceMonth');
-                            const mv = monthEl?.value || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+                            const mv = monthEl?.value || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                             loadMaintenancePieChart(mv);
                         }
                         if (id === 'driver-advances') {
@@ -8854,26 +8854,26 @@ const _origLoadChequeStatus = window.loadChequeStatus || (typeof loadChequeStatu
 })();
 
 // Listen for maintenance month change to reload pie chart
-document.getElementById('maintenanceMonth')?.addEventListener('change', function() {
+document.getElementById('maintenanceMonth')?.addEventListener('change', function () {
     loadMaintenancePieChart(this.value);
 });
 
 // Listen for KM log driver filter change to show daily chart
-document.getElementById('driverKmDriverFilter')?.addEventListener('change', function() {
+document.getElementById('driverKmDriverFilter')?.addEventListener('change', function () {
     const month = document.getElementById('driverKmMonthFilter')?.value;
     loadDriverKmDailyChart(month, this.value);
 });
-document.getElementById('driverKmMonthFilter')?.addEventListener('change', function() {
+document.getElementById('driverKmMonthFilter')?.addEventListener('change', function () {
     const driver = document.getElementById('driverKmDriverFilter')?.value;
     loadDriverKmDailyChart(this.value, driver);
 });
 
 // Hook salary calculator to show YTD when driver and month are selected
-document.getElementById('salaryDriverSelect')?.addEventListener('change', function() {
+document.getElementById('salaryDriverSelect')?.addEventListener('change', function () {
     const month = document.getElementById('salaryMonth')?.value;
     if (this.value && month) loadSalaryYtdSummary(this.value, month);
 });
-document.getElementById('salaryMonth')?.addEventListener('change', function() {
+document.getElementById('salaryMonth')?.addEventListener('change', function () {
     const driver = document.getElementById('salaryDriverSelect')?.value;
     if (driver && this.value) loadSalaryYtdSummary(driver, this.value);
 });
@@ -8887,7 +8887,7 @@ function tryRenderDayOffCalendar() {
     const [yr, mo] = month.split('-');
     const startDate = `${yr}-${mo}-01`;
     const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
-    const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2,'0')}`;
+    const endDate = `${yr}-${mo}-${String(daysInMonth).padStart(2, '0')}`;
     supabaseClient.from('driver_day_offs').select('day_off_date').eq('user_id', uid).eq('driver_id', driver).gte('day_off_date', startDate).lte('day_off_date', endDate)
         .then(({ data }) => {
             const driverName = document.getElementById('driverDayOffDriver')?.selectedOptions?.[0]?.textContent || '';
@@ -8900,20 +8900,20 @@ document.getElementById('driverDayOffMonth')?.addEventListener('change', tryRend
 // ── Patch loadDrivers to also call renderStaffBreakdownWidgets ──
 if (typeof loadDrivers === 'function') {
     const _origLD = loadDrivers;
-    window.loadDrivers = async function() {
+    window.loadDrivers = async function () {
         await _origLD.apply(this, arguments);
         // Fetch all drivers for breakdown
         try {
             const { data: allD } = await supabaseClient.from('drivers').select('id, role, terminated').eq('user_id', getQueryUserId());
             renderStaffBreakdownWidgets(allD || []);
-        } catch(e) {}
+        } catch (e) { }
     };
 }
 
 // ── Patch loadHireRecords to also render summary strip ──
 if (typeof loadHireRecords === 'function') {
     const _origLHR = loadHireRecords;
-    window.loadHireRecords = async function() {
+    window.loadHireRecords = async function () {
         await _origLHR.apply(this, arguments);
         // Re-fetch to pass to strip
         try {
@@ -8927,14 +8927,14 @@ if (typeof loadHireRecords === 'function') {
             if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter);
             const { data } = await q;
             renderHireRecordsSummaryStrip(data || []);
-        } catch(e) {}
+        } catch (e) { }
     };
 }
 
 // ── Patch loadCommitmentRecords to also render summary strip ──
 if (typeof loadCommitmentRecords === 'function') {
     const _origLCR = loadCommitmentRecords;
-    window.loadCommitmentRecords = async function() {
+    window.loadCommitmentRecords = async function () {
         await _origLCR.apply(this, arguments);
         try {
             const monthValue = document.getElementById('commitmentRecordsMonth')?.value;
@@ -8947,14 +8947,14 @@ if (typeof loadCommitmentRecords === 'function') {
             if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter);
             const { data } = await q;
             renderCommitmentSummaryStrip(data || []);
-        } catch(e) {}
+        } catch (e) { }
     };
 }
 
 // ── Patch loadMaintenanceRecords to also load charts ──
 if (typeof loadMaintenanceRecords === 'function') {
     const _origLMR = loadMaintenanceRecords;
-    window.loadMaintenanceRecords = async function() {
+    window.loadMaintenanceRecords = async function () {
         await _origLMR.apply(this, arguments);
         const mv = document.getElementById('maintenanceMonth')?.value;
         if (mv) loadMaintenancePieChart(mv);
@@ -8964,7 +8964,7 @@ if (typeof loadMaintenanceRecords === 'function') {
 // ── Patch loadChequeStatus to also load cheques due banner ──
 if (typeof loadChequeStatus === 'function') {
     const _origLCS = loadChequeStatus;
-    window.loadChequeStatus = async function() {
+    window.loadChequeStatus = async function () {
         await _origLCS.apply(this, arguments);
         await loadChequesDueSoonBanner();
     };
@@ -8972,7 +8972,7 @@ if (typeof loadChequeStatus === 'function') {
 
 
 // Initial load for dashboard page (if it's already active on load)
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => {
         const dashPage = document.getElementById('dashboard');
         if (dashPage && dashPage.classList.contains('active')) {
@@ -8984,4 +8984,4 @@ document.addEventListener('DOMContentLoaded', function() {
             loadAdvanceTrendChart();
         }
     }, 2000); // Wait for auth + data to initialize
-});
+});

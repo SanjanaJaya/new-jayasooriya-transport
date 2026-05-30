@@ -153,7 +153,10 @@
                     <button class="nav-group-header" data-group="staff" aria-expanded="false">
                         <span class="nav-group-icon">👥</span>
                         <span class="nav-group-label">Staff</span>
-                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
                     </button>
                     <div class="nav-group-items" id="navItemsStaff">
                         <button class="nav-item nav-sub-item" data-page="drivers">
@@ -184,7 +187,10 @@
                     <button class="nav-group-header" data-group="fleet" aria-expanded="false">
                         <span class="nav-group-icon">🚛</span>
                         <span class="nav-group-label">Fleet</span>
-                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
                     </button>
                     <div class="nav-group-items" id="navItemsFleet">
                         <button class="nav-item nav-sub-item" data-page="hire-vehicles">
@@ -244,14 +250,16 @@
 
                     <!-- Notification Center -->
                     <div class="notification-center" id="notificationCenter">
-                        <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Toggle notifications" title="Notifications">
+                        <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Toggle notifications"
+                            title="Notifications">
                             <span class="bell-icon">🔔</span>
                             <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                         </button>
                         <div class="notification-dropdown" id="notificationDropdown" style="display: none;">
                             <div class="notification-header">
                                 <h3>🔔 Notifications</h3>
-                                <button class="clear-notifications-btn" id="clearNotificationsBtn" title="Clear all temporary/read alerts">Clear All</button>
+                                <button class="clear-notifications-btn" id="clearNotificationsBtn"
+                                    title="Clear all temporary/read alerts">Clear All</button>
                             </div>
                             <div class="notification-list" id="notificationList">
                                 <div class="notification-empty">No active notifications</div>
@@ -301,7 +309,7 @@
                         <div class="metric-card">
                             <div class="metric-icon">🪙</div>
                             <div class="metric-content">
-                                <div class="metric-label">Fuel Allowance (16.00% VAT OFF)</div>
+                                <div class="metric-label">Fuel Allowance (18.00% VAT OFF)</div>
                                 <div class="metric-value" id="fuelAllowance" style="color: #27AE60;">LKR 0.00</div>
                             </div>
                         </div>
@@ -379,17 +387,21 @@
                             </div>
                             <div class="control-group">
                                 <label for="serviceLocationInput">📍 Serviced Location (Opt.)</label>
-                                <input type="text" id="serviceLocationInput" placeholder="e.g., Dimo, ABC Motors" title="Service Location">
+                                <input type="text" id="serviceLocationInput" placeholder="e.g., Dimo, ABC Motors"
+                                    title="Service Location">
                             </div>
                             <div class="control-group">
                                 <label for="serviceTargetKms">🎯 Target KMs</label>
-                                <input type="number" id="serviceTargetKms" value="5000" title="Target KMs before next service">
+                                <input type="number" id="serviceTargetKms" value="5000"
+                                    title="Target KMs before next service">
                             </div>
                             <div class="control-group">
-                                <button class="btn btn-primary" id="addServiceTrackingBtn" style="margin-top: 24px;">➕ Track Vehicle</button>
+                                <button class="btn btn-primary" id="addServiceTrackingBtn" style="margin-top: 24px;">➕
+                                    Track Vehicle</button>
                             </div>
                         </div>
-                        <div id="trackedVehiclesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                        <div id="trackedVehiclesGrid"
+                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
                             <!-- Tracked vehicles will be displayed here -->
                         </div>
                     </div>
@@ -702,17 +714,21 @@
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group" style="flex:1;">
-                                        <label for="chequeLeafFrom" style="font-size:12px;color:#666;">📄 Leaf Number From</label>
-                                        <input type="number" id="chequeLeafFrom" placeholder="e.g. 001" min="1" required>
+                                        <label for="chequeLeafFrom" style="font-size:12px;color:#666;">📄 Leaf Number
+                                            From</label>
+                                        <input type="number" id="chequeLeafFrom" placeholder="e.g. 001" min="1"
+                                            required>
                                     </div>
                                     <div class="form-group" style="flex:1;">
-                                        <label for="chequeLeafTo" style="font-size:12px;color:#666;">📄 Leaf Number To</label>
+                                        <label for="chequeLeafTo" style="font-size:12px;color:#666;">📄 Leaf Number
+                                            To</label>
                                         <input type="number" id="chequeLeafTo" placeholder="e.g. 050" min="1" required>
                                     </div>
                                 </div>
                                 <div class="form-actions">
                                     <button type="submit" class="btn btn-success">💾 Add Cheque Book</button>
-                                    <button type="button" class="btn btn-secondary" id="cancelAddBookBtn">✖ Cancel</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelAddBookBtn">✖
+                                        Cancel</button>
                                 </div>
                             </form>
                         </div>
@@ -761,21 +777,26 @@
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group" style="flex:1;">
-                                        <label for="editChequeDate" style="font-size:12px;color:#666;">📅 Cheque Date</label>
+                                        <label for="editChequeDate" style="font-size:12px;color:#666;">📅 Cheque
+                                            Date</label>
                                         <input type="date" id="editChequeDate">
                                     </div>
                                     <div class="form-group" style="flex:1;">
-                                        <label for="editChequeAmount" style="font-size:12px;color:#666;">💰 Amount (LKR)</label>
-                                        <input type="number" id="editChequeAmount" placeholder="0.00" step="0.01" min="0">
+                                        <label for="editChequeAmount" style="font-size:12px;color:#666;">💰 Amount
+                                            (LKR)</label>
+                                        <input type="number" id="editChequeAmount" placeholder="0.00" step="0.01"
+                                            min="0">
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group" style="flex:2;">
-                                        <label for="editChequePayee" style="font-size:12px;color:#666;">👤 To Whom (Payee)</label>
+                                        <label for="editChequePayee" style="font-size:12px;color:#666;">👤 To Whom
+                                            (Payee)</label>
                                         <input type="text" id="editChequePayee" placeholder="Name of person / company">
                                     </div>
                                     <div class="form-group" style="flex:1;">
-                                        <label for="editChequeStatus" style="font-size:12px;color:#666;">🔖 Status</label>
+                                        <label for="editChequeStatus" style="font-size:12px;color:#666;">🔖
+                                            Status</label>
                                         <select id="editChequeStatus">
                                             <option value="not_issued">⚫ Not Issued</option>
                                             <option value="issued">🟠 Issued</option>
@@ -787,13 +808,15 @@
                                 </div>
                                 <div class="form-row full">
                                     <div class="form-group" style="flex:1;">
-                                        <label for="editChequeNotes" style="font-size:12px;color:#666;">📝 Notes (Optional)</label>
+                                        <label for="editChequeNotes" style="font-size:12px;color:#666;">📝 Notes
+                                            (Optional)</label>
                                         <input type="text" id="editChequeNotes" placeholder="Any additional notes...">
                                     </div>
                                 </div>
                                 <div class="form-actions">
                                     <button type="submit" class="btn btn-success">💾 Save Changes</button>
-                                    <button type="button" class="btn btn-secondary" id="cancelLeafEditBtn">✖ Cancel</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelLeafEditBtn">✖
+                                        Cancel</button>
                                 </div>
                             </form>
                         </div>
@@ -1190,12 +1213,15 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group" style="flex: 1;">
-                                    <label for="driverKmAmountInput" style="font-size:12px;color:#666;">KM Amount</label>
-                                    <input type="number" id="driverKmAmountInput" placeholder="KM amount (e.g., 120.5)" step="0.01" min="0.01" required>
+                                    <label for="driverKmAmountInput" style="font-size:12px;color:#666;">KM
+                                        Amount</label>
+                                    <input type="number" id="driverKmAmountInput" placeholder="KM amount (e.g., 120.5)"
+                                        step="0.01" min="0.01" required>
                                 </div>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success" id="saveDriverKmBtn">💾 Save KM Record</button>
+                                <button type="submit" class="btn btn-success" id="saveDriverKmBtn">💾 Save KM
+                                    Record</button>
                                 <button type="button" class="btn btn-secondary" id="cancelDriverKmBtn">✖ Cancel</button>
                             </div>
                         </form>
@@ -1343,7 +1369,8 @@
                                 </div>
                                 <div id="deductionsList"
                                     style="margin-bottom: 20px; padding: 15px; background: #FFF8E1; border-radius: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                         <h5 style="color: #E67E22; margin: 0;">📋 Deductions This Month:</h5>
                                         <button type="button" class="btn btn-sm" id="addDeductionBtn"
                                             style="background: #E67E22; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
@@ -1351,23 +1378,34 @@
                                         </button>
                                     </div>
                                     <!-- Inline Add Deduction Form -->
-                                    <div id="addDeductionFormRow" style="display: none; margin-bottom: 12px; padding: 12px; background: #FFF3CD; border-radius: 8px; border: 1px dashed #E67E22;">
+                                    <div id="addDeductionFormRow"
+                                        style="display: none; margin-bottom: 12px; padding: 12px; background: #FFF3CD; border-radius: 8px; border: 1px dashed #E67E22;">
                                         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;">
                                             <div style="flex: 1; min-width: 120px;">
-                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Date</label>
-                                                <input type="date" id="deductionDate" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                                <label
+                                                    style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Date</label>
+                                                <input type="date" id="deductionDate"
+                                                    style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
                                             </div>
                                             <div style="flex: 2; min-width: 150px;">
-                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Reason</label>
-                                                <input type="text" id="deductionReason" placeholder="e.g., Damage, Insurance, Fine" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                                <label
+                                                    style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Reason</label>
+                                                <input type="text" id="deductionReason"
+                                                    placeholder="e.g., Damage, Insurance, Fine"
+                                                    style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
                                             </div>
                                             <div style="flex: 1; min-width: 100px;">
-                                                <label style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Amount (LKR)</label>
-                                                <input type="number" id="deductionAmount" placeholder="0.00" step="0.01" min="0" style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
+                                                <label
+                                                    style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Amount
+                                                    (LKR)</label>
+                                                <input type="number" id="deductionAmount" placeholder="0.00" step="0.01"
+                                                    min="0"
+                                                    style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px;">
                                             </div>
                                             <div style="display: flex; gap: 5px;">
                                                 <button type="button" id="saveDeductionBtn"
-                                                    style="padding: 6px 14px; background: #27AE60; color: white; border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;">💾 Save</button>
+                                                    style="padding: 6px 14px; background: #27AE60; color: white; border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;">💾
+                                                    Save</button>
                                                 <button type="button" id="cancelDeductionBtn"
                                                     style="padding: 6px 10px; background: #95A5A6; color: white; border: none; border-radius: 5px; font-size: 12px; cursor: pointer;">✖</button>
                                             </div>
@@ -1599,7 +1637,8 @@
                         </div>
                         <div class="control-group">
                             <label for="hireRecordsTownSearch">🏙️ Search by Town</label>
-                            <input type="text" id="hireRecordsTownSearch" placeholder="Search by town..." title="Search by From or To location">
+                            <input type="text" id="hireRecordsTownSearch" placeholder="Search by town..."
+                                title="Search by From or To location">
                         </div>
                     </div>
 
@@ -1679,7 +1718,8 @@
                         </div>
                         <div class="control-group">
                             <label for="otherOperationHiresTownSearch">🏙️ Search by Town</label>
-                            <input type="text" id="otherOperationHiresTownSearch" placeholder="Search by town..." title="Search by From or To location">
+                            <input type="text" id="otherOperationHiresTownSearch" placeholder="Search by town..."
+                                title="Search by From or To location">
                         </div>
                     </div>
 
@@ -1698,17 +1738,22 @@
                                 <input type="text" id="otherOpTo" placeholder="To Location" required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="otherOpFirst100Rate" placeholder="First 100km Rate (LKR)" step="0.01" required>
-                                <input type="number" id="otherOpRestKmRate" placeholder="Rest KM Rate (LKR)" step="0.01" required>
+                                <input type="number" id="otherOpFirst100Rate" placeholder="First 100km Rate (LKR)"
+                                    step="0.01" required>
+                                <input type="number" id="otherOpRestKmRate" placeholder="Rest KM Rate (LKR)" step="0.01"
+                                    required>
                             </div>
                             <div class="form-row">
-                                <input type="number" id="otherOpDistance" placeholder="Distance / Hire KM Amount" step="0.01" required>
+                                <input type="number" id="otherOpDistance" placeholder="Distance / Hire KM Amount"
+                                    step="0.01" required>
                                 <input type="number" id="otherOpFuel" placeholder="Fuel (L)" step="0.01" required>
-                                <input type="number" id="otherOpFuelPrice" placeholder="Fuel Price per L" step="0.01" required>
+                                <input type="number" id="otherOpFuelPrice" placeholder="Fuel Price per L" step="0.01"
+                                    required>
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success">💾 Save Record</button>
-                                <button type="button" class="btn btn-secondary" id="cancelOtherOperationHireBtn">✖ Cancel</button>
+                                <button type="button" class="btn btn-secondary" id="cancelOtherOperationHireBtn">✖
+                                    Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -1844,7 +1889,8 @@
                         </div>
                         <div class="control-group">
                             <label for="commitmentRecordsTownSearch">🏙️ Search by Town</label>
-                            <input type="text" id="commitmentRecordsTownSearch" placeholder="Search by town..." title="Search by From or To location">
+                            <input type="text" id="commitmentRecordsTownSearch" placeholder="Search by town..."
+                                title="Search by From or To location">
                         </div>
                     </div>
 
