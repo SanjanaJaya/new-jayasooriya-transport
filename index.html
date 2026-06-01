@@ -1414,7 +1414,19 @@
                                     <!-- Deductions Details Table -->
                                     <div id="deductionsDetails"></div>
                                 </div>
+
+                                <!-- Day-Off Deductions (read-only, pulled from Staff Day Offs page) -->
+                                <div id="dayOffDeductionsList"
+                                    style="margin-bottom: 20px; padding: 15px; background: #F3E5F5; border-radius: 8px; border-left: 4px solid #8E44AD;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <h5 style="color: #8E44AD; margin: 0;">⛔ Day-Off Deductions This Month:</h5>
+                                        <span style="font-size: 11px; color: #8E44AD; background: #E8D5F5; padding: 3px 9px; border-radius: 10px;">Auto-loaded from Staff Day Offs</span>
+                                    </div>
+                                    <div id="dayOffDeductionsDetails"><p style="color: #999; font-style: italic; font-size: 13px;">Load salary data to see day-off deductions.</p></div>
+                                </div>
+
                                 <input type="hidden" id="otherDeductions" value="0">
+                                <input type="hidden" id="dayOffDeductions" value="0">
                             </div>
 
                             <div class="form-section">
@@ -1466,6 +1478,10 @@
                                     <div class="summary-item">
                                         <span class="summary-label">Total Deductions:</span>
                                         <span class="summary-value" id="otherDeductionsDisplay">LKR 0.00</span>
+                                    </div>
+                                    <div class="summary-item" style="color: #8E44AD;">
+                                        <span class="summary-label" style="color: #8E44AD;">⛔ Day-Off Deductions:</span>
+                                        <span class="summary-value" id="dayOffDeductionsDisplay" style="color: #8E44AD;">LKR 0.00</span>
                                     </div>
                                     <div class="summary-item total">
                                         <span class="summary-label">Net Salary:</span>

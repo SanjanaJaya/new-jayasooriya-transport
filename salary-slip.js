@@ -10,6 +10,8 @@ let currentSalaryReceiptFile = null;
 let existingSalaryReceiptUrl = null;
 // Deductions tracking
 let currentDeductions = []; // holds deductions loaded for the current driver/month
+// Day-off deductions tracking
+let currentDayOffDeductions = []; // holds day-off records for the current driver/month
 
 // Initialize salary section
 function initSalarySection() {
@@ -295,6 +297,10 @@ async function loadDriverSalaryData() {
         currentDeductions = await loadStaffDeductions(driverId, monthValue);
         displayDeductions(currentDeductions);
 
+        // Load day-off deductions for this driver/month
+        currentDayOffDeductions = await loadDriverDayOffDeductions(driverId, monthValue);
+        displayDayOffDeductions(currentDayOffDeductions);
+
         // Reset receipt upload
         resetSalaryReceiptUpload();
 
@@ -421,6 +427,82 @@ function displayAdvances(advances) {
 
     advancesDetails.innerHTML = html;
     totalAdvancesDisplay.textContent = `LKR ${totalAdvances.toFixed(2)}`;
+}
+
+// ============ DRIVER DAY-OFF DEDUCTIONS (READ-ONLY IN SALARY FORM) ============
+
+// Load day-off deductions from driver_day_offs table for the given driver and month
+async function loadDriverDayOffDeductions(driverId, salaryMonth) {
+    try {
+        const userId = getQueryUserId();
+        const [year, month] = salaryMonth.split('-');
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+        const { data, error } = await supabaseClient
+            .from('driver_day_offs')
+            .select('*')
+            .eq('driver_id', parseInt(driverId))
+            .eq('user_id', userId)
+            .gte('day_off_date', startDate)
+            .lte('day_off_date', endDate)
+            .order('day_off_date', { ascending: true });
+
+        if (error) {
+            console.error('[DayOffDeductions] Supabase error:', error);
+            return [];
+        }
+        return data || [];
+    } catch (error) {
+        console.error('[DayOffDeductions] Error loading day-off deductions:', error.message);
+        return [];
+    }
+}
+
+// Display day-off deductions as a read-only section in the salary form
+function displayDayOffDeductions(dayOffs) {
+    const detailsEl = document.getElementById('dayOffDeductionsDetails');
+    if (!detailsEl) return;
+
+    if (!dayOffs || dayOffs.length === 0) {
+        detailsEl.innerHTML = '<p style="color: var(--text-muted, #999); font-style: italic; font-size: 13px;">No day-off deductions for this month</p>';
+        updateDayOffDeductionTotal(0);
+        return;
+    }
+
+    let total = 0;
+    let html = '<table style="width:100%; font-size: 14px; border-collapse: collapse;">';
+    html += '<tr style="background: #8E44AD; color: white;">';
+    html += '<th style="padding: 8px; text-align: left;">Date</th>';
+    html += '<th style="padding: 8px; text-align: left;">Notes</th>';
+    html += '<th style="padding: 8px; text-align: right;">Deduction (LKR)</th>';
+    html += '</tr>';
+
+    dayOffs.forEach(item => {
+        total += item.deduction_amount || 0;
+        html += '<tr style="border-bottom: 1px solid var(--surface-border, #eee);">';
+        html += `<td style="padding: 8px;">${item.day_off_date}</td>`;
+        html += `<td style="padding: 8px;">${item.notes || '-'}</td>`;
+        html += `<td style="padding: 8px; text-align: right;">LKR ${(item.deduction_amount || 0).toFixed(2)}</td>`;
+        html += '</tr>';
+    });
+
+    html += '</table>';
+    html += `<div style="margin-top: 10px; text-align: right; font-weight: bold; color: #8E44AD;">`;
+    html += `Total Day-Off Deductions: LKR ${total.toFixed(2)}`;
+    html += `</div>`;
+    html += `<div style="font-size: 12px; color: var(--text-muted, #888); margin-top: 4px;">Manage day offs in the <strong>Staff Day Offs</strong> page.</div>`;
+
+    detailsEl.innerHTML = html;
+    updateDayOffDeductionTotal(total);
+}
+
+// Update the hidden dayOffDeductions field and trigger recalculation
+function updateDayOffDeductionTotal(total) {
+    const hiddenField = document.getElementById('dayOffDeductions');
+    if (hiddenField) hiddenField.value = total;
+    recalculateSalary();
 }
 
 // ============ STAFF DEDUCTIONS CRUD ============
@@ -617,6 +699,7 @@ function recalculateExtraKmSalary() {
 function recalculateSalary() {
     const additionalAllowance = parseFloat(document.getElementById('additionalAllowance').value) || 0;
     const otherDeductions = parseFloat(document.getElementById('otherDeductions').value) || 0;
+    const dayOffDeductions = parseFloat(document.getElementById('dayOffDeductions')?.value) || 0;
     const totalAdvancesText = document.getElementById('totalAdvancesDisplay').textContent;
 
     // Extract total advances from text
@@ -638,10 +721,12 @@ function recalculateSalary() {
         grossSalary = basicSalary + extraKmSalary + additionalAllowance;
     }
 
-    const netSalary = grossSalary - totalAdvances - otherDeductions;
+    const netSalary = grossSalary - totalAdvances - otherDeductions - dayOffDeductions;
 
     document.getElementById('grossSalaryDisplay').textContent = `LKR ${grossSalary.toFixed(2)}`;
     document.getElementById('otherDeductionsDisplay').textContent = `LKR ${otherDeductions.toFixed(2)}`;
+    const dayOffDisplay = document.getElementById('dayOffDeductionsDisplay');
+    if (dayOffDisplay) dayOffDisplay.textContent = `LKR ${dayOffDeductions.toFixed(2)}`;
     document.getElementById('netSalaryDisplay').textContent = `LKR ${netSalary.toFixed(2)}`;
 }
 
@@ -727,6 +812,7 @@ async function generateSalarySlip() {
 
         const additionalAllowance = parseFloat(document.getElementById('additionalAllowance').value) || 0;
         const otherDeductions = currentDeductions.reduce((sum, d) => sum + (d.amount || 0), 0);
+        const dayOffDeductionsTotal = currentDayOffDeductions.reduce((sum, d) => sum + (d.deduction_amount || 0), 0);
         const totalAdvances = advances?.reduce((sum, adv) => sum + adv.amount, 0) || 0;
 
         let grossSalary = 0;
@@ -754,7 +840,7 @@ async function generateSalarySlip() {
             grossSalary = basicSalary + extraKmSalary + additionalAllowance;
         }
 
-        const netSalary = grossSalary - totalAdvances - otherDeductions;
+        const netSalary = grossSalary - totalAdvances - otherDeductions - dayOffDeductionsTotal;
 
         // Prepare salary data for PDF
         currentSalaryData = {
@@ -784,6 +870,8 @@ async function generateSalarySlip() {
             totalAdvances: totalAdvances,
             otherDeductions: otherDeductions,
             deductions: currentDeductions || [],
+            dayOffDeductions: dayOffDeductionsTotal,
+            dayOffRecords: currentDayOffDeductions || [],
             grossSalary: grossSalary,
             netSalary: netSalary,
             generatedDate: new Date().toLocaleDateString('en-US', {
@@ -1004,7 +1092,8 @@ async function loadSalaryHistory() {
                     record.tip_count || 0,
                     record.half_tip_count || 0,
                     record.per_tip_charge || 0,
-                    record.tip_salary || 0
+                    record.tip_salary || 0,
+                    (record.salary_data && record.salary_data.dayOffDeductions) ? record.salary_data.dayOffDeductions : 0
                 );
                 copyTextToClipboard(msg, this);
             });
@@ -1083,6 +1172,10 @@ async function editSalaryRecord(salaryId) {
         // Load deductions for this month
         currentDeductions = await loadStaffDeductions(salaryRecord.driver_id, salaryRecord.salary_month);
         displayDeductions(currentDeductions);
+
+        // Load day-off deductions for this month
+        currentDayOffDeductions = await loadDriverDayOffDeductions(salaryRecord.driver_id, salaryRecord.salary_month);
+        displayDayOffDeductions(currentDayOffDeductions);
 
         // Set edit mode
         isEditMode = true;
@@ -1208,6 +1301,13 @@ function cancelSalaryForm() {
     const deductionsDetailsEl = document.getElementById('deductionsDetails');
     if (deductionsDetailsEl) deductionsDetailsEl.innerHTML = '';
     hideAddDeductionForm();
+
+    // Reset day-off deductions
+    currentDayOffDeductions = [];
+    const dayOffDetailsEl = document.getElementById('dayOffDeductionsDetails');
+    if (dayOffDetailsEl) dayOffDetailsEl.innerHTML = '';
+    const dayOffHidden = document.getElementById('dayOffDeductions');
+    if (dayOffHidden) dayOffHidden.value = 0;
 
     // Reset receipt upload
     resetSalaryReceiptUpload();
@@ -1350,8 +1450,12 @@ function createSalarySlipPDF() {
 
         yPos += 5;
 
-        // Advances Section
-        if (currentSalaryData.advances.length > 0) {
+        // Advances & Deductions Section
+        const hasAdvances = currentSalaryData.advances && currentSalaryData.advances.length > 0;
+        const hasDayOffDeductions = currentSalaryData.dayOffRecords && currentSalaryData.dayOffRecords.length > 0;
+        const hasOtherDeductions = (currentSalaryData.otherDeductions || 0) > 0;
+
+        if (hasAdvances || hasDayOffDeductions || hasOtherDeductions) {
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
@@ -1369,25 +1473,46 @@ function createSalarySlipPDF() {
 
             yPos += 8;
 
-            // Advances rows
             pdf.setFont('helvetica', 'normal');
-            currentSalaryData.advances.forEach(advance => {
-                pdf.text(advance.advance_date, margin + 2, yPos + 5);
-                pdf.text(advance.notes || 'Advance', margin + 40, yPos + 5);
-                pdf.text(advance.amount.toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
-                yPos += 6;
-            });
 
-            // Total advances
-            yPos += 2;
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Total Advances:', pageWidth - margin - 60, yPos + 5);
-            pdf.text(currentSalaryData.totalAdvances.toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
-            yPos += 8;
+            // Advances rows
+            if (hasAdvances) {
+                currentSalaryData.advances.forEach(advance => {
+                    pdf.text(advance.advance_date, margin + 2, yPos + 5);
+                    pdf.text(advance.notes || 'Advance', margin + 40, yPos + 5);
+                    pdf.text(advance.amount.toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
+                    yPos += 6;
+                });
+
+                // Total advances
+                yPos += 2;
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Total Advances:', pageWidth - margin - 60, yPos + 5);
+                pdf.text(currentSalaryData.totalAdvances.toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
+                yPos += 8;
+                pdf.setFont('helvetica', 'normal');
+            }
+
+            // Day-off deduction rows
+            if (hasDayOffDeductions) {
+                currentSalaryData.dayOffRecords.forEach(item => {
+                    pdf.text(item.day_off_date, margin + 2, yPos + 5);
+                    pdf.text(item.notes ? `Day Off - ${item.notes}` : 'Day Off Deduction', margin + 40, yPos + 5);
+                    pdf.text((item.deduction_amount || 0).toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
+                    yPos += 6;
+                });
+
+                // Total day-off deductions
+                yPos += 2;
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Total Day-Off Deductions:', pageWidth - margin - 60, yPos + 5);
+                pdf.text((currentSalaryData.dayOffDeductions || 0).toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
+                yPos += 8;
+                pdf.setFont('helvetica', 'normal');
+            }
 
             // Other deductions
-            if (currentSalaryData.otherDeductions > 0) {
-                pdf.setFont('helvetica', 'normal');
+            if (hasOtherDeductions) {
                 pdf.text('Other Deductions:', pageWidth - margin - 60, yPos + 5);
                 pdf.text(currentSalaryData.otherDeductions.toFixed(2), pageWidth - margin - 2, yPos + 5, { align: 'right' });
                 yPos += 8;
@@ -1469,7 +1594,7 @@ if (document.readyState === 'loading') {
 
 // ============ SALARY SMS COPY UTILITIES ============
 
-function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSalary, additionalAllowance, totalKm, totalAdvances, otherDeductions, grossSalary, netSalary, salaryType, tipCount, halfTipCount, perTipCharge, tipSalary) {
+function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSalary, additionalAllowance, totalKm, totalAdvances, otherDeductions, grossSalary, netSalary, salaryType, tipCount, halfTipCount, perTipCharge, tipSalary, dayOffDeductions) {
     // Format month label e.g. "2025-05" -> "May 2025"
     let monthLabel = salaryMonth;
     if (salaryMonth && salaryMonth.includes('-')) {
@@ -1506,6 +1631,9 @@ function buildSalarySmsMessage(driverName, salaryMonth, basicSalary, extraKmSala
     lines.push('');
     lines.push('-- Deductions --');
     lines.push('Advances:          LKR ' + Number(totalAdvances).toFixed(2));
+    if (Number(dayOffDeductions) > 0) {
+        lines.push('Day-Off Deduct.:   LKR ' + Number(dayOffDeductions).toFixed(2));
+    }
     if (Number(otherDeductions) > 0) {
         lines.push('Other Deductions:  LKR ' + Number(otherDeductions).toFixed(2));
     }
