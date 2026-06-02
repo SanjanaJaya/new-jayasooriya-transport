@@ -148,6 +148,14 @@
 
                 <div class="nav-divider"></div>
 
+                <!-- Leasing — standalone -->
+                <button class="nav-item" data-page="leasing">
+                    <span class="nav-icon">🚗</span>
+                    <span>Leasing & Loans</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
 
                 <div class="nav-group" id="navGroupStaff">
                     <button class="nav-group-header" data-group="staff" aria-expanded="false">
@@ -2114,9 +2122,202 @@
                     </div>
                 </div>
 
+                <!-- ═══════════════════════════════════════════════
+                     LEASING & LOANS PAGE
+                ═══════════════════════════════════════════════ -->
+                <div id="leasing" class="page">
+
+                    <!-- ── WIDGET STRIP (all entries) ── -->
+                    <div class="leasing-widget-strip" id="leasingWidgetStrip">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- ── TAB BAR ── -->
+                    <div class="leasing-tabs">
+                        <button class="leasing-tab active" id="leasingTabLeasing" data-tab="leasing">
+                            🚗 Leasing <span class="leasing-tab-badge" id="leasingTabBadge">0</span>
+                        </button>
+                        <button class="leasing-tab" id="leasingTabLoans" data-tab="loan">
+                            💰 Loans <span class="leasing-tab-badge" id="loansTabBadge">0</span>
+                        </button>
+                    </div>
+
+                    <!-- ── MAIN LIST PANEL ── -->
+                    <div class="leasing-panel" id="leasingMainPanel">
+                        <div class="leasing-panel-header">
+                            <span class="leasing-panel-icon" id="leasingPanelIcon">🚗</span>
+                            <h3 class="leasing-panel-title" id="leasingPanelTitle">Vehicle Leases</h3>
+                            <button class="btn btn-primary btn-sm" id="toggleAddLeaseFormBtn">+ Add Entry</button>
+                        </div>
+
+                        <!-- ── UNIFIED ADD / EDIT FORM ── -->
+                        <div class="form-container" id="addLeaseFormContainer" style="display:none;">
+                            <form id="addLeaseVehicleForm">
+                                <input type="hidden" id="leaseVehicleId">
+                                <input type="hidden" id="leaseEntryType" value="leasing">
+
+                                <!-- TYPE TOGGLE (only shown when adding new) -->
+                                <div class="form-row" id="leaseTypeToggleRow">
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="font-size:12px;color:#666;">📋 Entry Type</label>
+                                        <div class="lease-type-selector">
+                                            <button type="button" class="lease-type-btn active" data-type="leasing" id="leaseBtnTypeLeasing">🚗 Leasing</button>
+                                            <button type="button" class="lease-type-btn" data-type="loan" id="leaseBtnTypeLoan">💰 Loan</button>
+                                        </div>
+                                    </div>
+                                    <!-- Frequency toggle (only for loans) -->
+                                    <div class="form-group loan-only-field" style="flex:1; display:none;">
+                                        <label style="font-size:12px;color:#666;">🔄 Payment Frequency</label>
+                                        <div class="lease-type-selector">
+                                            <button type="button" class="lease-type-btn active" data-freq="monthly" id="leaseBtnFreqMonthly">📅 Monthly</button>
+                                            <button type="button" class="lease-type-btn" data-freq="weekly" id="leaseBtnFreqWeekly">📆 Weekly</button>
+                                            <button type="button" class="lease-type-btn" data-freq="fortnightly" id="leaseBtnFreqFortnightly">🔁 Every 2 Weeks</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="leasePaymentFreq" value="monthly">
+
+                                <!-- LEASING: Vehicle Number -->
+                                <div class="form-row leasing-only-field">
+                                    <div class="form-group" style="flex:2;">
+                                        <label for="leaseVehicleNumber" style="font-size:12px;color:#666;">🚗 Vehicle Number</label>
+                                        <input type="text" id="leaseVehicleNumber" placeholder="e.g. WP NB-1234">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="leaseInstallmentDay" style="font-size:12px;color:#666;">📅 Installment Day (of month)</label>
+                                        <input type="number" id="leaseInstallmentDay" placeholder="e.g. 15" min="1" max="28">
+                                    </div>
+                                </div>
+
+                                <!-- LOAN: Lender Name + Monthly Day -->
+                                <div class="form-row loan-only-field" style="display:none;">
+                                    <div class="form-group" style="flex:2;">
+                                        <label for="loanLenderName" style="font-size:12px;color:#666;">🏦 Lender / Source Name</label>
+                                        <input type="text" id="loanLenderName" placeholder="e.g. Sampath Bank, Perera">
+                                    </div>
+                                    <div class="form-group monthly-only-field" style="flex:1;">
+                                        <label for="loanInstallmentDay" style="font-size:12px;color:#666;">📅 Payment Day (of month)</label>
+                                        <input type="number" id="loanInstallmentDay" placeholder="e.g. 10" min="1" max="28">
+                                    </div>
+                                </div>
+
+                                <!-- AMOUNT + TOTAL INSTALLMENTS (shared) -->
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="leaseInstallmentAmount" style="font-size:12px;color:#666;">💰 Installment Amount (LKR)</label>
+                                        <input type="number" id="leaseInstallmentAmount" placeholder="e.g. 45000" min="1" step="0.01" required>
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="leaseTotalInstallments" style="font-size:12px;color:#666;" id="leaseTotalInstLabel">📆 Total Months</label>
+                                        <input type="number" id="leaseTotalInstallments" placeholder="e.g. 36" min="1" max="1000" required>
+                                    </div>
+                                </div>
+
+                                <!-- START: Monthly uses month picker, Weekly uses date picker -->
+                                <div class="form-row">
+                                    <div class="form-group monthly-only-field" style="flex:1;">
+                                        <label for="leaseStartMonth" style="font-size:12px;color:#666;">🗓️ Start (Year &amp; Month)</label>
+                                        <input type="month" id="leaseStartMonth">
+                                    </div>
+                                    <div class="form-group weekly-only-field" style="flex:1; display:none;">
+                                        <label for="leaseStartDate" style="font-size:12px;color:#666;">🗓️ First Payment Date</label>
+                                        <input type="date" id="leaseStartDate">
+                                    </div>
+                                </div>
+
+                                <!-- SETTLE CHECKBOX -->
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                                            <input type="checkbox" id="leaseSettledCheck" style="width:16px;height:16px;cursor:pointer;">
+                                            🏁 Mark as Settled (fully paid off / closed)
+                                        </label>
+                                    </div>
+                                    <div class="form-group" style="flex:2;" id="leaseSettledNotesWrap" style="display:none;">
+                                        <label for="leaseSettledNotes" style="font-size:12px;color:#666;">📝 Settlement Notes (optional)</label>
+                                        <input type="text" id="leaseSettledNotes" placeholder="e.g. Final payment made on 01 June 2025">
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-success">💾 Save</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelAddLeaseBtn">✖ Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Entry List -->
+                        <div id="leasingVehiclesList" class="leasing-vehicles-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- ── INSTALLMENT CALENDAR ── -->
+                    <div class="leasing-panel" id="leasingCalendarPanel" style="margin-top:24px; display:none;">
+                        <div class="leasing-panel-header">
+                            <span class="leasing-panel-icon">📅</span>
+                            <h3 class="leasing-panel-title">
+                                Payment Calendar — <span id="leasingCalendarVehicleName">—</span>
+                                <span id="leasingCalendarSettledBadge" class="lease-settled-header-badge" style="display:none;">🏁 Settled</span>
+                            </h3>
+                            <button class="btn btn-secondary btn-sm" id="leasingCalendarBackBtn">← Back</button>
+                        </div>
+
+                        <!-- Settled Banner -->
+                        <div class="lease-settled-banner" id="leasingSettledBanner" style="display:none;">
+                            🏁 This entry has been <strong>settled</strong>. All payments are recorded below for reference.
+                        </div>
+
+                        <!-- Calendar Stats Bar -->
+                        <div class="lease-calendar-stats" id="leaseCalendarStats">
+                            <div class="lease-stat-item lease-stat-paid">
+                                <span class="lease-stat-icon">✅</span>
+                                <div>
+                                    <div class="lease-stat-label">Paid</div>
+                                    <div class="lease-stat-value" id="lcsStatPaid">0</div>
+                                </div>
+                            </div>
+                            <div class="lease-stat-item lease-stat-remaining">
+                                <span class="lease-stat-icon">⏳</span>
+                                <div>
+                                    <div class="lease-stat-label">Remaining</div>
+                                    <div class="lease-stat-value" id="lcsStatRemaining">0</div>
+                                </div>
+                            </div>
+                            <div class="lease-stat-item lease-stat-overdue">
+                                <span class="lease-stat-icon">🔴</span>
+                                <div>
+                                    <div class="lease-stat-label">Overdue</div>
+                                    <div class="lease-stat-value" id="lcsStatOverdue">0</div>
+                                </div>
+                            </div>
+                            <div class="lease-stat-item lease-stat-amount">
+                                <span class="lease-stat-icon">💵</span>
+                                <div>
+                                    <div class="lease-stat-label">Amount Paid</div>
+                                    <div class="lease-stat-value" id="lcsStatAmountPaid">LKR 0</div>
+                                </div>
+                            </div>
+                            <div class="lease-stat-item lease-stat-pending-amount">
+                                <span class="lease-stat-icon">💳</span>
+                                <div>
+                                    <div class="lease-stat-label">Amount Due</div>
+                                    <div class="lease-stat-value" id="lcsStatAmountDue">LKR 0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Tiles Grid -->
+                        <div class="leasing-month-grid" id="leasingMonthGrid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+
             </div>
         </main>
     </div>
+
 
     <div id="loginModal" class="modal">
         <div class="modal-content login-modal">

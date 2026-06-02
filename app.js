@@ -404,6 +404,7 @@ function openMobileMenu() {
 const PAGE_GROUP_MAP = {
     'dashboard': null,
     'cheque-status': null,
+    'leasing': null,
     'drivers': 'navGroupStaff',
     'driver-advances': 'navGroupStaff',
     'driver-dayoffs': 'navGroupStaff',
@@ -484,6 +485,7 @@ function switchPage(page) {
     const titles = {
         'dashboard': 'Dashboard',
         'cheque-status': 'Cheque Status',
+        'leasing': 'Leasing & Loans',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
         'driver-salary': 'Staff Salary Calculator & Salary Slips',
@@ -503,6 +505,7 @@ function switchPage(page) {
 
     if (page === 'dashboard') loadDashboard();
     if (page === 'cheque-status') loadChequeStatus();
+    if (page === 'leasing') loadLeasingPage();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
 
@@ -8985,3 +8988,807 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 2000); // Wait for auth + data to initialize
 });
+
+// ============================================================
+// ============ LEASING & LOANS MANAGEMENT ====================
+// ============================================================
+
+let _leasingInitialized = false;
+let _currentLeasingVehicle = null;
+let _currentLeasingTab = 'leasing'; // 'leasing' | 'loan'
+let _currentLeasingPaidMap = {};    // cached for calendar re-render
+
+// ── Helpers ──────────────────────────────────────────────────
+function leasingFmtLKR(n) {
+    return 'LKR ' + Number(n || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function leasingMonthKey(year, monthIndex) {
+    return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function leasingMonthLabel(monthKey) {
+    const [y, m] = monthKey.split('-').map(Number);
+    const d = new Date(y, m - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function leasingWeekLabel(dateStr, weekNum) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return `Week ${weekNum} (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
+}
+
+function leasingFortnightLabel(dateStr, fortnightNum) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return `Fortnight ${fortnightNum} (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
+}
+
+// Build payment keys for any entry (monthly, weekly, or fortnightly)
+function leasingBuildPaymentKeys(entry) {
+    const freq = entry.payment_freq || 'monthly';
+    const isWeekly = freq === 'weekly';
+    const isFortnightly = freq === 'fortnightly';
+    const keys = [];
+
+    if ((isWeekly || isFortnightly) && entry.start_date) {
+        const stepDays = isFortnightly ? 14 : 7;
+        const postponedSet = new Set(entry.postponed_dates || []);
+        const d = new Date(entry.start_date + 'T00:00:00');
+        const target = entry.total_installments || entry.total_months || 0;
+        let activeCount = 0;
+        let safety = 0;
+        while (activeCount < target && safety < 500) {
+            safety++;
+            const dateStr = d.toISOString().split('T')[0];
+            keys.push(dateStr);
+            if (!postponedSet.has(dateStr)) {
+                activeCount++;
+            }
+            d.setDate(d.getDate() + stepDays);
+        }
+    } else {
+        // Monthly: YYYY-MM
+        let y = entry.start_year;
+        let m = (entry.start_month || 1) - 1; // 0-based
+        const total = entry.total_months || entry.total_installments || 0;
+        for (let i = 0; i < total; i++) {
+            keys.push(leasingMonthKey(y, m));
+            m++;
+            if (m > 11) { m = 0; y++; }
+        }
+    }
+    return keys;
+}
+
+// "Today" comparison key — monthly uses YYYY-MM, weekly/fortnightly uses YYYY-MM-DD
+function leasingTodayKey(isWeeklyOrFortnightly) {
+    const now = new Date();
+    if (isWeeklyOrFortnightly) return now.toISOString().split('T')[0];
+    return leasingMonthKey(now.getFullYear(), now.getMonth());
+}
+
+function leasingEntryLabel(entry) {
+    return entry.entry_type === 'loan'
+        ? (entry.lender_name || 'Unnamed Loan')
+        : (entry.vehicle_number || 'Unnamed Lease');
+}
+
+function leasingPaymentLabel(key, entry, idx) {
+    if (entry.payment_freq === 'weekly') return leasingWeekLabel(key, idx + 1);
+    if (entry.payment_freq === 'fortnightly') return leasingFortnightLabel(key, idx + 1);
+    return leasingMonthLabel(key);
+}
+
+// ── Entry point ───────────────────────────────────────────────
+async function loadLeasingPage() {
+    if (!_leasingInitialized) {
+        initLeasingPage();
+        _leasingInitialized = true;
+    }
+    await refreshLeasingData();
+}
+
+// ── Init all event listeners ──────────────────────────────────
+function initLeasingPage() {
+    // Tab switching
+    document.querySelectorAll('.leasing-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.leasing-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            _currentLeasingTab = btn.dataset.tab;
+
+            // Update panel header
+            const icon = document.getElementById('leasingPanelIcon');
+            const title = document.getElementById('leasingPanelTitle');
+            if (icon) icon.textContent = _currentLeasingTab === 'loan' ? '💰' : '🚗';
+            if (title) title.textContent = _currentLeasingTab === 'loan' ? 'Loans' : 'Vehicle Leases';
+
+            // Close calendar if open
+            document.getElementById('leasingCalendarPanel').style.display = 'none';
+            _currentLeasingVehicle = null;
+
+            refreshLeasingData();
+        });
+    });
+
+    // Toggle add form
+    document.getElementById('toggleAddLeaseFormBtn')?.addEventListener('click', () => {
+        if (!checkAdminAccess('add')) return;
+        const container = document.getElementById('addLeaseFormContainer');
+        const isVisible = container.style.display !== 'none';
+        if (isVisible) {
+            container.style.display = 'none';
+        } else {
+            resetLeaseForm();
+            // Pre-select the correct type based on current tab
+            setLeaseFormType(_currentLeasingTab === 'loan' ? 'loan' : 'leasing');
+            container.style.display = 'block';
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+
+    document.getElementById('cancelAddLeaseBtn')?.addEventListener('click', () => {
+        document.getElementById('addLeaseFormContainer').style.display = 'none';
+        resetLeaseForm();
+    });
+
+    // Type toggle buttons
+    document.querySelectorAll('.lease-type-btn[data-type]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setLeaseFormType(btn.dataset.type);
+        });
+    });
+
+    // Frequency toggle buttons
+    document.querySelectorAll('.lease-type-btn[data-freq]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setLeaseFormFreq(btn.dataset.freq);
+        });
+    });
+
+    // Settle checkbox
+    document.getElementById('leaseSettledCheck')?.addEventListener('change', (e) => {
+        const notesWrap = document.getElementById('leaseSettledNotesWrap');
+        if (notesWrap) notesWrap.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('addLeaseVehicleForm')?.addEventListener('submit', handleAddLeaseVehicle);
+    document.getElementById('leasingCalendarBackBtn')?.addEventListener('click', () => {
+        document.getElementById('leasingCalendarPanel').style.display = 'none';
+        _currentLeasingVehicle = null;
+    });
+}
+
+// ── Form Helpers ──────────────────────────────────────────────
+function resetLeaseForm() {
+    document.getElementById('addLeaseVehicleForm')?.reset();
+    document.getElementById('leaseVehicleId').value = '';
+    document.getElementById('leaseEntryType').value = 'leasing';
+    document.getElementById('leasePaymentFreq').value = 'monthly';
+    document.getElementById('leaseSettledNotesWrap').style.display = 'none';
+    const now = new Date();
+    const monthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const dateVal = now.toISOString().split('T')[0];
+    const smEl = document.getElementById('leaseStartMonth');
+    const sdEl = document.getElementById('leaseStartDate');
+    if (smEl) smEl.value = monthVal;
+    if (sdEl) sdEl.value = dateVal;
+}
+
+function setLeaseFormType(type) {
+    document.getElementById('leaseEntryType').value = type;
+
+    // Update type buttons
+    document.querySelectorAll('.lease-type-btn[data-type]').forEach(b => {
+        b.classList.toggle('active', b.dataset.type === type);
+    });
+
+    // Show/hide leasing vs loan fields
+    document.querySelectorAll('.leasing-only-field').forEach(el => {
+        el.style.display = type === 'leasing' ? '' : 'none';
+    });
+    document.querySelectorAll('.loan-only-field').forEach(el => {
+        el.style.display = type === 'loan' ? '' : 'none';
+    });
+
+    // Reset freq to monthly when switching to leasing
+    if (type === 'leasing') setLeaseFormFreq('monthly');
+    const totalLabel = document.getElementById('leaseTotalInstLabel');
+    if (totalLabel) totalLabel.textContent = type === 'leasing' ? '📆 Total Months' : '📆 Total Installments';
+}
+
+function setLeaseFormFreq(freq) {
+    document.getElementById('leasePaymentFreq').value = freq;
+
+    // Update freq buttons
+    document.querySelectorAll('.lease-type-btn[data-freq]').forEach(b => {
+        b.classList.toggle('active', b.dataset.freq === freq);
+    });
+
+    const isPeriodWeeklyOrFortnightly = freq === 'weekly' || freq === 'fortnightly';
+
+    // Show/hide weekly vs monthly start fields
+    document.querySelectorAll('.monthly-only-field').forEach(el => {
+        el.style.display = isPeriodWeeklyOrFortnightly ? 'none' : '';
+    });
+    document.querySelectorAll('.weekly-only-field').forEach(el => {
+        el.style.display = isPeriodWeeklyOrFortnightly ? '' : 'none';
+    });
+
+    // Update label
+    const totalLabel = document.getElementById('leaseTotalInstLabel');
+    if (totalLabel) {
+        const type = document.getElementById('leaseEntryType').value;
+        totalLabel.textContent = freq === 'weekly' ? '📆 Total Weeks' :
+            freq === 'fortnightly' ? '📆 Total Fortnights' :
+            (type === 'leasing' ? '📆 Total Months' : '📆 Total Months');
+    }
+}
+
+// ── Save / Edit Lease or Loan ─────────────────────────────────
+async function handleAddLeaseVehicle(e) {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+
+    const id = document.getElementById('leaseVehicleId').value;
+    const entryType = document.getElementById('leaseEntryType').value;
+    const paymentFreq = document.getElementById('leasePaymentFreq').value;
+    const isWeeklyOrFortnightly = paymentFreq === 'weekly' || paymentFreq === 'fortnightly';
+    const isLoan = entryType === 'loan';
+    const isSettled = document.getElementById('leaseSettledCheck')?.checked || false;
+
+    // Validate required fields
+    const amount = parseFloat(document.getElementById('leaseInstallmentAmount').value);
+    const totalInst = parseInt(document.getElementById('leaseTotalInstallments').value);
+    if (!amount || !totalInst) { alert('Please fill in amount and total installments.'); return; }
+
+    let payload = {
+        user_id: getQueryUserId(),
+        entry_type: entryType,
+        payment_freq: paymentFreq,
+        installment_amount: amount,
+        settled: isSettled,
+        settled_notes: isSettled ? (document.getElementById('leaseSettledNotes')?.value || '') : null,
+        settled_at: isSettled ? new Date().toISOString() : null,
+    };
+
+    if (isLoan) {
+        const lenderName = document.getElementById('loanLenderName').value.trim();
+        if (!lenderName) { alert('Please enter the lender / source name.'); return; }
+        payload.lender_name = lenderName;
+        payload.vehicle_number = null;
+
+        if (isWeeklyOrFortnightly) {
+            const startDate = document.getElementById('leaseStartDate').value;
+            if (!startDate) { alert('Please select the first payment date.'); return; }
+            payload.start_date = startDate;
+            payload.total_installments = totalInst;
+            payload.total_months = null;
+            payload.start_year = null;
+            payload.start_month = null;
+            payload.installment_day = null;
+        } else {
+            const startMonthVal = document.getElementById('leaseStartMonth').value;
+            if (!startMonthVal) { alert('Please select the start month.'); return; }
+            const [sy, sm] = startMonthVal.split('-').map(Number);
+            payload.start_year = sy;
+            payload.start_month = sm;
+            payload.total_months = totalInst;
+            payload.total_installments = totalInst;
+            payload.installment_day = parseInt(document.getElementById('loanInstallmentDay').value) || 1;
+            payload.start_date = null;
+        }
+    } else {
+        // Leasing — always monthly
+        const vehicleNumber = document.getElementById('leaseVehicleNumber').value.trim();
+        if (!vehicleNumber) { alert('Please enter the vehicle number.'); return; }
+        const startMonthVal = document.getElementById('leaseStartMonth').value;
+        if (!startMonthVal) { alert('Please select the start month.'); return; }
+        const [sy, sm] = startMonthVal.split('-').map(Number);
+        payload.vehicle_number = vehicleNumber;
+        payload.lender_name = null;
+        payload.installment_day = parseInt(document.getElementById('leaseInstallmentDay').value) || 1;
+        payload.total_months = totalInst;
+        payload.total_installments = totalInst;
+        payload.start_year = sy;
+        payload.start_month = sm;
+        payload.start_date = null;
+    }
+
+    const submitBtn = document.querySelector('#addLeaseVehicleForm [type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; }
+
+    try {
+        let err;
+        if (id) {
+            ({ error: err } = await supabaseClient.from('leasing_vehicles').update(payload).eq('id', id));
+        } else {
+            ({ error: err } = await supabaseClient.from('leasing_vehicles').insert([payload]));
+        }
+        if (err) throw err;
+
+        document.getElementById('addLeaseFormContainer').style.display = 'none';
+        resetLeaseForm();
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error saving entry:', err);
+        alert('Failed to save: ' + (err.message || 'Please try again.'));
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 Save'; }
+    }
+}
+
+// ── Fetch & render ────────────────────────────────────────────
+async function refreshLeasingData() {
+    const uid = getQueryUserId();
+    if (!uid) return;
+
+    const widgetStrip = document.getElementById('leasingWidgetStrip');
+    const listEl = document.getElementById('leasingVehiclesList');
+    if (!widgetStrip || !listEl) return;
+
+    widgetStrip.innerHTML = '<div class="leasing-widget-placeholder">Loading...</div>';
+    listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Loading...</div>';
+
+    try {
+        const { data: all, error: vErr } = await supabaseClient
+            .from('leasing_vehicles').select('*').eq('user_id', uid)
+            .order('created_at', { ascending: true });
+        if (vErr) throw vErr;
+
+        const allEntries = all || [];
+        const vehicleIds = allEntries.map(v => v.id);
+
+        // Update tab badges
+        const leasingCount = allEntries.filter(v => (v.entry_type || 'leasing') === 'leasing' && !v.settled).length;
+        const loanCount = allEntries.filter(v => v.entry_type === 'loan' && !v.settled).length;
+        const lbEl = document.getElementById('leasingTabBadge');
+        const lnEl = document.getElementById('loansTabBadge');
+        if (lbEl) lbEl.textContent = leasingCount;
+        if (lnEl) lnEl.textContent = loanCount;
+
+        // Fetch all payments
+        let paidMap = {};
+        if (vehicleIds.length > 0) {
+            const { data: payments, error: pErr } = await supabaseClient
+                .from('leasing_payments').select('*').in('vehicle_id', vehicleIds);
+            if (pErr) throw pErr;
+            (payments || []).forEach(p => {
+                if (!paidMap[p.vehicle_id]) paidMap[p.vehicle_id] = new Set();
+                paidMap[p.vehicle_id].add(p.month_key);
+            });
+        }
+        _currentLeasingPaidMap = paidMap;
+
+        // Filter by current tab (show ALL in widget strip, filter list by tab)
+        renderLeasingWidgets(allEntries, paidMap);
+        const filtered = allEntries.filter(v => (v.entry_type || 'leasing') === _currentLeasingTab);
+        renderLeasingVehicleRows(filtered, paidMap);
+
+        // Re-open calendar if one was open
+        if (_currentLeasingVehicle) {
+            const updated = allEntries.find(v => v.id === _currentLeasingVehicle.id);
+            if (updated) openLeasingCalendar(updated, paidMap);
+        }
+    } catch (err) {
+        console.error('Error loading leasing/loan data:', err);
+        widgetStrip.innerHTML = '<div class="leasing-empty-state" style="color:var(--brand-red);">⚠️ Error loading data. Make sure Supabase tables are set up.</div>';
+        listEl.innerHTML = '';
+    }
+}
+
+// ── Widget Strip ──────────────────────────────────────────────
+function renderLeasingWidgets(entries, paidMap) {
+    const strip = document.getElementById('leasingWidgetStrip');
+    if (!strip) return;
+    strip.innerHTML = '';
+
+    if (!entries || entries.length === 0) {
+        strip.innerHTML = '<div class="leasing-empty-state">No entries yet. Add a lease or loan to get started.</div>';
+        return;
+    }
+
+    entries.forEach(v => {
+        const isWeeklyOrFortnightly = v.payment_freq === 'weekly' || v.payment_freq === 'fortnightly';
+        const todayKey = leasingTodayKey(isWeeklyOrFortnightly);
+        const keys = leasingBuildPaymentKeys(v);
+        const paid = paidMap[v.id] || new Set();
+        const postponed = new Set(v.postponed_dates || []);
+        
+        const activeKeys = keys.filter(k => !postponed.has(k));
+        const paidCount = activeKeys.filter(k => paid.has(k)).length;
+        const total = activeKeys.length;
+        const remaining = total - paidCount;
+        const pct = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+        const amtPaid = paidCount * v.installment_amount;
+        const amtRemaining = remaining * v.installment_amount;
+        const overdueCount = v.settled ? 0 : activeKeys.filter(k => k < todayKey && !paid.has(k)).length;
+        const isLoan = v.entry_type === 'loan';
+
+        const r = 36, circ = 2 * Math.PI * r;
+        const dash = (pct / 100) * circ;
+        const ringColor = v.settled ? '#00B37E' : pct === 100 ? '#00B37E' : overdueCount > 0 ? '#E53E3E' : '#0072CE';
+
+        let freqBadge = '';
+        if (isLoan) {
+            const freqLabel = v.payment_freq === 'weekly' ? '📆 Weekly' :
+                             v.payment_freq === 'fortnightly' ? '🔁 Every 2 Weeks' : '📅 Monthly';
+            const freqClass = v.payment_freq === 'weekly' ? 'badge-weekly' :
+                             v.payment_freq === 'fortnightly' ? 'badge-fortnightly' : 'badge-monthly';
+            freqBadge = `<span class="lease-freq-badge ${freqClass}">${freqLabel}</span>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'leasing-widget-card' + (v.settled ? ' lease-widget-settled' : '');
+        card.innerHTML = `
+            <div class="leasing-widget-top">
+                <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+                    <div class="leasing-widget-vehicle" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${leasingEntryLabel(v)}</div>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <span class="lease-type-badge ${isLoan ? 'badge-loan' : 'badge-lease'}">${isLoan ? '💰 Loan' : '🚗 Lease'}</span>
+                        ${freqBadge}
+                        ${v.settled ? '<span class="lease-settled-badge">🏁 Settled</span>' : ''}
+                    </div>
+                </div>
+                ${overdueCount > 0 ? `<span class="lease-overdue-badge">${overdueCount} Overdue</span>` : ''}
+            </div>
+            <div class="leasing-widget-body">
+                <div class="leasing-progress-ring-wrap">
+                    <svg viewBox="0 0 90 90" width="90" height="90">
+                        <circle cx="45" cy="45" r="${r}" fill="none" stroke="var(--surface-border)" stroke-width="8"/>
+                        <circle cx="45" cy="45" r="${r}" fill="none" stroke="${ringColor}" stroke-width="8"
+                            stroke-dasharray="${dash.toFixed(2)} ${circ.toFixed(2)}"
+                            stroke-linecap="round" transform="rotate(-90 45 45)"
+                            style="transition:stroke-dasharray 0.6s ease;"/>
+                        <text x="45" y="49" text-anchor="middle" font-size="14" font-weight="700" fill="${ringColor}">${pct}%</text>
+                    </svg>
+                </div>
+                <div class="leasing-widget-stats">
+                    <div class="lw-stat"><span class="lw-label">Paid</span><span class="lw-value lw-paid">${paidCount} / ${total}</span></div>
+                    <div class="lw-stat"><span class="lw-label">Remaining</span><span class="lw-value lw-rem">${remaining}</span></div>
+                    <div class="lw-stat"><span class="lw-label">Amt Paid</span><span class="lw-value lw-paid-amt">${leasingFmtLKR(amtPaid)}</span></div>
+                    <div class="lw-stat"><span class="lw-label">Amt Due</span><span class="lw-value lw-due-amt">${leasingFmtLKR(amtRemaining)}</span></div>
+                    <div class="lw-stat"><span class="lw-label">Per ${v.payment_freq === 'weekly' ? 'Week' : v.payment_freq === 'fortnightly' ? '2 Weeks' : 'Month'}</span><span class="lw-value">${leasingFmtLKR(v.installment_amount)}</span></div>
+                </div>
+            </div>
+        `;
+        card.style.cursor = 'pointer';
+        card.title = 'Click to view payment calendar';
+        card.addEventListener('click', () => openLeasingCalendar(v, paidMap));
+        strip.appendChild(card);
+    });
+}
+
+// ── List Rows ─────────────────────────────────────────────────
+function renderLeasingVehicleRows(entries, paidMap) {
+    const listEl = document.getElementById('leasingVehiclesList');
+    if (!listEl) return;
+
+    if (!entries || entries.length === 0) {
+        const tab = _currentLeasingTab === 'loan' ? 'loan' : 'lease';
+        listEl.innerHTML = `<div class="leasing-empty-state">No ${tab}s found. Click <strong>+ Add Entry</strong> to add one.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = '';
+    entries.forEach(v => {
+        const isWeeklyOrFortnightly = v.payment_freq === 'weekly' || v.payment_freq === 'fortnightly';
+        const isLoan = v.entry_type === 'loan';
+        const todayKey = leasingTodayKey(isWeeklyOrFortnightly);
+        const keys = leasingBuildPaymentKeys(v);
+        const paid = paidMap[v.id] || new Set();
+        const postponed = new Set(v.postponed_dates || []);
+        
+        const activeKeys = keys.filter(k => !postponed.has(k));
+        const paidCount = activeKeys.filter(k => paid.has(k)).length;
+        const total = activeKeys.length;
+        const overdueCount = v.settled ? 0 : activeKeys.filter(k => k < todayKey && !paid.has(k)).length;
+        const pct = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+
+        // Meta info string
+        let meta = '';
+        if (isLoan) {
+            if (v.payment_freq === 'weekly') {
+                meta = `Weekly · ${leasingFmtLKR(v.installment_amount)}/wk · ${total} weeks`;
+            } else if (v.payment_freq === 'fortnightly') {
+                meta = `Fortnightly · ${leasingFmtLKR(v.installment_amount)}/2wks · ${total} fortnights`;
+            } else {
+                meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months`;
+            }
+        } else {
+            meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2,'0')}`)}`;
+        }
+        if (v.settled) meta += ' · <span style="color:var(--green);font-weight:700;">🏁 Settled</span>';
+        if (v.settled_notes) meta += ` · ${v.settled_notes}`;
+
+        const row = document.createElement('div');
+        row.className = 'leasing-vehicle-row' + (v.settled ? ' lvr-settled' : '');
+        row.innerHTML = `
+            <div class="lvr-info">
+                <div class="lvr-vehicle">${leasingEntryLabel(v)}</div>
+                <div class="lvr-meta">${meta}</div>
+            </div>
+            <div class="lvr-status">
+                <div class="lvr-progress-bar">
+                    <div class="lvr-progress-fill ${overdueCount > 0 ? 'lvr-overdue' : ''} ${v.settled ? 'lvr-settled-fill' : ''}" style="width:${pct}%"></div>
+                </div>
+                <div class="lvr-pct">${pct}% paid &nbsp;(${paidCount}/${total})</div>
+                ${overdueCount > 0 ? `<div class="lvr-overdue-text">${overdueCount} overdue</div>` : ''}
+            </div>
+            <div class="lvr-actions">
+                <button class="btn btn-primary btn-sm" onclick="window.openLeasingCalendarById('${v.id}')">📅 Calendar</button>
+                <button class="btn btn-sm" style="background:var(--amber-bg);color:var(--amber);" onclick="window.editLeaseVehicle('${v.id}')">✏️ Edit</button>
+                ${!v.settled && userRole !== 'viewer' ? `<button class="btn btn-sm" style="background:var(--green-bg);color:var(--green-dark);" onclick="window.settleLeaseEntry('${v.id}')">🏁 Settle</button>` : ''}
+                <button class="btn btn-sm" style="background:rgba(209,0,31,0.10);color:var(--brand-red);" onclick="window.deleteLeaseVehicle('${v.id}')">🗑️</button>
+            </div>
+        `;
+        listEl.appendChild(row);
+    });
+}
+
+// ── Open Calendar ─────────────────────────────────────────────
+function openLeasingCalendar(vehicle, paidMap) {
+    _currentLeasingVehicle = vehicle;
+    const panel = document.getElementById('leasingCalendarPanel');
+    const nameEl = document.getElementById('leasingCalendarVehicleName');
+    const settledBadge = document.getElementById('leasingCalendarSettledBadge');
+    const settledBanner = document.getElementById('leasingSettledBanner');
+
+    if (panel) panel.style.display = 'block';
+    if (nameEl) nameEl.textContent = leasingEntryLabel(vehicle);
+    if (settledBadge) settledBadge.style.display = vehicle.settled ? '' : 'none';
+    if (settledBanner) settledBanner.style.display = vehicle.settled ? 'flex' : 'none';
+
+    panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const paid = paidMap[vehicle.id] || new Set();
+    renderLeasingMonthGrid(vehicle, paid);
+}
+
+window.openLeasingCalendarById = async function (vehicleId) {
+    const uid = getQueryUserId();
+    const { data: vehicles } = await supabaseClient.from('leasing_vehicles').select('*').eq('user_id', uid);
+    const { data: payments } = await supabaseClient.from('leasing_payments').select('*').in('vehicle_id', [vehicleId]);
+    if (!vehicles) return;
+    const v = vehicles.find(x => x.id === vehicleId);
+    if (!v) return;
+    const paid = new Set((payments || []).map(p => p.month_key));
+    openLeasingCalendar(v, { [vehicleId]: paid });
+};
+
+// ── Payment Grid ──────────────────────────────────────────────
+function renderLeasingMonthGrid(vehicle, paid) {
+    const grid = document.getElementById('leasingMonthGrid');
+    if (!grid) return;
+
+    const isWeeklyOrFortnightly = vehicle.payment_freq === 'weekly' || vehicle.payment_freq === 'fortnightly';
+    const todayKey = leasingTodayKey(isWeeklyOrFortnightly);
+    const keys = leasingBuildPaymentKeys(vehicle);
+    const postponed = new Set(vehicle.postponed_dates || []);
+
+    const activeKeys = keys.filter(k => !postponed.has(k));
+    let paidCount = 0, overdueCount = 0, upcomingCount = 0;
+    activeKeys.forEach(k => {
+        if (paid.has(k)) paidCount++;
+        else if (k < todayKey) overdueCount++;
+        else upcomingCount++;
+    });
+
+    const amt = vehicle.installment_amount;
+    document.getElementById('lcsStatPaid').textContent = paidCount;
+    document.getElementById('lcsStatRemaining').textContent = upcomingCount;
+    document.getElementById('lcsStatOverdue').textContent = overdueCount;
+    document.getElementById('lcsStatAmountPaid').textContent = leasingFmtLKR(paidCount * amt);
+    document.getElementById('lcsStatAmountDue').textContent = leasingFmtLKR((overdueCount + upcomingCount) * amt);
+
+    grid.innerHTML = '';
+    keys.forEach((key, idx) => {
+        const isPostponed = postponed.has(key);
+        const isPaid = paid.has(key);
+        const isOverdue = !isPaid && !isPostponed && key < todayKey;
+        const isCurrent = !isWeeklyOrFortnightly ? key === todayKey : (key <= todayKey && (idx === keys.length - 1 || keys[idx + 1] > todayKey));
+        const isSettled = !!vehicle.settled;
+
+        let statusClass = 'lease-tile-upcoming';
+        let statusLabel = '⏳ Upcoming';
+        if (isPostponed) {
+            statusClass = 'lease-tile-postponed';
+            statusLabel = '🔄 Postponed';
+        } else if (isPaid) {
+            statusClass = 'lease-tile-paid';
+            statusLabel = '✅ Paid';
+        } else if (isCurrent) {
+            statusClass = 'lease-tile-current';
+            statusLabel = vehicle.payment_freq === 'weekly' ? '📌 This Week' : 
+                          vehicle.payment_freq === 'fortnightly' ? '📌 This Fortnight' : '📌 This Month';
+        } else if (isOverdue) {
+            statusClass = 'lease-tile-overdue';
+            statusLabel = '🔴 Overdue';
+        }
+        if (isSettled && !isPaid && !isPostponed) {
+            statusClass = 'lease-tile-settled-tile';
+        }
+
+        let dayInfo = '';
+        if (!isWeeklyOrFortnightly && vehicle.installment_day) {
+            dayInfo = `<div class="lmt-day">Day ${vehicle.installment_day}</div>`;
+        }
+
+        let actionBtn = '';
+        if (!isSettled && userRole !== 'viewer') {
+            if (isPostponed) {
+                actionBtn = `<button class="lmt-btn" style="background:var(--surface-border);color:var(--text);margin-top:8px;" onclick="window.toggleLeaseMonthPostponed('${vehicle.id}','${key}',true)">
+                    ↩️ Un-postpone
+                </button>`;
+            } else {
+                actionBtn = `
+                    <div style="display:flex;gap:4px;width:100%;margin-top:8px;">
+                        <button class="lmt-btn" style="flex:2;" onclick="window.toggleLeaseMonthPaid('${vehicle.id}','${key}',${isPaid})">
+                            ${isPaid ? '↩️ Unmark' : '✅ Mark Paid'}
+                        </button>
+                        ${!isPaid && isWeeklyOrFortnightly ? `
+                            <button class="lmt-btn" style="flex:1.2;background:var(--amber-bg);color:var(--amber);" onclick="window.toggleLeaseMonthPostponed('${vehicle.id}','${key}',false)" title="Postpone payment date by 1 week/period">
+                                🔄 Postpone
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        const tile = document.createElement('div');
+        tile.className = `lease-month-tile ${statusClass}`;
+        tile.innerHTML = `
+            <div class="lmt-number">#${idx + 1}</div>
+            <div class="lmt-month">${leasingPaymentLabel(key, vehicle, idx)}</div>
+            <div class="lmt-amount">${leasingFmtLKR(amt)}</div>
+            ${dayInfo}
+            <div class="lmt-status">${statusLabel}</div>
+            ${actionBtn}
+        `;
+        grid.appendChild(tile);
+    });
+}
+
+// ── Toggle paid ───────────────────────────────────────────────
+window.toggleLeaseMonthPaid = async function (vehicleId, monthKey, isPaid) {
+    if (!checkAdminAccess('update')) return;
+    const uid = getQueryUserId();
+    try {
+        if (isPaid) {
+            const { error } = await supabaseClient.from('leasing_payments')
+                .delete().eq('vehicle_id', vehicleId).eq('month_key', monthKey);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient.from('leasing_payments')
+                .insert([{ user_id: uid, vehicle_id: vehicleId, month_key: monthKey }]);
+            if (error) throw error;
+        }
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error toggling payment:', err);
+        alert('Failed to update: ' + (err.message || 'Please try again.'));
+    }
+};
+
+window.toggleLeaseMonthPostponed = async function (vehicleId, dateStr, isCurrentlyPostponed) {
+    if (!checkAdminAccess('update')) return;
+    try {
+        const { data: entry, error: fErr } = await supabaseClient.from('leasing_vehicles')
+            .select('postponed_dates').eq('id', vehicleId).single();
+        if (fErr) throw fErr;
+
+        let dates = entry.postponed_dates || [];
+        if (isCurrentlyPostponed) {
+            dates = dates.filter(d => d !== dateStr);
+        } else {
+            if (!dates.includes(dateStr)) {
+                dates.push(dateStr);
+            }
+        }
+
+        const { error: uErr } = await supabaseClient.from('leasing_vehicles')
+            .update({ postponed_dates: dates })
+            .eq('id', vehicleId);
+        if (uErr) throw uErr;
+
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error toggling postponement:', err);
+        alert('Failed to update postponement: ' + (err.message || 'Please try again.'));
+    }
+};
+
+// ── Settle Entry ──────────────────────────────────────────────
+window.settleLeaseEntry = async function (vehicleId) {
+    if (!checkAdminAccess('settle')) return;
+    const notes = prompt('Settlement notes (optional):', 'Fully settled');
+    if (notes === null) return; // cancelled
+    try {
+        const { error } = await supabaseClient.from('leasing_vehicles')
+            .update({ settled: true, settled_at: new Date().toISOString(), settled_notes: notes })
+            .eq('id', vehicleId);
+        if (error) throw error;
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error settling entry:', err);
+        alert('Failed to settle: ' + (err.message || 'Please try again.'));
+    }
+};
+
+// ── Edit ──────────────────────────────────────────────────────
+window.editLeaseVehicle = async function (vehicleId) {
+    if (!checkAdminAccess('edit')) return;
+    const { data, error } = await supabaseClient.from('leasing_vehicles').select('*').eq('id', vehicleId).single();
+    if (error || !data) { alert('Could not load data.'); return; }
+
+    resetLeaseForm();
+    document.getElementById('leaseVehicleId').value = data.id;
+
+    // Switch to correct tab
+    _currentLeasingTab = data.entry_type || 'leasing';
+    document.querySelectorAll('.leasing-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === _currentLeasingTab));
+
+    setLeaseFormType(data.entry_type || 'leasing');
+    setLeaseFormFreq(data.payment_freq || 'monthly');
+
+    document.getElementById('leaseInstallmentAmount').value = data.installment_amount;
+    document.getElementById('leaseTotalInstallments').value = data.total_installments || data.total_months;
+
+    if (data.entry_type === 'loan') {
+        document.getElementById('loanLenderName').value = data.lender_name || '';
+        if (data.payment_freq === 'weekly') {
+            document.getElementById('leaseStartDate').value = data.start_date || '';
+        } else {
+            document.getElementById('leaseStartMonth').value = data.start_year && data.start_month
+                ? `${data.start_year}-${String(data.start_month).padStart(2,'0')}` : '';
+            document.getElementById('loanInstallmentDay').value = data.installment_day || '';
+        }
+    } else {
+        document.getElementById('leaseVehicleNumber').value = data.vehicle_number || '';
+        document.getElementById('leaseInstallmentDay').value = data.installment_day || '';
+        document.getElementById('leaseStartMonth').value = data.start_year && data.start_month
+            ? `${data.start_year}-${String(data.start_month).padStart(2,'0')}` : '';
+    }
+
+    if (data.settled) {
+        document.getElementById('leaseSettledCheck').checked = true;
+        document.getElementById('leaseSettledNotesWrap').style.display = 'block';
+        document.getElementById('leaseSettledNotes').value = data.settled_notes || '';
+    }
+
+    // Hide type toggle row when editing (type is fixed)
+    document.getElementById('leaseTypeToggleRow').style.display = 'none';
+
+    document.getElementById('addLeaseFormContainer').style.display = 'block';
+    document.getElementById('addLeaseFormContainer').scrollIntoView({ behavior: 'smooth' });
+};
+
+// ── Delete ─────────────────────────────────────────────────────
+window.deleteLeaseVehicle = async function (vehicleId) {
+    if (!checkAdminAccess('delete')) return;
+    if (!confirm('Delete this entry and all its payment records?')) return;
+    try {
+        const { error } = await supabaseClient.from('leasing_vehicles').delete().eq('id', vehicleId);
+        if (error) throw error;
+        if (_currentLeasingVehicle?.id === vehicleId) {
+            _currentLeasingVehicle = null;
+            document.getElementById('leasingCalendarPanel').style.display = 'none';
+        }
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error deleting:', err);
+        alert('Failed to delete: ' + (err.message || 'Please try again.'));
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+

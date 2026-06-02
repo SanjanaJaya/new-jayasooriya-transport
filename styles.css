@@ -6263,3 +6263,757 @@ body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
         font-size: 16px;
     }
 }
+
+/* =====================================================
+   LEASING MANAGEMENT STYLES
+   ===================================================== */
+
+/* ── Leasing Panel (shared container) ── */
+.leasing-panel {
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.leasing-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+    flex-wrap: wrap;
+}
+
+.leasing-panel-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.leasing-panel-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* ── Widget Strip ── */
+.leasing-widget-strip {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 2px 16px;
+    margin-bottom: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-border) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.leasing-widget-strip::-webkit-scrollbar { height: 5px; }
+.leasing-widget-strip::-webkit-scrollbar-track { background: transparent; }
+.leasing-widget-strip::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 5px; }
+
+.leasing-widget-card {
+    flex-shrink: 0;
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 18px 20px;
+    min-width: 280px;
+    max-width: 310px;
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.leasing-widget-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--blue), var(--green));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.leasing-widget-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--blue);
+}
+
+.leasing-widget-card:active {
+    transform: translateY(-2px);
+}
+
+.leasing-widget-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 8px;
+}
+
+.leasing-widget-vehicle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+}
+
+.lease-overdue-badge {
+    background: rgba(229, 62, 62, 0.15);
+    color: #E53E3E;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(229, 62, 62, 0.30);
+    white-space: nowrap;
+    animation: softPulse 2s ease-in-out infinite;
+}
+
+.leasing-widget-body {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.leasing-progress-ring-wrap {
+    flex-shrink: 0;
+}
+
+.leasing-widget-stats {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lw-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
+.lw-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.lw-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.lw-paid { color: var(--green); }
+.lw-rem  { color: var(--blue); }
+.lw-paid-amt { color: var(--green); }
+.lw-due-amt  { color: var(--amber); }
+
+/* ── Vehicle Row List ── */
+.leasing-vehicles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.leasing-vehicle-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--surface-border);
+    transition: background var(--ease-fast);
+    flex-wrap: wrap;
+}
+
+.leasing-vehicle-row:last-child {
+    border-bottom: none;
+}
+
+.leasing-vehicle-row:hover {
+    background: var(--surface-hover);
+}
+
+.lvr-info {
+    flex: 2;
+    min-width: 180px;
+}
+
+.lvr-vehicle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+}
+
+.lvr-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.lvr-status {
+    flex: 2;
+    min-width: 160px;
+}
+
+.lvr-progress-bar {
+    height: 8px;
+    background: var(--surface-border);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.lvr-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--green));
+    border-radius: var(--radius-pill);
+    transition: width 0.6s var(--ease-base);
+}
+
+.lvr-progress-fill.lvr-overdue {
+    background: linear-gradient(90deg, var(--amber), #E53E3E);
+}
+
+.lvr-pct {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.lvr-overdue-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #E53E3E;
+    margin-top: 2px;
+}
+
+.lvr-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ── Calendar Stats Bar ── */
+.lease-calendar-stats {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.lease-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-right: 1px solid var(--surface-border);
+    flex: 1;
+    min-width: 120px;
+    transition: background var(--ease-fast);
+}
+
+.lease-stat-item:last-child {
+    border-right: none;
+}
+
+.lease-stat-item:hover {
+    background: var(--surface-hover);
+}
+
+.lease-stat-icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.lease-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.lease-stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.lease-stat-paid .lease-stat-value    { color: var(--green); }
+.lease-stat-overdue .lease-stat-value { color: #E53E3E; }
+.lease-stat-amount .lease-stat-value  { color: var(--green); }
+.lease-stat-pending-amount .lease-stat-value { color: var(--amber); }
+
+/* ── Month Tile Grid ── */
+.leasing-month-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 20px 22px;
+}
+
+.lease-month-tile {
+    background: var(--surface-raised);
+    border: 2px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 14px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.lease-month-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Status-specific tile styles */
+.lease-tile-paid {
+    border-color: var(--green);
+    background: var(--green-bg);
+}
+
+.lease-tile-paid::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--green);
+}
+
+.lease-tile-overdue {
+    border-color: rgba(229, 62, 62, 0.50);
+    background: rgba(229, 62, 62, 0.07);
+}
+
+.lease-tile-overdue::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: #E53E3E;
+}
+
+.lease-tile-current {
+    border-color: var(--brand-red);
+    background: var(--brand-red-glow);
+    box-shadow: 0 0 0 3px rgba(209, 0, 31, 0.10);
+}
+
+.lease-tile-current::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--brand-red);
+}
+
+.lease-tile-upcoming {
+    border-color: var(--surface-border);
+    opacity: 0.85;
+}
+
+.lmt-number {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lmt-month {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.lmt-amount {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.lmt-day {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.lmt-status {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.lease-tile-paid .lmt-status    { color: var(--green); }
+.lease-tile-overdue .lmt-status { color: #E53E3E; }
+.lease-tile-current .lmt-status { color: var(--brand-red); }
+.lease-tile-upcoming .lmt-status { color: var(--text-muted); }
+
+.lmt-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--ease-fast);
+    font-family: 'DM Sans', sans-serif;
+}
+
+.lease-tile-paid .lmt-btn {
+    background: rgba(229, 62, 62, 0.12);
+    color: #E53E3E;
+}
+
+.lease-tile-paid .lmt-btn:hover {
+    background: rgba(229, 62, 62, 0.22);
+}
+
+.lease-tile-overdue .lmt-btn,
+.lease-tile-current .lmt-btn,
+.lease-tile-upcoming .lmt-btn {
+    background: var(--green-bg);
+    color: var(--green-dark);
+}
+
+.lease-tile-overdue .lmt-btn:hover,
+.lease-tile-current .lmt-btn:hover,
+.lease-tile-upcoming .lmt-btn:hover {
+    background: rgba(0, 179, 126, 0.22);
+}
+
+.lmt-btn:active {
+    transform: scale(0.96);
+}
+
+/* ── Empty state ── */
+.leasing-empty-state {
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.leasing-widget-placeholder {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+/* ── Dark mode overrides ── */
+body.dark-mode .leasing-widget-card {
+    background: var(--surface-card);
+    border-color: var(--surface-border);
+}
+
+body.dark-mode .lease-month-tile {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .lease-tile-paid {
+    background: rgba(0, 179, 126, 0.12);
+}
+
+body.dark-mode .lease-tile-overdue {
+    background: rgba(229, 62, 62, 0.10);
+}
+
+body.dark-mode .lease-tile-current {
+    background: rgba(209, 0, 31, 0.12);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .leasing-month-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 8px;
+        padding: 14px;
+    }
+
+    .leasing-widget-card {
+        min-width: 240px;
+    }
+
+    .leasing-vehicle-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 14px 16px;
+    }
+
+    .lvr-info, .lvr-status {
+        width: 100%;
+    }
+
+    .lease-calendar-stats {
+        flex-wrap: wrap;
+    }
+
+    .lease-stat-item {
+        flex: 1 1 45%;
+        min-width: 120px;
+    }
+
+    .leasing-panel-header {
+        padding: 14px 16px;
+    }
+}
+
+/* =====================================================
+   LEASING & LOANS — EXTENDED STYLES
+   ===================================================== */
+
+/* ── Tab Bar ── */
+.leasing-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 0 0 0;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--surface-border);
+}
+
+.leasing-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color var(--ease-fast), border-color var(--ease-fast), background var(--ease-fast);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.leasing-tab:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+}
+
+.leasing-tab.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+    background: rgba(0, 114, 206, 0.06);
+}
+
+.leasing-tab-badge {
+    background: var(--surface-border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    min-width: 20px;
+    text-align: center;
+    transition: background var(--ease-fast), color var(--ease-fast);
+}
+
+.leasing-tab.active .leasing-tab-badge {
+    background: rgba(0, 114, 206, 0.15);
+    color: var(--blue);
+}
+
+/* ── Type & Frequency Selector (form) ── */
+.lease-type-selector {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.lease-type-btn {
+    padding: 7px 14px;
+    border: 2px solid var(--surface-border);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--ease-fast);
+}
+
+.lease-type-btn:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+.lease-type-btn.active {
+    background: rgba(0, 114, 206, 0.12);
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+/* ── Type / Freq Badges (on cards and rows) ── */
+.lease-type-badge,
+.lease-freq-badge,
+.lease-settled-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.badge-lease {
+    background: rgba(0, 114, 206, 0.12);
+    color: var(--blue);
+    border: 1px solid rgba(0, 114, 206, 0.25);
+}
+
+.badge-loan {
+    background: rgba(159, 90, 253, 0.12);
+    color: #9F5AFD;
+    border: 1px solid rgba(159, 90, 253, 0.25);
+}
+
+.badge-monthly {
+    background: rgba(0, 179, 126, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(0, 179, 126, 0.25);
+}
+
+.badge-weekly {
+    background: rgba(255, 163, 0, 0.12);
+    color: var(--amber);
+    border: 1px solid rgba(255, 163, 0, 0.25);
+}
+
+.lease-settled-badge {
+    background: rgba(0, 179, 126, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(0, 179, 126, 0.30);
+}
+
+/* ── Settled banner in calendar ── */
+.lease-settled-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 179, 126, 0.10);
+    border-bottom: 1px solid rgba(0, 179, 126, 0.20);
+    color: var(--green-dark);
+    padding: 12px 22px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ── Settled badge in calendar header ── */
+.lease-settled-header-badge {
+    display: inline-block;
+    background: rgba(0, 179, 126, 0.15);
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(0, 179, 126, 0.30);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* ── Settled widget card overlay ── */
+.lease-widget-settled {
+    opacity: 0.80;
+}
+
+.lease-widget-settled::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,179,126,0.06), transparent);
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.lease-widget-settled::before {
+    background: linear-gradient(90deg, var(--green), #00B37E) !important;
+}
+
+/* ── Settled list row ── */
+.lvr-settled {
+    opacity: 0.80;
+    background: rgba(0, 179, 126, 0.04);
+}
+
+.lvr-settled-fill {
+    background: linear-gradient(90deg, var(--green), #00B37E) !important;
+}
+
+/* ── Settled month tile ── */
+.lease-tile-settled-tile {
+    border-color: var(--surface-border);
+    background: var(--surface-raised);
+    opacity: 0.60;
+}
+
+.lease-tile-settled-tile .lmt-status {
+    color: var(--text-muted);
+}
+
+/* ── Dark mode extras ── */
+body.dark-mode .lease-settled-banner {
+    background: rgba(0, 179, 126, 0.08);
+    color: var(--green);
+}
+
+body.dark-mode .lease-type-btn {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .leasing-tab.active {
+    background: rgba(0, 114, 206, 0.10);
+}
+
+.badge-fortnightly {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0ea5e9;
+    border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.lease-tile-postponed {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    color: var(--text-muted) !important;
+}
+
+.lease-tile-postponed .lmt-status {
+    color: var(--amber) !important;
+    font-weight: bold;
+}
+
