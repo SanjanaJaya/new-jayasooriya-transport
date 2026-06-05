@@ -265,6 +265,7 @@ async function generateMonthlyReport(monthValue) {
             ['Total Fuel Cost (All Operations)', { text: `LKR ${reportData.totalFuelCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
             ['Staff Salaries (Gross - Paid Drivers / Helpers)', { text: `LKR ${reportData.totalGrossSalaries.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
             ['Unpaid Driver/Helper Advances (Not yet calculated in salary)', { text: `LKR ${reportData.totalUnpaidAdvances.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
+            ['Excessing Litres Actual Cost Deduction', { text: `- LKR ${reportData.excessingLitresActualCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', color: [220, 20, 60] }],
             [{ text: 'Total Operating Expenses', bold: true, isTotal: true }, { text: `LKR ${reportData.totalExpenses.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true, color: [220, 20, 60] }]
         ];
         
@@ -420,6 +421,41 @@ async function generateMonthlyReport(monthValue) {
         }
         
         yPosition += 12;
+
+        // ==================== EXCESSING LITRES DEDUCTION ====================
+        checkNewPage(50);
+        drawSectionHeader(doc, 'Excessing Litres Deduction', margin, yPosition);
+        yPosition += 8;
+
+        if (reportData.excessingLitresRecords.length > 0) {
+            const elHeaders = ['Date', 'Fuel Price/L (LKR)', 'Fuel Amount (L)', 'Cost (LKR)', 'Actual Cost Deducted (LKR)'];
+            const elColWidths = [30, 40, 35, 40, 35];
+
+            const elRows = reportData.excessingLitresRecords.map(r => [
+                r.date,
+                { text: parseFloat(r.fuel_price_per_l).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right' },
+                { text: parseFloat(r.fuel_amount_l).toFixed(2) + ' L', align: 'right' },
+                { text: parseFloat(r.cost).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right' },
+                { text: parseFloat(r.actual_cost).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right', color: [220, 20, 60], bold: true }
+            ]);
+
+            elRows.push([
+                { text: 'Total Deduction', bold: true, isTotal: true },
+                '',
+                '',
+                { text: `LKR ${reportData.excessingLitresCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true },
+                { text: `- LKR ${reportData.excessingLitresActualCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true, color: [220, 20, 60] }
+            ]);
+
+            yPosition = drawPDFTable(doc, yPosition, elHeaders, elColWidths, elRows, 8);
+        } else {
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            doc.text('No excessing litres records found for this period.', margin, yPosition + 4);
+            yPosition += 8;
+        }
+
+        yPosition += 12;
         
         // ==================== OPERATIONAL STATISTICS ====================
         checkNewPage(50);
@@ -570,6 +606,19 @@ async function fetchReportData(startDate, endDate) {
         .eq('user_id', userId)
         .eq('salary_month', startMonth);
     if (sErr) throw sErr;
+
+    // 8. Fetch excessing litres actual cost for the month
+    const { data: elRecords, error: elErr } = await supabaseClient
+        .from('excessing_litres')
+        .select('actual_cost, fuel_price_per_l, fuel_amount_l, cost, date')
+        .eq('user_id', userId)
+        .gte('date', startDate)
+        .lte('date', endDate);
+    if (elErr) throw elErr;
+
+    const excessingLitresActualCost = elRecords?.reduce((sum, r) => sum + (r.actual_cost || 0), 0) || 0;
+    const excessingLitresCost = elRecords?.reduce((sum, r) => sum + (r.cost || 0), 0) || 0;
+    const excessingLitresCount = elRecords?.length || 0;
     
     // Filtering commitment vehicles that actually ran during the month
     const ranCommitmentVehicleIds = new Set(commitmentRecords?.map(r => r.vehicle_id));
@@ -716,10 +765,10 @@ async function fetchReportData(startDate, endDate) {
     // Fuel Allowance = 16% of total Fuel Cost
     const fuelAllowance = totalFuelCost * 0.1600;
 
-    // Total Expenses includes Fuel Cost + total staff costs (paid gross + unpaid advances)
-    const totalExpenses = totalFuelCost + totalStaffCost;
+    // Total Expenses includes Fuel Cost + total staff costs + excessing litres actual cost
+    const totalExpenses = totalFuelCost + totalStaffCost + excessingLitresActualCost;
 
-    // Net Profit includes Revenue + Fuel Allowance, minus all Expenses
+    // Net Profit = Revenue + Fuel Allowance - Expenses (which now includes EL deduction)
     const netProfit = (totalRevenue + fuelAllowance) - totalExpenses;
     
     const totalHires = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpHires?.length || 0);
@@ -742,6 +791,10 @@ async function fetchReportData(startDate, endDate) {
         commitmentBaseRevenue,
         extraKmCharges,
         dayOffDeductions,
+        excessingLitresActualCost,
+        excessingLitresCost,
+        excessingLitresCount,
+        excessingLitresRecords: elRecords || [],
         hireToPayCount: hireRecords?.length || 0,
         commitmentCount: commitmentRecords?.length || 0,
         dayOffCount: dayOffs?.length || 0,
