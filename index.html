@@ -148,6 +148,14 @@
 
                 <div class="nav-divider"></div>
 
+                <!-- Excessing Litres — standalone -->
+                <button class="nav-item" data-page="excessing-litres">
+                    <span class="nav-icon">🛢️</span>
+                    <span>Excessing Litres</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
                 <!-- Leasing — standalone -->
                 <button class="nav-item" data-page="leasing">
                     <span class="nav-icon">🚗</span>
@@ -2312,6 +2320,116 @@
                             <!-- Populated by JS -->
                         </div>
                     </div>
+
+                </div>
+                <!-- END LEASING PAGE -->
+
+
+                <!-- ═══════════════════════════════════════════════
+                     EXCESSING LITRES PAGE
+                ═══════════════════════════════════════════════ -->
+                <div id="excessing-litres" class="page">
+
+                    <!-- Summary Cards -->
+                    <div class="el-summary-strip" id="elSummaryStrip">
+                        <div class="el-summary-card">
+                            <span class="el-summary-icon">📋</span>
+                            <div>
+                                <div class="el-summary-label">Total Records</div>
+                                <div class="el-summary-value" id="elTotalRecords">0</div>
+                            </div>
+                        </div>
+                        <div class="el-summary-card el-card-litres">
+                            <span class="el-summary-icon">💧</span>
+                            <div>
+                                <div class="el-summary-label">Total Fuel Amount</div>
+                                <div class="el-summary-value" id="elTotalLitres">0.00 L</div>
+                            </div>
+                        </div>
+                        <div class="el-summary-card el-card-cost">
+                            <span class="el-summary-icon">💰</span>
+                            <div>
+                                <div class="el-summary-label">Total Cost</div>
+                                <div class="el-summary-value" id="elTotalCost">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="el-summary-card el-card-actual">
+                            <span class="el-summary-icon">⚡</span>
+                            <div>
+                                <div class="el-summary-label">Total Actual Cost</div>
+                                <div class="el-summary-value" id="elTotalActualCost">LKR 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Header & Add Button -->
+                    <div class="page-header">
+                        <h3>🛢️ Excessing Litres</h3>
+                        <button class="btn btn-primary" id="addElBtn">+ Add Record</button>
+                    </div>
+
+                    <!-- Filter -->
+                    <div class="dashboard-controls" style="margin-bottom:16px;">
+                        <div class="control-group">
+                            <label for="elMonthFilter">📆 Filter by Month</label>
+                            <input type="month" id="elMonthFilter" title="Filter by Month">
+                        </div>
+                    </div>
+
+                    <!-- Add / Edit Form -->
+                    <div class="form-container" id="elFormContainer" style="display:none;">
+                        <form id="elForm">
+                            <input type="hidden" id="elRecordId">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="elDate" style="font-size:12px;color:#666;">📅 Date</label>
+                                    <input type="date" id="elDate" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="elFuelPrice" style="font-size:12px;color:#666;">💲 Fuel Price per L (LKR)</label>
+                                    <input type="number" id="elFuelPrice" placeholder="e.g. 340.00" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="elFuelAmount" style="font-size:12px;color:#666;">🪣 Fuel Amount (L)</label>
+                                    <input type="number" id="elFuelAmount" placeholder="e.g. 50" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <!-- Live Cost Preview -->
+                            <div class="el-cost-preview" id="elCostPreview" style="display:none;">
+                                <div class="el-preview-item">
+                                    <span class="el-preview-label">💰 Cost (Price × Amount)</span>
+                                    <span class="el-preview-value" id="elPreviewCost">LKR 0.00</span>
+                                </div>
+                                <div class="el-preview-item el-preview-actual">
+                                    <span class="el-preview-label">⚡ Actual Cost (Price × Amount ÷ 100 × 82)</span>
+                                    <span class="el-preview-value" id="elPreviewActualCost">LKR 0.00</span>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelElBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Records Table -->
+                    <div class="table-responsive">
+                        <table id="elTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th style="text-align:right;">Fuel Price/L (LKR)</th>
+                                    <th style="text-align:right;">Fuel Amount (L)</th>
+                                    <th style="text-align:right;">Cost (LKR)</th>
+                                    <th style="text-align:right;">Actual Cost (LKR)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="elTableBody"></tbody>
+                            <tfoot id="elTableFoot"></tfoot>
+                        </table>
+                    </div>
+                </div>
 
 
             </div>

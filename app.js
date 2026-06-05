@@ -404,6 +404,7 @@ function openMobileMenu() {
 const PAGE_GROUP_MAP = {
     'dashboard': null,
     'cheque-status': null,
+    'excessing-litres': null,
     'leasing': null,
     'drivers': 'navGroupStaff',
     'driver-advances': 'navGroupStaff',
@@ -485,6 +486,7 @@ function switchPage(page) {
     const titles = {
         'dashboard': 'Dashboard',
         'cheque-status': 'Cheque Status',
+        'excessing-litres': 'Excessing Litres',
         'leasing': 'Leasing & Loans',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
@@ -533,6 +535,10 @@ function switchPage(page) {
         ensureMonthValue('otherOperationHiresMonth');
         loadOtherOperationHires();
         updateOtherOperationHireVehicleFilter();
+    }
+    if (page === 'excessing-litres') {
+        ensureMonthValue('elMonthFilter');
+        loadExcessingLitres();
     }
 }
 
@@ -2717,8 +2723,11 @@ async function loadDashboardData(monthValue) {
         // Calculate Fuel Allowance (16.00% of Fuel Cost)
         const fuelAllowance = totalFuelCost * 0.1800;
 
-        // Net Profit = Revenue - Fuel Cost + Fuel Allowance
-        const netProfit = totalRevenue - totalFuelCost + fuelAllowance;
+        // Excessing Litres: deduct actual cost total for this month from net profit
+        const elActualCostForMonth = await getExcessingLitresActualCostForMonth(monthValue);
+
+        // Net Profit = Revenue - Fuel Cost + Fuel Allowance - EL Actual Cost
+        const netProfit = totalRevenue - totalFuelCost + fuelAllowance - elActualCostForMonth;
 
         // --- UPDATE UI ELEMENTS ---
 
@@ -9782,10 +9791,244 @@ window.deleteLeaseVehicle = async function (vehicleId) {
 };
 
 
+// ============================================================
+// EXCESSING LITRES MODULE
+// Supabase table: excessing_litres
+// Columns: id, user_id, date, fuel_price_per_l, fuel_amount_l,
+//          cost, actual_cost, created_at
+//   cost        = fuel_price_per_l × fuel_amount_l
+//   actual_cost = fuel_price_per_l × fuel_amount_l ÷ 100 × 82
+// ============================================================
 
+function elCalcCost(price, amount) {
+    return price * amount;
+}
 
+function elCalcActualCost(price, amount) {
+    return (price * amount / 100) * 82;
+}
 
+/** Async — returns the total Actual Cost for a YYYY-MM month.
+ *  Called (with await) by loadDashboardData to deduct from net profit. */
+async function getExcessingLitresActualCostForMonth(monthValue) {
+    if (!monthValue) return 0;
+    try {
+        const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
 
+        const { data, error } = await supabaseClient
+            .from('excessing_litres')
+            .select('actual_cost')
+            .eq('user_id', getQueryUserId())
+            .gte('date', startDate)
+            .lte('date', endDate);
+
+        if (error) return 0;
+        return data?.reduce((sum, r) => sum + (r.actual_cost || 0), 0) || 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+async function loadExcessingLitres() {
+    const tbody = document.getElementById('elTableBody');
+    const tfoot = document.getElementById('elTableFoot');
+    if (!tbody || !tfoot) return;
+
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+    try {
+        const monthFilter = document.getElementById('elMonthFilter')?.value || '';
+
+        let query = supabaseClient
+            .from('excessing_litres')
+            .select('*')
+            .eq('user_id', getQueryUserId())
+            .order('date', { ascending: false });
+
+        if (monthFilter) {
+            const [year, month] = monthFilter.split('-');
+            const monthPadded = String(month).padStart(2, '0');
+            const startDate = `${year}-${monthPadded}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+            query = query.gte('date', startDate).lte('date', endDate);
+        }
+
+        const { data: records, error } = await query;
+        if (error) throw error;
+
+        tbody.innerHTML = '';
+        let totalLitres = 0, totalCost = 0, totalActualCost = 0;
+
+        if (!records || records.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px;">No records found. Click "+ Add Record" to get started.</td></tr>`;
+        } else {
+            records.forEach(r => {
+                totalLitres    += r.fuel_amount_l  || 0;
+                totalCost      += r.cost           || 0;
+                totalActualCost += r.actual_cost   || 0;
+
+                const tr = document.createElement('tr');
+                const actionBtns = userRole === 'viewer' ? '' : `
+                    <button class="btn btn-edit" onclick="elEdit(${r.id})">Edit</button>
+                    <button class="btn btn-danger" onclick="elDelete(${r.id})">Delete</button>
+                `;
+                tr.innerHTML = `
+                    <td>${r.date}</td>
+                    <td style="text-align:right;">LKR ${parseFloat(r.fuel_price_per_l).toFixed(2)}</td>
+                    <td style="text-align:right;">${parseFloat(r.fuel_amount_l).toFixed(2)} L</td>
+                    <td style="text-align:right;">LKR ${parseFloat(r.cost).toFixed(2)}</td>
+                    <td style="text-align:right;color:var(--brand-red);font-weight:600;">LKR ${parseFloat(r.actual_cost).toFixed(2)}</td>
+                    <td class="action-buttons">${actionBtns}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Footer totals row
+        tfoot.innerHTML = records && records.length > 0 ? `
+            <tr style="font-weight:700;">
+                <td colspan="2">Totals</td>
+                <td style="text-align:right;">${totalLitres.toFixed(2)} L</td>
+                <td style="text-align:right;">LKR ${totalCost.toFixed(2)}</td>
+                <td style="text-align:right;color:var(--brand-red);">LKR ${totalActualCost.toFixed(2)}</td>
+                <td></td>
+            </tr>
+        ` : '';
+
+        // Summary strip
+        setText('elTotalRecords',    records?.length || 0);
+        setText('elTotalLitres',     `${totalLitres.toFixed(2)} L`);
+        setText('elTotalCost',       `LKR ${totalCost.toFixed(2)}`);
+        setText('elTotalActualCost', `LKR ${totalActualCost.toFixed(2)}`);
+
+    } catch (err) {
+        console.error('Error loading excessing litres:', err.message);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--brand-red);padding:20px;">Error loading data: ${err.message}</td></tr>`;
+    }
+}
+
+// ── Add Record button ──────────────────────────────────────
+document.getElementById('addElBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
+    document.getElementById('elForm').reset();
+    document.getElementById('elRecordId').value = '';
+    document.getElementById('elCostPreview').style.display = 'none';
+    document.getElementById('elFormContainer').style.display = 'block';
+    window.scrollTo(0, 0);
+});
+
+document.getElementById('cancelElBtn')?.addEventListener('click', () => {
+    document.getElementById('elFormContainer').style.display = 'none';
+});
+
+// ── Live preview ───────────────────────────────────────────
+function elUpdatePreview() {
+    const price  = parseFloat(document.getElementById('elFuelPrice')?.value) || 0;
+    const amount = parseFloat(document.getElementById('elFuelAmount')?.value) || 0;
+    const preview = document.getElementById('elCostPreview');
+    if (!preview) return;
+    if (price > 0 && amount > 0) {
+        preview.style.display = 'flex';
+        const costEl = document.getElementById('elPreviewCost');
+        const actualEl = document.getElementById('elPreviewActualCost');
+        if (costEl)   costEl.textContent   = `LKR ${elCalcCost(price, amount).toFixed(2)}`;
+        if (actualEl) actualEl.textContent = `LKR ${elCalcActualCost(price, amount).toFixed(2)}`;
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+document.getElementById('elFuelPrice')?.addEventListener('input', elUpdatePreview);
+document.getElementById('elFuelAmount')?.addEventListener('input', elUpdatePreview);
+
+// ── Form submit (add / edit) ───────────────────────────────
+document.getElementById('elForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+
+    const id         = document.getElementById('elRecordId').value;
+    const date       = document.getElementById('elDate').value;
+    const fuelPrice  = parseFloat(document.getElementById('elFuelPrice').value);
+    const fuelAmount = parseFloat(document.getElementById('elFuelAmount').value);
+    const cost       = elCalcCost(fuelPrice, fuelAmount);
+    const actualCost = elCalcActualCost(fuelPrice, fuelAmount);
+
+    const payload = {
+        date,
+        fuel_price_per_l: fuelPrice,
+        fuel_amount_l:    fuelAmount,
+        cost,
+        actual_cost: actualCost,
+        user_id: adminUserId
+    };
+
+    try {
+        if (id) {
+            const { error } = await supabaseClient
+                .from('excessing_litres')
+                .update(payload)
+                .eq('id', parseInt(id));
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient
+                .from('excessing_litres')
+                .insert([payload]);
+            if (error) throw error;
+        }
+        document.getElementById('elFormContainer').style.display = 'none';
+        loadExcessingLitres();
+    } catch (err) {
+        alert('Error saving record: ' + err.message);
+    }
+});
+
+// ── Month filter ───────────────────────────────────────────
+document.getElementById('elMonthFilter')?.addEventListener('change', loadExcessingLitres);
+
+// ── Edit ───────────────────────────────────────────────────
+async function elEdit(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('excessing_litres')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error) throw error;
+
+        document.getElementById('elRecordId').value    = data.id;
+        document.getElementById('elDate').value        = data.date;
+        document.getElementById('elFuelPrice').value   = data.fuel_price_per_l;
+        document.getElementById('elFuelAmount').value  = data.fuel_amount_l;
+        elUpdatePreview();
+        document.getElementById('elFormContainer').style.display = 'block';
+        window.scrollTo(0, 0);
+    } catch (err) {
+        alert('Error loading record: ' + err.message);
+    }
+}
+
+// ── Delete ─────────────────────────────────────────────────
+async function elDelete(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (!confirm('Are you sure you want to delete this record?')) return;
+    try {
+        const { error } = await supabaseClient
+            .from('excessing_litres')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        loadExcessingLitres();
+    } catch (err) {
+        alert('Error deleting record: ' + err.message);
+    }
+}
 
 
 
