@@ -6313,6 +6313,85 @@ body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
     flex: 1;
 }
 
+/* ── Summary Strip (above widgets) ── */
+.leasing-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.lss-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--ease-base), box-shadow var(--ease-base);
+}
+
+.lss-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.lss-prev-due::before   { background: linear-gradient(90deg, #E53E3E, #FC8181); }
+.lss-curr-due::before   { background: linear-gradient(90deg, var(--blue), #63B3ED); }
+.lss-monthly-commit::before { background: linear-gradient(90deg, var(--amber), #F6AD55); }
+
+.lss-card.lss-overdue-alert {
+    border-color: rgba(229, 62, 62, 0.45);
+    background: rgba(229, 62, 62, 0.05);
+    animation: softPulse 2.5s ease-in-out infinite;
+}
+
+.lss-icon {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.lss-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lss-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.lss-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 3px;
+}
+
+.lss-prev-due .lss-value   { color: #E53E3E; }
+.lss-curr-due .lss-value   { color: var(--blue); }
+.lss-monthly-commit .lss-value { color: var(--amber); }
+
+.lss-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
 /* ── Widget Strip ── */
 .leasing-widget-strip {
     display: flex;
@@ -6764,6 +6843,19 @@ body.dark-mode .lease-tile-current {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
+    .leasing-summary-strip {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .lss-card {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .lss-icon { font-size: 22px; }
+    .lss-value { font-size: 17px; }
+
     .leasing-month-grid {
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 8px;
@@ -6797,6 +6889,15 @@ body.dark-mode .lease-tile-current {
     .leasing-panel-header {
         padding: 14px 16px;
     }
+}
+
+@media (max-width: 480px) {
+    .leasing-summary-strip {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .lss-value { font-size: 16px; }
 }
 
 /* =====================================================

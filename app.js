@@ -9417,10 +9417,11 @@ async function refreshLeasingData() {
         }
         _currentLeasingPaidMap = paidMap;
 
-        // Filter by current tab (show ALL in widget strip, filter list by tab)
-        renderLeasingWidgets(allEntries, paidMap);
+        // Filter by current tab for both widget strip and list
         const filtered = allEntries.filter(v => (v.entry_type || 'leasing') === _currentLeasingTab);
+        renderLeasingWidgets(filtered, paidMap);
         renderLeasingVehicleRows(filtered, paidMap);
+        renderLeasingSummaryStrip(filtered, paidMap);
 
         // Re-open calendar if one was open
         if (_currentLeasingVehicle) {
@@ -9432,6 +9433,86 @@ async function refreshLeasingData() {
         widgetStrip.innerHTML = '<div class="leasing-empty-state" style="color:var(--brand-red);">⚠️ Error loading data. Make sure Supabase tables are set up.</div>';
         listEl.innerHTML = '';
     }
+}
+
+// ── Summary Strip (prev month due, current month due, monthly commitment) ──
+function renderLeasingSummaryStrip(entries, paidMap) {
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    const thisMonth = now.getMonth(); // 0-based
+
+    // Current month key (YYYY-MM)
+    const currMonthKey = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
+
+    // Previous month key
+    let prevYear = thisYear, prevMonth = thisMonth - 1;
+    if (prevMonth < 0) { prevMonth = 11; prevYear--; }
+    const prevMonthKey = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}`;
+
+    // Label helpers
+    const monthName = (key) => {
+        const [y, m] = key.split('-').map(Number);
+        return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    };
+
+    let prevDueTotal = 0;
+    let currDueTotal = 0;
+    let monthlyCommitment = 0;
+
+    (entries || []).forEach(v => {
+        if (v.settled) return; // skip settled entries
+
+        const isWeeklyOrFortnightly = v.payment_freq === 'weekly' || v.payment_freq === 'fortnightly';
+        const paid = paidMap[v.id] || new Set();
+        const keys = leasingBuildPaymentKeys(v);
+        const postponed = new Set(v.postponed_dates || []);
+
+        if (!isWeeklyOrFortnightly) {
+            // Monthly entries
+            // Monthly commitment = installment amount per month
+            monthlyCommitment += (v.installment_amount || 0);
+
+            // Previous month: if key exists and not paid
+            if (keys.includes(prevMonthKey) && !postponed.has(prevMonthKey) && !paid.has(prevMonthKey)) {
+                prevDueTotal += (v.installment_amount || 0);
+            }
+
+            // Current month: if key exists and not paid
+            if (keys.includes(currMonthKey) && !postponed.has(currMonthKey) && !paid.has(currMonthKey)) {
+                currDueTotal += (v.installment_amount || 0);
+            }
+        } else {
+            // Weekly/fortnightly entries: look for keys that fall in the current/prev calendar month
+            const stepDays = v.payment_freq === 'fortnightly' ? 14 : 7;
+
+            // For monthly commitment, approximate: installment_amount * periods per month
+            const periodsPerMonth = v.payment_freq === 'weekly' ? 4.33 : 2.17;
+            monthlyCommitment += (v.installment_amount || 0) * periodsPerMonth;
+
+            keys.forEach(key => {
+                if (postponed.has(key) || paid.has(key)) return;
+                const keyMonth = key.substring(0, 7); // YYYY-MM
+                if (keyMonth === prevMonthKey) prevDueTotal += (v.installment_amount || 0);
+                if (keyMonth === currMonthKey) currDueTotal += (v.installment_amount || 0);
+            });
+        }
+    });
+
+    const prevEl = document.getElementById('lssPrevMonthDue');
+    const currEl = document.getElementById('lssCurrMonthDue');
+    const commitEl = document.getElementById('lssMonthlyCommitment');
+    const prevLbl = document.getElementById('lssPrevMonthLabel');
+    const currLbl = document.getElementById('lssCurrMonthLabel');
+
+    if (prevEl) prevEl.textContent = leasingFmtLKR(prevDueTotal);
+    if (currEl) currEl.textContent = leasingFmtLKR(currDueTotal);
+    if (commitEl) commitEl.textContent = leasingFmtLKR(monthlyCommitment);
+    if (prevLbl) prevLbl.textContent = monthName(prevMonthKey);
+    if (currLbl) currLbl.textContent = monthName(currMonthKey);
+
+    // Highlight overdue state
+    const prevCard = document.querySelector('.lss-card.lss-prev-due');
+    if (prevCard) prevCard.classList.toggle('lss-overdue-alert', prevDueTotal > 0);
 }
 
 // ── Widget Strip ──────────────────────────────────────────────

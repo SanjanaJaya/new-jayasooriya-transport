@@ -2135,11 +2135,6 @@
                 ═══════════════════════════════════════════════ -->
                 <div id="leasing" class="page">
 
-                    <!-- ── WIDGET STRIP (all entries) ── -->
-                    <div class="leasing-widget-strip" id="leasingWidgetStrip">
-                        <!-- Populated by JS -->
-                    </div>
-
                     <!-- ── TAB BAR ── -->
                     <div class="leasing-tabs">
                         <button class="leasing-tab active" id="leasingTabLeasing" data-tab="leasing">
@@ -2148,6 +2143,39 @@
                         <button class="leasing-tab" id="leasingTabLoans" data-tab="loan">
                             💰 Loans <span class="leasing-tab-badge" id="loansTabBadge">0</span>
                         </button>
+                    </div>
+
+                    <!-- ── FINANCIAL SUMMARY STRIP ── -->
+                    <div class="leasing-summary-strip" id="leasingSummaryStrip">
+                        <div class="lss-card lss-prev-due">
+                            <span class="lss-icon">⚠️</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Previous Month Due</div>
+                                <div class="lss-value" id="lssPrevMonthDue">LKR 0.00</div>
+                                <div class="lss-sub" id="lssPrevMonthLabel">—</div>
+                            </div>
+                        </div>
+                        <div class="lss-card lss-curr-due">
+                            <span class="lss-icon">📅</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Current Month Due</div>
+                                <div class="lss-value" id="lssCurrMonthDue">LKR 0.00</div>
+                                <div class="lss-sub" id="lssCurrMonthLabel">—</div>
+                            </div>
+                        </div>
+                        <div class="lss-card lss-monthly-commit">
+                            <span class="lss-icon">💳</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Monthly Commitment</div>
+                                <div class="lss-value" id="lssMonthlyCommitment">LKR 0.00</div>
+                                <div class="lss-sub">Total monthly installments</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── WIDGET STRIP (filtered by tab) ── -->
+                    <div class="leasing-widget-strip" id="leasingWidgetStrip">
+                        <!-- Populated by JS -->
                     </div>
 
                     <!-- ── MAIN LIST PANEL ── -->
