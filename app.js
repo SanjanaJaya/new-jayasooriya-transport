@@ -6521,7 +6521,7 @@ const CHEQUE_STATUS_META = {
 };
 
 // ============================================================
-//  LOGO DROPDOWN ENGINE
+//  LOGO DROPDOWN ENGINE  (fixed-position teleport build)
 // ============================================================
 const _lddRegistry = {};
 
@@ -6533,15 +6533,45 @@ function _lddIconHtml(item, size) {
     return `<div class="ldd-emoji-wrap" style="width:${sz}px;height:${sz}px;">${item.emoji || '🏦'}</div>`;
 }
 
+// Reposition a teleported dropdown to sit beneath its trigger
+function _lddReposition(triggerId, dropdownEl) {
+    const trigger = document.getElementById(triggerId);
+    if (!trigger || !dropdownEl) return;
+    const rect = trigger.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const dropH = Math.min(dropdownEl.scrollHeight, 380);
+
+    dropdownEl.style.left  = rect.left + 'px';
+    dropdownEl.style.width = rect.width + 'px';
+
+    if (spaceBelow >= dropH || spaceBelow >= spaceAbove) {
+        // Open downward
+        dropdownEl.style.top    = (rect.bottom + 6) + 'px';
+        dropdownEl.style.bottom = 'auto';
+    } else {
+        // Flip upward
+        dropdownEl.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        dropdownEl.style.top    = 'auto';
+    }
+}
+
 function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) {
     const container = document.getElementById(containerId);
-    const hidden = document.getElementById(hiddenId);
-    if (!container || !hidden) return;
+    if (!container) return;
 
-    const currentVal = hidden.value || '';
+    // Remove any previously-teleported dropdown for this containerId
+    const oldDrop = document.getElementById(`${containerId}_drop`);
+    if (oldDrop && oldDrop.parentElement === document.body) oldDrop.remove();
+
+    // Retrieve or seed hidden input value
+    let existingHidden = document.getElementById(hiddenId);
+    const currentVal = existingHidden ? existingHidden.value : '';
     _lddRegistry[containerId] = { hiddenId, placeholder: placeholder || 'Select…', onChange, items };
 
     const hasSearch = items.length > 5;
+
+    // Build trigger inside container
     container.innerHTML = `
         <input type="hidden" id="${hiddenId}" value="${currentVal}">
         <div class="ldd-trigger" id="${containerId}_trigger" tabindex="0">
@@ -6552,41 +6582,46 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
                 <polyline points="6 9 12 15 18 9"/>
             </svg>
         </div>
-        <div class="ldd-dropdown" id="${containerId}_drop">
-            ${hasSearch ? `<div class="ldd-search-wrap"><input class="ldd-search" id="${containerId}_srch" type="text" placeholder="Search bank…" autocomplete="off"></div>` : ''}
-            <div class="ldd-list" id="${containerId}_list">
-                ${items.map(it => `
-                    <div class="ldd-item" data-value="${it.value}" data-label="${it.label}" data-logo="${it.logoUrl || ''}" data-emoji="${it.emoji || ''}"
-                        role="option" tabindex="-1">
-                        ${_lddIconHtml(it, 30)}
-                        <span class="ldd-item-name">${it.label}</span>
-                    </div>`).join('')}
-            </div>
-        </div>
     `;
 
+    // Build dropdown panel — teleport to <body> so it escapes overflow:hidden ancestors
+    const dropdown = document.createElement('div');
+    dropdown.className = 'ldd-dropdown ldd-teleported';
+    dropdown.id = `${containerId}_drop`;
+    dropdown.setAttribute('data-ldd-owner', containerId);
+    dropdown.innerHTML = `
+        ${hasSearch ? `<div class="ldd-search-wrap"><input class="ldd-search" id="${containerId}_srch" type="text" placeholder="Search bank…" autocomplete="off"></div>` : ''}
+        <div class="ldd-list" id="${containerId}_list">
+            ${items.map(it => `
+                <div class="ldd-item" data-value="${it.value}" data-label="${it.label}" data-logo="${it.logoUrl || ''}" data-emoji="${it.emoji || ''}"
+                    role="option" tabindex="-1">
+                    ${_lddIconHtml(it, 30)}
+                    <span class="ldd-item-name">${it.label}</span>
+                </div>`).join('')}
+        </div>
+    `;
+    document.body.appendChild(dropdown);
+
     const trigger = document.getElementById(`${containerId}_trigger`);
-    const dropdown = document.getElementById(`${containerId}_drop`);
-    const selEl = document.getElementById(`${containerId}_sel`);
-    const list = document.getElementById(`${containerId}_list`);
-    const search = document.getElementById(`${containerId}_srch`);
+    const selEl   = document.getElementById(`${containerId}_sel`);
+    const list     = document.getElementById(`${containerId}_list`);
+    const search   = document.getElementById(`${containerId}_srch`);
 
     // Open / close
     trigger.addEventListener('click', e => {
         e.stopPropagation();
-        const open = dropdown.classList.contains('ldd-open');
+        const isOpen = dropdown.classList.contains('ldd-open');
         _lddCloseAll();
-        if (!open) {
+        if (!isOpen) {
+            _lddReposition(`${containerId}_trigger`, dropdown);
             dropdown.classList.add('ldd-open');
             trigger.classList.add('ldd-active');
             search && setTimeout(() => search.focus(), 60);
         }
     });
 
-    // Prevent clicks inside the dropdown from bubbling to document (closing it)
-    dropdown.addEventListener('click', e => {
-        e.stopPropagation();
-    });
+    // Prevent clicks inside dropdown from bubbling (would close it)
+    dropdown.addEventListener('click', e => e.stopPropagation());
 
     // Search filter
     if (search) {
@@ -6620,8 +6655,8 @@ function _lddSelect(containerId, value, silent) {
     const reg = _lddRegistry[containerId];
     if (!reg) return;
     const hidden = document.getElementById(reg.hiddenId);
-    const selEl = document.getElementById(`${containerId}_sel`);
-    const list = document.getElementById(`${containerId}_list`);
+    const selEl  = document.getElementById(`${containerId}_sel`);
+    const list   = document.getElementById(`${containerId}_list`);
     if (!hidden || !selEl || !list) return;
 
     hidden.value = value;
@@ -6632,7 +6667,7 @@ function _lddSelect(containerId, value, silent) {
     } else {
         const item = list.querySelector(`.ldd-item[data-value="${value}"]`);
         if (item) {
-            const logo = item.dataset.logo;
+            const logo  = item.dataset.logo;
             const emoji = item.dataset.emoji;
             const label = item.dataset.label;
             const iconHtml = logo
@@ -6646,7 +6681,7 @@ function _lddSelect(containerId, value, silent) {
 
 function setLogoDropdownValue(containerId, value) {
     _lddCloseAll();
-    _lddSelect(containerId, value, true); // silent — no onChange
+    _lddSelect(containerId, value, true);
 }
 
 function _lddCloseAll() {
@@ -6654,10 +6689,23 @@ function _lddCloseAll() {
     document.querySelectorAll('.ldd-trigger.ldd-active').forEach(t => t.classList.remove('ldd-active'));
 }
 
-// Global outside-click (attached once)
-if (!window._lddGlobalClickAttached) {
-    window._lddGlobalClickAttached = true;
+// Reposition open dropdowns on scroll or resize
+if (!window._lddGlobalEventsAttached) {
+    window._lddGlobalEventsAttached = true;
     document.addEventListener('click', _lddCloseAll);
+    // Reposition on scroll inside .pages-container
+    document.addEventListener('scroll', () => {
+        document.querySelectorAll('.ldd-dropdown.ldd-open').forEach(drop => {
+            const ownerId = drop.getAttribute('data-ldd-owner');
+            if (ownerId) _lddReposition(`${ownerId}_trigger`, drop);
+        });
+    }, true);
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.ldd-dropdown.ldd-open').forEach(drop => {
+            const ownerId = drop.getAttribute('data-ldd-owner');
+            if (ownerId) _lddReposition(`${ownerId}_trigger`, drop);
+        });
+    });
 }
 
 async function loadChequeStatus() {

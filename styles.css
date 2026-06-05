@@ -3696,6 +3696,8 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
     padding: 24px 28px;
     box-shadow: var(--shadow-sm);
     animation: fadeSlideUp 0.42s var(--ease-base) both;
+    /* Allow absolutely-positioned dropdowns to escape panel bounds */
+    overflow: visible;
 }
 
 .cheque-panel-header {
@@ -4070,8 +4072,9 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
     z-index: 10;
 }
 
-.ldd-container:focus-within {
-    z-index: 100;
+.ldd-container:focus-within,
+.ldd-container:has(.ldd-dropdown.ldd-open) {
+    z-index: 9999;
 }
 
 /* ── Trigger button ── */
@@ -4150,9 +4153,18 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
     border: 1.5px solid var(--surface-border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    z-index: 1200;
+    z-index: 10000;
     overflow: hidden;
     animation: lddFadeIn 0.18s var(--ease-base) both;
+}
+
+/* Teleported variant: appended to <body>, positioned via JS with fixed coords */
+.ldd-dropdown.ldd-teleported {
+    position: fixed;
+    top: auto;
+    left: auto;
+    right: auto;
+    min-width: 200px;
 }
 
 .ldd-dropdown.ldd-open {
