@@ -31,6 +31,8 @@
         href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <!-- Leaflet.js for interactive map -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         /* ===== SMS Copy Button ===== */
         .advance-card {
@@ -160,6 +162,14 @@
                 <button class="nav-item" data-page="leasing">
                     <span class="nav-icon">🚗</span>
                     <span>Leasing & Loans</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
+                <!-- Kevilton Distributions — standalone -->
+                <button class="nav-item" data-page="kevilton-distributions">
+                    <span class="nav-icon">🗺️</span>
+                    <span>Kevilton Distributions</span>
                 </button>
 
                 <div class="nav-divider"></div>
@@ -2459,6 +2469,101 @@
                     </div>
                 </div>
 
+                <!-- ═══════════════════════════════════════════════
+                     KEVILTON DISTRIBUTIONS PAGE
+                ═══════════════════════════════════════════════ -->
+                <div id="kevilton-distributions" class="page">
+
+                    <!-- Header Banner -->
+                    <div class="kd-hero-banner">
+                        <div class="kd-hero-content">
+                            <div class="kd-hero-icon">🗺️</div>
+                            <div>
+                                <h2 class="kd-hero-title">Kevilton Distributions</h2>
+                                <p class="kd-hero-sub">Sri Lanka Distribution Network — Click any marker to view location details</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary kd-add-btn" id="kdAddBtn">➕ Add Distributor</button>
+                    </div>
+
+                    <!-- Add/Edit Form -->
+                    <div class="kd-form-container" id="kdFormContainer" style="display:none;">
+                        <div class="kd-form-header">
+                            <span class="kd-form-title" id="kdFormTitle">➕ Add New Distributor</span>
+                            <button class="kd-form-close" id="kdFormClose">✕</button>
+                        </div>
+                        <form id="kdForm">
+                            <input type="hidden" id="kdRecordId">
+                            <div class="kd-form-grid">
+                                <div class="form-group">
+                                    <label for="kdDistributorName">👤 Distributor Name</label>
+                                    <input type="text" id="kdDistributorName" placeholder="e.g. Kevilton Colombo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="kdTownName">📍 Town / Area</label>
+                                    <input type="text" id="kdTownName" placeholder="e.g. Colombo 03" required>
+                                </div>
+                            </div>
+                            <div class="kd-form-grid">
+                                <div class="form-group">
+                                    <label for="kdLat">🌐 Latitude</label>
+                                    <input type="number" id="kdLat" placeholder="e.g. 6.927100" step="any" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="kdLng">🌐 Longitude</label>
+                                    <input type="number" id="kdLng" placeholder="e.g. 79.861200" step="any" required>
+                                </div>
+                            </div>
+                            <small class="kd-hint">💡 <strong>How to get coordinates:</strong> Open Google Maps → Right-click on the exact location → The two numbers that appear (e.g. 6.9271, 79.8612) are Latitude and Longitude</small>
+                            <div class="kd-form-actions">
+                                <button type="submit" class="btn btn-success" id="kdSaveBtn">💾 Save Distributor</button>
+                                <button type="button" class="btn btn-secondary" id="kdCancelBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Map + List layout -->
+                    <div class="kd-main-layout">
+
+                        <!-- Sri Lanka Map -->
+                        <div class="kd-map-panel">
+                            <div class="kd-map-header">
+                                <span class="kd-map-title">🇱🇰 Distribution Map</span>
+                                <span class="kd-map-count" id="kdMapCount">0 locations</span>
+                            </div>
+                            <div class="kd-map-wrapper">
+                                <div id="kdLeafletMap" class="kd-leaflet-map"></div>
+                                <div class="kd-map-legend">
+                                    <span class="kd-legend-dot"></span> Distribution Location &nbsp;|&nbsp; Click a marker to view &amp; copy link
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distributor List -->
+                        <div class="kd-list-panel">
+                            <div class="kd-list-header">
+                                <span class="kd-list-title">📋 Distributor List</span>
+                                <span class="kd-list-count" id="kdListCount">0 distributors</span>
+                            </div>
+                            <!-- Search bar -->
+                            <div class="kd-search-wrap">
+                                <span class="kd-search-icon">🔍</span>
+                                <input type="text" id="kdSearchInput" class="kd-search-input" placeholder="Search by name, town...">
+                                <button class="kd-search-clear" id="kdSearchClear" style="display:none;">✕</button>
+                            </div>
+                            <!-- List body -->
+                            <div class="kd-list-body" id="kdListBody">
+                                <div class="kd-empty-state">
+                                    <div class="kd-empty-icon">🗺️</div>
+                                    <div class="kd-empty-text">No distributors yet</div>
+                                    <div class="kd-empty-sub">Click "Add Distributor" to get started</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <!-- end kevilton-distributions page -->
 
             </div>
         </main>
@@ -2562,6 +2667,8 @@
             });
         })();
     </script>
+    <!-- Leaflet.js -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

@@ -406,6 +406,7 @@ const PAGE_GROUP_MAP = {
     'cheque-status': null,
     'excessing-litres': null,
     'leasing': null,
+    'kevilton-distributions': null,
     'drivers': 'navGroupStaff',
     'driver-advances': 'navGroupStaff',
     'driver-dayoffs': 'navGroupStaff',
@@ -500,6 +501,7 @@ function switchPage(page) {
         'driver-km-log': "Driver's KM Log",
         'lorry-maintenance': 'Lorry Maintenance',
         'other-operation-hires': 'Other Operation Hires',
+        'kevilton-distributions': 'Kevilton Distributions',
     };
 
     const titleEl = document.getElementById('pageTitle');
@@ -539,6 +541,9 @@ function switchPage(page) {
     if (page === 'excessing-litres') {
         ensureMonthValue('elMonthFilter');
         loadExcessingLitres();
+    }
+    if (page === 'kevilton-distributions') {
+        loadKeviltonDistributors();
     }
 }
 
@@ -10161,6 +10166,373 @@ async function elDelete(id) {
 
 
 
+// ============================================================
+// KEVILTON DISTRIBUTIONS MODULE
+// Supabase table: kd_distributors
+// Columns: id, user_id, distributor_name, town_name,
+//          location_link, lat, lng, created_at
+// ============================================================
+
+let _kdMap = null;         // Leaflet map instance
+let _kdMarkers = [];       // Array of L.marker instances
+let _kdAllData = [];       // All loaded distributor records
+let _kdMapInitialized = false;
+
+// ── Build a Google Maps link from lat/lng ─────────────────────
+function kdBuildMapsLink(lat, lng) {
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+// Helper: get the maps link for a record (generated from lat/lng)
+function kdGetMapsLink(r) {
+    if (r.lat && r.lng) return kdBuildMapsLink(r.lat, r.lng);
+    return '#';
+}
+
+
+// ── Custom Leaflet marker icon ────────────────────────────────
+function kdCreateMarkerIcon(isHighlighted = false) {
+    const color = isHighlighted ? '#ff4757' : '#D1001F';
+    const size  = isHighlighted ? 38 : 32;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="${size}" height="${size + 6}">
+        <defs>
+            <filter id="ds"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.35)"/></filter>
+        </defs>
+        <ellipse cx="16" cy="40" rx="5" ry="2.5" fill="rgba(0,0,0,0.18)"/>
+        <path d="M16 2 C8.3 2 2 8.3 2 16 C2 24.8 16 38 16 38 C16 38 30 24.8 30 16 C30 8.3 23.7 2 16 2Z"
+              fill="${color}" filter="url(#ds)"/>
+        <circle cx="16" cy="16" r="6" fill="white" opacity="0.9"/>
+        <text x="16" y="20" text-anchor="middle" font-size="8" font-weight="800" fill="${color}" font-family="sans-serif">KD</text>
+    </svg>`;
+    return L.divIcon({
+        html: svg,
+        className: '',
+        iconSize:   [size, size + 6],
+        iconAnchor: [size / 2, size + 4],
+        popupAnchor: [0, -(size + 2)],
+    });
+}
+
+// ── Initialize or refresh the Leaflet map ────────────────────
+function kdInitMap() {
+    const el = document.getElementById('kdLeafletMap');
+    if (!el) return;
+
+    // Guard: Leaflet not loaded yet — retry after 200ms
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet not loaded yet, retrying...');
+        setTimeout(kdInitMap, 200);
+        return;
+    }
+
+    if (!_kdMapInitialized) {
+        // Destroy any leftover map on the container (safety)
+        if (_kdMap) { _kdMap.remove(); _kdMap = null; }
+
+        // Sri Lanka center
+        _kdMap = L.map('kdLeafletMap', {
+            center: [7.8731, 80.7718],
+            zoom: 7,
+            zoomControl: true,
+            attributionControl: true,
+        });
+
+        // OpenStreetMap tiles (free, no API key)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 18,
+        }).addTo(_kdMap);
+
+        _kdMapInitialized = true;
+
+        // Force size recalculation after paint
+        setTimeout(() => { if (_kdMap) _kdMap.invalidateSize(true); }, 100);
+        setTimeout(() => { if (_kdMap) _kdMap.invalidateSize(true); }, 500);
+    } else {
+        // Already initialized — invalidate in case container was hidden
+        setTimeout(() => { if (_kdMap) _kdMap.invalidateSize(true); }, 150);
+    }
+}
+
+// ── Place markers on the map ──────────────────────────────────
+function kdPlaceMarkers(records) {
+    if (!_kdMap) return;
+
+    // Clear existing markers
+    _kdMarkers.forEach(m => m.remove());
+    _kdMarkers = [];
+
+    const placed = records.filter(r => r.lat && r.lng);
+
+    placed.forEach(r => {
+        const marker = L.marker([r.lat, r.lng], { icon: kdCreateMarkerIcon() });
+
+        const mapsLink = kdGetMapsLink(r);
+        const popupHtml = `
+            <div class="kd-popup">
+                <div class="kd-popup-name">${r.distributor_name}</div>
+                <div class="kd-popup-town">📍 ${r.town_name}</div>
+                <div class="kd-popup-coords">🌐 ${parseFloat(r.lat).toFixed(6)}, ${parseFloat(r.lng).toFixed(6)}</div>
+                <div class="kd-popup-actions">
+                    <button class="kd-popup-copy-btn" id="kdCopyBtn_${r.id}" onclick="kdCopyLink('${r.id}','${encodeURIComponent(mapsLink)}')">
+                        📋 Copy Location Link
+                    </button>
+                    <a class="kd-popup-open-btn" href="${mapsLink}" target="_blank" rel="noopener">🗺️ Open Maps</a>
+                </div>
+            </div>`;
+
+        marker.bindPopup(popupHtml, { maxWidth: 260, className: 'kd-leaflet-popup' });
+        marker.on('mouseover', function () { this.setIcon(kdCreateMarkerIcon(true)); });
+        marker.on('mouseout',  function () { this.setIcon(kdCreateMarkerIcon(false)); });
+        marker.addTo(_kdMap);
+        _kdMarkers.push(marker);
+    });
+
+    // Update count badge
+    const countEl = document.getElementById('kdMapCount');
+    if (countEl) countEl.textContent = `${placed.length} location${placed.length !== 1 ? 's' : ''}`;
+}
+
+// ── Copy link helper ──────────────────────────────────────────
+window.kdCopyLink = function(recordId, encodedLink) {
+    const link = decodeURIComponent(encodedLink);
+    const btn = document.getElementById(`kdCopyBtn_${recordId}`);
+    const doFeedback = () => {
+        if (btn) {
+            btn.textContent = '✅ Copied!';
+            btn.style.background = '#00b37e';
+            setTimeout(() => { btn.textContent = '📋 Copy Link'; btn.style.background = ''; }, 2000);
+        }
+    };
+    navigator.clipboard.writeText(link).then(doFeedback).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        doFeedback();
+    });
+};
+
+// ── Load / render distributor list ───────────────────────────
+async function loadKeviltonDistributors() {
+    const listBody = document.getElementById('kdListBody');
+    if (listBody) listBody.innerHTML = '<div class="kd-loading">⏳ Loading...</div>';
+
+    // Initialize map after a short delay so the page container is painted
+    setTimeout(() => { kdInitMap(); }, 300);
+
+    try {
+        const uid = getQueryUserId();
+        if (!uid) { renderKdList([]); return; }
+
+        const { data, error } = await supabaseClient
+            .from('kd_distributors')
+            .select('*')
+            .eq('user_id', uid)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        _kdAllData = data || [];
+        renderKdList(_kdAllData);
+
+        // Place markers after map is ready
+        setTimeout(() => { kdPlaceMarkers(_kdAllData); }, 400);
+    } catch (err) {
+        console.error('KD load error:', err);
+        if (listBody) listBody.innerHTML = `<div class="kd-empty-state"><div class="kd-empty-icon">⚠️</div><div class="kd-empty-text">Error loading data</div><div class="kd-empty-sub">${err.message || 'Check your connection'}</div></div>`;
+    }
+}
+
+// ── Render distributor list ───────────────────────────────────
+function renderKdList(records) {
+    const listBody  = document.getElementById('kdListBody');
+    const listCount = document.getElementById('kdListCount');
+    if (!listBody) return;
+
+    if (listCount) listCount.textContent = `${records.length} distributor${records.length !== 1 ? 's' : ''}`;
+
+    if (!records || records.length === 0) {
+        listBody.innerHTML = `
+            <div class="kd-empty-state">
+                <div class="kd-empty-icon">🗺️</div>
+                <div class="kd-empty-text">No distributors found</div>
+                <div class="kd-empty-sub">Click "Add Distributor" to get started</div>
+            </div>`;
+        return;
+    }
+
+    listBody.innerHTML = '';
+    records.forEach((r, idx) => {
+        const mapsLink = kdGetMapsLink(r);
+        const card = document.createElement('div');
+        card.className = 'kd-dist-card';
+        card.style.animationDelay = `${idx * 0.05}s`;
+        card.innerHTML = `
+            <div class="kd-dist-card-top">
+                <div class="kd-dist-icon">🏢</div>
+                <div class="kd-dist-info">
+                    <div class="kd-dist-name">${r.distributor_name}</div>
+                    <div class="kd-dist-town">📍 ${r.town_name}</div>
+                    <div class="kd-dist-coords">🌐 ${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}</div>
+                </div>
+                <span class="kd-dist-badge kd-badge-mapped">📌 On Map</span>
+            </div>
+            <div class="kd-dist-actions">
+                <button class="kd-dist-btn kd-btn-copy" id="kdCopyBtn_${r.id}" onclick="kdCopyLink('${r.id}','${encodeURIComponent(mapsLink)}')">📋 Copy Link</button>
+                <a class="kd-dist-btn kd-btn-open" href="${mapsLink}" target="_blank" rel="noopener">🗺️ Maps</a>
+                <button class="kd-dist-btn kd-btn-locate" onclick="kdFlyToMarker(${r.lat},${r.lng})">🎯 Locate</button>
+                ${userRole !== 'viewer' ? `<button class="kd-dist-btn kd-btn-edit" onclick="kdEditRecord('${r.id}')">✏️</button>` : ''}
+                ${userRole !== 'viewer' ? `<button class="kd-dist-btn kd-btn-del" onclick="kdDeleteRecord('${r.id}')">🗑️</button>` : ''}
+            </div>`;
+        listBody.appendChild(card);
+    });
+}
+
+// ── Fly to marker on map ──────────────────────────────────────
+window.kdFlyToMarker = function(lat, lng) {
+    if (!_kdMap) return;
+    _kdMap.flyTo([lat, lng], 13, { duration: 1.2 });
+    // Open the marker popup
+    _kdMarkers.forEach(m => {
+        const pos = m.getLatLng();
+        if (Math.abs(pos.lat - lat) < 0.001 && Math.abs(pos.lng - lng) < 0.001) {
+            m.openPopup();
+        }
+    });
+};
+
+// ── Search filter ─────────────────────────────────────────────
+document.getElementById('kdSearchInput')?.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    const clearBtn = document.getElementById('kdSearchClear');
+    if (clearBtn) clearBtn.style.display = q ? 'flex' : 'none';
+
+    const filtered = q
+        ? _kdAllData.filter(r =>
+            r.distributor_name.toLowerCase().includes(q) ||
+            r.town_name.toLowerCase().includes(q))
+        : _kdAllData;
+
+    renderKdList(filtered);
+    kdPlaceMarkers(filtered);
+});
+
+document.getElementById('kdSearchClear')?.addEventListener('click', function() {
+    const input = document.getElementById('kdSearchInput');
+    if (input) input.value = '';
+    this.style.display = 'none';
+    renderKdList(_kdAllData);
+    kdPlaceMarkers(_kdAllData);
+});
+
+// ── Show / hide form ──────────────────────────────────────────
+document.getElementById('kdAddBtn')?.addEventListener('click', () => {
+    if (!checkAdminAccess('add')) return;
+    kdResetForm();
+    document.getElementById('kdFormTitle').textContent = '➕ Add New Distributor';
+    document.getElementById('kdFormContainer').style.display = 'block';
+    document.getElementById('kdFormContainer').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.getElementById('kdCancelBtn')?.addEventListener('click', kdHideForm);
+document.getElementById('kdFormClose')?.addEventListener('click', kdHideForm);
+
+function kdHideForm() {
+    document.getElementById('kdFormContainer').style.display = 'none';
+}
+
+function kdResetForm() {
+    const form = document.getElementById('kdForm');
+    if (form) form.reset();
+    const idField = document.getElementById('kdRecordId');
+    if (idField) idField.value = '';
+}
+
+
+// ── Form submit ───────────────────────────────────────────────
+document.getElementById('kdForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+    if (!adminUserId) { alert('Session not ready. Please wait a moment.'); return; }
+
+    const saveBtn = document.getElementById('kdSaveBtn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving...'; }
+
+    const recordId        = document.getElementById('kdRecordId').value;
+    const distributorName = document.getElementById('kdDistributorName').value.trim();
+    const townName        = document.getElementById('kdTownName').value.trim();
+    const latVal          = parseFloat(document.getElementById('kdLat').value);
+    const lngVal          = parseFloat(document.getElementById('kdLng').value);
+
+    const payload = {
+        user_id: adminUserId,
+        distributor_name: distributorName,
+        town_name: townName,
+        location_link: kdBuildMapsLink(latVal, lngVal),
+        lat: latVal,
+        lng: lngVal,
+    };
+
+    try {
+        if (recordId) {
+            const { error } = await supabaseClient
+                .from('kd_distributors')
+                .update(payload)
+                .eq('id', recordId);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient
+                .from('kd_distributors')
+                .insert([payload]);
+            if (error) throw error;
+        }
+
+        kdHideForm();
+        // Refresh list and map separately — errors here won't show 'Failed to save'
+        loadKeviltonDistributors().catch(e2 => console.warn('KD refresh:', e2));
+    } catch (err) {
+        console.error('KD save error:', err);
+        alert('Failed to save: ' + (err.message || 'Please try again.'));
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Distributor'; }
+    }
+});
+
+// ── Edit ──────────────────────────────────────────────────────
+window.kdEditRecord = async function(recordId) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('kd_distributors').select('*').eq('id', recordId).single();
+        if (error) throw error;
+
+        kdResetForm();
+        document.getElementById('kdRecordId').value       = data.id;
+        document.getElementById('kdDistributorName').value = data.distributor_name;
+        document.getElementById('kdTownName').value        = data.town_name;
+        document.getElementById('kdLat').value             = data.lat;
+        document.getElementById('kdLng').value             = data.lng;
+        document.getElementById('kdFormTitle').textContent = '✏️ Edit Distributor';
+        document.getElementById('kdFormContainer').style.display = 'block';
+        document.getElementById('kdFormContainer').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+        alert('Could not load record: ' + err.message);
+    }
+};
+
+// ── Delete ────────────────────────────────────────────────────
+window.kdDeleteRecord = async function(recordId) {
+    if (!checkAdminAccess('delete')) return;
+    if (!confirm('Delete this distributor location?')) return;
+    try {
+        const { error } = await supabaseClient
+            .from('kd_distributors').delete().eq('id', recordId);
+        if (error) throw error;
+        await loadKeviltonDistributors();
+    } catch (err) {
+        alert('Failed to delete: ' + err.message);
+    }
+};
 
 
 
