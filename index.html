@@ -2574,8 +2574,55 @@
                         </div>
 
                     </div>
+
+                    <!-- ═══ ROUTE PLANNER PANEL ═══════════════════════════════ -->
+                    <div class="kd-route-planner" id="kdRoutePlannerPanel">
+                        <div class="kd-route-header">
+                            <div class="kd-route-header-left">
+                                <span class="kd-route-header-icon">🛣️</span>
+                                <div>
+                                    <div class="kd-route-header-title">Route Planner</div>
+                                    <div class="kd-route-header-sub">Build a no-highway delivery route from Enderamulla</div>
+                                </div>
+                            </div>
+                            <div class="kd-route-header-actions">
+                                <button class="kd-route-btn kd-route-btn-danger" id="kdRouteClearBtn">🗑️ Clear Route</button>
+                                <button class="kd-route-btn kd-route-btn-primary" id="kdRouteGenerateBtn">🗺️ Generate Route</button>
+                                <button class="kd-route-btn kd-route-btn-success" id="kdRouteCopyMsgBtn">📲 Copy Driver Message</button>
+                            </div>
+                        </div>
+
+                        <!-- Status bar -->
+                        <div class="kd-route-status" id="kdRouteStatus"></div>
+
+                        <!-- Add Stop row -->
+                        <div class="kd-route-add-row">
+                            <div class="kd-route-add-label">➕ Add Stop</div>
+                            <div class="kd-route-add-controls">
+                                <div class="kd-route-search-wrap">
+                                    <input type="text" id="kdRouteStopSearchInput" class="kd-route-selector" placeholder="🔍 Search/Select distributor stop..." autocomplete="off">
+                                    <input type="hidden" id="kdRouteStopSelector" value="">
+                                    <div id="kdRouteStopSearchResults" class="kd-route-search-results" style="display: none;"></div>
+                                </div>
+                                <button class="kd-route-btn kd-route-btn-add" id="kdRouteAddStopBtn">Add to Route</button>
+                            </div>
+                        </div>
+
+                        <!-- Stop list -->
+                        <div class="kd-route-stop-list" id="kdRouteStopList">
+                            <div class="kd-route-empty">No stops added yet. Use the selector above to add stops.</div>
+                        </div>
+
+                        <!-- Info note -->
+                        <div class="kd-route-info-note">
+                            💡 <strong>How it works:</strong> Select distributor stops, click <em>Generate Route</em> to draw the road path on the map (avoiding highways), then click <em>Copy Driver Message</em> to copy a shareable WhatsApp/SMS message with Google Maps links for each stop.
+                        </div>
+                    </div>
+                    <!-- end route planner -->
+
                 </div>
                 <!-- end kevilton-distributions page -->
+
 
             </div>
         </main>

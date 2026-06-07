@@ -10651,6 +10651,16 @@ let _kdMap = null;         // Leaflet map instance
 let _kdMarkers = [];       // Array of L.marker instances
 let _kdAllData = [];       // All loaded distributor records
 let _kdMapInitialized = false;
+let _kdRoutePolyline = null; // Active route polyline on the map
+
+// ── John Keells Enderamulla — fixed starting point ─────────────
+const KD_START_POINT = {
+    name: 'John Keells Enderamulla',
+    town: 'Enderamulla, Wattala',
+    lat: 6.993777247636533,
+    lng: 79.91975853540127,
+    logoUrl: 'https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png'
+};
 
 // ── Build a Google Maps link from lat/lng ─────────────────────
 function kdBuildMapsLink(lat, lng) {
@@ -10663,27 +10673,59 @@ function kdGetMapsLink(r) {
     return '#';
 }
 
-
-// ── Custom Leaflet marker icon ────────────────────────────────
+// ── Custom Kevilton logo marker icon ─────────────────────────
 function kdCreateMarkerIcon(isHighlighted = false) {
-    const color = isHighlighted ? '#ff4757' : '#D1001F';
-    const size  = isHighlighted ? 38 : 32;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="${size}" height="${size + 6}">
-        <defs>
-            <filter id="ds"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.35)"/></filter>
-        </defs>
-        <ellipse cx="16" cy="40" rx="5" ry="2.5" fill="rgba(0,0,0,0.18)"/>
-        <path d="M16 2 C8.3 2 2 8.3 2 16 C2 24.8 16 38 16 38 C16 38 30 24.8 30 16 C30 8.3 23.7 2 16 2Z"
-              fill="${color}" filter="url(#ds)"/>
-        <circle cx="16" cy="16" r="6" fill="white" opacity="0.9"/>
-        <text x="16" y="20" text-anchor="middle" font-size="8" font-weight="800" fill="${color}" font-family="sans-serif">KD</text>
-    </svg>`;
+    const size = isHighlighted ? 46 : 38;
+    const shadow = isHighlighted ? '0 4px 16px rgba(209,0,31,0.55)' : '0 3px 10px rgba(0,0,0,0.35)';
+    const html = `
+        <div style="
+            width:${size}px; height:${size}px;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            background:#fff;
+            box-shadow:${shadow};
+            border: 2.5px solid ${isHighlighted ? '#ff4757' : '#D1001F'};
+            display:flex; align-items:center; justify-content:center;
+            transition: all 0.2s;
+        ">
+            <img src="https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png"
+                 style="width:${size * 0.62}px; height:${size * 0.62}px;
+                        transform:rotate(45deg); object-fit:contain;
+                        border-radius:50%;" />
+        </div>`;
     return L.divIcon({
-        html: svg,
+        html,
         className: '',
-        iconSize:   [size, size + 6],
-        iconAnchor: [size / 2, size + 4],
-        popupAnchor: [0, -(size + 2)],
+        iconSize:   [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -(size + 4)],
+    });
+}
+
+// ── John Keells / starting-point marker icon ─────────────────
+function kdCreateStartMarkerIcon() {
+    const size = 44;
+    const html = `
+        <div style="
+            width:${size}px; height:${size}px;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            background:#fff;
+            box-shadow: 0 4px 14px rgba(0,72,180,0.45);
+            border: 3px solid #0048B4;
+            display:flex; align-items:center; justify-content:center;
+        ">
+            <img src="${KD_START_POINT.logoUrl}"
+                 style="width:${size * 0.60}px; height:${size * 0.60}px;
+                        transform:rotate(45deg); object-fit:contain;
+                        border-radius:50%;" />
+        </div>`;
+    return L.divIcon({
+        html,
+        className: '',
+        iconSize:   [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -(size + 4)],
     });
 }
 
@@ -10732,9 +10774,28 @@ function kdInitMap() {
 function kdPlaceMarkers(records) {
     if (!_kdMap) return;
 
-    // Clear existing markers
+    // Clear existing distributor markers (keep start marker separate)
     _kdMarkers.forEach(m => m.remove());
     _kdMarkers = [];
+
+    // Always add John Keells Enderamulla starting-point marker
+    const startMapsLink = `https://maps.google.com/?q=${KD_START_POINT.lat},${KD_START_POINT.lng}`;
+    const startPopupHtml = `
+        <div class="kd-popup">
+            <div class="kd-popup-name" style="color:#0048B4;">🏭 ${KD_START_POINT.name}</div>
+            <div class="kd-popup-town">📍 ${KD_START_POINT.town}</div>
+            <div class="kd-popup-town" style="color:#0048B4;font-weight:700;">🚦 Starting Point for all routes</div>
+            <div class="kd-popup-actions" style="margin-top:10px;">
+                <a class="kd-popup-open-btn" href="${startMapsLink}" target="_blank" rel="noopener">🗺️ Open in Maps</a>
+            </div>
+        </div>`;
+    const startMarker = L.marker([KD_START_POINT.lat, KD_START_POINT.lng], {
+        icon: kdCreateStartMarkerIcon(),
+        zIndexOffset: 1000  // Always on top
+    });
+    startMarker.bindPopup(startPopupHtml, { maxWidth: 260, className: 'kd-leaflet-popup' });
+    startMarker.addTo(_kdMap);
+    _kdMarkers.push(startMarker);
 
     const placed = records.filter(r => r.lat && r.lng);
 
@@ -10811,6 +10872,10 @@ async function loadKeviltonDistributors() {
 
         // Place markers after map is ready
         setTimeout(() => { kdPlaceMarkers(_kdAllData); }, 400);
+
+        // Initialize Route Planner (or refresh its stop selector)
+        setTimeout(() => { kdRoutePlannerInit(); }, 500);
+
     } catch (err) {
         console.error('KD load error:', err);
         if (listBody) listBody.innerHTML = `<div class="kd-empty-state"><div class="kd-empty-icon">⚠️</div><div class="kd-empty-text">Error loading data</div><div class="kd-empty-sub">${err.message || 'Check your connection'}</div></div>`;
@@ -11008,5 +11073,436 @@ window.kdDeleteRecord = async function(recordId) {
     }
 };
 
+
+
+// ============================================================
+// KD ROUTE PLANNER MODULE
+// Builds a no-highway route from Enderamulla through selected
+// distributor stops, draws it on the Leaflet map, and
+// generates a WhatsApp/SMS message for drivers.
+// ============================================================
+
+let _kdRouteStops = [];          // Array of stop records (distributor objects)
+let _kdRoutePlannerInit = false; // Guard: set up listeners once
+let _kdRouteSearchHighlightIdx = -1;
+let _kdRouteSearchResultsList = [];
+
+// ── Initialize Route Planner UI ───────────────────────────────
+function kdRoutePlannerInit() {
+    if (_kdRoutePlannerInit) {
+        kdRouteRefreshSelector();
+        return;
+    }
+    _kdRoutePlannerInit = true;
+
+    // ─── Populate/Reset stop selector ────────────────────────
+    kdRouteRefreshSelector();
+
+    // ─── Search input event listeners ────────────────────────
+    const searchInput = document.getElementById('kdRouteStopSearchInput');
+    const searchResults = document.getElementById('kdRouteStopSearchResults');
+    const hiddenInput = document.getElementById('kdRouteStopSelector');
+
+    if (searchInput && searchResults && hiddenInput) {
+        searchInput.addEventListener('focus', () => {
+            kdRouteRenderSearchResults(searchInput.value);
+        });
+
+        searchInput.addEventListener('input', () => {
+            hiddenInput.value = '';
+            kdRouteRenderSearchResults(searchInput.value);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (searchResults.style.display === 'none') {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    kdRouteRenderSearchResults(searchInput.value);
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            const items = searchResults.querySelectorAll('.kd-route-search-item');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                _kdRouteSearchHighlightIdx++;
+                if (_kdRouteSearchHighlightIdx >= items.length) {
+                    _kdRouteSearchHighlightIdx = 0;
+                }
+                kdRouteHighlightItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                _kdRouteSearchHighlightIdx--;
+                if (_kdRouteSearchHighlightIdx < 0) {
+                    _kdRouteSearchHighlightIdx = items.length - 1;
+                }
+                kdRouteHighlightItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (_kdRouteSearchHighlightIdx >= 0 && _kdRouteSearchHighlightIdx < _kdRouteSearchResultsList.length) {
+                    kdRouteSelectSearchItem(_kdRouteSearchResultsList[_kdRouteSearchHighlightIdx]);
+                } else if (_kdRouteSearchResultsList.length > 0) {
+                    kdRouteSelectSearchItem(_kdRouteSearchResultsList[0]);
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                searchResults.style.display = 'none';
+                _kdRouteSearchHighlightIdx = -1;
+                searchInput.blur();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.kd-route-search-wrap')) {
+                searchResults.style.display = 'none';
+                _kdRouteSearchHighlightIdx = -1;
+            }
+        });
+    }
+
+    // ─── Add Stop button ──────────────────────────────────────
+    document.getElementById('kdRouteAddStopBtn')?.addEventListener('click', () => {
+        const sel = document.getElementById('kdRouteStopSelector');
+        if (!sel || !sel.value) { alert('Please select a distributor to add.'); return; }
+        const record = _kdAllData.find(r => String(r.id) === String(sel.value));
+        if (!record) return;
+
+        // Prevent duplicates
+        if (_kdRouteStops.some(s => s.id === record.id)) {
+            alert(`"${record.distributor_name}" is already in the route.`);
+            return;
+        }
+
+        _kdRouteStops.push(record);
+        
+        // Clear search inputs
+        const input = document.getElementById('kdRouteStopSearchInput');
+        if (input) input.value = '';
+        sel.value = '';
+        
+        kdRouteRenderStopList();
+    });
+
+    // ─── Generate Route button ────────────────────────────────
+    document.getElementById('kdRouteGenerateBtn')?.addEventListener('click', () => {
+        if (_kdRouteStops.length === 0) { alert('Add at least one stop to generate a route.'); return; }
+        kdRouteDraw();
+    });
+
+    // ─── Clear Route button ───────────────────────────────────
+    document.getElementById('kdRouteClearBtn')?.addEventListener('click', () => {
+        _kdRouteStops = [];
+        kdRouteRenderStopList();
+        if (_kdRoutePolyline) { _kdRoutePolyline.forEach(p => p.remove()); _kdRoutePolyline = null; }
+        const statusEl = document.getElementById('kdRouteStatus');
+        if (statusEl) statusEl.textContent = '';
+    });
+
+    // ─── Copy Driver Message button ───────────────────────────
+    document.getElementById('kdRouteCopyMsgBtn')?.addEventListener('click', kdRouteCopyMessage);
+}
+
+// ── Refresh the stop selector dropdown from _kdAllData ────────
+function kdRouteRefreshSelector() {
+    const input = document.getElementById('kdRouteStopSearchInput');
+    const hidden = document.getElementById('kdRouteStopSelector');
+    const results = document.getElementById('kdRouteStopSearchResults');
+    if (input) input.value = '';
+    if (hidden) hidden.value = '';
+    if (results) {
+        results.innerHTML = '';
+        results.style.display = 'none';
+    }
+    _kdRouteSearchHighlightIdx = -1;
+    _kdRouteSearchResultsList = [];
+}
+
+// ── Render Search Results ─────────────────────────────────────
+function kdRouteRenderSearchResults(queryText) {
+    const searchResults = document.getElementById('kdRouteStopSearchResults');
+    if (!searchResults) return;
+
+    const query = (queryText || '').toLowerCase().trim();
+    
+    // Get all valid distributor stops with coordinates, sorted alphabetically
+    const allStops = _kdAllData
+        .filter(r => r.lat && r.lng)
+        .sort((a, b) => a.distributor_name.localeCompare(b.distributor_name));
+
+    // Filter by query if query exists
+    if (query) {
+        _kdRouteSearchResultsList = allStops.filter(r => 
+            r.distributor_name.toLowerCase().includes(query) || 
+            r.town_name.toLowerCase().includes(query)
+        );
+    } else {
+        _kdRouteSearchResultsList = allStops;
+    }
+
+    searchResults.innerHTML = '';
+    _kdRouteSearchHighlightIdx = -1;
+
+    if (_kdRouteSearchResultsList.length === 0) {
+        const noRes = document.createElement('div');
+        noRes.className = 'kd-route-search-no-results';
+        noRes.textContent = 'No distribution points found';
+        searchResults.appendChild(noRes);
+    } else {
+        _kdRouteSearchResultsList.forEach((r, idx) => {
+            const item = document.createElement('div');
+            item.className = 'kd-route-search-item';
+            item.setAttribute('data-id', r.id);
+            item.innerHTML = `
+                <span class="kd-route-search-name">${r.distributor_name}</span>
+                <span class="kd-route-search-town">📍 ${r.town_name}</span>
+            `;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                kdRouteSelectSearchItem(r);
+            });
+            searchResults.appendChild(item);
+        });
+    }
+
+    searchResults.style.display = 'block';
+}
+
+// ── Highlight Search Item ─────────────────────────────────────
+function kdRouteHighlightItem(items) {
+    items.forEach((item, idx) => {
+        if (idx === _kdRouteSearchHighlightIdx) {
+            item.classList.add('highlighted');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+// ── Select Search Item ─────────────────────────────────────────
+function kdRouteSelectSearchItem(record) {
+    const searchInput = document.getElementById('kdRouteStopSearchInput');
+    const searchResults = document.getElementById('kdRouteStopSearchResults');
+    const hiddenInput = document.getElementById('kdRouteStopSelector');
+
+    if (searchInput) searchInput.value = `${record.distributor_name} — ${record.town_name}`;
+    if (hiddenInput) {
+        hiddenInput.value = record.id;
+        hiddenInput.dispatchEvent(new Event('change'));
+    }
+    if (searchResults) {
+        searchResults.style.display = 'none';
+    }
+    _kdRouteSearchHighlightIdx = -1;
+}
+
+// ── Render the ordered stop list ──────────────────────────────
+function kdRouteRenderStopList() {
+    const container = document.getElementById('kdRouteStopList');
+    if (!container) return;
+
+    if (_kdRouteStops.length === 0) {
+        container.innerHTML = '<div class="kd-route-empty">No stops added yet. Use the selector above to add stops.</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    // Starting point (always first, non-removable)
+    const startEl = document.createElement('div');
+    startEl.className = 'kd-route-stop kd-route-stop-start';
+    startEl.innerHTML = `
+        <div class="kd-route-stop-num">🏭</div>
+        <div class="kd-route-stop-info">
+            <div class="kd-route-stop-name">John Keells Enderamulla</div>
+            <div class="kd-route-stop-town">📍 Enderamulla, Wattala — Starting Point</div>
+        </div>
+        <div class="kd-route-stop-badge">START</div>`;
+    container.appendChild(startEl);
+
+    _kdRouteStops.forEach((stop, idx) => {
+        const el = document.createElement('div');
+        el.className = 'kd-route-stop';
+        el.innerHTML = `
+            <div class="kd-route-stop-num">${idx + 1}</div>
+            <div class="kd-route-stop-info">
+                <div class="kd-route-stop-name">${stop.distributor_name}</div>
+                <div class="kd-route-stop-town">📍 ${stop.town_name}</div>
+            </div>
+            <div class="kd-route-stop-controls">
+                ${idx > 0 ? `<button class="kd-route-ctrl-btn" onclick="kdRouteMoveStop(${idx}, -1)" title="Move Up">↑</button>` : '<span></span>'}
+                ${idx < _kdRouteStops.length - 1 ? `<button class="kd-route-ctrl-btn" onclick="kdRouteMoveStop(${idx}, 1)" title="Move Down">↓</button>` : '<span></span>'}
+                <button class="kd-route-ctrl-btn kd-route-ctrl-del" onclick="kdRouteRemoveStop(${idx})" title="Remove">✕</button>
+            </div>`;
+        container.appendChild(el);
+    });
+}
+
+// ── Move stop up/down ─────────────────────────────────────────
+window.kdRouteMoveStop = function(idx, dir) {
+    const target = idx + dir;
+    if (target < 0 || target >= _kdRouteStops.length) return;
+    [_kdRouteStops[idx], _kdRouteStops[target]] = [_kdRouteStops[target], _kdRouteStops[idx]];
+    kdRouteRenderStopList();
+};
+
+// ── Remove stop ───────────────────────────────────────────────
+window.kdRouteRemoveStop = function(idx) {
+    _kdRouteStops.splice(idx, 1);
+    kdRouteRenderStopList();
+};
+
+// ── Draw route on map using OSRM (free, no API key) ──────────
+async function kdRouteDraw() {
+    const statusEl = document.getElementById('kdRouteStatus');
+    if (statusEl) {
+        statusEl.textContent = '⏳ Calculating road route (no highways)…';
+        statusEl.className = 'kd-route-status kd-route-status-loading';
+    }
+
+    // Clear previous route polyline(s)
+    if (_kdRoutePolyline) { _kdRoutePolyline.forEach(p => p.remove()); _kdRoutePolyline = null; }
+
+    // Build waypoints: Enderamulla → each stop
+    const waypoints = [
+        { lat: KD_START_POINT.lat, lng: KD_START_POINT.lng },
+        ..._kdRouteStops.map(s => ({ lat: s.lat, lng: s.lng }))
+    ];
+
+    const coordStr = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+
+    // Helper: draw polyline and fit map
+    const drawLines = (coords) => {
+        const outline = L.polyline(coords, {
+            color: '#fff', weight: 9, opacity: 0.35,
+            lineJoin: 'round', lineCap: 'round',
+        }).addTo(_kdMap);
+        const line = L.polyline(coords, {
+            color: '#D1001F', weight: 5, opacity: 0.88,
+            lineJoin: 'round', lineCap: 'round',
+        }).addTo(_kdMap);
+        _kdRoutePolyline = [outline, line];
+        _kdMap.fitBounds(line.getBounds(), { padding: [40, 40] });
+        return line;
+    };
+
+    // Strategy 1: Driving profile with motorway exclusion (preferred for lorries)
+    try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&exclude=motorway`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`OSRM driving error ${resp.status}`);
+        const data = await resp.json();
+        if (!data.routes || data.routes.length === 0) throw new Error('No driving route');
+
+        const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+        drawLines(coords);
+
+        const distKm = (route.distance / 1000).toFixed(1);
+        const durMin = Math.round(route.duration / 60);
+        if (statusEl) {
+            statusEl.textContent = `✅ Route generated — ${distKm} km · ~${durMin} min (no highways)`;
+            statusEl.className = 'kd-route-status kd-route-status-ok';
+        }
+        return;
+    } catch (drivingErr) {
+        console.warn('OSRM driving (exclude motorway) failed, trying motorcycle routing:', drivingErr);
+    }
+
+    // Strategy 2: Cycling profile (motorcycles cannot use Sri Lankan expressways,
+    // so cycling routing naturally avoids them while still using proper A/B roads)
+    try {
+        const url = `https://router.project-osrm.org/route/v1/cycling/${coordStr}?overview=full&geometries=geojson`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`OSRM cycling error ${resp.status}`);
+        const data = await resp.json();
+        if (!data.routes || data.routes.length === 0) throw new Error('No cycling route');
+
+        const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+        drawLines(coords);
+
+        const distKm = (route.distance / 1000).toFixed(1);
+        const durMin = Math.round(route.duration / 60);
+        if (statusEl) {
+            statusEl.textContent = `✅ Route generated — ${distKm} km · ~${durMin} min (normal roads, no expressways)`;
+            statusEl.className = 'kd-route-status kd-route-status-ok';
+        }
+        return;
+    } catch (cyclingErr) {
+        console.warn('OSRM cycling also failed, using straight-line fallback:', cyclingErr);
+    }
+
+    // Strategy 3: Straight-line fallback
+    const coords = waypoints.map(w => [w.lat, w.lng]);
+    const fallback = L.polyline(coords, {
+        color: '#D1001F', weight: 4, opacity: 0.7, dashArray: '10, 8',
+    }).addTo(_kdMap);
+    _kdRoutePolyline = [fallback];
+    _kdMap.fitBounds(fallback.getBounds(), { padding: [40, 40] });
+    if (statusEl) {
+        statusEl.textContent = '⚠️ Road data unavailable — showing straight-line route';
+        statusEl.className = 'kd-route-status kd-route-status-warn';
+    }
+}
+
+// ── Generate + copy driver message ────────────────────────────
+function kdRouteCopyMessage() {
+    if (_kdRouteStops.length === 0) { alert('Add at least one stop first.'); return; }
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-GB', {
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    });
+
+    const lines = [];
+
+    lines.push('JAYASOORIYA TRANSPORT');
+    lines.push('Kevilton Distribution Route');
+    lines.push('Date: ' + dateStr);
+    lines.push('Note: Use normal roads. Do NOT use highways/expressways.');
+    lines.push('');
+    lines.push('Starting Point:');
+    lines.push(KD_START_POINT.name);
+    lines.push(KD_START_POINT.town);
+    lines.push('https://maps.google.com/?q=' + KD_START_POINT.lat + ',' + KD_START_POINT.lng);
+
+    _kdRouteStops.forEach((stop, idx) => {
+        const directionsLink = 'https://www.google.com/maps/dir/?api=1' +
+            '&origin=' + KD_START_POINT.lat + ',' + KD_START_POINT.lng +
+            '&destination=' + stop.lat + ',' + stop.lng +
+            '&avoid=highways&travelmode=driving';
+        lines.push('');
+        lines.push('Stop ' + (idx + 1) + ': ' + stop.distributor_name);
+        lines.push(stop.town_name);
+        lines.push(directionsLink);
+    });
+
+    lines.push('');
+    lines.push('Total Stops: ' + _kdRouteStops.length);
+
+    const message = lines.join('\n');
+
+    const copyBtn = document.getElementById('kdRouteCopyMsgBtn');
+    const doFeedback = () => {
+        if (copyBtn) {
+            copyBtn.textContent = '✅ Copied!';
+            copyBtn.classList.add('kd-route-copied');
+            setTimeout(() => {
+                copyBtn.textContent = '📲 Copy Driver Message';
+                copyBtn.classList.remove('kd-route-copied');
+            }, 3000);
+        }
+    };
+
+    navigator.clipboard.writeText(message).then(doFeedback).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = message; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        doFeedback();
+    });
+}
 
 
