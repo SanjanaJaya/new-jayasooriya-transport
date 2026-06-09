@@ -82,17 +82,12 @@
                 </div>
             </div>
             
-            <!-- Header Right Support Actions + Status Toggle -->
-            <div class="header-right-actions">
-                <a href="tel:+94773829102" id="callSupportBtn" class="header-action-icon" title="Call Dispatch Hotline">📞</a>
-                <a href="https://wa.me/94773829102" target="_blank" id="whatsappSupportBtn" class="header-action-icon" title="WhatsApp Chat Hotline">💬</a>
-                
-                <div class="status-toggle-wrapper">
-                    <button id="statusToggleBtn" class="status-btn online">
-                        <span class="status-indicator"></span>
-                        <span id="statusText">ONLINE</span>
-                    </button>
-                </div>
+            <!-- Status Toggle -->
+            <div class="status-toggle-wrapper">
+                <button id="statusToggleBtn" class="status-btn online">
+                    <span class="status-indicator"></span>
+                    <span id="statusText">ONLINE</span>
+                </button>
             </div>
         </header>
 
@@ -117,12 +112,6 @@
         <!-- Map Container -->
         <main class="map-wrapper">
             <div id="driverMap"></div>
-            
-            <!-- Floating Action Buttons -->
-            <!-- Log Daily KM (left) -->
-            <button id="openKmLogBtn" class="map-action-btn fab-left" title="Log today's mileage (KM)">
-                📝
-            </button>
             
             <!-- Geolocation Centering (right) -->
             <button id="recenterMapBtn" class="map-action-btn" title="Center on my location">
@@ -270,47 +259,7 @@
             </div>
         </div>
 
-        <!-- ==================== LOG DAILY KM SHEET (MODAL) ==================== -->
-        <div id="kmLogModal" class="km-log-modal">
-            <div class="salary-modal-backdrop" id="closeKmLogModalBackdrop"></div>
-            <div class="salary-modal-content" style="border-top-color: var(--brand-green);">
-                <div class="salary-modal-header">
-                    <div class="header-indicator"></div>
-                    <div class="header-title-bar">
-                        <h3 style="color: var(--brand-green);">Log Daily KM</h3>
-                        <button class="close-modal-btn" id="closeKmLogModalBtn">&times;</button>
-                    </div>
-                </div>
-                
-                <div class="salary-modal-body">
-                    <form id="kmLogForm" class="login-form" style="padding: 0;">
-                        <div id="kmLogError" class="login-error-msg"></div>
-                        <div id="kmLogSuccess" class="login-error-msg" style="background: rgba(0, 179, 126, 0.15); border-left-color: var(--brand-green); color: #00C853; display: none;"></div>
-                        
-                        <div class="input-group">
-                            <label for="kmLogDate">Record Date</label>
-                            <div class="input-with-icon">
-                                <span class="input-icon">📅</span>
-                                <input type="date" id="kmLogDate" required>
-                            </div>
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="kmLogAmount">Distance (KM)</label>
-                            <div class="input-with-icon">
-                                <span class="input-icon">🏁</span>
-                                <input type="number" id="kmLogAmount" placeholder="e.g. 145.20" step="0.01" min="0.01" inputmode="decimal" required>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" id="kmLogSubmitBtn" class="btn btn-primary btn-block" style="background: var(--brand-green); box-shadow: 0 4px 15px rgba(0, 179, 126, 0.3);">
-                            <span>Submit Mileage Log</span>
-                            <span class="btn-arrow">✓</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+
     </div>
 
     <!-- Leaflet JS Map -->

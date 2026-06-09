@@ -172,18 +172,7 @@ function setupEventHandlers() {
     document.getElementById('closeSalaryModalBtn')?.addEventListener('click', closeSalaryModal);
     document.getElementById('closeSalaryModalBackdrop')?.addEventListener('click', closeSalaryModal);
 
-    // KM Log Modal Controls
-    document.getElementById('openKmLogBtn')?.addEventListener('click', openKmLogModal);
-    document.getElementById('closeKmLogModalBtn')?.addEventListener('click', closeKmLogModal);
-    document.getElementById('closeKmLogModalBackdrop')?.addEventListener('click', closeKmLogModal);
 
-    const kmLogForm = document.getElementById('kmLogForm');
-    if (kmLogForm) {
-        kmLogForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await submitKmLog();
-        });
-    }
 
     // Logout Button in Modal
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
@@ -323,6 +312,7 @@ async function fetchLorryAssignment() {
             .from('staff_lorry_assignments')
             .select('lorry_number')
             .eq('driver_id', currentDriver.id)
+            .eq('user_id', currentDriver.user_id)
             .maybeSingle();
 
         if (error) throw error;
@@ -338,6 +328,7 @@ async function fetchLorryAssignment() {
             const { data: hireV } = await supabaseClient
                 .from('hire_to_pay_vehicles')
                 .select('id')
+                .eq('user_id', currentDriver.user_id)
                 .ilike('lorry_number', `%${baseLorryName}%`)
                 .maybeSingle();
 
@@ -348,6 +339,7 @@ async function fetchLorryAssignment() {
                 const { data: commV } = await supabaseClient
                     .from('commitment_vehicles')
                     .select('id')
+                    .eq('user_id', currentDriver.user_id)
                     .ilike('vehicle_number', `%${baseLorryName}%`)
                     .maybeSingle();
 
@@ -387,6 +379,7 @@ async function loadDashboardStats() {
             .from('driver_km_records')
             .select('km_amount')
             .eq('driver_id', currentDriver.id)
+            .eq('user_id', currentDriver.user_id)
             .gte('record_date', startDate)
             .lte('record_date', endDate);
 
@@ -401,16 +394,21 @@ async function loadDashboardStats() {
 
         // 2. Fetch Advances, Day Offs, Deductions and salary slip to display quick estimate
         const [
-            { data: salarySlip },
-            { data: advances },
-            { data: dayOffs },
-            { data: deductions }
+            { data: salarySlip, error: errSlip },
+            { data: advances, error: errAdvances },
+            { data: dayOffs, error: errDayOffs },
+            { data: deductions, error: errDeductions }
         ] = await Promise.all([
-            supabaseClient.from('driver_salary').select('net_salary').eq('driver_id', currentDriver.id).eq('salary_month', activeMonth).maybeSingle(),
-            supabaseClient.from('driver_advances').select('amount').eq('driver_id', currentDriver.id).gte('advance_date', startDate).lte('advance_date', endDate),
-            supabaseClient.from('driver_day_offs').select('deduction_amount').eq('driver_id', currentDriver.id).gte('day_off_date', startDate).lte('day_off_date', endDate),
-            supabaseClient.from('staff_deductions').select('amount').eq('driver_id', currentDriver.id).eq('salary_month', activeMonth)
+            supabaseClient.from('driver_salary').select('net_salary').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).eq('salary_month', activeMonth).maybeSingle(),
+            supabaseClient.from('driver_advances').select('amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('advance_date', startDate).lte('advance_date', endDate),
+            supabaseClient.from('driver_day_offs').select('deduction_amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('day_off_date', startDate).lte('day_off_date', endDate),
+            supabaseClient.from('staff_deductions').select('amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).eq('salary_month', activeMonth)
         ]);
+
+        if (errSlip) throw errSlip;
+        if (errAdvances) throw errAdvances;
+        if (errDayOffs) throw errDayOffs;
+        if (errDeductions) throw errDeductions;
 
         const estimateEl = document.getElementById('salaryQuickEstimate');
 
@@ -435,10 +433,12 @@ async function loadDashboardStats() {
                 // Per-tip live estimation needs completed trips count
                 let tripCount = 0;
                 if (driverLorryId) {
-                    const [{ count: hireCount }, { count: commCount }] = await Promise.all([
-                        supabaseClient.from('hire_to_pay_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).gte('hire_date', startDate).lte('hire_date', endDate),
-                        supabaseClient.from('commitment_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).gte('hire_date', startDate).lte('hire_date', endDate)
+                    const [{ count: hireCount, error: errH }, { count: commCount, error: errC }] = await Promise.all([
+                        supabaseClient.from('hire_to_pay_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate),
+                        supabaseClient.from('commitment_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate)
                     ]);
+                    if (errH) throw errH;
+                    if (errC) throw errC;
                     tripCount = (hireCount || 0) + (commCount || 0);
                 }
                 const perTipCharge = parseFloat(currentDriver.per_tip_charge || 0);
@@ -452,6 +452,7 @@ async function loadDashboardStats() {
 
     } catch (err) {
         console.error('Error calculating dashboard stats:', err.message);
+        alert('Dashboard Load Error: ' + err.message + '\nVerify your drivers profile settings.');
     }
 }
 
@@ -524,7 +525,8 @@ async function loadKeviltonDistributors() {
     try {
         const { data, error } = await supabaseClient
             .from('kd_distributors')
-            .select('*');
+            .select('*')
+            .eq('user_id', currentDriver.user_id);
 
         if (error) throw error;
         
@@ -772,6 +774,7 @@ async function loadSalaryDetails() {
             .from('driver_salary')
             .select('*')
             .eq('driver_id', currentDriver.id)
+            .eq('user_id', currentDriver.user_id)
             .eq('salary_month', activeMonth)
             .maybeSingle();
 
@@ -855,16 +858,21 @@ async function displayLiveEstimatedSalary(startDate, endDate) {
 
     // Fetch live data from individual tables
     const [
-        { data: kmRecs },
-        { data: advances },
-        { data: dayOffs },
-        { data: deductions }
+        { data: kmRecs, error: errKm },
+        { data: advances, error: errAdv },
+        { data: dayOffs, error: errDo },
+        { data: deductions, error: errDed }
     ] = await Promise.all([
-        supabaseClient.from('driver_km_records').select('km_amount').eq('driver_id', currentDriver.id).gte('record_date', startDate).lte('record_date', endDate),
-        supabaseClient.from('driver_advances').select('*').eq('driver_id', currentDriver.id).gte('advance_date', startDate).lte('advance_date', endDate),
-        supabaseClient.from('driver_day_offs').select('*').eq('driver_id', currentDriver.id).gte('day_off_date', startDate).lte('day_off_date', endDate),
-        supabaseClient.from('staff_deductions').select('*').eq('driver_id', currentDriver.id).eq('salary_month', activeMonth)
+        supabaseClient.from('driver_km_records').select('km_amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('record_date', startDate).lte('record_date', endDate),
+        supabaseClient.from('driver_advances').select('*').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('advance_date', startDate).lte('advance_date', endDate),
+        supabaseClient.from('driver_day_offs').select('*').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('day_off_date', startDate).lte('day_off_date', endDate),
+        supabaseClient.from('staff_deductions').select('*').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).eq('salary_month', activeMonth)
     ]);
+
+    if (errKm) throw errKm;
+    if (errAdv) throw errAdv;
+    if (errDo) throw errDo;
+    if (errDed) throw errDed;
 
     const totalKm = kmRecs?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
     const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
@@ -1038,85 +1046,7 @@ function animateNumericText(elementId, start, end, duration, prefix = "", suffix
     requestAnimationFrame(update);
 }
 
-// KM Daily Log Sheet Handlers
-function openKmLogModal() {
-    const modal = document.getElementById('kmLogModal');
-    if (modal) {
-        document.getElementById('kmLogError').style.display = 'none';
-        document.getElementById('kmLogSuccess').style.display = 'none';
-        
-        // Default log date to current local date (Sri Lanka standard)
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        document.getElementById('kmLogDate').value = `${year}-${month}-${day}`;
-        document.getElementById('kmLogAmount').value = '';
-        
-        modal.classList.add('active');
-    }
-}
 
-function closeKmLogModal() {
-    const modal = document.getElementById('kmLogModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
-}
-
-async function submitKmLog() {
-    const dateVal = document.getElementById('kmLogDate').value;
-    const amountVal = parseFloat(document.getElementById('kmLogAmount').value);
-    const errorEl = document.getElementById('kmLogError');
-    const successEl = document.getElementById('kmLogSuccess');
-    const submitBtn = document.getElementById('kmLogSubmitBtn');
-
-    errorEl.style.display = 'none';
-    successEl.style.display = 'none';
-
-    if (isNaN(amountVal) || amountVal <= 0) {
-        errorEl.textContent = 'Please enter a valid positive mileage distance.';
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.querySelector('span').textContent = 'Submitting...';
-
-    try {
-        const payload = {
-            user_id: currentDriver.user_id, // Organization multitenant ID
-            driver_id: currentDriver.id,
-            record_date: dateVal,
-            km_amount: amountVal
-        };
-
-        const { error } = await supabaseClient
-            .from('driver_km_records')
-            .insert([payload]);
-
-        if (error) throw error;
-
-        successEl.textContent = 'Mileage log submitted successfully!';
-        successEl.style.display = 'block';
-        document.getElementById('kmLogAmount').value = '';
-
-        // Refresh dashboard metrics
-        await loadDashboardStats();
-        
-        // Close modal after success feedback
-        setTimeout(() => {
-            closeKmLogModal();
-        }, 1200);
-
-    } catch (err) {
-        errorEl.textContent = err.message || 'Failed to submit mileage log. Try again.';
-        errorEl.style.display = 'block';
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.querySelector('span').textContent = 'Submit Mileage Log';
-    }
-}
 
 // Start everything when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);
