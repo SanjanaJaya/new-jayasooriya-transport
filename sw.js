@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jt-driver-cache-v1';
+const CACHE_NAME = 'jt-driver-cache-v2';
 const STATIC_ASSETS = [
     '/driver.html',
     '/driver-styles.css',
