@@ -229,18 +229,35 @@ async function authenticateDriver(contact, license) {
     const cleanContact = contact.trim();
     const cleanLicense = license ? license.trim() : "";
 
-    const { data, error } = await supabaseClient
+    let { data, error } = await supabaseClient
         .from('drivers')
         .select('*')
         .eq('contact', cleanContact)
         .neq('terminated', true);
+
+    // Suffix match fallback for Sri Lankan phone number format variation (e.g. 077... vs +9477... vs 77...)
+    if ((!data || data.length === 0) && !error) {
+        const digitsOnly = cleanContact.replace(/[^0-9]/g, '');
+        if (digitsOnly.length >= 9) {
+            const last9 = digitsOnly.slice(-9);
+            const fallbackQuery = await supabaseClient
+                .from('drivers')
+                .select('*')
+                .ilike('contact', `%${last9}`)
+                .neq('terminated', true);
+            
+            if (!fallbackQuery.error && fallbackQuery.data && fallbackQuery.data.length > 0) {
+                data = fallbackQuery.data;
+            }
+        }
+    }
 
     if (error) {
         throw new Error('Database error: ' + error.message);
     }
 
     if (!data || data.length === 0) {
-        throw new Error('No driver found with this phone number.');
+        throw new Error('No driver found with this phone number. Check the format or make sure your profile is active in the admin portal.');
     }
 
     // Check license match (case-insensitive, handles empty strings)
@@ -353,6 +370,14 @@ function extractBaseVehicleName(name) {
     }
     return name.trim().toUpperCase();
 }
+
+// Load Dashboard Statistics (KM & quick estimate)
+async function loadDashboardStats() {
+    try {
+        const [year, month] = activeMonth.split('-');
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
         document.getElementById('monthlyKmValue').innerHTML = '<div class="skeleton skeleton-value"></div>';
         document.getElementById('salaryQuickEstimate').innerHTML = '<div class="skeleton skeleton-desc"></div>';
