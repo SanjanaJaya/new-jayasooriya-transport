@@ -1,0 +1,26 @@
+{
+    "name": "Driver Partner | Jayasooriya",
+    "short_name": "Driver Partner",
+    "description": "Driver Partner Portal for Jayasooriya Transport Services",
+    "id": "/driver.html",
+    "start_url": "/driver.html",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#0F1014",
+    "theme_color": "#D1001F",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

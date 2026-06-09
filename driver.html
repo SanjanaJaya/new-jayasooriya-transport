@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#121212">
+    <title>Driver Partner | Jayasooriya Transport</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+    
+    <!-- Driver App Stylesheet -->
+    <link rel="stylesheet" href="driver-styles.css">
+    
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="driver-manifest.json">
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png">
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png">
+</head>
+<body class="dark-mode">
+    
+    <!-- ==================== LOGIN VIEW ==================== -->
+    <div id="loginView" class="view active">
+        <div class="login-wrapper">
+            <div class="login-card">
+                <div class="login-header">
+                    <img src="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png" alt="Jayasooriya Logo" class="login-logo">
+                    <h1>JAYASOORIYA</h1>
+                    <h2>DRIVER PARTNER</h2>
+                </div>
+                
+                <form id="driverLoginForm" class="login-form">
+                    <div id="loginError" class="login-error-msg"></div>
+                    
+                    <div class="input-group">
+                        <label for="loginContact">Phone Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">📞</span>
+                            <input type="tel" id="loginContact" placeholder="e.g. 0771234567" required autocomplete="tel">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="loginLicense">License Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">🪪</span>
+                            <input type="password" id="loginLicense" placeholder="License No. or Password" autocomplete="current-password">
+                        </div>
+                        <span class="helper-text">Leave blank if no license is set on your staff profile.</span>
+                    </div>
+                    
+                    <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
+                        <span>Sign In</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </form>
+                
+                <div class="login-footer">
+                    <p>© 2026 Jayasooriya Transport Services</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN DASHBOARD VIEW ==================== -->
+    <div id="dashboardView" class="view">
+        <header class="app-header">
+            <div class="driver-profile">
+                <div class="avatar-container">
+                    <img id="driverAvatar" src="https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png" alt="Driver Profile" class="avatar-img">
+                </div>
+                <div class="driver-info">
+                    <span class="welcome-text">Partner</span>
+                    <span id="driverName" class="driver-name"><div class="skeleton skeleton-text"></div></span>
+                </div>
+            </div>
+            
+            <!-- Header Right Support Actions + Status Toggle -->
+            <div class="header-right-actions">
+                <a href="tel:+94773829102" id="callSupportBtn" class="header-action-icon" title="Call Dispatch Hotline">📞</a>
+                <a href="https://wa.me/94773829102" target="_blank" id="whatsappSupportBtn" class="header-action-icon" title="WhatsApp Chat Hotline">💬</a>
+                
+                <div class="status-toggle-wrapper">
+                    <button id="statusToggleBtn" class="status-btn online">
+                        <span class="status-indicator"></span>
+                        <span id="statusText">ONLINE</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Top Tappable Mileage & Salary Widget -->
+        <section class="top-stat-section">
+            <div id="kmSummaryCard" class="stat-card km-glow" role="button" tabindex="0" title="Click to view full salary breakdown">
+                <div class="stat-header">
+                    <span class="stat-label">DISTANCE THIS MONTH</span>
+                    <span class="touch-hint">TOUCH FOR EARNINGS 👆</span>
+                </div>
+                <div class="stat-main">
+                    <span id="monthlyKmValue" class="stat-value"><div class="skeleton skeleton-value"></div></span>
+                    <span class="stat-unit">KM</span>
+                </div>
+                <div class="stat-footer">
+                    <span class="lorry-assignment">Vehicle: <strong id="assignedLorry"><div class="skeleton skeleton-text"></div></strong></span>
+                    <span id="salaryQuickEstimate" class="earnings-quick"><div class="skeleton skeleton-desc"></div></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map Container -->
+        <main class="map-wrapper">
+            <div id="driverMap"></div>
+            
+            <!-- Floating Action Buttons -->
+            <!-- Log Daily KM (left) -->
+            <button id="openKmLogBtn" class="map-action-btn fab-left" title="Log today's mileage (KM)">
+                📝
+            </button>
+            
+            <!-- Geolocation Centering (right) -->
+            <button id="recenterMapBtn" class="map-action-btn" title="Center on my location">
+                🎯
+            </button>
+        </main>
+
+        <!-- Search / Distribution Points Drawer Control -->
+        <div class="drawer-handle-bar" id="distributorDrawerHandle">
+            <div class="drag-indicator"></div>
+            <span>Distribution Points List</span>
+            <span class="drawer-toggle-arrow">▲</span>
+        </div>
+        
+        <!-- Distribution Points Slide Drawer -->
+        <div id="distributorDrawer" class="bottom-drawer">
+            <div class="drawer-search">
+                <input type="text" id="searchDistributors" placeholder="🔍 Search town or distributor...">
+            </div>
+            <div class="distributor-list-container" id="distributorsList">
+                <div class="loading-spinner">Loading locations...</div>
+            </div>
+        </div>
+
+        <!-- ==================== SALARY DETAILS SHEET (MODAL) ==================== -->
+        <div id="salaryModal" class="salary-modal">
+            <div class="salary-modal-backdrop" id="closeSalaryModalBackdrop"></div>
+            <div class="salary-modal-content">
+                <div class="salary-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <h3>Salary & Earnings</h3>
+                        <button class="close-modal-btn" id="closeSalaryModalBtn">&times;</button>
+                    </div>
+                    <div class="salary-month-selector-wrapper">
+                        <label for="salaryMonthFilter">Month:</label>
+                        <input type="month" id="salaryMonthFilter" class="month-picker">
+                    </div>
+                </div>
+                
+                <div class="salary-modal-body">
+                    <!-- Finalized Banner -->
+                    <div id="salaryFinalizedBanner" class="finalized-banner hidden">
+                        <span class="banner-icon">🔒</span>
+                        <div class="banner-text">
+                            <strong>SALARY FINALIZED</strong>
+                            <span>Your administrator has finalized this month's salary.</span>
+                        </div>
+                        <a id="downloadReceiptBtn" href="#" target="_blank" class="btn btn-sm btn-receipt">PDF Receipt</a>
+                    </div>
+                    
+                    <!-- Live Estimate Banner -->
+                    <div id="salaryEstimateBanner" class="estimate-banner">
+                        <span class="banner-icon">⚡</span>
+                        <div class="banner-text">
+                            <strong>LIVE ESTIMATE</strong>
+                            <span>Calculated from active records. Subject to changes.</span>
+                        </div>
+                    </div>
+
+                    <!-- Gross & Net Salary Cards -->
+                    <div class="salary-summary-cards">
+                        <div class="summary-card net-card">
+                            <span class="summary-label">NET TAKE HOME</span>
+                            <span id="modalNetSalary" class="summary-value">LKR 0.00</span>
+                        </div>
+                        <div class="summary-card gross-card">
+                            <span class="summary-label">GROSS EARNINGS</span>
+                            <span id="modalGrossSalary" class="summary-value">LKR 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Accordion or sections of calculations -->
+                    <div class="salary-breakdown-details">
+                        <!-- Earnings section -->
+                        <div class="breakdown-group">
+                            <h4 class="section-title text-green">💰 Earning Breakdown</h4>
+                            <div class="breakdown-card">
+                                <div class="breakdown-row" id="rowBasicSalary">
+                                    <span>Basic Salary</span>
+                                    <span id="valBasicSalary">LKR 0.00</span>
+                                </div>
+                                <div class="breakdown-row" id="rowExtraKm">
+                                    <span class="row-subtext">Extra KM (<span id="extraKmDistance">0.00</span> km @ LKR <span id="extraKmRate">0.00</span>)</span>
+                                    <span id="valExtraKm">LKR 0.00</span>
+                                </div>
+                                <div class="breakdown-row" id="rowTipSalary">
+                                    <span class="row-subtext">Tips Earnings (<span id="tipCountDisplay">0</span> trips)</span>
+                                    <span id="valTipSalary">LKR 0.00</span>
+                                </div>
+                                <div class="breakdown-row" id="rowAllowance">
+                                    <span>Additional Allowances</span>
+                                    <span id="valAllowance">LKR 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advances Section -->
+                        <div class="breakdown-group">
+                            <h4 class="section-title text-red">📉 Salary Advances</h4>
+                            <div class="breakdown-card">
+                                <div class="breakdown-row total-row">
+                                    <span>Total Advances Drawn</span>
+                                    <span id="valTotalAdvances" class="text-red font-bold">LKR 0.00</span>
+                                </div>
+                                <div id="advancesListContainer" class="sub-list-container">
+                                    <!-- Dynamic list items -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Day offs Section -->
+                        <div class="breakdown-group">
+                            <h4 class="section-title text-purple">🗓️ Day Off Deductions</h4>
+                            <div class="breakdown-card">
+                                <div class="breakdown-row total-row">
+                                    <span>Total Day-Off Deductions</span>
+                                    <span id="valTotalDayOffs" class="text-purple font-bold">LKR 0.00</span>
+                                </div>
+                                <div id="dayOffsListContainer" class="sub-list-container">
+                                    <!-- Dynamic list items -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Other Deductions Section -->
+                        <div class="breakdown-group">
+                            <h4 class="section-title text-orange">⚠️ Other Deductions</h4>
+                            <div class="breakdown-card">
+                                <div class="breakdown-row total-row">
+                                    <span>Total Other Deductions</span>
+                                    <span id="valTotalDeductions" class="text-orange font-bold">LKR 0.00</span>
+                                </div>
+                                <div id="deductionsListContainer" class="sub-list-container">
+                                    <!-- Dynamic list items -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="salary-modal-footer">
+                    <button class="btn btn-outline-danger btn-block" id="logoutBtn">Logout App</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== LOG DAILY KM SHEET (MODAL) ==================== -->
+        <div id="kmLogModal" class="km-log-modal">
+            <div class="salary-modal-backdrop" id="closeKmLogModalBackdrop"></div>
+            <div class="salary-modal-content" style="border-top-color: var(--brand-green);">
+                <div class="salary-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <h3 style="color: var(--brand-green);">Log Daily KM</h3>
+                        <button class="close-modal-btn" id="closeKmLogModalBtn">&times;</button>
+                    </div>
+                </div>
+                
+                <div class="salary-modal-body">
+                    <form id="kmLogForm" class="login-form" style="padding: 0;">
+                        <div id="kmLogError" class="login-error-msg"></div>
+                        <div id="kmLogSuccess" class="login-error-msg" style="background: rgba(0, 179, 126, 0.15); border-left-color: var(--brand-green); color: #00C853; display: none;"></div>
+                        
+                        <div class="input-group">
+                            <label for="kmLogDate">Record Date</label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">📅</span>
+                                <input type="date" id="kmLogDate" required>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="kmLogAmount">Distance (KM)</label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">🏁</span>
+                                <input type="number" id="kmLogAmount" placeholder="e.g. 145.20" step="0.01" min="0.01" inputmode="decimal" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="kmLogSubmitBtn" class="btn btn-primary btn-block" style="background: var(--brand-green); box-shadow: 0 4px 15px rgba(0, 179, 126, 0.3);">
+                            <span>Submit Mileage Log</span>
+                            <span class="btn-arrow">✓</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS Map -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Driver App Logic Script -->
+    <script src="driver.js"></script>
+</body>
+</html>
