@@ -187,6 +187,12 @@ function setupEventHandlers() {
         loadSalaryDetails();
     });
 
+    // Race Modal Events
+    document.getElementById('raceModalBtn')?.addEventListener('click', openRaceModal);
+    document.getElementById('closeRaceModalBtn')?.addEventListener('click', closeRaceModal);
+    document.getElementById('closeRaceModalBackdrop')?.addEventListener('click', closeRaceModal);
+
+
     // Drawer handle tap toggle
     const handleBar = document.getElementById('distributorDrawerHandle');
     const drawer = document.getElementById('distributorDrawer');
@@ -1046,7 +1052,172 @@ function animateNumericText(elementId, start, end, duration, prefix = "", suffix
     requestAnimationFrame(update);
 }
 
+// ==================== DRIVER RACE Standings ====================
 
+function openRaceModal() {
+    const modal = document.getElementById('raceModal');
+    if (modal) {
+        modal.classList.add('active');
+        loadDriverRace();
+    }
+}
+
+function closeRaceModal() {
+    const modal = document.getElementById('raceModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function loadDriverRace() {
+    const listContainer = document.getElementById('raceList');
+    const loadingEl = document.getElementById('raceLoading');
+    const labelEl = document.getElementById('raceMonthLabel');
+    
+    if (!listContainer || !loadingEl) return;
+
+    // Show loading state, hide list
+    loadingEl.classList.remove('hidden');
+    listContainer.classList.add('hidden');
+    listContainer.innerHTML = '';
+
+    try {
+        // Use current calendar month for the race
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+        // Format label, e.g., "June 2026 Standings"
+        const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+        if (labelEl) labelEl.textContent = `${monthName} Standings`;
+
+        // 1. Fetch active drivers
+        const { data: drivers, error: driverError } = await supabaseClient
+            .from('drivers')
+            .select('id, name, photo_url, role')
+            .eq('user_id', currentDriver.user_id)
+            .neq('terminated', true);
+
+        if (driverError) throw driverError;
+
+        // 2. Fetch driver km records for current month
+        const { data: kmRecords, error: kmError } = await supabaseClient
+            .from('driver_km_records')
+            .select('driver_id, km_amount')
+            .eq('user_id', currentDriver.user_id)
+            .gte('record_date', startDate)
+            .lte('record_date', endDate);
+
+        if (kmError) throw kmError;
+
+        // Sum up km per driver
+        const kmByDriver = {};
+        kmRecords?.forEach(r => {
+            kmByDriver[r.driver_id] = (kmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
+        });
+
+        // Filter: only role === 'driver', exclude 'JAAP Jayasooriya' & 'JAUK Jayasooriya', and must have run (>0 km)
+        const rankedDrivers = (drivers || [])
+            .filter(d => {
+                if ((d.role || '').toLowerCase() !== 'driver') return false;
+                const nameClean = (d.name || '').trim().toLowerCase();
+                if (nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya') return false;
+                
+                // Exclude if they didn't run this month
+                const totalKm = kmByDriver[d.id] || 0;
+                return totalKm > 0;
+            })
+            .map(d => {
+                return {
+                    ...d,
+                    totalKm: kmByDriver[d.id] || 0
+                };
+            });
+
+        if (rankedDrivers.length === 0) {
+            listContainer.innerHTML = '<div class="no-results">No drivers in this month\'s race.</div>';
+            loadingEl.classList.add('hidden');
+            listContainer.classList.remove('hidden');
+            return;
+        }
+
+        rankedDrivers.sort((a, b) => b.totalKm - a.totalKm);
+
+        // Find max km for progress bar sizing (avoid division by zero)
+        const maxKm = rankedDrivers[0].totalKm || 1;
+
+        // Render each driver card
+        rankedDrivers.forEach((d, index) => {
+            const rank = index + 1;
+            const isCurrentUser = d.id === currentDriver.id;
+            
+            // Rank Badge or Medal
+            let rankHtml = '';
+            if (rank === 1) {
+                rankHtml = '<span class="race-rank-medal">🥇</span>';
+            } else if (rank === 2) {
+                rankHtml = '<span class="race-rank-medal">🥈</span>';
+            } else if (rank === 3) {
+                rankHtml = '<span class="race-rank-medal">🥉</span>';
+            } else {
+                rankHtml = `<span class="race-rank-number">#${rank}</span>`;
+            }
+
+            // Initials Fallback for Avatar
+            const initials = d.name ? d.name.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+            const avatarHtml = d.photo_url 
+                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${d.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                   <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
+                : `<div class="race-avatar-fallback">${initials}</div>`;
+
+            // Calculate progress percentage
+            const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
+
+            const card = document.createElement('div');
+            card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
+            card.innerHTML = `
+                <div class="race-rank-container">
+                    ${rankHtml}
+                </div>
+                <div class="race-avatar-container">
+                    ${avatarHtml}
+                </div>
+                <div class="race-details">
+                    <div class="race-name-row">
+                        <span class="race-name">${d.name} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
+                        <div class="race-value-container">
+                            <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                            <span class="race-value-unit">KM</span>
+                        </div>
+                    </div>
+                    <div class="race-progress-bg">
+                        <div class="race-progress-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            `;
+
+            listContainer.appendChild(card);
+
+            // Animate progress bar width slightly after appending for smooth micro-animation
+            setTimeout(() => {
+                const bar = card.querySelector('.race-progress-bar');
+                if (bar) bar.style.width = `${progressPercent}%`;
+            }, 100);
+        });
+
+        loadingEl.classList.add('hidden');
+        listContainer.classList.remove('hidden');
+
+    } catch (err) {
+        console.error('Error loading driver race:', err.message);
+        listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">Failed to load race: ${err.message}</div>`;
+        loadingEl.classList.add('hidden');
+        listContainer.classList.remove('hidden');
+    }
+}
 
 // Start everything when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);

@@ -82,12 +82,18 @@
                 </div>
             </div>
             
-            <!-- Status Toggle -->
-            <div class="status-toggle-wrapper">
-                <button id="statusToggleBtn" class="status-btn online">
-                    <span class="status-indicator"></span>
-                    <span id="statusText">ONLINE</span>
-                </button>
+            <!-- Header Right Actions Container -->
+            <div class="header-right-actions">
+                <!-- Race/Leaderboard Button -->
+                <button id="raceModalBtn" class="header-action-icon" title="View Month Race">🏁</button>
+                
+                <!-- Status Toggle -->
+                <div class="status-toggle-wrapper">
+                    <button id="statusToggleBtn" class="status-btn online">
+                        <span class="status-indicator"></span>
+                        <span id="statusText">ONLINE</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -259,6 +265,29 @@
             </div>
         </div>
 
+        <!-- ==================== DRIVER RACE SHEET (MODAL) ==================== -->
+        <div id="raceModal" class="salary-modal">
+            <div class="salary-modal-backdrop" id="closeRaceModalBackdrop"></div>
+            <div class="salary-modal-content" style="border-top-color: #F1C40F;">
+                <div class="salary-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <h3 style="color: #F1C40F;">🏁 Driver Race</h3>
+                        <button class="close-modal-btn" id="closeRaceModalBtn">&times;</button>
+                    </div>
+                    <div class="salary-month-selector-wrapper">
+                        <span id="raceMonthLabel" style="font-size: 13px; font-weight: 700; color: var(--text-secondary);">Standings</span>
+                    </div>
+                </div>
+                
+                <div class="salary-modal-body" style="padding-top: 15px;">
+                    <div id="raceLoading" class="loading-spinner">Loading standings...</div>
+                    <div id="raceList" class="race-list hidden">
+                        <!-- Dynamic items will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 
