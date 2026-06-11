@@ -23,8 +23,11 @@
     <link rel="manifest" href="driver-manifest.json">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png">
-</head>
 <body class="dark-mode">
+    <!-- Offline Warning Banner -->
+    <div id="offlineWarningBanner" class="offline-banner hidden">
+        <span>⚠️ You are offline. Displaying cached information.</span>
+    </div>
     
     <!-- ==================== LOGIN VIEW ==================== -->
     <div id="loginView" class="view active">
@@ -97,8 +100,9 @@
             </div>
         </header>
 
-        <!-- Top Tappable Mileage & Salary Widget -->
+        <!-- Top Tappable Widgets Section -->
         <section class="top-stat-section">
+            <!-- Distance / Earnings Card -->
             <div id="kmSummaryCard" class="stat-card km-glow" role="button" tabindex="0" title="Click to view full salary breakdown">
                 <div class="stat-header">
                     <span class="stat-label">DISTANCE THIS MONTH</span>
@@ -109,8 +113,19 @@
                     <span class="stat-unit">KM</span>
                 </div>
                 <div class="stat-footer">
-                    <span class="lorry-assignment">Vehicle: <strong id="assignedLorry"><div class="skeleton skeleton-text"></div></strong></span>
                     <span id="salaryQuickEstimate" class="earnings-quick"><div class="skeleton skeleton-desc"></div></span>
+                </div>
+            </div>
+
+            <!-- Assigned Vehicle Card -->
+            <div id="vehicleSummaryCard" class="stat-card vehicle-glow" title="Assigned vehicle details">
+                <div class="vehicle-info-text">
+                    <span class="stat-label" style="margin-bottom: 6px;">ASSIGNED VEHICLE</span>
+                    <span id="vehicleNumberDisplay" class="vehicle-plate"><div class="skeleton skeleton-text" style="width: 80px;"></div></span>
+                    <span id="vehicleModelDisplay" class="vehicle-model"><div class="skeleton skeleton-text" style="width: 60px;"></div></span>
+                </div>
+                <div class="vehicle-vector-container" id="vehicleVectorArtContainer">
+                    <div class="skeleton skeleton-text" style="width: 80px; height: 40px;"></div>
                 </div>
             </div>
         </section>

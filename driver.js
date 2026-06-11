@@ -15,11 +15,65 @@ let markers = [];
 let userLocationMarker = null;
 let isOnline = true;
 let distributorsList = [];
+let locationWatchId = null; // Geolocation watcher ID
 
 // Utility helpers for staff nicknames
 function cleanDriverName(fullName) {
     return (fullName || '').replace(/\s*\(.*?\)\s*$/, '').trim();
 }
+
+// Local Storage Caching Helpers for Offline Support
+function getCachedData(key, defaultValue = null) {
+    try {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : defaultValue;
+    } catch (e) {
+        console.warn('Cache read error for key:', key, e);
+        return defaultValue;
+    }
+}
+
+// Write to cache helper
+function setCachedData(key, value) {
+    try {
+        if (value === null || value === undefined) {
+            localStorage.removeItem(key);
+        } else {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+    } catch (e) {
+        console.warn('Cache write error for key:', key, e);
+    }
+}
+
+// Default corporate colored truck/lorry vector SVG art
+const defaultLorrySVG = `
+<svg viewBox="0 0 100 50" class="vehicle-svg-art" xmlns="http://www.w3.org/2000/svg">
+  <rect x="15" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/>
+  <rect x="57" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/>
+  <path d="M5,12 h46 v24 h-46 z" fill="#1E212D" rx="2"/>
+  <path d="M51,18 h18 l10,8 v10 h-28 z" fill="#D1001F" rx="2"/>
+  <path d="M58,20 h8 l5,5 v4 h-13 z" fill="#0F1014" rx="1"/>
+  <circle cx="20" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/>
+  <circle cx="62" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/>
+  <circle cx="20" cy="38" r="2" fill="#FFF"/>
+  <circle cx="62" cy="38" r="2" fill="#FFF"/>
+</svg>
+`;
+
+// Online/Offline status banner toggle
+function updateOnlineStatus() {
+    const banner = document.getElementById('offlineWarningBanner');
+    if (banner) {
+        if (navigator.onLine) {
+            banner.classList.add('hidden');
+        } else {
+            banner.classList.remove('hidden');
+        }
+    }
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
 
 // Starting point
 const KD_START_POINT = {
@@ -47,6 +101,7 @@ function initApp() {
             .catch(err => console.error('Driver App PWA Service Worker Registration Failed', err));
     }
 
+    updateOnlineStatus(); // Set initial online banner visibility state
     setDefaultMonth();
     setupEventHandlers();
     checkExistingSession();
@@ -73,6 +128,13 @@ async function checkExistingSession() {
     if (savedDriver) {
         try {
             currentDriver = JSON.parse(savedDriver);
+            
+            if (!navigator.onLine) {
+                // If offline, bypass database check and load dashboard directly
+                showDashboard();
+                return;
+            }
+
             // Refresh driver data from DB to ensure it's up to date
             const { data, error } = await supabaseClient
                 .from('drivers')
@@ -85,7 +147,12 @@ async function checkExistingSession() {
                 localStorage.setItem('jt_driver_session', JSON.stringify(currentDriver));
                 showDashboard();
             } else {
-                logout();
+                if (error && error.status !== 401 && error.status !== 403) {
+                    // Fallback to cached session on general database connection error
+                    showDashboard();
+                } else {
+                    logout();
+                }
             }
         } catch (e) {
             console.error('Session restore failed:', e);
@@ -181,8 +248,6 @@ function setupEventHandlers() {
     document.getElementById('closeSalaryModalBtn')?.addEventListener('click', closeSalaryModal);
     document.getElementById('closeSalaryModalBackdrop')?.addEventListener('click', closeSalaryModal);
 
-
-
     // Logout Button in Modal
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
         if (confirm('Are you sure you want to log out?')) {
@@ -209,7 +274,6 @@ function setupEventHandlers() {
     document.getElementById('raceModalBtn')?.addEventListener('click', openRaceModal);
     document.getElementById('closeRaceModalBtn')?.addEventListener('click', closeRaceModal);
     document.getElementById('closeRaceModalBackdrop')?.addEventListener('click', closeRaceModal);
-
 
     // Drawer handle tap toggle
     const handleBar = document.getElementById('distributorDrawerHandle');
@@ -248,7 +312,7 @@ async function authenticateDriver(contact, license) {
         .eq('contact', cleanContact)
         .neq('terminated', true);
 
-    // Suffix match fallback for Sri Lankan phone number format variation (e.g. 077... vs +9477... vs 77...)
+    // Suffix match fallback for Sri Lankan phone number format variation
     if ((!data || data.length === 0) && !error) {
         const digitsOnly = cleanContact.replace(/[^0-9]/g, '');
         if (digitsOnly.length >= 9) {
@@ -273,7 +337,7 @@ async function authenticateDriver(contact, license) {
         throw new Error('No driver found with this phone number. Check the format or make sure your profile is active in the admin portal.');
     }
 
-    // Check license match (case-insensitive, handles empty strings)
+    // Check license match
     const matched = data.find(d => {
         const dbLic = d.license_number ? d.license_number.trim().toLowerCase() : "";
         const inputLic = cleanLicense.toLowerCase();
@@ -289,6 +353,15 @@ async function authenticateDriver(contact, license) {
 
 // Logout driver partner
 function logout() {
+    // Stop continuous location tracking
+    if (locationWatchId !== null) {
+        navigator.geolocation.clearWatch(locationWatchId);
+        locationWatchId = null;
+    }
+    if (userLocationMarker) {
+        userLocationMarker = null;
+    }
+
     localStorage.removeItem('jt_driver_session');
     currentDriver = null;
     driverLorry = null;
@@ -362,12 +435,30 @@ async function showDashboard() {
     await loadKeviltonDistributors();
 }
 
-// Fetch staff lorry assignment
+// Fetch staff lorry assignment (caches and handles vector art details)
 async function fetchLorryAssignment() {
-    const assignEl = document.getElementById('assignedLorry');
-    assignEl.innerHTML = '<div class="skeleton skeleton-text" style="width: 50px;"></div>';
+    const assignEl = document.getElementById('vehicleNumberDisplay');
+    const modelEl = document.getElementById('vehicleModelDisplay');
+    const artContainer = document.getElementById('vehicleVectorArtContainer');
+    
+    // Set initial loader state
+    if (assignEl) assignEl.innerHTML = '<div class="skeleton skeleton-text" style="width: 50px;"></div>';
+    if (modelEl) modelEl.innerHTML = '<div class="skeleton skeleton-text" style="width: 45px;"></div>';
+    if (artContainer) artContainer.innerHTML = '<div class="skeleton skeleton-text" style="width: 100%; height: 24px;"></div>';
+    
     driverLorry = null;
     driverLorryId = null;
+
+    // Retrieve from cache if offline
+    if (!navigator.onLine) {
+        const cached = getCachedData('jt_driver_lorry_details');
+        if (cached) {
+            driverLorry = cached.lorry_number;
+            driverLorryId = cached.id;
+            updateVehicleCardUI(cached.lorry_number, cached.vehicle_model, cached.vector_art_url);
+            return;
+        }
+    }
 
     try {
         const { data, error } = await supabaseClient
@@ -381,37 +472,93 @@ async function fetchLorryAssignment() {
         
         if (data) {
             driverLorry = data.lorry_number;
-            assignEl.textContent = driverLorry;
             
-            // Now resolve the vehicle ID in database (needed for trip estimates)
+            // Now resolve the vehicle details in database
             const baseLorryName = extractBaseVehicleName(driverLorry);
+            let vehicleDetails = null;
             
             // Try fetching from hire_to_pay_vehicles
             const { data: hireV } = await supabaseClient
                 .from('hire_to_pay_vehicles')
-                .select('id')
+                .select('id, vehicle_model, vector_art_url')
                 .eq('user_id', currentDriver.user_id)
                 .ilike('lorry_number', `%${baseLorryName}%`)
                 .maybeSingle();
 
             if (hireV) {
                 driverLorryId = hireV.id;
+                vehicleDetails = {
+                    id: hireV.id,
+                    lorry_number: driverLorry,
+                    vehicle_model: hireV.vehicle_model || 'Standard Truck',
+                    vector_art_url: hireV.vector_art_url
+                };
             } else {
                 // Try from commitment_vehicles
                 const { data: commV } = await supabaseClient
                     .from('commitment_vehicles')
-                    .select('id')
+                    .select('id, vehicle_model, vector_art_url')
                     .eq('user_id', currentDriver.user_id)
                     .ilike('vehicle_number', `%${baseLorryName}%`)
                     .maybeSingle();
 
                 if (commV) {
                     driverLorryId = commV.id;
+                    vehicleDetails = {
+                        id: commV.id,
+                        lorry_number: driverLorry,
+                        vehicle_model: commV.vehicle_model || 'Standard Truck',
+                        vector_art_url: commV.vector_art_url
+                    };
                 }
             }
+
+            if (!vehicleDetails) {
+                vehicleDetails = {
+                    id: null,
+                    lorry_number: driverLorry,
+                    vehicle_model: 'Unspecified Model',
+                    vector_art_url: null
+                };
+            }
+
+            // Cache and update UI
+            setCachedData('jt_driver_lorry_details', vehicleDetails);
+            updateVehicleCardUI(vehicleDetails.lorry_number, vehicleDetails.vehicle_model, vehicleDetails.vector_art_url);
+        } else {
+            // No assignment found
+            updateVehicleCardUI('No Vehicle', 'Not Assigned', null);
+            setCachedData('jt_driver_lorry_details', null);
         }
     } catch (err) {
         console.error('Error fetching assignment:', err.message);
+        // Fall back to cache on failure
+        const cached = getCachedData('jt_driver_lorry_details');
+        if (cached) {
+            driverLorry = cached.lorry_number;
+            driverLorryId = cached.id;
+            updateVehicleCardUI(cached.lorry_number, cached.vehicle_model, cached.vector_art_url);
+        } else {
+            updateVehicleCardUI('Error Loading', 'Offline/Error', null);
+        }
+    }
+}
+
+// Update vehicle card UI helper
+function updateVehicleCardUI(lorryNum, model, artUrl) {
+    const assignEl = document.getElementById('vehicleNumberDisplay');
+    const modelEl = document.getElementById('vehicleModelDisplay');
+    const artContainer = document.getElementById('vehicleVectorArtContainer');
+
+    if (assignEl) assignEl.textContent = lorryNum || 'Not Assigned';
+    if (modelEl) modelEl.textContent = model || 'Standard';
+    
+    if (artContainer) {
+        if (artUrl) {
+            artContainer.innerHTML = `<img src="${artUrl}" alt="Vehicle" class="vehicle-art-img" onerror="this.onerror=null; this.parentElement.innerHTML=defaultLorrySVG;">`;
+        } else {
+            artContainer.innerHTML = defaultLorrySVG;
+        }
     }
 }
 
@@ -425,7 +572,7 @@ function extractBaseVehicleName(name) {
     return name.trim().toUpperCase();
 }
 
-// Load Dashboard Statistics (KM & quick estimate)
+// Load Dashboard Statistics (KM & quick estimate with caching support)
 async function loadDashboardStats() {
     try {
         const [year, month] = activeMonth.split('-');
@@ -435,6 +582,20 @@ async function loadDashboardStats() {
 
         document.getElementById('monthlyKmValue').innerHTML = '<div class="skeleton skeleton-value"></div>';
         document.getElementById('salaryQuickEstimate').innerHTML = '<div class="skeleton skeleton-desc"></div>';
+
+        if (!navigator.onLine) {
+            // Load from cache
+            const cached = getCachedData(`jt_driver_dashboard_stats_${activeMonth}`);
+            if (cached) {
+                animateNumericText('monthlyKmValue', 0, cached.totalKm, 800);
+                const estimateEl = document.getElementById('salaryQuickEstimate');
+                if (estimateEl) {
+                    estimateEl.textContent = cached.salaryEstimateText;
+                    estimateEl.style.color = cached.salaryEstimateColor;
+                }
+                return;
+            }
+        }
 
         // 1. Fetch KM records for current month
         const { data: kmRecs, error: kmError } = await supabaseClient
@@ -473,10 +634,12 @@ async function loadDashboardStats() {
         if (errDeductions) throw errDeductions;
 
         const estimateEl = document.getElementById('salaryQuickEstimate');
+        let salaryEstimateText = '';
+        let salaryEstimateColor = '';
 
         if (salarySlip) {
-            estimateEl.textContent = `Salary: LKR ${parseFloat(salarySlip.net_salary).toFixed(2)}`;
-            estimateEl.style.color = '#00B37E'; // green finalized
+            salaryEstimateText = `Salary: LKR ${parseFloat(salarySlip.net_salary).toFixed(2)}`;
+            salaryEstimateColor = '#00B37E'; // green finalized
         } else {
             // Live estimation calculation
             const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
@@ -508,13 +671,37 @@ async function loadDashboardStats() {
             }
 
             const net = gross - totalAdvances - totalDayOffs - totalDeductions;
-            estimateEl.textContent = `Est. Salary: LKR ${net.toFixed(2)}`;
-            estimateEl.style.color = '#F0A500'; // amber estimate
+            salaryEstimateText = `Est. Salary: LKR ${net.toFixed(2)}`;
+            salaryEstimateColor = '#F0A500'; // amber estimate
         }
+
+        if (estimateEl) {
+            estimateEl.textContent = salaryEstimateText;
+            estimateEl.style.color = salaryEstimateColor;
+        }
+
+        // Cache dashboard values
+        setCachedData(`jt_driver_dashboard_stats_${activeMonth}`, {
+            totalKm: totalKm,
+            salaryEstimateText: salaryEstimateText,
+            salaryEstimateColor: salaryEstimateColor
+        });
 
     } catch (err) {
         console.error('Error calculating dashboard stats:', err.message);
-        alert('Dashboard Load Error: ' + err.message + '\nVerify your drivers profile settings.');
+        // Fall back to cache on failure
+        const cached = getCachedData(`jt_driver_dashboard_stats_${activeMonth}`);
+        if (cached) {
+            animateNumericText('monthlyKmValue', 0, cached.totalKm, 800);
+            const estimateEl = document.getElementById('salaryQuickEstimate');
+            if (estimateEl) {
+                estimateEl.textContent = cached.salaryEstimateText;
+                estimateEl.style.color = cached.salaryEstimateColor;
+            }
+        } else {
+            document.getElementById('monthlyKmValue').textContent = '-';
+            document.getElementById('salaryQuickEstimate').textContent = 'Load Error';
+        }
     }
 }
 
@@ -542,14 +729,28 @@ function initDriverMap() {
     trackUserLocation(true);
 }
 
-// Track and plot user's location
+// Track and plot user's location continuously via watchPosition
 function trackUserLocation(centerMap = false) {
     if (!navigator.geolocation) {
         console.warn('Geolocation not supported by this browser');
         return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    // If already watching, center if requested, but don't start another watcher
+    if (locationWatchId !== null) {
+        if (centerMap && userLocationMarker && driverMap) {
+            driverMap.setView(userLocationMarker.getLatLng(), 15);
+        }
+        return;
+    }
+
+    const options = {
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 15000
+    };
+
+    locationWatchId = navigator.geolocation.watchPosition(
         (position) => {
             const { latitude, longitude } = position.coords;
 
@@ -563,27 +764,41 @@ function trackUserLocation(centerMap = false) {
                     iconAnchor: [10, 10]
                 });
 
-                userLocationMarker = L.marker([latitude, longitude], { icon: locationDotIcon }).addTo(driverMap);
-                userLocationMarker.bindPopup('<strong>You are here</strong>');
+                if (driverMap) {
+                    userLocationMarker = L.marker([latitude, longitude], { icon: locationDotIcon }).addTo(driverMap);
+                    userLocationMarker.bindPopup('<strong>You are here</strong>');
+                }
             }
 
+            // Center map on first locate, or when recenter button is clicked
             if (centerMap && driverMap) {
-                driverMap.setView([latitude, longitude], 12);
+                driverMap.setView([latitude, longitude], 15);
+                centerMap = false; // reset flag so it doesn't snap center constantly
             }
         },
         (error) => {
-            console.warn('Geolocation access denied/failed:', error.message);
+            console.warn('Geolocation tracking error:', error.message);
             if (centerMap && driverMap) {
                 // Fallback to start point
                 driverMap.setView([KD_START_POINT.lat, KD_START_POINT.lng], 12);
             }
         },
-        { enableHighAccuracy: true }
+        options
     );
 }
 
-// Fetch Kevilton distribution locations
+// Fetch Kevilton distribution locations with caching support
 async function loadKeviltonDistributors() {
+    if (!navigator.onLine) {
+        const cached = getCachedData('jt_driver_distributors');
+        if (cached) {
+            distributorsList = cached;
+            plotDistributorsOnMap();
+            renderDistributorsList();
+            return;
+        }
+    }
+
     try {
         const { data, error } = await supabaseClient
             .from('kd_distributors')
@@ -593,10 +808,17 @@ async function loadKeviltonDistributors() {
         if (error) throw error;
         
         distributorsList = data || [];
+        setCachedData('jt_driver_distributors', distributorsList);
         plotDistributorsOnMap();
         renderDistributorsList();
     } catch (err) {
         console.error('Error fetching distributors:', err.message);
+        const cached = getCachedData('jt_driver_distributors');
+        if (cached) {
+            distributorsList = cached;
+            plotDistributorsOnMap();
+            renderDistributorsList();
+        }
     }
 }
 
@@ -700,7 +922,7 @@ function plotDistributorsOnMap() {
     });
 }
 
-// Copy location link helper (scoped to window for onclick handlers)
+// Copy location link helper
 window.copyMapLocation = function(link, btn) {
     navigator.clipboard.writeText(link).then(() => {
         btn.textContent = 'Copied!';
@@ -778,7 +1000,6 @@ window.focusOnMarker = function(lat, lng, openPopup = false) {
     document.querySelector('.drawer-toggle-arrow').classList.remove('open');
 
     if (openPopup) {
-        // Find matching marker and open popup
         markers.forEach(m => {
             const pos = m.getLatLng();
             if (Math.abs(pos.lat - lat) < 0.0001 && Math.abs(pos.lng - lng) < 0.0001) {
@@ -798,6 +1019,7 @@ function openSalaryModal() {
     }
 }
 
+// Close Salary modal
 function closeSalaryModal() {
     const modal = document.getElementById('salaryModal');
     if (modal) {
@@ -805,7 +1027,7 @@ function closeSalaryModal() {
     }
 }
 
-// Load salary details for the selected activeMonth
+// Load salary details for the selected activeMonth with caching fallback
 async function loadSalaryDetails() {
     try {
         const [year, month] = activeMonth.split('-');
@@ -831,6 +1053,18 @@ async function loadSalaryDetails() {
         document.getElementById('dayOffsListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
         document.getElementById('deductionsListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
 
+        if (!navigator.onLine) {
+            const cached = getCachedData(`jt_driver_salary_details_${activeMonth}`);
+            if (cached) {
+                if (cached.isFinalized) {
+                    displayFinalizedSalary(cached.record);
+                } else {
+                    displayLiveEstimatedSalaryFromCache(cached.data);
+                }
+                return;
+            }
+        }
+
         // Fetch finalized salary slip
         const { data: salaryRecord, error: salaryError } = await supabaseClient
             .from('driver_salary')
@@ -845,13 +1079,34 @@ async function loadSalaryDetails() {
         if (salaryRecord) {
             // Case 1: Finalized Salary Slip exists
             displayFinalizedSalary(salaryRecord);
+            // Cache record
+            setCachedData(`jt_driver_salary_details_${activeMonth}`, {
+                isFinalized: true,
+                record: salaryRecord
+            });
         } else {
             // Case 2: Live Estimate (not finalized)
-            await displayLiveEstimatedSalary(startDate, endDate);
+            const liveData = await displayLiveEstimatedSalary(startDate, endDate);
+            // Cache live breakdown data
+            setCachedData(`jt_driver_salary_details_${activeMonth}`, {
+                isFinalized: false,
+                data: liveData
+            });
         }
     } catch (err) {
         console.error('Error loading salary details:', err.message);
-        alert('Failed to load salary details: ' + err.message);
+        
+        // Try fallback to cache
+        const cached = getCachedData(`jt_driver_salary_details_${activeMonth}`);
+        if (cached) {
+            if (cached.isFinalized) {
+                displayFinalizedSalary(cached.record);
+            } else {
+                displayLiveEstimatedSalaryFromCache(cached.data);
+            }
+        } else {
+            alert('Failed to load salary details: ' + err.message);
+        }
     }
 }
 
@@ -930,6 +1185,33 @@ async function displayLiveEstimatedSalary(startDate, endDate) {
     if (errDo) throw errDo;
     if (errDed) throw errDed;
 
+    let tripCount = 0;
+    if (currentDriver.salary_type === 'per_tip' && driverLorryId) {
+        const [{ count: hireCount }, { count: commCount }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate),
+            supabaseClient.from('commitment_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate)
+        ]);
+        tripCount = (hireCount || 0) + (commCount || 0);
+    }
+
+    const liveData = { kmRecs, advances, dayOffs, deductions, tripCount };
+    renderLiveEstimatedSalaryUI(liveData, startDate, endDate);
+    return liveData;
+}
+
+function displayLiveEstimatedSalaryFromCache(liveData) {
+    document.getElementById('salaryEstimateBanner').classList.remove('hidden');
+    const [year, month] = activeMonth.split('-');
+    const startDate = `${year}-${month}-01`;
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    
+    renderLiveEstimatedSalaryUI(liveData, startDate, endDate);
+}
+
+function renderLiveEstimatedSalaryUI(liveData, startDate, endDate) {
+    const { kmRecs, advances, dayOffs, deductions, tripCount } = liveData;
+    
     const totalKm = kmRecs?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
     const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
     const totalDayOffs = dayOffs?.reduce((sum, d) => sum + parseFloat(d.deduction_amount || 0), 0) || 0;
@@ -953,20 +1235,10 @@ async function displayLiveEstimatedSalary(startDate, endDate) {
         
         gross = basic + extraKmSal;
     } else {
-        // Per-tip estimated salary
-        let tripCount = 0;
-        if (driverLorryId) {
-            const [{ count: hireCount }, { count: commCount }] = await Promise.all([
-                supabaseClient.from('hire_to_pay_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).gte('hire_date', startDate).lte('hire_date', endDate),
-                supabaseClient.from('commitment_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).gte('hire_date', startDate).lte('hire_date', endDate)
-            ]);
-            tripCount = (hireCount || 0) + (commCount || 0);
-        }
-
         const perTipCharge = parseFloat(currentDriver.per_tip_charge || 0);
-        const tipSal = tripCount * perTipCharge;
+        const tipSal = (tripCount || 0) * perTipCharge;
 
-        document.getElementById('tipCountDisplay').textContent = tripCount;
+        document.getElementById('tipCountDisplay').textContent = tripCount || 0;
         document.getElementById('valTipSalary').textContent = `LKR ${tipSal.toFixed(2)}`;
         
         gross = tipSal;
@@ -1119,6 +1391,7 @@ function closeRaceModal() {
     }
 }
 
+// Load race rankings with caching support
 async function loadDriverRace() {
     const listContainer = document.getElementById('raceList');
     const loadingEl = document.getElementById('raceLoading');
@@ -1131,19 +1404,29 @@ async function loadDriverRace() {
     listContainer.classList.add('hidden');
     listContainer.innerHTML = '';
 
+    const now = new Date();
+    // Format label strictly using 2026, e.g., "June 2026 Standings"
+    const displayDate = new Date(2026, now.getMonth(), 1);
+    const monthName = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (labelEl) labelEl.textContent = `${monthName} Standings`;
+
+    if (!navigator.onLine) {
+        const cached = getCachedData('jt_driver_race_standings');
+        if (cached) {
+            renderRaceListUI(cached.rankedDrivers, cached.maxKm);
+            loadingEl.classList.add('hidden');
+            listContainer.classList.remove('hidden');
+            return;
+        }
+    }
+
     try {
         // Use current calendar month for the race, strictly restricted to 2026
-        const now = new Date();
         const year = 2026;
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const startDate = `${year}-${month}-01`;
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-
-        // Format label strictly using 2026, e.g., "June 2026 Standings"
-        const displayDate = new Date(2026, now.getMonth(), 1);
-        const monthName = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        if (labelEl) labelEl.textContent = `${monthName} Standings`;
 
         // 1. Fetch active drivers
         const { data: drivers, error: driverError } = await supabaseClient
@@ -1192,83 +1475,105 @@ async function loadDriverRace() {
             listContainer.innerHTML = '<div class="no-results">No drivers in this month\'s race.</div>';
             loadingEl.classList.add('hidden');
             listContainer.classList.remove('hidden');
+            // Cache empty standings
+            setCachedData('jt_driver_race_standings', { rankedDrivers: [], maxKm: 1 });
             return;
         }
 
         rankedDrivers.sort((a, b) => b.totalKm - a.totalKm);
 
-        // Find max km for progress bar sizing (avoid division by zero)
         const maxKm = rankedDrivers[0].totalKm || 1;
 
-        // Render each driver card
-        rankedDrivers.forEach((d, index) => {
-            const rank = index + 1;
-            const isCurrentUser = d.id === currentDriver.id;
-            
-            // Rank Badge or Medal
-            let rankHtml = '';
-            if (rank === 1) {
-                rankHtml = '<span class="race-rank-medal">🥇</span>';
-            } else if (rank === 2) {
-                rankHtml = '<span class="race-rank-medal">🥈</span>';
-            } else if (rank === 3) {
-                rankHtml = '<span class="race-rank-medal">🥉</span>';
-            } else {
-                rankHtml = `<span class="race-rank-number">#${rank}</span>`;
-            }
+        // Cache standings
+        setCachedData('jt_driver_race_standings', { rankedDrivers, maxKm });
 
-            // Initials Fallback for Avatar
-            const cleanedName = cleanDriverName(d.name);
-            const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
-            const avatarHtml = d.photo_url 
-                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                   <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
-                : `<div class="race-avatar-fallback">${initials}</div>`;
-
-            // Calculate progress percentage
-            const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
-
-            const card = document.createElement('div');
-            card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
-            card.innerHTML = `
-                <div class="race-rank-container">
-                    ${rankHtml}
-                </div>
-                <div class="race-avatar-container">
-                    ${avatarHtml}
-                </div>
-                <div class="race-details">
-                    <div class="race-name-row">
-                        <span class="race-name">${cleanedName} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
-                        <div class="race-value-container">
-                            <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-                            <span class="race-value-unit">KM</span>
-                        </div>
-                    </div>
-                    <div class="race-progress-bg">
-                        <div class="race-progress-bar" style="width: 0%;"></div>
-                    </div>
-                </div>
-            `;
-
-            listContainer.appendChild(card);
-
-            // Animate progress bar width slightly after appending for smooth micro-animation
-            setTimeout(() => {
-                const bar = card.querySelector('.race-progress-bar');
-                if (bar) bar.style.width = `${progressPercent}%`;
-            }, 100);
-        });
+        renderRaceListUI(rankedDrivers, maxKm);
 
         loadingEl.classList.add('hidden');
         listContainer.classList.remove('hidden');
 
     } catch (err) {
         console.error('Error loading driver race:', err.message);
-        listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">Failed to load race: ${err.message}</div>`;
+        
+        // Fallback to cache on error
+        const cached = getCachedData('jt_driver_race_standings');
+        if (cached) {
+            renderRaceListUI(cached.rankedDrivers, cached.maxKm);
+        } else {
+            listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">Failed to load race: ${err.message}</div>`;
+        }
         loadingEl.classList.add('hidden');
         listContainer.classList.remove('hidden');
     }
+}
+
+// Render race rank items helper
+function renderRaceListUI(rankedDrivers, maxKm) {
+    const listContainer = document.getElementById('raceList');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    if (rankedDrivers.length === 0) {
+        listContainer.innerHTML = '<div class="no-results">No drivers in this month\'s race.</div>';
+        return;
+    }
+
+    rankedDrivers.forEach((d, index) => {
+        const rank = index + 1;
+        const isCurrentUser = d.id === currentDriver.id;
+        
+        let rankHtml = '';
+        if (rank === 1) {
+            rankHtml = '<span class="race-rank-medal">🥇</span>';
+        } else if (rank === 2) {
+            rankHtml = '<span class="race-rank-medal">🥈</span>';
+        } else if (rank === 3) {
+            rankHtml = '<span class="race-rank-medal">🥉</span>';
+        } else {
+            rankHtml = `<span class="race-rank-number">#${rank}</span>`;
+        }
+
+        // Initials Fallback for Avatar
+        const cleanedName = cleanDriverName(d.name);
+        const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+        const avatarHtml = d.photo_url 
+            ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+               <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
+            : `<div class="race-avatar-fallback">${initials}</div>`;
+
+        const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
+
+        const card = document.createElement('div');
+        card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
+        card.innerHTML = `
+            <div class="race-rank-container">
+                ${rankHtml}
+            </div>
+            <div class="race-avatar-container">
+                ${avatarHtml}
+            </div>
+            <div class="race-details">
+                <div class="race-name-row">
+                    <span class="race-name">${cleanedName} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
+                    <div class="race-value-container">
+                        <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                        <span class="race-value-unit">KM</span>
+                    </div>
+                </div>
+                <div class="race-progress-bg">
+                    <div class="race-progress-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+        `;
+
+        listContainer.appendChild(card);
+
+        // Animate progress bar width slightly after appending for smooth micro-animation
+        setTimeout(() => {
+            const bar = card.querySelector('.race-progress-bar');
+            if (bar) bar.style.width = `${progressPercent}%`;
+        }, 100);
+    });
 }
 
 // Start everything when DOM is ready
