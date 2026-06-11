@@ -52,15 +52,19 @@ function initApp() {
     checkExistingSession();
 }
 
-// Set default month to current local month
+// Set default month strictly within the year 2026
 function setDefaultMonth() {
     const now = new Date();
-    const year = now.getFullYear();
+    const year = 2026;
     const month = String(now.getMonth() + 1).padStart(2, '0');
     activeMonth = `${year}-${month}`;
     
     const el = document.getElementById('salaryMonthFilter');
-    if (el) el.value = activeMonth;
+    if (el) {
+        el.value = activeMonth;
+        el.min = '2026-01';
+        el.max = '2026-12';
+    }
 }
 
 // Check if driver is already logged in
@@ -186,9 +190,18 @@ function setupEventHandlers() {
         }
     });
 
-    // Month Selector in Salary Modal
+    // Month Selector in Salary Modal with 2026 validation
     document.getElementById('salaryMonthFilter')?.addEventListener('change', (e) => {
-        activeMonth = e.target.value;
+        const val = e.target.value;
+        if (val && !val.startsWith('2026-')) {
+            alert('Only data from the year 2026 is accessible.');
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            activeMonth = `2026-${month}`;
+            e.target.value = activeMonth;
+        } else {
+            activeMonth = val;
+        }
         loadSalaryDetails();
     });
 
@@ -292,10 +305,48 @@ function logout() {
 async function showDashboard() {
     showView('dashboardView');
     
-    // Update basic UI fields
-    document.getElementById('driverName').textContent = currentDriver.name;
+    // Update basic UI fields with dynamic greeting and cleaned name (no nickname)
+    const hr = new Date().getHours();
+    let greeting = 'Hello';
+    if (hr < 12) greeting = 'Good morning';
+    else if (hr < 17) greeting = 'Good afternoon';
+    else greeting = 'Good evening';
+    
+    const welcomeEl = document.querySelector('.welcome-text');
+    if (welcomeEl) {
+        welcomeEl.textContent = `${greeting},`;
+    }
+
+    document.getElementById('driverName').textContent = cleanDriverName(currentDriver.name);
     if (currentDriver.photo_url) {
         document.getElementById('driverAvatar').src = currentDriver.photo_url;
+    }
+
+    // Populate profile details inside the modal
+    if (document.getElementById('profileRole')) {
+        document.getElementById('profileRole').textContent = currentDriver.role ? (currentDriver.role.charAt(0).toUpperCase() + currentDriver.role.slice(1)) : 'Driver';
+    }
+    if (document.getElementById('profileContact')) {
+        document.getElementById('profileContact').textContent = currentDriver.contact || '-';
+    }
+    if (document.getElementById('profileLicense')) {
+        document.getElementById('profileLicense').textContent = currentDriver.license_number || '-';
+    }
+    if (document.getElementById('profileAge')) {
+        document.getElementById('profileAge').textContent = currentDriver.age ? `${currentDriver.age} years` : '-';
+    }
+    if (document.getElementById('profileAddress')) {
+        document.getElementById('profileAddress').textContent = currentDriver.address || '-';
+    }
+    if (document.getElementById('profileSalaryType')) {
+        if (currentDriver.salary_type === 'per_tip') {
+            document.getElementById('profileSalaryType').textContent = `Per Tip (LKR ${parseFloat(currentDriver.per_tip_charge || 0).toFixed(2)} / trip)`;
+        } else {
+            const basic = parseFloat(currentDriver.basic_salary || 0).toFixed(2);
+            const limit = currentDriver.km_limit || 0;
+            const rate = parseFloat(currentDriver.extra_km_rate || 0).toFixed(2);
+            document.getElementById('profileSalaryType').innerHTML = `Fixed Salary (LKR ${basic})<br><small style="color: var(--text-secondary);">Limit: ${limit} km | Extra: LKR ${rate}/km</small>`;
+        }
     }
 
     // Fetch Assigned Lorry Details
@@ -809,13 +860,7 @@ function displayFinalizedSalary(record) {
     const fb = document.getElementById('salaryFinalizedBanner');
     fb.classList.remove('hidden');
 
-    const downloadBtn = document.getElementById('downloadReceiptBtn');
-    if (record.receipt_url) {
-        downloadBtn.href = record.receipt_url;
-        downloadBtn.classList.remove('hidden');
-    } else {
-        downloadBtn.classList.add('hidden');
-    }
+    // (Removed finalized salary receipt download link from driver app)
 
     // Set Summary Info
     animateNumericText('modalNetSalary', 0, parseFloat(record.net_salary), 750, 'LKR ');
@@ -1087,16 +1132,17 @@ async function loadDriverRace() {
     listContainer.innerHTML = '';
 
     try {
-        // Use current calendar month for the race
+        // Use current calendar month for the race, strictly restricted to 2026
         const now = new Date();
-        const year = now.getFullYear();
+        const year = 2026;
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const startDate = `${year}-${month}-01`;
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        // Format label, e.g., "June 2026 Standings"
-        const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+        // Format label strictly using 2026, e.g., "June 2026 Standings"
+        const displayDate = new Date(2026, now.getMonth(), 1);
+        const monthName = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
         if (labelEl) labelEl.textContent = `${monthName} Standings`;
 
         // 1. Fetch active drivers
@@ -1172,9 +1218,10 @@ async function loadDriverRace() {
             }
 
             // Initials Fallback for Avatar
-            const initials = d.name ? d.name.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+            const cleanedName = cleanDriverName(d.name);
+            const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
             const avatarHtml = d.photo_url 
-                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${d.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                    <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
                 : `<div class="race-avatar-fallback">${initials}</div>`;
 
@@ -1192,7 +1239,7 @@ async function loadDriverRace() {
                 </div>
                 <div class="race-details">
                     <div class="race-name-row">
-                        <span class="race-name">${d.name} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
+                        <span class="race-name">${cleanedName} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
                         <div class="race-value-container">
                             <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                             <span class="race-value-unit">KM</span>
