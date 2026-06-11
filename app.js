@@ -11,6 +11,15 @@ let userRole = null; // 'admin' or 'viewer'
 let adminUserId = null; // Store the admin user ID for data filtering
 let currentPage = 'dashboard';
 
+// Utility helpers for staff nicknames
+function cleanDriverName(fullName) {
+    return (fullName || '').replace(/\s*\(.*?\)\s*$/, '').trim();
+}
+function getNickname(fullName) {
+    const match = (fullName || '').match(/\((.*?)\)$/);
+    return match ? match[1].trim() : '';
+}
+
 // Chart Variables
 let revenueChart = null;
 let profitChart = null;
@@ -1048,8 +1057,13 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 
     const id = document.getElementById('driverId').value;
     const salaryType = document.getElementById('driverSalaryType').value || 'fixed';
+    
+    const nameInput = document.getElementById('driverName').value.trim();
+    const nicknameInput = document.getElementById('driverNickname').value.trim();
+    const combinedName = nicknameInput ? `${nameInput} (${nicknameInput})` : nameInput;
+
     const data = {
-        name: document.getElementById('driverName').value,
+        name: combinedName,
         contact: document.getElementById('driverContact').value,
         license_number: document.getElementById('driverLicense').value || null,
         age: parseInt(document.getElementById('driverAge').value),
@@ -1121,7 +1135,7 @@ async function loadDrivers() {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
             return;
         }
 
@@ -1193,6 +1207,9 @@ async function loadDrivers() {
             const driverRole = (driver.role || 'Driver').toLowerCase();
             let lorryHtml = '';
 
+            const nameCleanForAssign = cleanDriverName(driver.name).toLowerCase();
+            const isFamilyDriverForAssign = nameCleanForAssign === 'jaap jayasooriya' || nameCleanForAssign === 'jauk jayasooriya';
+
             if (assignment) {
                 // Already assigned — premium badge: art panel + plate panel
                 const artUrl = artMap[assignment.lorry];
@@ -1207,8 +1224,8 @@ async function loadDrivers() {
                     </span>
                     ${userRole !== 'viewer' ? `<button class="lorry-assign-btn" onclick="unassignLorry(${driver.id})" title="Remove assignment">✖ Unassign</button>` : ''}
                 </div>`;
-            } else if (userRole !== 'viewer' && vehicleList.length > 0 && driverRole !== 'other') {
-                // Not assigned — filtered dropdown by role slot
+            } else if (userRole !== 'viewer' && vehicleList.length > 0 && driverRole !== 'other' && !isFamilyDriverForAssign) {
+                // Not assigned — filtered dropdown by role slot (only show for non-family drivers)
                 const isHelper = driverRole === 'helper';
                 const opts = vehicleList
                     .filter(v => {
@@ -1236,9 +1253,14 @@ async function loadDrivers() {
 
             const row = document.createElement('tr');
             if (driver.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
+            
+            const cleanedName = cleanDriverName(driver.name);
+            const nickname = getNickname(driver.name);
+
             row.innerHTML = `
                 <td>${photoHTML}</td>
-                <td>${driver.name}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}${lorryHtml}</td>
+                <td>${cleanedName}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}${lorryHtml}</td>
+                <td>${nickname || '-'}</td>
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
                 <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
@@ -1251,10 +1273,31 @@ async function loadDrivers() {
             return row;
         }
 
-        activeDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
+        const normalActiveDrivers = activeDrivers.filter(d => {
+            const nameClean = cleanDriverName(d.name).toLowerCase();
+            return nameClean !== 'jaap jayasooriya' && nameClean !== 'jauk jayasooriya';
+        });
+        const familyActiveDrivers = activeDrivers.filter(d => {
+            const nameClean = cleanDriverName(d.name).toLowerCase();
+            return nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya';
+        });
+
+        normalActiveDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
+
+        if (familyActiveDrivers.length > 0) {
+            const colSpan = userRole === 'viewer' ? 10 : 11;
+            const familyHeaderRow = document.createElement('tr');
+            familyHeaderRow.innerHTML = `
+                <td colspan="${colSpan}" style="background-color: var(--surface-hover); font-weight: bold; padding: 12px; color: var(--text-primary); text-align: left; border-bottom: 2px solid var(--brand-red);">
+                    👨‍👩‍👦 Family Drivers
+                </td>
+            `;
+            tbody.appendChild(familyHeaderRow);
+            familyActiveDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
+        }
 
         if (terminatedDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 9 : 10;
+            const colSpan = userRole === 'viewer' ? 10 : 11;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.innerHTML = `
                 <td colspan="${colSpan}" onclick="toggleDriverArchive()">
@@ -1331,7 +1374,8 @@ async function editDriver(id) {
         if (error) throw error;
 
         document.getElementById('driverId').value = data.id;
-        document.getElementById('driverName').value = data.name;
+        document.getElementById('driverName').value = cleanDriverName(data.name);
+        document.getElementById('driverNickname').value = getNickname(data.name);
         document.getElementById('driverContact').value = data.contact;
         document.getElementById('driverLicense').value = data.license_number || '';
         document.getElementById('driverAge').value = data.age;
@@ -6523,6 +6567,11 @@ async function updateDriverDayOffSelectors(preserveFormValue = false) {
             .neq('terminated', true)
             .order('name', { ascending: true });
 
+        const filteredDrivers = drivers?.filter(d => {
+            const nameClean = cleanDriverName(d.name).toLowerCase();
+            return nameClean !== 'jaap jayasooriya' && nameClean !== 'jauk jayasooriya';
+        });
+
         const formSelect = document.getElementById('driverDayOffDriver');
         const filterSelect = document.getElementById('driverDayOffFilter');
 
@@ -6530,7 +6579,7 @@ async function updateDriverDayOffSelectors(preserveFormValue = false) {
         if (filterSelect) {
             const currentFilter = filterSelect.value;
             filterSelect.innerHTML = '<option value="">All Staff</option>';
-            drivers?.forEach(d => {
+            filteredDrivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
                 option.textContent = d.name;
@@ -6543,7 +6592,7 @@ async function updateDriverDayOffSelectors(preserveFormValue = false) {
         if (formSelect) {
             const currentFormValue = preserveFormValue ? formSelect.value : '';
             formSelect.innerHTML = '<option value="">Select Staff</option>';
-            drivers?.forEach(d => {
+            filteredDrivers?.forEach(d => {
                 const option = document.createElement('option');
                 option.value = d.id;
                 option.textContent = d.name;
@@ -8370,7 +8419,7 @@ async function updateKmSalaryWidget() {
             const appliedDayOffDeductions = didNotMeetMinKm ? totalDayOffDeductions : 0;
             const totalDeductions = baseDeductions + appliedDayOffDeductions;
 
-            const nameClean = (driver.name || '').trim();
+            const nameClean = cleanDriverName(driver.name);
             const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
 
             let html = '';
@@ -8557,7 +8606,7 @@ async function loadDriverPerformance(monthValue) {
 
         driversOnly.forEach((driver, index) => {
             const totalKm = kmByDriver[driver.id] || 0;
-            const nameClean = (driver.name || '').trim();
+            const nameClean = cleanDriverName(driver.name);
             const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
 
             const rank = index + 1;

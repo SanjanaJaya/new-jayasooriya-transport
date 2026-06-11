@@ -208,7 +208,12 @@ async function loadSalaryDrivers() {
 
         select.innerHTML = '<option value="">Select Driver</option>';
 
-        drivers.forEach(driver => {
+        const filteredDrivers = drivers.filter(driver => {
+            const nameClean = cleanDriverName(driver.name).toLowerCase();
+            return nameClean !== 'jaap jayasooriya' && nameClean !== 'jauk jayasooriya';
+        });
+
+        filteredDrivers.forEach(driver => {
             const option = document.createElement('option');
             option.value = driver.id;
             const isPerTip = driver.salary_type === 'per_tip';

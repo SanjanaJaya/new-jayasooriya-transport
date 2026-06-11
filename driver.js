@@ -16,6 +16,11 @@ let userLocationMarker = null;
 let isOnline = true;
 let distributorsList = [];
 
+// Utility helpers for staff nicknames
+function cleanDriverName(fullName) {
+    return (fullName || '').replace(/\s*\(.*?\)\s*$/, '').trim();
+}
+
 // Starting point
 const KD_START_POINT = {
     name: 'John Keells Enderamulla',
@@ -1123,7 +1128,7 @@ async function loadDriverRace() {
         const rankedDrivers = (drivers || [])
             .filter(d => {
                 if ((d.role || '').toLowerCase() !== 'driver') return false;
-                const nameClean = (d.name || '').trim().toLowerCase();
+                const nameClean = cleanDriverName(d.name).toLowerCase();
                 if (nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya') return false;
                 
                 // Exclude if they didn't run this month
