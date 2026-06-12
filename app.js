@@ -3443,11 +3443,9 @@ async function loadDashboardCharts(cachedData = null) {
         const months = [];
         const revenues = [];
         const profits = [];
-        const creditAmounts = [];
         const fuelCosts = [];
         let totalRevenue6M = 0;
         let totalProfit6M = 0;
-        let totalCreditAmount6M = 0;
         let totalHires6M = 0;
 
         // Calculate 6-month date range
@@ -3473,7 +3471,7 @@ async function loadDashboardCharts(cachedData = null) {
         const selLastDay = new Date(selYear, parseInt(selMon), 0).getDate();
         const selEnd = `${selYear}-${selMonPadded}-${String(selLastDay).padStart(2, '0')}`;
 
-        let allHireRecords6M, allCommitmentRecords6M, allDayOffs6M, allOtherOpRecords6M, allCommitmentVehicles;
+        let allHireRecords6M, allCommitmentRecords6M, allDayOffs6M, allOtherOpRecords6M, allCommitmentVehicles, allElRecords6M;
         let bdHireRec, bdCommRec, bdOtherRec, bdDayOffs;
 
         if (cachedData) {
@@ -3488,19 +3486,22 @@ async function loadDashboardCharts(cachedData = null) {
                 { data: rAllCommitmentRecords6M },
                 { data: rAllDayOffs6M },
                 { data: rAllOtherOpRecords6M },
-                { data: rAllCommitmentVehicles }
+                { data: rAllCommitmentVehicles },
+                { data: rAllElRecords6M }
             ] = await Promise.all([
                 supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
                 supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
                 supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate6M).lte('day_off_date', endDate6M),
                 supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
-                supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId)
+                supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId),
+                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate6M).lte('date', endDate6M)
             ]);
             allHireRecords6M = rAllHireRecords6M;
             allCommitmentRecords6M = rAllCommitmentRecords6M;
             allDayOffs6M = rAllDayOffs6M;
             allOtherOpRecords6M = rAllOtherOpRecords6M;
             allCommitmentVehicles = rAllCommitmentVehicles;
+            allElRecords6M = rAllElRecords6M;
         } else {
             // Fetch all 6-month datasets, commitment vehicles, and selected month breakdown data concurrently
             const [
@@ -3513,7 +3514,8 @@ async function loadDashboardCharts(cachedData = null) {
                 { data: rBdHireRec },
                 { data: rBdCommRec },
                 { data: rBdOtherRec },
-                { data: rBdDayOffs }
+                { data: rBdDayOffs },
+                { data: rAllElRecords6M }
             ] = await Promise.all([
                 supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
                 supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
@@ -3524,7 +3526,8 @@ async function loadDashboardCharts(cachedData = null) {
                 supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
                 supabaseClient.from('commitment_records').select('vehicle_id, distance').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
                 supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
-                supabaseClient.from('commitment_day_offs').select('deduction_amount').eq('user_id', currentQueryUserId).gte('day_off_date', selStart).lte('day_off_date', selEnd)
+                supabaseClient.from('commitment_day_offs').select('deduction_amount').eq('user_id', currentQueryUserId).gte('day_off_date', selStart).lte('day_off_date', selEnd),
+                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate6M).lte('date', endDate6M)
             ]);
             allHireRecords6M = rAllHireRecords6M;
             allCommitmentRecords6M = rAllCommitmentRecords6M;
@@ -3535,6 +3538,7 @@ async function loadDashboardCharts(cachedData = null) {
             bdCommRec = rBdCommRec;
             bdOtherRec = rBdOtherRec;
             bdDayOffs = rBdDayOffs;
+            allElRecords6M = rAllElRecords6M;
         }
 
         for (let i = 5; i >= 0; i--) {
@@ -3590,28 +3594,28 @@ async function loadDashboardCharts(cachedData = null) {
                 monthFuelCost += (record.fuel_cost || 0);
             });
 
+            const monthElRecords = allElRecords6M?.filter(r => r.date?.startsWith(targetMonthKey)) || [];
+            const monthElActualCost = monthElRecords.reduce((sum, r) => sum + (r.actual_cost || 0), 0);
+
             const monthProfit = monthRevenue - monthFuelCost;
-            const monthFuelAllowance = monthFuelCost * 0.1600;
-            const monthCreditAmount = monthProfit + monthFuelAllowance;
+            const monthFuelAllowance = monthFuelCost * 0.1800; // 18.00% VAT OFF
+            const monthNetProfit = monthProfit + monthFuelAllowance - monthElActualCost;
 
             months.push(monthLabel);
             revenues.push(monthRevenue);
-            profits.push(monthProfit);
-            creditAmounts.push(monthCreditAmount);
+            profits.push(monthNetProfit);
             fuelCosts.push(monthFuelCost);
             totalRevenue6M += monthRevenue;
-            totalProfit6M += monthProfit;
-            totalCreditAmount6M += monthCreditAmount;
+            totalProfit6M += monthNetProfit;
             totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpRecords?.length || 0);
         }
 
         const avgRevenue = totalRevenue6M / 6;
         const avgProfit = totalProfit6M / 6;
-        const avgCreditAmount = totalCreditAmount6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
 
         document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toFixed(2)}`;
-        document.getElementById('avgProfit').textContent = `LKR ${avgCreditAmount.toFixed(2)}`;
+        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toFixed(2)}`;
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
 
@@ -3665,8 +3669,8 @@ async function loadDashboardCharts(cachedData = null) {
                 data: {
                     labels: months,
                     datasets: [{
-                        label: 'Monthly Total Credit Amount',
-                        data: creditAmounts,
+                        label: 'Monthly Net Profit',
+                        data: profits,
                         borderColor: '#27AE60',
                         backgroundColor: 'rgba(39, 174, 96, 0.1)',
                         borderWidth: 3,
