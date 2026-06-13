@@ -656,7 +656,7 @@ async function loadDashboard() {
             supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate).lte('day_off_date', endDate),
             supabaseClient.from('hire_to_pay_vehicles').select('*').eq('user_id', currentQueryUserId),
             supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId),
-            supabaseClient.from('excessing_litres').select('actual_cost').eq('user_id', currentQueryUserId).gte('date', startDate).lte('date', endDate)
+            supabaseClient.from('excessing_litres').select('actual_cost, fuel_amount_l').eq('user_id', currentQueryUserId).gte('date', startDate).lte('date', endDate)
         ]);
 
         // In-memory mapping of joins so chart functions don't need separate queries
@@ -2876,6 +2876,11 @@ async function loadDashboardData(monthValue, cachedData = null) {
 
         const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
+        // Excessing Litres total amount (L)
+        const elTotalLitres = cachedData
+            ? (cachedData.excessingLitres?.reduce((sum, r) => sum + (r.fuel_amount_l || 0), 0) || 0)
+            : 0;
+
         setText('totalRevenue', `LKR ${totalRevenue.toFixed(2)}`);
         setText('fuelCost', `LKR ${totalFuelCost.toFixed(2)}`);
         setText('fuelAllowance', `LKR ${fuelAllowance.toFixed(2)}`);
@@ -2885,6 +2890,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
         setText('activeLorries', activeVehiclesSet.size);
         setText('totalDistance', `${totalDistance.toLocaleString()} km`);
         setText('totalDieselLitres', `${totalFuelLitres.toFixed(0)} L`);
+        setText('dashboardExcessingLitres', `${elTotalLitres.toFixed(2)} L`);
+        setText('dashboardExcessingCost', `LKR ${elActualCostForMonth.toFixed(2)}`);
 
         // Profit (Revenue - Fuel Cost + Fuel Allowance)
         setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
@@ -2961,7 +2968,9 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
             if (records.length > 0) {
                 const totalKm = records.reduce((sum, r) => sum + r.distance, 0);
                 const totalRevenue = records.reduce((sum, r) => sum + r.hire_amount, 0);
-                const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0);
+                const totalFuelRaw = records.reduce((sum, r) => sum + r.fuel_cost, 0);
+                // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
+                const totalFuel = totalFuelRaw * 0.82;
                 const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
                 const profit = totalRevenue - totalFuel;
                 const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
@@ -3014,7 +3023,9 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                 const exceedingKm = Math.max(0, totalKm - (vehicle.km_limit_per_month || 0));
                 const extraKmCharges = exceedingKm * (vehicle.extra_km_charge || 0);
                 const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
-                const totalFuel = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+                const totalFuelRaw = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
+                // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
+                const totalFuel = totalFuelRaw * 0.82;
                 const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
                 const profit = totalRevenue - totalFuel;
                 const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
@@ -3056,7 +3067,8 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                 }
                 otherOpGrouped[base].totalKm += r.distance || 0;
                 otherOpGrouped[base].totalRevenue += r.hire_amount || 0;
-                otherOpGrouped[base].totalFuel += r.fuel_cost || 0;
+                // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
+                otherOpGrouped[base].totalFuel += (r.fuel_cost || 0) * 0.82;
                 otherOpGrouped[base].totalFuelLitres += r.fuel_litres || 0;
                 otherOpGrouped[base].recordsCount++;
             });
@@ -3137,7 +3149,7 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                         <th style="text-align: center;">KM Progress</th>
                                         <th style="text-align: center;">Hires</th>
                                         <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
                                         <th style="text-align: right;">Fuel Litres</th>
                                         <th style="text-align: right;">Profit</th>
                                     </tr>
@@ -3229,7 +3241,7 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                         <th style="text-align: right;">Total KM</th>
                                         <th style="text-align: center;">Hires</th>
                                         <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
                                         <th style="text-align: right;">Fuel Litres</th>
                                         <th style="text-align: right;">Profit</th>
                                     </tr>
@@ -3308,7 +3320,7 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                         <th style="text-align: right;">Total KM</th>
                                         <th style="text-align: center;">Hires</th>
                                         <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost</th>
+                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
                                         <th style="text-align: right;">Fuel Litres</th>
                                         <th style="text-align: right;">Profit</th>
                                     </tr>
