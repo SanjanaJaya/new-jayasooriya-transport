@@ -96,7 +96,7 @@ function initApp() {
 
     // Register Service Worker for PWA installability
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
+        navigator.serviceWorker.register('sw.js?v=3')
             .then(reg => console.log('Driver App PWA Service Worker Registered', reg.scope))
             .catch(err => console.error('Driver App PWA Service Worker Registration Failed', err));
     }
