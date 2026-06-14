@@ -1029,7 +1029,30 @@ document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverSalaryType').value = 'fixed';
     toggleDriverSalaryTypeFields();
     document.getElementById('driverFormContainer').style.display = 'block';
+    // Wire generate password button
+    wireGeneratePasswordBtn();
 });
+
+// Generate a unique 8-char driver password
+function generateUniquePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let pwd = '';
+    for (let i = 0; i < 8; i++) {
+        if (i === 4) pwd += '-';
+        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+}
+
+function wireGeneratePasswordBtn() {
+    const btn = document.getElementById('generatePasswordBtn');
+    if (btn) {
+        btn.onclick = () => {
+            const pwdInput = document.getElementById('driverPassword');
+            if (pwdInput) pwdInput.value = generateUniquePassword();
+        };
+    }
+}
 
 // Toggle salary type fields in driver form
 function toggleDriverSalaryTypeFields() {
@@ -1066,6 +1089,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         name: combinedName,
         contact: document.getElementById('driverContact').value,
         license_number: document.getElementById('driverLicense').value || null,
+        password: document.getElementById('driverPassword')?.value?.trim() || null,
         age: parseInt(document.getElementById('driverAge').value),
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
@@ -1265,6 +1289,13 @@ async function loadDrivers() {
                 <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number || '-'}</td>
+                <td>
+                    ${driver.password
+                        ? `<span style="font-family:monospace;font-size:12px;letter-spacing:1px;background:rgba(0,0,0,0.06);padding:2px 7px;border-radius:6px;">${driver.password}</span>
+                           <button onclick="navigator.clipboard.writeText('${driver.password}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1200)})" style="border:none;background:none;cursor:pointer;font-size:13px;vertical-align:middle;" title="Copy password">📋</button>`
+                        : '<span style="color:#bbb;font-size:12px;">Not set</span>'
+                    }
+                </td>
                 <td>${driver.age}</td>
                 <td>${driver.address}</td>
                 <td style="font-size:12px;">${salaryInfo}</td>
@@ -1378,6 +1409,7 @@ async function editDriver(id) {
         document.getElementById('driverNickname').value = getNickname(data.name);
         document.getElementById('driverContact').value = data.contact;
         document.getElementById('driverLicense').value = data.license_number || '';
+        if (document.getElementById('driverPassword')) document.getElementById('driverPassword').value = data.password || '';
         document.getElementById('driverAge').value = data.age;
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';
@@ -1391,6 +1423,8 @@ async function editDriver(id) {
         if (document.getElementById('driverTerminated')) {
             document.getElementById('driverTerminated').checked = data.terminated || false;
         }
+        // Wire generate password button on edit open
+        wireGeneratePasswordBtn();
         document.getElementById('driverFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {

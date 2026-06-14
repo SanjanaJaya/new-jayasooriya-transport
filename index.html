@@ -957,7 +957,15 @@
                             </div>
                             <div class="form-row">
                                 <input type="text" id="driverLicense" placeholder="License Number (Optional)">
+                                <div class="form-group" style="flex:1; position:relative;">
+                                    <input type="text" id="driverPassword" placeholder="App Password (for Driver Login)" autocomplete="off" style="width:100%; padding-right:36px;">
+                                    <button type="button" id="generatePasswordBtn" title="Generate unique password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:2px;">🔀</button>
+                                    <small style="color:#666;font-size:11px;">🔑 Used by driver to log in. Click 🔀 to generate.</small>
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <input type="number" id="driverAge" placeholder="Age" required>
+                                <input style="visibility:hidden;" tabindex="-1" aria-hidden="true">
                             </div>
                             <div class="form-row full">
                                 <input type="url" id="driverPhoto"
@@ -1022,6 +1030,7 @@
                                     <th>Salary Type</th>
                                     <th>Contact</th>
                                     <th>License</th>
+                                    <th>App Password 🔑</th>
                                     <th>Age</th>
                                     <th>Address</th>
                                     <th>Salary Info</th>

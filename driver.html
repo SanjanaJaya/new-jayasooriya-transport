@@ -51,12 +51,12 @@
                     </div>
                     
                     <div class="input-group">
-                        <label for="loginLicense">License Number</label>
+                        <label for="loginLicense">Password</label>
                         <div class="input-with-icon">
-                            <span class="input-icon">🪪</span>
-                            <input type="password" id="loginLicense" placeholder="License No. or Password" autocomplete="current-password">
+                            <span class="input-icon">🔑</span>
+                            <input type="password" id="loginLicense" placeholder="Enter your password" autocomplete="current-password">
                         </div>
-                        <span class="helper-text">Leave blank if no license is set on your staff profile.</span>
+                        <span class="helper-text">Contact your administrator if you don't have a password yet.</span>
                     </div>
                     
                     <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
@@ -184,7 +184,7 @@
                     </div>
                     
                     <!-- Live Estimate Banner -->
-                    <div id="salaryEstimateBanner" class="estimate-banner">
+                    <div id="salaryEstimateBanner" class="estimate-banner hidden">
                         <span class="banner-icon">⚡</span>
                         <div class="banner-text">
                             <strong>LIVE ESTIMATE</strong>
@@ -192,42 +192,16 @@
                         </div>
                     </div>
 
-                    <!-- Gross & Net Salary Cards -->
+                    <!-- KM Summary Card -->
                     <div class="salary-summary-cards">
-                        <div class="summary-card net-card">
-                            <span class="summary-label">NET TAKE HOME</span>
-                            <span id="modalNetSalary" class="summary-value">LKR 0.00</span>
-                        </div>
-                        <div class="summary-card gross-card">
-                            <span class="summary-label">GROSS EARNINGS</span>
-                            <span id="modalGrossSalary" class="summary-value">LKR 0.00</span>
+                        <div class="summary-card net-card" style="width:100%;">
+                            <span class="summary-label">TOTAL KM THIS MONTH</span>
+                            <span id="modalTotalKm" class="summary-value">0.00 km</span>
                         </div>
                     </div>
 
-                    <!-- Accordion or sections of calculations -->
+                    <!-- Deductions & Profile Breakdown -->
                     <div class="salary-breakdown-details">
-                        <!-- Earnings section -->
-                        <div class="breakdown-group">
-                            <h4 class="section-title text-green">💰 Earning Breakdown</h4>
-                            <div class="breakdown-card">
-                                <div class="breakdown-row" id="rowBasicSalary">
-                                    <span>Basic Salary</span>
-                                    <span id="valBasicSalary">LKR 0.00</span>
-                                </div>
-                                <div class="breakdown-row" id="rowExtraKm">
-                                    <span class="row-subtext">Extra KM (<span id="extraKmDistance">0.00</span> km @ LKR <span id="extraKmRate">0.00</span>)</span>
-                                    <span id="valExtraKm">LKR 0.00</span>
-                                </div>
-                                <div class="breakdown-row" id="rowTipSalary">
-                                    <span class="row-subtext">Tips Earnings (<span id="tipCountDisplay">0</span> trips)</span>
-                                    <span id="valTipSalary">LKR 0.00</span>
-                                </div>
-                                <div class="breakdown-row" id="rowAllowance">
-                                    <span>Additional Allowances</span>
-                                    <span id="valAllowance">LKR 0.00</span>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Advances Section -->
                         <div class="breakdown-group">
@@ -294,10 +268,6 @@
                                 <div class="breakdown-row">
                                     <span>Address</span>
                                     <span id="profileAddress">-</span>
-                                </div>
-                                <div class="breakdown-row">
-                                    <span>Salary Profile</span>
-                                    <span id="profileSalaryType">-</span>
                                 </div>
                             </div>
                         </div>

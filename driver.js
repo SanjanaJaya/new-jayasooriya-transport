@@ -302,9 +302,9 @@ function setupEventHandlers() {
 }
 
 // Authentication Logic
-async function authenticateDriver(contact, license) {
+async function authenticateDriver(contact, password) {
     const cleanContact = contact.trim();
-    const cleanLicense = license ? license.trim() : "";
+    const cleanPassword = password ? password.trim() : "";
 
     let { data, error } = await supabaseClient
         .from('drivers')
@@ -337,15 +337,22 @@ async function authenticateDriver(contact, license) {
         throw new Error('No driver found with this phone number. Check the format or make sure your profile is active in the admin portal.');
     }
 
-    // Check license match
+    // Check credentials:
+    // Priority 1: Match against the dedicated `password` field (if set)
+    // Priority 2: Fall back to license_number match (backward compatibility)
     const matched = data.find(d => {
-        const dbLic = d.license_number ? d.license_number.trim().toLowerCase() : "";
-        const inputLic = cleanLicense.toLowerCase();
-        return dbLic === inputLic;
+        if (d.password && d.password.trim() !== '') {
+            // Password field is set — must match exactly (case-insensitive)
+            return d.password.trim().toLowerCase() === cleanPassword.toLowerCase();
+        } else {
+            // No password set — fall back to license_number
+            const dbLic = d.license_number ? d.license_number.trim().toLowerCase() : "";
+            return dbLic === cleanPassword.toLowerCase();
+        }
     });
 
     if (!matched) {
-        throw new Error('Invalid credentials (License number incorrect).');
+        throw new Error('Incorrect password. Please check your credentials or contact your administrator.');
     }
 
     return matched;
@@ -615,77 +622,9 @@ async function loadDashboardStats() {
 
         animateNumericText('monthlyKmValue', 0, totalKm, 800);
 
-        // 2. Fetch Advances, Day Offs, Deductions and salary slip to display quick estimate
-        const [
-            { data: salarySlip, error: errSlip },
-            { data: advances, error: errAdvances },
-            { data: dayOffs, error: errDayOffs },
-            { data: deductions, error: errDeductions }
-        ] = await Promise.all([
-            supabaseClient.from('driver_salary').select('net_salary').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).eq('salary_month', activeMonth).maybeSingle(),
-            supabaseClient.from('driver_advances').select('amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('advance_date', startDate).lte('advance_date', endDate),
-            supabaseClient.from('driver_day_offs').select('deduction_amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).gte('day_off_date', startDate).lte('day_off_date', endDate),
-            supabaseClient.from('staff_deductions').select('amount').eq('driver_id', currentDriver.id).eq('user_id', currentDriver.user_id).eq('salary_month', activeMonth)
-        ]);
-
-        if (errSlip) throw errSlip;
-        if (errAdvances) throw errAdvances;
-        if (errDayOffs) throw errDayOffs;
-        if (errDeductions) throw errDeductions;
-
+        // Hide salary estimate on dashboard (salary amounts not shown to drivers)
         const estimateEl = document.getElementById('salaryQuickEstimate');
-        let salaryEstimateText = '';
-        let salaryEstimateColor = '';
-
-        if (salarySlip) {
-            salaryEstimateText = `Salary: LKR ${parseFloat(salarySlip.net_salary).toFixed(2)}`;
-            salaryEstimateColor = '#00B37E'; // green finalized
-        } else {
-            // Live estimation calculation
-            const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
-            const totalDayOffs = dayOffs?.reduce((sum, d) => sum + parseFloat(d.deduction_amount || 0), 0) || 0;
-            const totalDeductions = deductions?.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) || 0;
-
-            let gross = 0;
-            if (currentDriver.salary_type === 'fixed') {
-                const basic = parseFloat(currentDriver.basic_salary || 0);
-                const limit = parseFloat(currentDriver.km_limit || 0);
-                const rate = parseFloat(currentDriver.extra_km_rate || 0);
-                const extraKm = Math.max(0, totalKm - limit);
-                const extraKmSal = extraKm * rate;
-                gross = basic + extraKmSal;
-            } else {
-                // Per-tip live estimation needs completed trips count
-                let tripCount = 0;
-                if (driverLorryId) {
-                    const [{ count: hireCount, error: errH }, { count: commCount, error: errC }] = await Promise.all([
-                        supabaseClient.from('hire_to_pay_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate),
-                        supabaseClient.from('commitment_records').select('*', { count: 'exact', head: true }).eq('vehicle_id', driverLorryId).eq('user_id', currentDriver.user_id).gte('hire_date', startDate).lte('hire_date', endDate)
-                    ]);
-                    if (errH) throw errH;
-                    if (errC) throw errC;
-                    tripCount = (hireCount || 0) + (commCount || 0);
-                }
-                const perTipCharge = parseFloat(currentDriver.per_tip_charge || 0);
-                gross = tripCount * perTipCharge;
-            }
-
-            const net = gross - totalAdvances - totalDayOffs - totalDeductions;
-            salaryEstimateText = `Est. Salary: LKR ${net.toFixed(2)}`;
-            salaryEstimateColor = '#F0A500'; // amber estimate
-        }
-
-        if (estimateEl) {
-            estimateEl.textContent = salaryEstimateText;
-            estimateEl.style.color = salaryEstimateColor;
-        }
-
-        // Cache dashboard values
-        setCachedData(`jt_driver_dashboard_stats_${activeMonth}`, {
-            totalKm: totalKm,
-            salaryEstimateText: salaryEstimateText,
-            salaryEstimateColor: salaryEstimateColor
-        });
+        if (estimateEl) estimateEl.textContent = '';
 
     } catch (err) {
         console.error('Error calculating dashboard stats:', err.message);
@@ -1039,12 +978,7 @@ async function loadSalaryDetails() {
         document.getElementById('salaryFinalizedBanner').classList.add('hidden');
         document.getElementById('salaryEstimateBanner').classList.add('hidden');
 
-        document.getElementById('modalNetSalary').innerHTML = '<div class="skeleton skeleton-value" style="width: 130px; height: 26px;"></div>';
-        document.getElementById('modalGrossSalary').innerHTML = '<div class="skeleton skeleton-value" style="width: 130px; height: 26px;"></div>';
-        document.getElementById('valBasicSalary').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
-        document.getElementById('valExtraKm').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
-        document.getElementById('valTipSalary').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
-        document.getElementById('valAllowance').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
+        document.getElementById('modalTotalKm').innerHTML = '<div class="skeleton skeleton-value" style="width: 130px; height: 26px;"></div>';
         document.getElementById('valTotalAdvances').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
         document.getElementById('valTotalDayOffs').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
         document.getElementById('valTotalDeductions').innerHTML = '<div class="skeleton skeleton-text" style="width: 80px;"></div>';
@@ -1052,6 +986,9 @@ async function loadSalaryDetails() {
         document.getElementById('advancesListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
         document.getElementById('dayOffsListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
         document.getElementById('deductionsListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
+
+        // Always clear stale cached salary details to ensure fresh data
+        localStorage.removeItem(`jt_driver_salary_details_${activeMonth}`);
 
         if (!navigator.onLine) {
             const cached = getCachedData(`jt_driver_salary_details_${activeMonth}`);
@@ -1115,44 +1052,15 @@ function displayFinalizedSalary(record) {
     const fb = document.getElementById('salaryFinalizedBanner');
     fb.classList.remove('hidden');
 
-    // (Removed finalized salary receipt download link from driver app)
-
-    // Set Summary Info
-    animateNumericText('modalNetSalary', 0, parseFloat(record.net_salary), 750, 'LKR ');
-    animateNumericText('modalGrossSalary', 0, parseFloat(record.gross_salary), 750, 'LKR ');
-
-    // Set details based on salary type
-    const isFixed = record.salary_type === 'fixed';
-    toggleSalaryTypeRows(isFixed);
-
-    if (isFixed) {
-        document.getElementById('valBasicSalary').textContent = `LKR ${parseFloat(record.basic_salary || 0).toFixed(2)}`;
-        
-        // Calculate extra km details
-        const details = record.salary_data || {};
-        const extraKm = parseFloat(details.extraKm || 0);
-        const rate = parseFloat(details.extraKmRate || 0);
-        
-        document.getElementById('extraKmDistance').textContent = extraKm.toFixed(2);
-        document.getElementById('extraKmRate').textContent = rate.toFixed(2);
-        document.getElementById('valExtraKm').textContent = `LKR ${parseFloat(record.extra_km_salary || 0).toFixed(2)}`;
-    } else {
-        const details = record.salary_data || {};
-        const normalTips = parseInt(details.tipCount || 0);
-        const halfTips = parseInt(details.halfTipCount || 0);
-        const totalTips = normalTips + halfTips;
-
-        document.getElementById('tipCountDisplay').textContent = totalTips;
-        document.getElementById('valTipSalary').textContent = `LKR ${parseFloat(record.tip_salary || 0).toFixed(2)}`;
-    }
-
-    // Allowances
-    document.getElementById('valAllowance').textContent = `LKR ${parseFloat(record.additional_allowance || 0).toFixed(2)}`;
+    // Show Total KM
+    const salaryData = record.salary_data || {};
+    const totalKm = parseFloat(salaryData.totalKm || record.km_driven || 0);
+    const kmEl = document.getElementById('modalTotalKm');
+    if (kmEl) kmEl.textContent = `${totalKm.toFixed(2)} km`;
 
     // Deductions Summary
     document.getElementById('valTotalAdvances').textContent = `LKR ${parseFloat(record.total_advances || 0).toFixed(2)}`;
     
-    const salaryData = record.salary_data || {};
     const dayOffDeductions = parseFloat(salaryData.dayOffDeductions || 0);
     document.getElementById('valTotalDayOffs').textContent = `LKR ${dayOffDeductions.toFixed(2)}`;
     document.getElementById('valTotalDeductions').textContent = `LKR ${parseFloat(record.other_deductions || 0).toFixed(2)}`;
@@ -1210,53 +1118,24 @@ function displayLiveEstimatedSalaryFromCache(liveData) {
 }
 
 function renderLiveEstimatedSalaryUI(liveData, startDate, endDate) {
-    const { kmRecs, advances, dayOffs, deductions, tripCount } = liveData;
+    if (!liveData) return;
+    const { kmRecs, advances, dayOffs, deductions } = liveData;
     
-    const totalKm = kmRecs?.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) || 0;
-    const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0;
-    const totalDayOffs = dayOffs?.reduce((sum, d) => sum + parseFloat(d.deduction_amount || 0), 0) || 0;
-    const totalDeductions = deductions?.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) || 0;
+    const totalKm = Array.isArray(kmRecs) ? kmRecs.reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0) : 0;
+    const totalAdvances = Array.isArray(advances) ? advances.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) : 0;
+    const totalDayOffs = Array.isArray(dayOffs) ? dayOffs.reduce((sum, d) => sum + parseFloat(d.deduction_amount || 0), 0) : 0;
+    const totalDeductions = Array.isArray(deductions) ? deductions.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0) : 0;
 
-    let gross = 0;
-    const isFixed = currentDriver.salary_type === 'fixed';
-    toggleSalaryTypeRows(isFixed);
+    // Show Total KM
+    const kmEl = document.getElementById('modalTotalKm');
+    if (kmEl) kmEl.textContent = `${totalKm.toFixed(2)} km`;
 
-    if (isFixed) {
-        const basic = parseFloat(currentDriver.basic_salary || 0);
-        const limit = parseFloat(currentDriver.km_limit || 0);
-        const rate = parseFloat(currentDriver.extra_km_rate || 0);
-        const extraKm = Math.max(0, totalKm - limit);
-        const extraKmSal = extraKm * rate;
-
-        document.getElementById('valBasicSalary').textContent = `LKR ${basic.toFixed(2)}`;
-        document.getElementById('extraKmDistance').textContent = extraKm.toFixed(2);
-        document.getElementById('extraKmRate').textContent = rate.toFixed(2);
-        document.getElementById('valExtraKm').textContent = `LKR ${extraKmSal.toFixed(2)}`;
-        
-        gross = basic + extraKmSal;
-    } else {
-        const perTipCharge = parseFloat(currentDriver.per_tip_charge || 0);
-        const tipSal = (tripCount || 0) * perTipCharge;
-
-        document.getElementById('tipCountDisplay').textContent = tripCount || 0;
-        document.getElementById('valTipSalary').textContent = `LKR ${tipSal.toFixed(2)}`;
-        
-        gross = tipSal;
-    }
-
-    // Allowances (0 for live estimates)
-    document.getElementById('valAllowance').textContent = 'LKR 0.00';
-
-    const net = gross - totalAdvances - totalDayOffs - totalDeductions;
-
-    // Display calculated totals
-    animateNumericText('modalNetSalary', 0, net, 750, 'LKR ');
-    animateNumericText('modalGrossSalary', 0, gross, 750, 'LKR ');
+    // Display advance/dayoff/deduction totals
     document.getElementById('valTotalAdvances').textContent = `LKR ${totalAdvances.toFixed(2)}`;
     document.getElementById('valTotalDayOffs').textContent = `LKR ${totalDayOffs.toFixed(2)}`;
     document.getElementById('valTotalDeductions').textContent = `LKR ${totalDeductions.toFixed(2)}`;
 
-    // Render lists
+    // Render individual item lists
     renderAdvancesList(advances || []);
     renderDayOffsList(dayOffs || []);
     renderDeductionsList(deductions || []);
