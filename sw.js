@@ -42,6 +42,11 @@ self.addEventListener('activate', event => {
 // Fetch events: Network First falling back to Cache (for app code/manifest)
 // Cache First for external assets (Leaflet, images, fonts)
 self.addEventListener('fetch', event => {
+    // Only intercept GET requests
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
     const requestUrl = new URL(event.request.url);
 
     // Is it an external CDN library or static image? Use Cache First.
@@ -52,6 +57,9 @@ self.addEventListener('fetch', event => {
         requestUrl.hostname.includes('postimg.cc') ||
         event.request.url.match(/\.(png|jpg|jpeg|gif|svg|ico)$/i);
 
+    // Is it a same-origin resource (like our HTML, JS, CSS, manifest)?
+    const isSameOrigin = requestUrl.origin === self.location.origin;
+
     if (isStaticCdnOrImage) {
         event.respondWith(
             caches.match(event.request).then(cachedResponse => {
@@ -59,7 +67,7 @@ self.addEventListener('fetch', event => {
                     return cachedResponse;
                 }
                 return fetch(event.request).then(networkResponse => {
-                    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                    if (!networkResponse || networkResponse.status !== 200) {
                         return networkResponse;
                     }
                     const responseToCache = networkResponse.clone();
@@ -72,7 +80,7 @@ self.addEventListener('fetch', event => {
                 });
             })
         );
-    } else {
+    } else if (isSameOrigin) {
         // App HTML/JS/CSS: Network First, falling back to cache
         event.respondWith(
             fetch(event.request).then(networkResponse => {
@@ -89,4 +97,6 @@ self.addEventListener('fetch', event => {
             })
         );
     }
+    // Any other request (like Supabase API database queries) is not intercepted
 });
+
