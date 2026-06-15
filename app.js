@@ -8465,9 +8465,7 @@ async function updateKmSalaryWidget() {
 
             const kmLimit = driver.km_limit || 0;
             const isFixed = driver.salary_type === 'fixed';
-            const didNotMeetMinKm = isFixed && (totalKm < kmLimit);
-            const appliedDayOffDeductions = didNotMeetMinKm ? totalDayOffDeductions : 0;
-            const totalDeductions = baseDeductions + appliedDayOffDeductions;
+            const totalDeductions = baseDeductions + totalDayOffDeductions;
 
             const nameClean = cleanDriverName(driver.name);
             const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
@@ -8552,8 +8550,8 @@ async function updateKmSalaryWidget() {
                                 <span class="km-widget-detail-label">Advances & Deds</span>
                                 <span class="km-widget-detail-value highlight-purple">LKR ${(totalAdvances + totalDeductions).toFixed(2)}</span>
                                 ${totalDayOffDeductions > 0 ? `
-                                    <span style="font-size: 10px; display: block; margin-top: 4px; color: ${didNotMeetMinKm ? 'var(--brand-red)' : 'var(--green)'}; font-weight: 600;">
-                                        ${didNotMeetMinKm ? `⚠️ LKR ${totalDayOffDeductions.toFixed(2)} Day-Off Deductions Applied (KM < Min)` : `✅ LKR ${totalDayOffDeductions.toFixed(2)} Day-Off Deductions Waived (KM ≥ Min)`}
+                                    <span style="font-size: 10px; display: block; margin-top: 4px; color: var(--brand-red); font-weight: 600;">
+                                        ⚠️ LKR ${totalDayOffDeductions.toFixed(2)} Day-Off Deductions Applied
                                     </span>
                                 ` : ''}
                             </div>
@@ -8693,9 +8691,7 @@ async function loadDriverPerformance(monthValue) {
 
                 const kmLimit = driver.km_limit || 0;
                 const isFixed = driver.salary_type === 'fixed';
-                const didNotMeetMinKm = isFixed && (totalKm < kmLimit);
-                const appliedDayOffDeductions = didNotMeetMinKm ? dayOffDed : 0;
-                const totalDed = baseDed + appliedDayOffDeductions;
+                const totalDed = baseDed + dayOffDed;
 
                 advColor = '#e74c3c';
                 dedColor = '#e67e22';
@@ -8707,11 +8703,7 @@ async function loadDriverPerformance(monthValue) {
 
                 let dedDetails = '';
                 if (dayOffDed > 0) {
-                    if (didNotMeetMinKm) {
-                        dedDetails = ` <span title="Includes LKR ${dayOffDed.toFixed(2)} Day-Off Deductions (KM < Min ${kmLimit} km)" style="cursor:help;color:var(--brand-red);font-weight:bold;">⚠️</span>`;
-                    } else {
-                        dedDetails = ` <span title="LKR ${dayOffDed.toFixed(2)} Day-Off Deductions waived (KM ≥ Min ${kmLimit} km)" style="cursor:help;color:var(--green);font-weight:bold;">✅</span>`;
-                    }
+                    dedDetails = ` <span title="Includes LKR ${dayOffDed.toFixed(2)} Day-Off Deductions" style="cursor:help;color:var(--brand-red);font-weight:bold;">⚠️</span>`;
                 }
                 dedText = `LKR ${totalDed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${dedDetails}`;
 
