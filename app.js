@@ -695,6 +695,7 @@ async function loadDashboard() {
         // Phase 2: Load tables and charts asynchronously without blocking the UI
         Promise.all([
             loadVehiclePerformance(monthValue, cachedData),
+            loadVehicleFuelEfficiency(monthValue, cachedData),
             loadDriverPerformance(monthValue), // queries separate driver tables, so it remains independent
             loadDashboardCharts(cachedData),
             loadVehicleRevenuePieChart(monthValue, cachedData),
@@ -3423,6 +3424,218 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
         if (perfEl) perfEl.innerHTML = `
             <div style="text-align: center; padding: 20px; color: var(--brand-red);">
                 Error loading vehicle performance data
+            </div>
+        `;
+    }
+}
+
+async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const monthPadded = String(month).padStart(2, '0');
+        const startDate = `${year}-${monthPadded}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+        const currentQueryUserId = getQueryUserId();
+
+        let hireVehicles, otherOpRecords, allHireRecords, allCommitmentRecordsMonth, commitmentVehicles;
+
+        if (cachedData) {
+            hireVehicles = cachedData.hireVehicles;
+            otherOpRecords = cachedData.otherOpHires;
+            allHireRecords = cachedData.hireRecords;
+            allCommitmentRecordsMonth = cachedData.commitmentRecords;
+            commitmentVehicles = cachedData.commitmentVehicles;
+        } else {
+            const [
+                { data: rHireVehicles },
+                { data: rOtherOpRecords },
+                { data: rAllHireRecords },
+                { data: rAllCommitmentRecordsMonth },
+                { data: rCommitmentVehicles }
+            ] = await Promise.all([
+                supabaseClient.from('hire_to_pay_vehicles').select('*').eq('user_id', currentQueryUserId),
+                supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId)
+            ]);
+            hireVehicles = rHireVehicles;
+            otherOpRecords = rOtherOpRecords;
+            allHireRecords = rAllHireRecords;
+            allCommitmentRecordsMonth = rAllCommitmentRecordsMonth;
+            commitmentVehicles = rCommitmentVehicles;
+        }
+
+        const hireVehicleBaseMap = {};
+        const commitVehicleBaseMap = {};
+        hireVehicles?.forEach(v => { hireVehicleBaseMap[v.id] = v; });
+        commitmentVehicles?.forEach(v => { commitVehicleBaseMap[v.id] = v; });
+
+        const vehicleStats = {};
+
+        function initVehicle(number, type, model) {
+            if (!vehicleStats[number]) {
+                vehicleStats[number] = {
+                    number,
+                    type,
+                    model: model || '-',
+                    totalDistance: 0,
+                    totalFuelLitres: 0,
+                };
+            }
+        }
+
+        allHireRecords?.forEach(record => {
+            if (record.vehicle_id) {
+                const v = hireVehicleBaseMap[record.vehicle_id];
+                const num = v ? extractBaseVehicleName(v.lorry_number) : `Hire Lorry ${record.vehicle_id}`;
+                initVehicle(num, 'Hire-to-Pay', v?.vehicle_model);
+                vehicleStats[num].totalDistance += record.distance || 0;
+                vehicleStats[num].totalFuelLitres += record.fuel_litres || 0;
+            }
+        });
+
+        allCommitmentRecordsMonth?.forEach(record => {
+            if (record.vehicle_id) {
+                const v = commitVehicleBaseMap[record.vehicle_id];
+                const num = v ? extractBaseVehicleName(v.vehicle_number) : `Commitment Lorry ${record.vehicle_id}`;
+                initVehicle(num, 'Commitment', v?.vehicle_model);
+                vehicleStats[num].totalDistance += record.distance || 0;
+                vehicleStats[num].totalFuelLitres += record.fuel_litres || 0;
+            }
+        });
+
+        otherOpRecords?.forEach(record => {
+            if (record.base_lorry_number) {
+                const num = extractBaseVehicleName(record.base_lorry_number);
+                initVehicle(num, 'Other Operation', '-');
+                vehicleStats[num].totalDistance += record.distance || 0;
+                vehicleStats[num].totalFuelLitres += record.fuel_litres || 0;
+            }
+        });
+
+        const list = Object.values(vehicleStats).map(stat => {
+            const efficiency = stat.totalFuelLitres > 0 ? (stat.totalDistance / stat.totalFuelLitres) : 0;
+            return { ...stat, efficiency };
+        });
+
+        list.sort((a, b) => b.efficiency - a.efficiency);
+
+        let html = '';
+        if (list.length === 0) {
+            html = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⛽</div>
+                    <h3 class="empty-state-text">No Fuel Activity This Month</h3>
+                    <p class="empty-state-subtext">No fuel usage records for any vehicle in ${monthValue}.</p>
+                </div>
+            `;
+        } else {
+            html = `
+                <div class="table-responsive">
+                    <table class="group-table fuel-efficiency-table">
+                        <thead>
+                            <tr>
+                                <th>Vehicle</th>
+                                <th>Model</th>
+                                <th>Type</th>
+                                <th style="text-align: right;">Total KM</th>
+                                <th style="text-align: right;">Fuel Used</th>
+                                <th style="text-align: left; padding-left: 20px;">Fuel Efficiency (KM/L)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            list.forEach(vehicle => {
+                let statusColor = 'var(--text-muted)';
+                let statusBg = 'var(--surface-hover)';
+                let statusLabel = 'N/A';
+                let progressPct = 0;
+
+                if (vehicle.totalFuelLitres > 0) {
+                    const eff = vehicle.efficiency;
+                    progressPct = Math.min((eff / 8.0) * 100, 100);
+                    if (eff >= 5.0) {
+                        statusColor = 'var(--green)';
+                        statusBg = 'var(--green-bg)';
+                        statusLabel = 'Excellent';
+                    } else if (eff >= 3.5) {
+                        statusColor = 'var(--amber)';
+                        statusBg = 'var(--amber-bg)';
+                        statusLabel = 'Good';
+                    } else {
+                        statusColor = 'var(--brand-red)';
+                        statusBg = 'var(--brand-red-glow)';
+                        statusLabel = 'Poor';
+                    }
+                }
+
+                const efficiencyText = vehicle.totalFuelLitres > 0 
+                    ? `${vehicle.efficiency.toFixed(2)} Km/L` 
+                    : 'N/A';
+
+                let typeBadgeStyle = '';
+                if (vehicle.type === 'Commitment') {
+                    typeBadgeStyle = 'background: var(--blue-bg); color: var(--blue);';
+                } else if (vehicle.type === 'Hire-to-Pay') {
+                    typeBadgeStyle = 'background: var(--amber-bg); color: var(--amber);';
+                } else {
+                    typeBadgeStyle = 'background: rgba(123, 53, 196, 0.12); color: var(--purple);';
+                }
+
+                html += `
+                    <tr>
+                        <td style="font-weight: bold;">${vehicle.number}</td>
+                        <td>${vehicle.model}</td>
+                        <td>
+                            <span style="padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; ${typeBadgeStyle}">
+                                ${vehicle.type}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">${vehicle.totalDistance.toFixed(0)} km</td>
+                        <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                        <td style="min-width: 220px; padding-left: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-weight: bold; width: 85px; color: ${statusColor};">${efficiencyText}</span>
+                                ${vehicle.totalFuelLitres > 0 ? `
+                                    <div style="background: var(--surface-border); border-radius: 6px; height: 10px; flex: 1; overflow: hidden; position: relative;">
+                                        <div style="width: ${progressPct}%; height: 100%; border-radius: 6px; background: ${statusColor}; transition: width 0.4s;"></div>
+                                    </div>
+                                    <span style="font-size: 11px; font-weight: 700; color: ${statusColor}; background: ${statusBg}; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">
+                                        ${statusLabel}
+                                    </span>
+                                ` : `
+                                    <span style="font-size: 11px; font-weight: 500; color: var(--text-muted); background: var(--surface-hover); padding: 2px 6px; border-radius: 4px;">
+                                        No Fuel Info
+                                    </span>
+                                `}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-muted text-center" style="margin-top: 15px; font-size: 12px; text-align: center;">
+                    Showing ${list.length} vehicle(s) with activity in ${monthValue}
+                </div>
+            `;
+        }
+
+        const el = document.getElementById('vehicleFuelEfficiency');
+        if (el) el.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading fuel efficiency:', error.message);
+        const el = document.getElementById('vehicleFuelEfficiency');
+        if (el) el.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--brand-red);">
+                Error loading fuel efficiency data
             </div>
         `;
     }
