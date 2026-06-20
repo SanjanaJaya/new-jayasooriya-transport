@@ -98,12 +98,12 @@ function handleSalaryReceiptChange(e) {
     const file = e.target.files[0];
     if (file) {
         if (file.type !== 'application/pdf') {
-            alert('Please upload a PDF file only');
+            showToast('Please upload a PDF file only', 'warning');
             e.target.value = '';
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            alert('File size must be less than 5MB');
+            showToast('File size must be less than 5MB', 'warning');
             e.target.value = '';
             return;
         }
@@ -114,7 +114,7 @@ function handleSalaryReceiptChange(e) {
 
 // Remove existing salary receipt
 function removeSalaryReceipt() {
-    if (confirm('Are you sure you want to remove this receipt?')) {
+    showConfirm('Are you sure you want to remove this receipt?', async () => {
         existingSalaryReceiptUrl = null;
         document.getElementById('currentSalaryReceipt').style.display = 'none';
         document.getElementById('salaryReceipt').value = '';
@@ -167,7 +167,7 @@ async function uploadSalaryReceipt(file, salaryId) {
     } catch (error) {
         console.error('Error uploading salary receipt:', error);
         document.getElementById('salaryUploadProgress').style.display = 'none';
-        alert('Failed to upload salary receipt: ' + error.message);
+        showToast('Failed to upload salary receipt: ' + error.message, 'error');
         return null;
     }
 }
@@ -240,7 +240,7 @@ async function loadDriverSalaryData() {
     const monthValue = document.getElementById('salaryMonth').value;
 
     if (!driverId || !monthValue) {
-        alert('Please select both driver and month');
+        showToast('Please select both driver and month', 'warning');
         return;
     }
 
@@ -384,7 +384,7 @@ async function loadDriverSalaryData() {
 
     } catch (error) {
         console.error('Error loading salary data:', error.message);
-        alert('Error loading salary data: ' + error.message);
+        showToast('Error loading salary data: ' + error.message, 'error');
     }
 }
 
@@ -614,17 +614,17 @@ async function saveNewDeduction() {
     const reason = document.getElementById('deductionReason')?.value?.trim();
     const amount = parseFloat(document.getElementById('deductionAmount')?.value);
 
-    if (!driverId) { alert('Please select a driver first'); return; }
-    if (!deductionDate) { alert('Please select a date for the deduction'); return; }
-    if (!reason) { alert('Please enter a reason for the deduction'); return; }
-    if (!amount || amount <= 0) { alert('Please enter a valid amount'); return; }
+    if (!driverId) { showToast('Please select a driver first', 'warning'); return; }
+    if (!deductionDate) { showToast('Please select a date for the deduction', 'warning'); return; }
+    if (!reason) { showToast('Please enter a reason for the deduction', 'warning'); return; }
+    if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning'); return; }
 
     const userId = getQueryUserId();
     console.log('[Deductions] Saving deduction:', { driver_id: parseInt(driverId), deduction_date: deductionDate, reason, amount, user_id: userId });
 
     try {
         const monthValue = document.getElementById('salaryMonth')?.value;
-        if (!monthValue) { alert('Please select a salary month first'); return; }
+        if (!monthValue) { showToast('Please select a salary month first', 'warning'); return; }
 
         const { data, error } = await supabaseClient
             .from('staff_deductions')
@@ -647,13 +647,13 @@ async function saveNewDeduction() {
         hideAddDeductionForm();
     } catch (error) {
         console.error('[Deductions] Error saving deduction:', error);
-        alert('Error saving deduction: ' + error.message);
+        showToast('Error saving deduction: ' + error.message, 'error');
     }
 }
 
 // Delete a deduction from Supabase
 async function deleteStaffDeduction(deductionId) {
-    if (!confirm('Are you sure you want to delete this deduction?')) return;
+    if (!await showConfirmAsync('Are you sure you want to delete this deduction?', {icon:'🗑️',yesLabel:'Delete',noLabel:'Cancel'})) return;
 
     try {
         console.log('[Deductions] Deleting deduction id:', deductionId);
@@ -675,7 +675,7 @@ async function deleteStaffDeduction(deductionId) {
         }
     } catch (error) {
         console.error('[Deductions] Error deleting deduction:', error.message);
-        alert('Error deleting deduction: ' + error.message);
+        showToast('Error deleting deduction: ' + error.message, 'error');
     }
 }
 
@@ -748,28 +748,28 @@ async function calculateSalary() {
     const monthValue = document.getElementById('salaryMonth').value;
 
     if (!driverId || !monthValue) {
-        alert('Please select both driver and month');
+        showToast('Please select both driver and month', 'warning');
         return;
     }
 
     if (currentDriverSalaryType === 'fixed') {
         const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
         if (!totalKm || totalKm <= 0) {
-            alert('Please enter valid total KM');
+            showToast('Please enter valid total KM', 'warning');
             return;
         }
     } else {
         const tipCount = parseInt(document.getElementById('tipCount').value) || 0;
         const halfTipCount = parseInt(document.getElementById('halfTipCount').value) || 0;
         if (tipCount <= 0 && halfTipCount <= 0) {
-            alert('Please enter at least one tip count');
+            showToast('Please enter at least one tip count', 'warning');
             return;
         }
         recalculateTipSalary();
     }
 
     recalculateSalary();
-    alert('Salary calculated successfully! Click "Generate Salary Slip" to create/update PDF.');
+    showToast('Salary calculated! Click Generate Salary Slip to create/update PDF.', 'success');
 }
 
 // Generate salary slip PDF (Updated to handle receipt upload & per-tip)
@@ -779,13 +779,13 @@ async function generateSalarySlip() {
     const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
 
     if (!driverId || !monthValue) {
-        alert('Please calculate salary first');
+        showToast('Please calculate salary first', 'warning');
         return;
     }
 
     // Validate based on salary type
     if (currentDriverSalaryType === 'fixed' && !totalKm) {
-        alert('Please enter total KM and calculate salary first');
+        showToast('Please enter total KM and calculate salary first', 'warning');
         return;
     }
 
@@ -893,7 +893,7 @@ async function generateSalarySlip() {
         const salaryId = await saveSalaryRecordWithReceipt(driverId, monthValue, currentSalaryData);
 
         // Show success message
-        alert(isEditMode ? 'Salary slip updated successfully!' : 'Salary slip generated successfully!');
+        showToast(isEditMode ? 'Salary slip updated successfully!' : 'Salary slip generated successfully!', 'success');
 
         // Reload salary history
         loadSalaryHistory();
@@ -903,7 +903,7 @@ async function generateSalarySlip() {
 
     } catch (error) {
         console.error('Error generating salary slip:', error.message);
-        alert('Error generating salary slip: ' + error.message);
+        showToast('Error generating salary slip: ' + error.message, 'error');
     }
 }
 
@@ -1201,20 +1201,20 @@ async function editSalaryRecord(salaryId) {
 
     } catch (error) {
         console.error('Error loading salary record for editing:', error.message);
-        alert('Error loading salary record: ' + error.message);
+        showToast('Error loading salary record: ' + error.message, 'error');
     }
 }
 
 // Delete salary record (Updated to delete receipt)
 async function deleteSalaryRecord(salaryId) {
-    if (!confirm('Are you sure you want to delete this salary record? This action cannot be undone.')) {
+    if (!await showConfirmAsync('Are you sure you want to delete this salary record? This action cannot be undone.', {icon:'🗑️',yesLabel:'Delete',noLabel:'Cancel'})) {
         return;
     }
 
     try {
         // Check admin access
         if (typeof userRole !== 'undefined' && userRole === 'viewer') {
-            alert('You do not have permission to delete salary records.');
+            showToast('You do not have permission to delete salary records.', 'warning');
             return;
         }
 
@@ -1243,7 +1243,7 @@ async function deleteSalaryRecord(salaryId) {
         if (error) throw error;
 
         // Show success message
-        alert('Salary record deleted successfully!');
+        showToast('Salary record deleted successfully!', 'success');
 
         // Reload salary history
         loadSalaryHistory();
@@ -1256,7 +1256,7 @@ async function deleteSalaryRecord(salaryId) {
 
     } catch (error) {
         console.error('Error deleting salary record:', error.message);
-        alert('Error deleting salary record: ' + error.message);
+        showToast('Error deleting salary record: ' + error.message, 'error');
     }
 }
 
@@ -1284,7 +1284,7 @@ async function viewSalarySlip(salaryId) {
 
     } catch (error) {
         console.error('Error viewing salary slip:', error.message);
-        alert('Error loading salary slip: ' + error.message);
+        showToast('Error loading salary slip: ' + error.message, 'error');
     }
 }
 
@@ -1327,7 +1327,7 @@ function cancelSalaryForm() {
 // Create Salary Slip PDF with red theme
 function createSalarySlipPDF() {
     if (!currentSalaryData) {
-        alert('No salary data available');
+        showToast('No salary data available', 'warning');
         return;
     }
 
@@ -1583,7 +1583,7 @@ function createSalarySlipPDF() {
 
     } catch (error) {
         console.error('Error creating PDF:', error);
-        alert('Error generating PDF: ' + error.message);
+        showToast('Error generating PDF: ' + error.message, 'error');
     }
 }
 
@@ -1677,7 +1677,7 @@ function fallbackCopyText(text, btn) {
     if (success) {
         showCopySmsSuccess(btn);
     } else {
-        alert('Could not copy automatically. Please copy the message below:\n\n' + text);
+        showToast('Could not copy automatically. Please copy manually.', 'warning');
     }
 }
 

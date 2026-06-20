@@ -61,6 +61,64 @@ const defaultLorrySVG = `
 </svg>
 `;
 
+// ============ DRIVER TOAST NOTIFICATION SYSTEM ============
+function showDriverToast(message, type = 'info', duration = 3500) {
+    // Inject styles if not already present
+    if (!document.getElementById('driverToastStyles')) {
+        const style = document.createElement('style');
+        style.id = 'driverToastStyles';
+        style.textContent = `
+            .driver-toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+            .driver-toast { padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.25); animation: driverToastIn 0.3s ease; max-width: 320px; text-align: center; pointer-events: auto; }
+            .driver-toast.success { background: linear-gradient(135deg, #00B37E, #007A54); }
+            .driver-toast.error   { background: linear-gradient(135deg, #D1001F, #8B0000); }
+            .driver-toast.warning { background: linear-gradient(135deg, #E07B00, #B35E00); }
+            .driver-toast.info    { background: linear-gradient(135deg, #0072CE, #004A8F); }
+            .driver-toast.fade-out { animation: driverToastOut 0.3s ease forwards; }
+            @keyframes driverToastIn  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes driverToastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(16px); } }
+            .driver-confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99998; display: flex; align-items: center; justify-content: center; animation: driverToastIn 0.2s ease; }
+            .driver-confirm-box { background: #fff; border-radius: 16px; padding: 24px 28px; max-width: 320px; width: 90%; box-shadow: 0 16px 48px rgba(0,0,0,0.3); text-align: center; }
+            .driver-confirm-box .dc-msg { font-size: 15px; font-weight: 600; color: #1A1D24; margin-bottom: 20px; line-height: 1.5; }
+            .driver-confirm-box .dc-btns { display: flex; gap: 10px; justify-content: center; }
+            .driver-confirm-box .dc-yes { background: #D1001F; color: #fff; border: none; border-radius: 10px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
+            .driver-confirm-box .dc-no  { background: #E2E5EA; color: #1A1D24; border: none; border-radius: 10px; padding: 10px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        `;
+        document.head.appendChild(style);
+    }
+    let container = document.getElementById('driverToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'driverToastContainer';
+        container.className = 'driver-toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `driver-toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+function showDriverConfirm(message, onYes, onNo = null) {
+    const overlay = document.createElement('div');
+    overlay.className = 'driver-confirm-overlay';
+    overlay.innerHTML = `
+        <div class="driver-confirm-box">
+            <div class="dc-msg">${message}</div>
+            <div class="dc-btns">
+                <button class="dc-yes">Yes</button>
+                <button class="dc-no">No</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.dc-yes').addEventListener('click', () => { overlay.remove(); if (onYes) onYes(); });
+    overlay.querySelector('.dc-no').addEventListener('click',  () => { overlay.remove(); if (onNo) onNo(); });
+}
+
 // Online/Offline status banner toggle
 function updateOnlineStatus() {
     const banner = document.getElementById('offlineWarningBanner');
@@ -90,7 +148,7 @@ function initApp() {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     } else {
         console.error('Supabase library not loaded');
-        alert('Could not initialize database connection. Please reload.');
+        showDriverToast('Could not initialize database connection. Please reload.', 'error', 5000);
         return;
     }
 
@@ -107,18 +165,19 @@ function initApp() {
     checkExistingSession();
 }
 
-// Set default month strictly within the year 2026
+// Set default month using the current year dynamically
 function setDefaultMonth() {
     const now = new Date();
-    const year = 2026;
+    const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     activeMonth = `${year}-${month}`;
     
     const el = document.getElementById('salaryMonthFilter');
     if (el) {
         el.value = activeMonth;
-        el.min = '2026-01';
-        el.max = '2026-12';
+        // Allow current year and one year back/forward
+        el.min = `${year - 1}-01`;
+        el.max = `${year + 1}-12`;
     }
 }
 
@@ -250,22 +309,24 @@ function setupEventHandlers() {
 
     // Logout Button in Modal
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        if (confirm('Are you sure you want to log out?')) {
-            logout();
-        }
+        showDriverConfirm('Are you sure you want to log out?', () => logout());
     });
 
-    // Month Selector in Salary Modal with 2026 validation
+    // Month Selector in Salary Modal — allows current year ± 1
     document.getElementById('salaryMonthFilter')?.addEventListener('change', (e) => {
         const val = e.target.value;
-        if (val && !val.startsWith('2026-')) {
-            alert('Only data from the year 2026 is accessible.');
-            const now = new Date();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            activeMonth = `2026-${month}`;
-            e.target.value = activeMonth;
-        } else {
-            activeMonth = val;
+        if (val) {
+            const selectedYear = parseInt(val.split('-')[0]);
+            const currentYear = new Date().getFullYear();
+            if (Math.abs(selectedYear - currentYear) > 1) {
+                showDriverToast('Please select a month within the current year range.', 'warning');
+                const now = new Date();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                activeMonth = `${currentYear}-${month}`;
+                e.target.value = activeMonth;
+            } else {
+                activeMonth = val;
+            }
         }
         loadSalaryDetails();
     });
@@ -1042,7 +1103,7 @@ async function loadSalaryDetails() {
                 displayLiveEstimatedSalaryFromCache(cached.data);
             }
         } else {
-            alert('Failed to load salary details: ' + err.message);
+            showDriverToast('Failed to load salary details: ' + err.message, 'error');
         }
     }
 }

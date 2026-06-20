@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // excel-export.js — Revenue Summary Excel Export
 // Jayasooriya Transport Management System
 // Depends on: SheetJS (xlsx) loaded in index.html
@@ -15,11 +15,11 @@ function formatDateRangeLabel(startDate, endDate) {
 // Main Export Function
 async function exportRevenueSummaryExcel(startDate, endDate) {
   if (!startDate || !endDate) {
-    alert('Please select both a Start Date and End Date.');
+    showToast('Please select both a Start Date and End Date.', 'warning');
     return;
   }
   if (startDate > endDate) {
-    alert('Start Date cannot be after End Date.');
+    showToast('Start Date cannot be after End Date.', 'warning');
     return;
   }
 
@@ -934,7 +934,7 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
 
   } catch (err) {
     console.error('Export error:', err);
-    alert('Export failed: ' + err.message);
+    showToast('Export failed: ' + err.message, 'error');
   } finally {
     showExportLoading(false);
   }

@@ -1,4 +1,4 @@
-// report-generator.js - PDF Report Generator for Jayasooriya Transport
+﻿// report-generator.js - PDF Report Generator for Jayasooriya Transport
 // Enhanced with premium styling, data-fetching fixes, and comprehensive operations breakdown
 
 // Function to load and add logo to PDF
@@ -538,7 +538,7 @@ async function generateMonthlyReport(monthValue) {
     } catch (error) {
         console.error('Error generating monthly report:', error);
         hideReportLoading();
-        alert('Error generating monthly report: ' + error.message);
+        showToast('Error generating monthly report: ' + error.message, 'error');
     }
 }
 

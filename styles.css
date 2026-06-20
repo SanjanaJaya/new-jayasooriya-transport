@@ -8353,4 +8353,688 @@ body.dark-mode .kd-route-search-item.highlighted {
         align-items: flex-start;
     }
 }
+
+/* =====================================================
+   TOAST NOTIFICATION SYSTEM (Fix 3)
+   ===================================================== */
+.jtms-toast-container {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.jtms-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    max-width: 340px;
+    min-width: 220px;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: jtmsToastIn 0.35s var(--ease-spring) both;
+    line-height: 1.45;
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.jtms-toast.success { background: linear-gradient(135deg, #00B37E, #007A54); }
+.jtms-toast.error   { background: linear-gradient(135deg, #D1001F, #8B0000); }
+.jtms-toast.warning { background: linear-gradient(135deg, #E07B00, #B05000); }
+.jtms-toast.info    { background: linear-gradient(135deg, #0072CE, #004A8F); }
+
+.jtms-toast-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.jtms-toast-body { flex: 1; }
+
+.jtms-toast.fade-out {
+    animation: jtmsToastOut 0.3s ease forwards;
+}
+
+@keyframes jtmsToastIn {
+    from { opacity: 0; transform: translateX(24px) scale(0.94); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes jtmsToastOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(24px) scale(0.90); }
+}
+
+@media (max-width: 768px) {
+    .jtms-toast-container {
+        bottom: 20px;
+        right: 12px;
+        left: 12px;
+        align-items: stretch;
+    }
+    .jtms-toast { max-width: 100%; }
+}
+
+/* =====================================================
+   CONFIRM MODAL (Fix 3)
+   ===================================================== */
+.jtms-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.jtms-confirm-box {
+    background: var(--surface-card);
+    border-radius: var(--radius-xl);
+    padding: 32px 28px 24px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--surface-border);
+    text-align: center;
+    animation: scaleIn 0.25s var(--ease-spring);
+}
+
+.jtms-confirm-icon {
+    font-size: 40px;
+    margin-bottom: 14px;
+    display: block;
+}
+
+.jtms-confirm-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+.jtms-confirm-msg {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 24px;
+}
+
+.jtms-confirm-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.jtms-confirm-yes {
+    background: var(--brand-red);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 11px 28px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--ease-fast);
+    font-family: 'DM Sans', sans-serif;
+}
+.jtms-confirm-yes:hover { background: var(--brand-red-dark); transform: translateY(-1px); }
+
+.jtms-confirm-no {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 11px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--ease-fast);
+    font-family: 'DM Sans', sans-serif;
+}
+.jtms-confirm-no:hover { background: var(--surface-border); }
+
+/* =====================================================
+   SKELETON LOADING STATES (Fix 17)
+   ===================================================== */
+@keyframes skeletonShimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton-row {
+    background: linear-gradient(90deg, var(--surface-hover) 25%, var(--surface-border) 50%, var(--surface-hover) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+    border-radius: 6px;
+    height: 16px;
+    display: block;
+}
+
+.skeleton-cell {
+    background: linear-gradient(90deg, var(--surface-hover) 25%, var(--surface-border) 50%, var(--surface-hover) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+    border-radius: 6px;
+    height: 14px;
+    display: inline-block;
+    width: 80%;
+}
+
+.skeleton-table-row td {
+    padding: 14px 16px;
+}
+
+.skeleton-table-row td span {
+    display: block;
+    height: 14px;
+    background: linear-gradient(90deg, var(--surface-hover) 25%, var(--surface-border) 50%, var(--surface-hover) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+    border-radius: 6px;
+    width: 75%;
+}
+
+/* =====================================================
+   OFFLINE BANNER (Fix 18)
+   ===================================================== */
+.admin-offline-banner {
+    display: none;
+    background: linear-gradient(135deg, #E07B00, #B05000);
+    color: #fff;
+    text-align: center;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    flex-shrink: 0;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.2px;
+    animation: slideInBottom 0.3s ease;
+    z-index: 200;
+}
+
+.admin-offline-banner.visible {
+    display: flex;
+}
+
+body.dark-mode .admin-offline-banner {
+    background: linear-gradient(135deg, #B35E00, #7A4000);
+}
+
+/* =====================================================
+   PAGINATION (Fix 19)
+   ===================================================== */
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface-card);
+    border-top: 1px solid var(--surface-border);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.pagination-btns {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.pagination-btn {
+    min-width: 36px;
+    height: 36px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    transition: all var(--ease-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--brand-red);
+    color: #fff;
+    border-color: var(--brand-red);
+    transform: translateY(-1px);
+}
+
+.pagination-btn.active {
+    background: var(--brand-red);
+    color: #fff;
+    border-color: var(--brand-red);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .pagination-bar { justify-content: center; }
+    .pagination-info { width: 100%; text-align: center; }
+}
+
+/* =====================================================
+   MOBILE CARD VIEWS FOR TABLES (Fix 12)
+   ===================================================== */
+@media (max-width: 768px) {
+    /* Transform data tables into card stacks on mobile */
+    .table-responsive.mobile-cards table,
+    .table-responsive.mobile-cards thead,
+    .table-responsive.mobile-cards tbody,
+    .table-responsive.mobile-cards th,
+    .table-responsive.mobile-cards td,
+    .table-responsive.mobile-cards tr {
+        display: block;
+    }
+
+    .table-responsive.mobile-cards thead tr {
+        display: none; /* hide column headers */
+    }
+
+    .table-responsive.mobile-cards tbody tr {
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: var(--radius-md);
+        margin-bottom: 12px;
+        padding: 4px 0;
+        box-shadow: var(--shadow-xs);
+        overflow: hidden;
+    }
+
+    .table-responsive.mobile-cards tbody tr:hover {
+        box-shadow: var(--shadow-sm);
+        border-color: var(--brand-red-light);
+    }
+
+    .table-responsive.mobile-cards td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 9px 16px;
+        border-bottom: 1px solid var(--surface-border);
+        font-size: 13px;
+        gap: 12px;
+        min-height: 38px;
+    }
+
+    .table-responsive.mobile-cards td:last-child {
+        border-bottom: none;
+    }
+
+    .table-responsive.mobile-cards td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding-top: 2px;
+        min-width: 110px;
+    }
+
+    .table-responsive.mobile-cards td:last-child {
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+        white-space: normal;
+    }
+
+    .table-responsive.mobile-cards td:last-child::before {
+        display: none;
+    }
+
+    /* photo cells on mobile */
+    .table-responsive.mobile-cards .profile-photo {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* =====================================================
+   INSURANCE EXPIRY TRACKER (Fix 7 - Restyled)
+   ===================================================== */
+.expiry-tracker-section {
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--surface-border);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+}
+
+.expiry-vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.expiry-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--shadow-xs);
+    transition: all var(--ease-base);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.expiry-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+}
+
+/* Status-based left borders and backgrounds */
+.expiry-card.expired {
+    border-left: 5px solid var(--brand-red);
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.02) 0%, var(--surface-card) 100%);
+}
+
+.expiry-card.due {
+    border-left: 5px solid var(--amber);
+    background: linear-gradient(135deg, rgba(224, 123, 0, 0.02) 0%, var(--surface-card) 100%);
+}
+
+.expiry-card.ok {
+    border-left: 5px solid var(--green);
+    background: linear-gradient(135deg, rgba(0, 179, 126, 0.02) 0%, var(--surface-card) 100%);
+}
+
+.expiry-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--surface-border);
+    padding-bottom: 12px;
+}
+
+.expiry-card-header h4 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.expiry-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.expiry-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.expiry-field > span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.expiry-field small {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    background: var(--surface-hover);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+}
+
+.status-badge.status-ok {
+    background: var(--green-bg);
+    color: var(--green-dark);
+}
+
+.status-badge.status-due {
+    background: var(--amber-bg);
+    color: var(--amber);
+}
+
+.status-badge.status-expired {
+    background: var(--brand-red-glow);
+    color: var(--brand-red);
+}
+
+.status-badge.status-muted {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+}
+
+.expiry-notes {
+    background: var(--surface-hover);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    border-left: 3px solid var(--text-muted);
+    font-style: italic;
+}
+
+.expiry-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* =====================================================
+   DASHBOARD INSURANCE TRACKER WIDGET
+   ===================================================== */
+.insurance-dashboard-widget {
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.insurance-summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 15px;
+}
+
+.insurance-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    transition: all var(--ease-base);
+    border: 1px solid var(--surface-border);
+}
+
+.insurance-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.insurance-stat-card.expired {
+    background: var(--brand-red-glow);
+    border-color: rgba(209, 0, 31, 0.25);
+    color: var(--brand-red);
+}
+
+.insurance-stat-card.due {
+    background: var(--amber-bg);
+    border-color: rgba(224, 123, 0, 0.25);
+    color: var(--amber);
+}
+
+.insurance-stat-card.ok {
+    background: var(--green-bg);
+    border-color: rgba(0, 179, 126, 0.25);
+    color: var(--green-dark);
+}
+
+.insurance-stat-card .num {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.insurance-stat-card .lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.insurance-alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.insurance-alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+    transition: all var(--ease-fast);
+}
+
+.insurance-alert-item:hover {
+    transform: translateX(4px);
+    border-color: var(--text-secondary);
+}
+
+.insurance-alert-item.expired {
+    border-left: 4px solid var(--brand-red);
+}
+
+.insurance-alert-item.due {
+    border-left: 4px solid var(--amber);
+}
+
+.insurance-alert-item .info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.insurance-alert-item .icon {
+    font-size: 20px;
+}
+
+.insurance-alert-item .details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.insurance-alert-item .plate {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.insurance-alert-item .desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.insurance-alert-item .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+}
+
+.insurance-alert-item.expired .badge {
+    background: var(--brand-red-glow);
+    color: var(--brand-red);
+}
+
+.insurance-alert-item.due .badge {
+    background: var(--amber-bg);
+    color: var(--amber);
+}
+
+@media (max-width: 768px) {
+    .expiry-vehicle-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .insurance-alert-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .insurance-alert-item .badge {
+        align-self: flex-end;
+    }
+}
+
 

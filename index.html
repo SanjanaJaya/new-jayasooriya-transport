@@ -247,6 +247,10 @@
                             <span class="nav-icon">🔧</span>
                             <span>Lorry Maintenance</span>
                         </button>
+                        <button class="nav-item nav-sub-item" data-page="vehicle-expiry">
+                            <span class="nav-icon">🛡️</span>
+                            <span>Insurance Tracker</span>
+                        </button>
                     </div>
                 </div>
 
@@ -305,6 +309,11 @@
             </div>
 
             <div class="mobile-overlay" id="mobileOverlay"></div>
+
+            <!-- Offline Warning Banner (Fix 18) -->
+            <div class="admin-offline-banner" id="adminOfflineBanner">
+                ⚠️ You are offline — showing cached data. Some actions may not work.
+            </div>
 
             <div class="pages-container">
 
@@ -395,6 +404,19 @@
                         <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
                         <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export
                             Excel</button>
+                    </div>
+
+                    <!-- ====== DASHBOARD INSURANCE TRACKER WIDGET ====== -->
+                    <div class="performance-section" id="dashboardInsuranceSection">
+                        <h3>🛡️ Vehicle Insurance Expiry Tracker</h3>
+                        <div class="insurance-dashboard-widget">
+                            <div class="insurance-summary-stats" id="dashInsuranceSummary">
+                                <div style="text-align: center; color: var(--text-muted); grid-column: 1/-1; padding: 10px;">Loading stats...</div>
+                            </div>
+                            <div class="insurance-alert-list" id="dashInsuranceAlerts">
+                                <div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading insurance alerts...</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="performance-section">
@@ -2648,6 +2670,56 @@
                 </div>
                 <!-- end kevilton-distributions page -->
 
+
+                <!-- ====== VEHICLE EXPIRY TRACKER PAGE (Fix 7) ====== -->
+                <div id="vehicle-expiry" class="page">
+                    <div class="page-header">
+                        <h3>🛡️ Insurance Expiry Tracker</h3>
+                        <button class="btn btn-primary" id="addExpiryBtn">+ Add / Update Vehicle</button>
+                    </div>
+
+                    <div class="form-container" id="expiryFormContainer" style="display:none;">
+                        <form id="expiryForm">
+                            <input type="hidden" id="expiryRecordId">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2;">
+                                    <label for="expiryVehicleSelect" style="font-size:12px;color:#666;">🚛 Vehicle (Base Registration)</label>
+                                    <select id="expiryVehicleSelect" required>
+                                        <option value="">Select Vehicle…</option>
+                                    </select>
+                                    <small style="color:#666;font-size:11px;">Vehicles fetched from both Hire & Commitment tables, de-duplicated by base plate number.</small>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="expiryInsuranceDate" style="font-size:12px;color:#666;">🛡️ Insurance Expiry Date</label>
+                                    <input type="date" id="expiryInsuranceDate">
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="expiryRevenueLicenseDate" style="font-size:12px;color:#666;">📋 Revenue License Expiry Date</label>
+                                    <input type="date" id="expiryRevenueLicenseDate">
+                                </div>
+                            </div>
+                            <div class="form-row full">
+                                <input type="text" id="expiryNotes" placeholder="Notes (e.g., Renewed at DIMO, Colombo) — Optional">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">💾 Save Expiry Record</button>
+                                <button type="button" class="btn btn-secondary" id="cancelExpiryBtn">✖ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Summary stats bar -->
+                    <div class="insurance-summary-stats" style="margin-bottom:20px;" id="expirySummaryBar"></div>
+
+                    <!-- Vehicle expiry cards grid -->
+                    <div class="expiry-vehicle-grid" id="expiryVehicleGrid">
+                        <div style="color:var(--text-muted);text-align:center;grid-column:1/-1;padding:40px;">
+                            Loading expiry records…
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </main>

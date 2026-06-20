@@ -209,11 +209,159 @@ function updateUIForRole() {
 // Helper to check admin access for operations
 function checkAdminAccess(action = 'modify') {
     if (userRole === 'viewer') {
-        alert(`You don't have permission to ${action} data. Contact the administrator for access.`);
+        showToast(`You don't have permission to ${action} data. Contact the administrator for access.`, 'warning');
         return false;
     }
     return true;
 }
+
+
+// ============================================================
+//  GLOBAL UTILITY SYSTEM — Toast, Confirm, Skeleton, Cache, Pagination
+// ============================================================
+
+// --- TOAST NOTIFICATIONS (Fix 3) ---
+function showToast(message, type = 'info', duration = 3500) {
+    const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+    let container = document.getElementById('jtmsToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'jtmsToastContainer';
+        container.className = 'jtms-toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `jtms-toast ${type}`;
+    toast.innerHTML = `<span class="jtms-toast-icon">${icons[type] || 'ℹ️'}</span><span class="jtms-toast-body">${message}</span>`;
+    toast.addEventListener('click', () => toast.remove());
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 320);
+    }, duration);
+}
+
+// --- CONFIRM MODAL (Fix 3) ---
+function showConfirm(message, onYes, onNo = null, { title = 'Confirm Action', icon = '⚠️', yesLabel = 'Yes, proceed', noLabel = 'Cancel' } = {}) {
+    const overlay = document.createElement('div');
+    overlay.className = 'jtms-confirm-overlay';
+    overlay.innerHTML = `
+        <div class="jtms-confirm-box">
+            <span class="jtms-confirm-icon">${icon}</span>
+            <div class="jtms-confirm-title">${title}</div>
+            <div class="jtms-confirm-msg">${message}</div>
+            <div class="jtms-confirm-btns">
+                <button class="jtms-confirm-yes">${yesLabel}</button>
+                <button class="jtms-confirm-no">${noLabel}</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.jtms-confirm-yes').addEventListener('click', () => { overlay.remove(); if (onYes) onYes(); });
+    overlay.querySelector('.jtms-confirm-no').addEventListener('click',  () => { overlay.remove(); if (onNo)  onNo(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); if (onNo) onNo(); } });
+}
+
+// Async version of showConfirm for use with await in async functions
+function showConfirmAsync(message, options = {}) {
+    return new Promise(resolve => {
+        showConfirm(message, () => resolve(true), () => resolve(false), options);
+    });
+}
+
+// --- SKELETON LOADER (Fix 17) ---
+function showTableSkeleton(tbodyId, cols = 5, rows = 5) {
+    const tbody = document.getElementById(tbodyId) || document.querySelector(`#${tbodyId} tbody`) || (() => { const t = document.querySelector(tbodyId); return t?.querySelector('tbody') || t; })();
+    if (!tbody) return;
+    tbody.innerHTML = Array.from({ length: rows }, () =>
+        `<tr class="skeleton-table-row">${Array.from({ length: cols }, () => '<td><span></span></td>').join('')}</tr>`
+    ).join('');
+}
+
+// --- ADMIN OFFLINE CACHE (Fix 18) ---
+const ADMIN_CACHE_PREFIX = 'jt_admin_';
+
+function setCachedAdminData(key, data) {
+    try { localStorage.setItem(ADMIN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+}
+
+function getCachedAdminData(key) {
+    try {
+        const raw = localStorage.getItem(ADMIN_CACHE_PREFIX + key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed?.data ?? null;
+    } catch(e) { return null; }
+}
+
+function showOfflineBanner(visible) {
+    const banner = document.getElementById('adminOfflineBanner');
+    if (banner) banner.classList.toggle('visible', visible);
+}
+
+window.addEventListener('online',  () => showOfflineBanner(false));
+window.addEventListener('offline', () => showOfflineBanner(true));
+
+// --- PAGINATION HELPER (Fix 19) ---
+function createPagination(containerId, data, renderRowFn, tableId, colCount, pageSize = 25) {
+    let currentPage = 1;
+    const totalPages = () => Math.max(1, Math.ceil(data.length / pageSize));
+
+    function render() {
+        const tbody = document.querySelector(`#${tableId} tbody`) || document.getElementById(tableId);
+        if (!tbody) return;
+        const start = (currentPage - 1) * pageSize;
+        const pageData = data.slice(start, start + pageSize);
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:20px;color:var(--text-muted);">No records found</td></tr>`;
+        } else {
+            pageData.forEach(item => {
+                const row = renderRowFn(item);
+                if (row) tbody.appendChild(row);
+            });
+        }
+        renderPaginationBar();
+    }
+
+    function renderPaginationBar() {
+        let bar = document.getElementById(containerId + '_pgbar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = containerId + '_pgbar';
+            bar.className = 'pagination-bar';
+            const container = document.getElementById(containerId);
+            if (container) container.after(bar);
+        }
+        if (totalPages() <= 1) { bar.style.display = 'none'; return; }
+        bar.style.display = 'flex';
+        const tp = totalPages();
+        const cp = currentPage;
+        let btns = `<button class="pagination-btn" id="${containerId}_prev" ${cp===1?'disabled':''}>‹</button>`;
+        const range = [];
+        if (tp <= 7) { for(let i=1;i<=tp;i++) range.push(i); }
+        else {
+            range.push(1);
+            if (cp > 3) range.push('...');
+            for(let i=Math.max(2,cp-1);i<=Math.min(tp-1,cp+1);i++) range.push(i);
+            if (cp < tp-2) range.push('...');
+            range.push(tp);
+        }
+        range.forEach(p => {
+            if (p === '...') btns += `<span class="pagination-btn" style="cursor:default;border:none;">…</span>`;
+            else btns += `<button class="pagination-btn${p===cp?' active':''}" data-pg="${p}">${p}</button>`;
+        });
+        btns += `<button class="pagination-btn" id="${containerId}_next" ${cp===tp?'disabled':''}>›</button>`;
+        const start = (cp-1)*pageSize+1, end = Math.min(cp*pageSize, data.length);
+        bar.innerHTML = `<span class="pagination-info">Showing ${start}–${end} of ${data.length}</span><div class="pagination-btns">${btns}</div>`;
+        bar.querySelector(`#${containerId}_prev`)?.addEventListener('click', () => { if(currentPage>1){currentPage--;render();} });
+        bar.querySelector(`#${containerId}_next`)?.addEventListener('click', () => { if(currentPage<tp){currentPage++;render();} });
+        bar.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { currentPage=parseInt(b.dataset.pg); render(); }));
+    }
+
+    render();
+    return { refresh: render, goToPage: (p) => { currentPage = Math.min(Math.max(1,p), totalPages()); render(); } };
+}
+
 
 // Initialize App
 async function initializeApp() {
@@ -240,6 +388,7 @@ async function initializeApp() {
             initDriverKmLog(); // Initialize Driver KM Log
             await loadDashboard();
             preloadAllData(); // Preload other tabs
+            initVehicleExpiryPage(); // Init Expiry Tracker
         } else {
             showLogin();
         }
@@ -429,6 +578,7 @@ const PAGE_GROUP_MAP = {
     'commitment-records': 'navGroupFleet',
     'commitment-dayoffs': 'navGroupFleet',
     'lorry-maintenance': 'navGroupFleet',
+    'vehicle-expiry': 'navGroupFleet',
 };
 
 function openNavGroup(groupId) {
@@ -512,6 +662,7 @@ function switchPage(page) {
         'lorry-maintenance': 'Lorry Maintenance',
         'other-operation-hires': 'Other Operation Hires',
         'kevilton-distributions': 'Kevilton Distributions',
+        'vehicle-expiry': 'Insurance Expiry Tracker',
     };
 
     const titleEl = document.getElementById('pageTitle');
@@ -554,6 +705,9 @@ function switchPage(page) {
     }
     if (page === 'kevilton-distributions') {
         loadKeviltonDistributors();
+    }
+    if (page === 'vehicle-expiry') {
+        loadVehicleExpiryPage();
     }
 }
 
@@ -598,6 +752,9 @@ async function preloadAllData() {
             async () => {
                 ensureMonthValue('driverKmMonthFilter');
                 if (typeof loadDriverKmRecords === 'function') await loadDriverKmRecords();
+            },
+            async () => {
+                if (typeof loadVehicleExpiryPage === 'function') await loadVehicleExpiryPage();
             }
         ];
 
@@ -689,6 +846,9 @@ async function loadDashboard() {
         // Render tracked vehicles
         renderTrackedVehicles();
 
+        // Render dashboard insurance alerts
+        loadDashboardInsuranceWidget();
+
         // Load Fleet Overview
         loadFleetOverview();
 
@@ -770,15 +930,15 @@ async function initServiceTracking() {
     }
 
     addBtn.addEventListener('click', async () => {
-        if (!lorryNoSelect.value) { alert('Please select a vehicle.'); return; }
-        if (!dateInput.value) { alert('Please select a service date.'); return; }
+        if (!lorryNoSelect.value) { showToast('Please select a vehicle.', 'warning'); return; }
+        if (!dateInput.value) { showToast('Please select a service date.', 'warning'); return; }
 
         const targetKmsInput = document.getElementById('serviceTargetKms');
         const targetKms = targetKmsInput ? parseInt(targetKmsInput.value) || 5000 : 5000;
 
         const currentUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
         if (!currentUserId) {
-            alert('User authentication error. Cannot save.');
+            showToast('User authentication error. Cannot save.', 'error');
             return;
         }
 
@@ -812,7 +972,7 @@ async function initServiceTracking() {
             renderTrackedVehicles();
         } catch (e) {
             console.error('Error saving service tracker:', e);
-            alert('Failed to save service tracker to database.');
+            showToast('Failed to save service tracker to database.', 'error');
         } finally {
             addBtn.disabled = false;
             addBtn.textContent = '➕ Track Vehicle';
@@ -930,7 +1090,7 @@ async function renderTrackedVehicles() {
 }
 
 window.removeTrackedVehicle = async function (baseName) {
-    if (confirm('Stop tracking this vehicle?')) {
+    if (await showConfirmAsync('Stop tracking this vehicle?')) {
         const currentQueryUserId = getQueryUserId() || (currentUser ? currentUser.id : null);
         if (!currentQueryUserId) return;
 
@@ -945,7 +1105,7 @@ window.removeTrackedVehicle = async function (baseName) {
             if (typeof loadNotifications === 'function') loadNotifications();
         } catch (e) {
             console.error('Error removing tracked vehicle:', e);
-            alert('Failed to remove tracker. Please try again.');
+            showToast('Failed to remove tracker. Please try again.', 'error');
         }
     }
 };
@@ -1077,7 +1237,7 @@ document.getElementById('cancelDriverBtn')?.addEventListener('click', () => {
 document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('driverId').value;
     const salaryType = document.getElementById('driverSalaryType').value || 'fixed';
@@ -1117,7 +1277,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
             }
             const { data: duplicates } = await dupQuery;
             if (duplicates && duplicates.length > 0) {
-                alert('Another staff member already has this license number. Please use a unique license number.');
+                showToast('Another staff member already has this license number. Please use a unique license number.', 'warning');
                 return;
             }
         }
@@ -1132,7 +1292,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         loadDrivers();
         document.getElementById('driverFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving driver: ' + error.message);
+        showToast('Error saving driver: ' + error.message, 'error');
     }
 });
 
@@ -1370,14 +1530,14 @@ window.assignLorry = async function (driverId, selectEl, driverRole) {
         loadDrivers();
     } catch (err) {
         console.error('Error assigning lorry:', err);
-        alert('Error assigning lorry: ' + err.message);
+        showToast('Error assigning lorry: ' + err.message, 'error');
     }
 };
 
 // Remove lorry assignment from a staff member
 window.unassignLorry = async function (driverId) {
     if (!checkAdminAccess('unassign')) return;
-    if (!confirm('Remove this lorry assignment?')) return;
+    if (!await showConfirmAsync('Remove this lorry assignment?')) return;
     try {
         const { error } = await supabaseClient.from('staff_lorry_assignments')
             .delete().eq('driver_id', driverId).eq('user_id', getQueryUserId());
@@ -1385,7 +1545,7 @@ window.unassignLorry = async function (driverId) {
         loadDrivers();
     } catch (err) {
         console.error('Error unassigning lorry:', err);
-        alert('Error removing assignment: ' + err.message);
+        showToast('Error removing assignment: ' + err.message, 'error');
     }
 };
 
@@ -1429,18 +1589,18 @@ async function editDriver(id) {
         document.getElementById('driverFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading driver: ' + error.message);
+        showToast('Error loading driver: ' + error.message, 'error');
     }
 }
 
 async function deleteDriver(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this driver?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this driver?')) {
         try {
             await supabaseClient.from('drivers').delete().eq('id', id);
             loadDrivers();
         } catch (error) {
-            alert('Error deleting driver: ' + error.message);
+            showToast('Error deleting driver: ' + error.message, 'error');
         }
     }
 }
@@ -1464,7 +1624,7 @@ document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () =>
 document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('hireVehicleId').value;
     const data = {
@@ -1496,7 +1656,7 @@ document.getElementById('hireVehicleForm')?.addEventListener('submit', async (e)
         loadHireVehicles();
         document.getElementById('hireVehicleFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving vehicle: ' + error.message);
+        showToast('Error saving vehicle: ' + error.message, 'error');
     }
 });
 
@@ -1620,18 +1780,18 @@ async function editHireVehicle(id) {
         document.getElementById('hireVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading vehicle: ' + error.message);
+        showToast('Error loading vehicle: ' + error.message, 'error');
     }
 }
 
 async function deleteHireVehicle(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this vehicle?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this vehicle?')) {
         try {
             await supabaseClient.from('hire_to_pay_vehicles').delete().eq('id', id);
             loadHireVehicles();
         } catch (error) {
-            alert('Error deleting vehicle: ' + error.message);
+            showToast('Error deleting vehicle: ' + error.message, 'error');
         }
     }
 }
@@ -1655,7 +1815,7 @@ document.getElementById('hireRecordsTownSearch')?.addEventListener('input', load
 document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('hireRecordId').value;
     const distance = parseFloat(document.getElementById('hireDistance').value);
@@ -1740,7 +1900,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
         }
         document.getElementById('hireRecordFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving hire record: ' + error.message);
+        showToast('Error saving hire record: ' + error.message, 'error');
     }
 });
 
@@ -1896,18 +2056,18 @@ async function editHireRecord(id) {
         document.getElementById('hireRecordFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading hire record: ' + error.message);
+        showToast('Error loading hire record: ' + error.message, 'error');
     }
 }
 
 async function deleteHireRecord(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this hire record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this hire record?')) {
         try {
             await supabaseClient.from('hire_to_pay_records').delete().eq('id', id);
             loadHireRecords();
         } catch (error) {
-            alert('Error deleting hire record: ' + error.message);
+            showToast('Error deleting hire record: ' + error.message, 'error');
         }
     }
 }
@@ -1931,7 +2091,7 @@ document.getElementById('otherOperationHiresTownSearch')?.addEventListener('inpu
 document.getElementById('otherOperationHireForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('otherOperationHireId').value;
     const distance = parseFloat(document.getElementById('otherOpDistance').value) || 0;
@@ -1981,7 +2141,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
         }
         document.getElementById('otherOperationHireFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving record: ' + error.message);
+        showToast('Error saving record: ' + error.message, 'error');
     }
 });
 
@@ -2142,18 +2302,18 @@ async function editOtherOperationHire(id) {
         document.getElementById('otherOperationHireFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading record: ' + error.message);
+        showToast('Error loading record: ' + error.message, 'error');
     }
 }
 
 async function deleteOtherOperationHire(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this record?')) {
         try {
             await supabaseClient.from('other_operation_hires').delete().eq('id', id);
             loadOtherOperationHires();
         } catch (error) {
-            alert('Error deleting record: ' + error.message);
+            showToast('Error deleting record: ' + error.message, 'error');
         }
     }
 }
@@ -2177,7 +2337,7 @@ document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click',
 document.getElementById('commitmentVehicleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('commitmentVehicleId').value;
     const data = {
@@ -2205,7 +2365,7 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
         loadCommitmentVehicles();
         document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving commitment vehicle: ' + error.message);
+        showToast('Error saving commitment vehicle: ' + error.message, 'error');
     }
 });
 
@@ -2319,18 +2479,18 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading commitment vehicle: ' + error.message);
+        showToast('Error loading commitment vehicle: ' + error.message, 'error');
     }
 }
 
 async function deleteCommitmentVehicle(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this vehicle?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this vehicle?')) {
         try {
             await supabaseClient.from('commitment_vehicles').delete().eq('id', id);
             loadCommitmentVehicles();
         } catch (error) {
-            alert('Error deleting commitment vehicle: ' + error.message);
+            showToast('Error deleting commitment vehicle: ' + error.message, 'error');
         }
     }
 }
@@ -2354,7 +2514,7 @@ document.getElementById('commitmentRecordsTownSearch')?.addEventListener('input'
 document.getElementById('commitmentRecordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('commitmentRecordId').value;
     const fuelLitres = parseFloat(document.getElementById('commitmentFuel').value);
@@ -2400,7 +2560,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
         }
         document.getElementById('commitmentRecordFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving commitment record: ' + error.message);
+        showToast('Error saving commitment record: ' + error.message, 'error');
     }
 });
 
@@ -2582,18 +2742,18 @@ async function editCommitmentRecord(id) {
         document.getElementById('commitmentRecordFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading commitment record: ' + error.message);
+        showToast('Error loading commitment record: ' + error.message, 'error');
     }
 }
 
 async function deleteCommitmentRecord(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this commitment record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this commitment record?')) {
         try {
             await supabaseClient.from('commitment_records').delete().eq('id', id);
             loadCommitmentRecords();
         } catch (error) {
-            alert('Error deleting commitment record: ' + error.message);
+            showToast('Error deleting commitment record: ' + error.message, 'error');
         }
     }
 }
@@ -2616,7 +2776,7 @@ document.getElementById('dayOffVehicleFilter')?.addEventListener('change', loadD
 document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('dayOffId').value;
     const vehicleId = parseInt(document.getElementById('dayOffVehicle').value);
@@ -2649,7 +2809,7 @@ document.getElementById('dayOffForm')?.addEventListener('submit', async (e) => {
         loadDayOffs();
         document.getElementById('dayOffFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving day off: ' + error.message);
+        showToast('Error saving day off: ' + error.message, 'error');
     }
 });
 
@@ -2745,18 +2905,18 @@ async function editDayOff(id) {
         document.getElementById('dayOffFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading day off: ' + error.message);
+        showToast('Error loading day off: ' + error.message, 'error');
     }
 }
 
 async function deleteDayOff(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this day off?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this day off?')) {
         try {
             await supabaseClient.from('commitment_day_offs').delete().eq('id', id);
             loadDayOffs();
         } catch (error) {
-            alert('Error deleting day off: ' + error.message);
+            showToast('Error deleting day off: ' + error.message, 'error');
         }
     }
 }
@@ -4490,12 +4650,12 @@ document.getElementById('advanceReceipt')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
         if (file.type !== 'application/pdf') {
-            alert('Please upload a PDF file only');
+            showToast('Please upload a PDF file only', 'warning');
             e.target.value = '';
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            alert('File size must be less than 5MB');
+            showToast('File size must be less than 5MB', 'warning');
             e.target.value = '';
             return;
         }
@@ -4506,7 +4666,7 @@ document.getElementById('advanceReceipt')?.addEventListener('change', (e) => {
 
 // Remove existing receipt
 document.getElementById('removeReceiptBtn')?.addEventListener('click', async () => {
-    if (confirm('Are you sure you want to remove this receipt?')) {
+    if (await showConfirmAsync('Are you sure you want to remove this receipt?')) {
         existingReceiptUrl = null;
         document.getElementById('currentReceipt').style.display = 'none';
         document.getElementById('advanceReceipt').value = '';
@@ -4559,7 +4719,7 @@ async function uploadReceipt(file, advanceId) {
     } catch (error) {
         console.error('Error uploading receipt:', error);
         document.getElementById('uploadProgress').style.display = 'none';
-        alert('Failed to upload receipt: ' + error.message);
+        showToast('Failed to upload receipt: ' + error.message, 'error');
         return null;
     }
 }
@@ -4586,7 +4746,7 @@ async function deleteReceipt(receiptUrl) {
 document.getElementById('advanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('advanceId').value;
     const driverId = parseInt(document.getElementById('advanceDriver').value);
@@ -4647,7 +4807,7 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
         existingReceiptUrl = null;
     } catch (error) {
         console.error('Error saving advance:', error);
-        alert('Error saving advance: ' + error.message);
+        showToast('Error saving advance: ' + error.message, 'error');
     }
 });
 
@@ -4900,7 +5060,7 @@ function fallbackCopyText(text, btn) {
     if (success) {
         showCopySmsSuccess(btn);
     } else {
-        alert('Could not copy automatically. Please copy the message below:\n\n' + text);
+        showToast('Could not copy automatically. Please copy the message below:\n\n' + text, 'error');
     }
 }
 
@@ -4980,13 +5140,13 @@ async function editAdvance(id) {
         document.getElementById('advanceFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading advance: ' + error.message);
+        showToast('Error loading advance: ' + error.message, 'error');
     }
 }
 
 async function deleteAdvance(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this advance record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this advance record?')) {
         try {
             const { data: advance } = await supabaseClient
                 .from('driver_advances')
@@ -5001,7 +5161,7 @@ async function deleteAdvance(id) {
             await supabaseClient.from('driver_advances').delete().eq('id', id);
             loadDriverAdvances();
         } catch (error) {
-            alert('Error deleting advance: ' + error.message);
+            showToast('Error deleting advance: ' + error.message, 'error');
         }
     }
 }
@@ -5010,7 +5170,7 @@ async function deleteAdvance(id) {
 document.getElementById('generateReportBtn')?.addEventListener('click', async () => {
     const monthValue = document.getElementById('dashboardMonth')?.value;
     if (!monthValue) {
-        alert('Please select a month first');
+        showToast('Please select a month first', 'warning');
         return;
     }
     if (typeof generateMonthlyReport === 'function') {
@@ -6663,7 +6823,7 @@ document.getElementById('driverDayOffDriver')?.addEventListener('change', async 
 document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('driverDayOffId').value;
 
@@ -6687,7 +6847,7 @@ document.getElementById('driverDayOffForm')?.addEventListener('submit', async (e
         loadDriverDayOffs();
         document.getElementById('driverDayOffFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving driver day off: ' + error.message);
+        showToast('Error saving driver day off: ' + error.message, 'error');
     }
 });
 
@@ -6895,19 +7055,19 @@ async function editDriverDayOff(id) {
         document.getElementById('driverDayOffFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading day off: ' + error.message);
+        showToast('Error loading day off: ' + error.message, 'error');
     }
 }
 
 // 8. Delete Function
 async function deleteDriverDayOff(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this day off record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this day off record?')) {
         try {
             await supabaseClient.from('driver_day_offs').delete().eq('id', id);
             loadDriverDayOffs();
         } catch (error) {
-            alert('Error deleting record: ' + error.message);
+            showToast('Error deleting record: ' + error.message, 'error');
         }
     }
 }
@@ -6934,7 +7094,7 @@ document.getElementById('maintenanceVehicleFilter')?.addEventListener('change', 
 document.getElementById('maintenanceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('maintenanceId').value;
     const vehicleRaw = document.getElementById('maintenanceVehicle').value;
@@ -6962,7 +7122,7 @@ document.getElementById('maintenanceForm')?.addEventListener('submit', async (e)
         loadMaintenanceRecords();
         document.getElementById('maintenanceFormContainer').style.display = 'none';
     } catch (error) {
-        alert('Error saving maintenance record: ' + error.message);
+        showToast('Error saving maintenance record: ' + error.message, 'error');
     }
 });
 
@@ -7246,19 +7406,19 @@ async function editMaintenanceRecord(id) {
         document.getElementById('maintenanceFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (error) {
-        alert('Error loading maintenance record: ' + error.message);
+        showToast('Error loading maintenance record: ' + error.message, 'error');
     }
 }
 
 // 10. Delete Record
 async function deleteMaintenanceRecord(id) {
     if (!checkAdminAccess('delete')) return;
-    if (confirm('Are you sure you want to delete this maintenance record?')) {
+    if (await showConfirmAsync('Are you sure you want to delete this maintenance record?')) {
         try {
             await supabaseClient.from('lorry_maintenance').delete().eq('id', id);
             loadMaintenanceRecords();
         } catch (error) {
-            alert('Error deleting record: ' + error.message);
+            showToast('Error deleting record: ' + error.message, 'error');
         }
     }
 }
@@ -7539,12 +7699,12 @@ async function saveChequeBook() {
     const leafFrom = parseInt(document.getElementById('chequeLeafFrom').value);
     const leafTo = parseInt(document.getElementById('chequeLeafTo').value);
 
-    if (!bankName) { alert('Please select a bank.'); return; }
+    if (!bankName) { showToast('Please select a bank.', 'warning'); return; }
     if (isNaN(leafFrom) || isNaN(leafTo) || leafFrom < 1 || leafTo < leafFrom) {
-        alert('Please enter valid leaf numbers (From must be ≤ To).'); return;
+        showToast('Please enter valid leaf numbers (From must be ≤ To).', 'warning'); return;
     }
     const leafCount = leafTo - leafFrom + 1;
-    if (leafCount > 500) { alert('Maximum 500 leaves per book.'); return; }
+    if (leafCount > 500) { showToast('Maximum 500 leaves per book.', 'warning'); return; }
 
     const submitBtn = document.querySelector('#addChequeBookForm button[type="submit"]');
     submitBtn.disabled = true;
@@ -7576,7 +7736,7 @@ async function saveChequeBook() {
         if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
         console.error('Error saving cheque book:', err);
-        alert('Failed to save cheque book: ' + err.message);
+        showToast('Failed to save cheque book: ' + err.message, 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '💾 Add Cheque Book';
@@ -7837,7 +7997,7 @@ async function editChequeLeaf(leafId) {
         container.style.display = 'block';
         container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
-        alert('Error loading leaf: ' + err.message);
+        showToast('Error loading leaf: ' + err.message, 'error');
     }
 }
 
@@ -7872,7 +8032,7 @@ async function saveChequeLeaf() {
         await loadChequeBooks(); // refresh cards + summary
         if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
-        alert('Error saving leaf: ' + err.message);
+        showToast('Error saving leaf: ' + err.message, 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '💾 Save Changes';
@@ -7882,7 +8042,7 @@ async function saveChequeLeaf() {
 // ---- Delete a cheque book (and all its leaves via cascade) ----
 async function deleteChequeBook(bookId) {
     if (!checkAdminAccess('delete')) return;
-    if (!confirm('Delete this cheque book and ALL its leaves? This cannot be undone.')) return;
+    if (!await showConfirmAsync('Delete this cheque book and ALL its leaves? This cannot be undone.')) return;
     try {
         const { error } = await supabaseClient.from('cheque_books').delete().eq('id', bookId);
         if (error) throw error;
@@ -7899,7 +8059,7 @@ async function deleteChequeBook(bookId) {
         await loadChequeBooks();
         if (typeof loadNotifications === 'function') loadNotifications();
     } catch (err) {
-        alert('Error deleting cheque book: ' + err.message);
+        showToast('Error deleting cheque book: ' + err.message, 'error');
     }
 }
 
@@ -7988,13 +8148,14 @@ async function loadNotifications() {
         const allCommVehicles = commV || [];
 
         // Concurrently run alert fetches
-        const [chequeAlerts, serviceAlerts, advanceAlerts] = await Promise.all([
+        const [chequeAlerts, serviceAlerts, advanceAlerts, expiryAlerts] = await Promise.all([
             fetchChequeAlerts(userId),
             fetchServiceAlerts(userId, allHireVehicles, allCommVehicles),
-            fetchAdvanceAlerts(userId)
+            fetchAdvanceAlerts(userId),
+            fetchExpiryAlerts(userId)
         ]);
 
-        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts];
+        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts, ...expiryAlerts];
 
         // Filter out dismissed alerts from localStorage
         const dismissedIds = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
@@ -8065,6 +8226,13 @@ async function loadNotifications() {
                             filterSelect.dispatchEvent(new Event('change'));
                         }
                         document.getElementById('advancesTable')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 200);
+                } else if (alert.type === 'expiry') {
+                    currentPage = 'vehicle-expiry';
+                    setActiveNavItem('vehicle-expiry');
+                    switchPage('vehicle-expiry');
+                    setTimeout(() => {
+                        document.getElementById('expiryVehicleGrid')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }, 200);
                 }
             });
@@ -8485,7 +8653,7 @@ async function saveDriverKmRecord(e) {
     const kmAmount = parseFloat(document.getElementById('driverKmAmountInput').value);
 
     if (!driverId || !recordDate || isNaN(kmAmount) || kmAmount <= 0) {
-        alert('Please fill out all fields with valid data.');
+        showToast('Please fill out all fields with valid data.', 'warning');
         return;
     }
 
@@ -8520,7 +8688,7 @@ async function saveDriverKmRecord(e) {
         updateKmSalaryWidget();
     } catch (err) {
         console.error('Error saving driver KM record:', err.message);
-        alert('Failed to save record: ' + err.message);
+        showToast('Failed to save record: ' + err.message, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = '💾 Save KM Record';
@@ -8541,13 +8709,13 @@ async function editDriverKmRecord(id) {
         showDriverKmForm(data);
     } catch (err) {
         console.error('Error loading record for edit:', err.message);
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 }
 
 async function deleteDriverKmRecord(id) {
     if (!checkAdminAccess('delete')) return;
-    if (!confirm('Are you sure you want to delete this KM record?')) return;
+    if (!await showConfirmAsync('Are you sure you want to delete this KM record?')) return;
 
     try {
         const { error } = await supabaseClient
@@ -8561,7 +8729,7 @@ async function deleteDriverKmRecord(id) {
         updateKmSalaryWidget();
     } catch (err) {
         console.error('Error deleting record:', err.message);
-        alert('Failed to delete: ' + err.message);
+        showToast('Failed to delete: ' + err.message, 'error');
     }
 }
 
@@ -10080,7 +10248,7 @@ async function handleAddLeaseVehicle(e) {
     // Validate required fields
     const amount = parseFloat(document.getElementById('leaseInstallmentAmount').value);
     const totalInst = parseInt(document.getElementById('leaseTotalInstallments').value);
-    if (!amount || !totalInst) { alert('Please fill in amount and total installments.'); return; }
+    if (!amount || !totalInst) { showToast('Please fill in amount and total installments.', 'warning'); return; }
 
     let payload = {
         user_id: getQueryUserId(),
@@ -10094,13 +10262,13 @@ async function handleAddLeaseVehicle(e) {
 
     if (isLoan) {
         const lenderName = document.getElementById('loanLenderName').value.trim();
-        if (!lenderName) { alert('Please enter the lender / source name.'); return; }
+        if (!lenderName) { showToast('Please enter the lender / source name.', 'warning'); return; }
         payload.lender_name = lenderName;
         payload.vehicle_number = null;
 
         if (isWeeklyOrFortnightly) {
             const startDate = document.getElementById('leaseStartDate').value;
-            if (!startDate) { alert('Please select the first payment date.'); return; }
+            if (!startDate) { showToast('Please select the first payment date.', 'warning'); return; }
             payload.start_date = startDate;
             payload.total_installments = totalInst;
             payload.total_months = null;
@@ -10109,7 +10277,7 @@ async function handleAddLeaseVehicle(e) {
             payload.installment_day = null;
         } else {
             const startMonthVal = document.getElementById('leaseStartMonth').value;
-            if (!startMonthVal) { alert('Please select the start month.'); return; }
+            if (!startMonthVal) { showToast('Please select the start month.', 'warning'); return; }
             const [sy, sm] = startMonthVal.split('-').map(Number);
             payload.start_year = sy;
             payload.start_month = sm;
@@ -10121,9 +10289,9 @@ async function handleAddLeaseVehicle(e) {
     } else {
         // Leasing — always monthly
         const vehicleNumber = document.getElementById('leaseVehicleNumber').value.trim();
-        if (!vehicleNumber) { alert('Please enter the vehicle number.'); return; }
+        if (!vehicleNumber) { showToast('Please enter the vehicle number.', 'warning'); return; }
         const startMonthVal = document.getElementById('leaseStartMonth').value;
-        if (!startMonthVal) { alert('Please select the start month.'); return; }
+        if (!startMonthVal) { showToast('Please select the start month.', 'warning'); return; }
         const [sy, sm] = startMonthVal.split('-').map(Number);
         payload.vehicle_number = vehicleNumber;
         payload.lender_name = null;
@@ -10152,7 +10320,7 @@ async function handleAddLeaseVehicle(e) {
         await refreshLeasingData();
     } catch (err) {
         console.error('Error saving entry:', err);
-        alert('Failed to save: ' + (err.message || 'Please try again.'));
+        showToast('Failed to save: ' + (err.message || 'Please try again.'), 'error');
     } finally {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 Save'; }
     }
@@ -10587,7 +10755,7 @@ window.toggleLeaseMonthPaid = async function (vehicleId, monthKey, isPaid) {
         await refreshLeasingData();
     } catch (err) {
         console.error('Error toggling payment:', err);
-        alert('Failed to update: ' + (err.message || 'Please try again.'));
+        showToast('Failed to update: ' + (err.message || 'Please try again.'), 'error');
     }
 };
 
@@ -10615,7 +10783,7 @@ window.toggleLeaseMonthPostponed = async function (vehicleId, dateStr, isCurrent
         await refreshLeasingData();
     } catch (err) {
         console.error('Error toggling postponement:', err);
-        alert('Failed to update postponement: ' + (err.message || 'Please try again.'));
+        showToast('Failed to update postponement: ' + (err.message || 'Please try again.'), 'error');
     }
 };
 
@@ -10632,7 +10800,7 @@ window.settleLeaseEntry = async function (vehicleId) {
         await refreshLeasingData();
     } catch (err) {
         console.error('Error settling entry:', err);
-        alert('Failed to settle: ' + (err.message || 'Please try again.'));
+        showToast('Failed to settle: ' + (err.message || 'Please try again.'), 'error');
     }
 };
 
@@ -10640,7 +10808,7 @@ window.settleLeaseEntry = async function (vehicleId) {
 window.editLeaseVehicle = async function (vehicleId) {
     if (!checkAdminAccess('edit')) return;
     const { data, error } = await supabaseClient.from('leasing_vehicles').select('*').eq('id', vehicleId).single();
-    if (error || !data) { alert('Could not load data.'); return; }
+    if (error || !data) { showToast('Could not load data.', 'error'); return; }
 
     resetLeaseForm();
     document.getElementById('leaseVehicleId').value = data.id;
@@ -10687,7 +10855,7 @@ window.editLeaseVehicle = async function (vehicleId) {
 // ── Delete ─────────────────────────────────────────────────────
 window.deleteLeaseVehicle = async function (vehicleId) {
     if (!checkAdminAccess('delete')) return;
-    if (!confirm('Delete this entry and all its payment records?')) return;
+    if (!await showConfirmAsync('Delete this entry and all its payment records?')) return;
     try {
         const { error } = await supabaseClient.from('leasing_vehicles').delete().eq('id', vehicleId);
         if (error) throw error;
@@ -10698,7 +10866,7 @@ window.deleteLeaseVehicle = async function (vehicleId) {
         await refreshLeasingData();
     } catch (err) {
         console.error('Error deleting:', err);
-        alert('Failed to delete: ' + (err.message || 'Please try again.'));
+        showToast('Failed to delete: ' + (err.message || 'Please try again.'), 'error');
     }
 };
 
@@ -10862,7 +11030,7 @@ document.getElementById('elFuelAmount')?.addEventListener('input', elUpdatePrevi
 document.getElementById('elForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment and try again.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id         = document.getElementById('elRecordId').value;
     const date       = document.getElementById('elDate').value;
@@ -10896,7 +11064,7 @@ document.getElementById('elForm')?.addEventListener('submit', async (e) => {
         document.getElementById('elFormContainer').style.display = 'none';
         loadExcessingLitres();
     } catch (err) {
-        alert('Error saving record: ' + err.message);
+        showToast('Error saving record: ' + err.message, 'error');
     }
 });
 
@@ -10922,14 +11090,14 @@ async function elEdit(id) {
         document.getElementById('elFormContainer').style.display = 'block';
         window.scrollTo(0, 0);
     } catch (err) {
-        alert('Error loading record: ' + err.message);
+        showToast('Error loading record: ' + err.message, 'error');
     }
 }
 
 // ── Delete ─────────────────────────────────────────────────
 async function elDelete(id) {
     if (!checkAdminAccess('delete')) return;
-    if (!confirm('Are you sure you want to delete this record?')) return;
+    if (!await showConfirmAsync('Are you sure you want to delete this record?')) return;
     try {
         const { error } = await supabaseClient
             .from('excessing_litres')
@@ -10938,7 +11106,7 @@ async function elDelete(id) {
         if (error) throw error;
         loadExcessingLitres();
     } catch (err) {
-        alert('Error deleting record: ' + err.message);
+        showToast('Error deleting record: ' + err.message, 'error');
     }
 }
 
@@ -11296,7 +11464,7 @@ function kdResetForm() {
 document.getElementById('kdForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
-    if (!adminUserId) { alert('Session not ready. Please wait a moment.'); return; }
+    if (!adminUserId) { showToast('Session not ready. Please wait a moment.', 'warning'); return; }
 
     const saveBtn = document.getElementById('kdSaveBtn');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving...'; }
@@ -11335,7 +11503,7 @@ document.getElementById('kdForm')?.addEventListener('submit', async (e) => {
         loadKeviltonDistributors().catch(e2 => console.warn('KD refresh:', e2));
     } catch (err) {
         console.error('KD save error:', err);
-        alert('Failed to save: ' + (err.message || 'Please try again.'));
+        showToast('Failed to save: ' + (err.message || 'Please try again.'), 'error');
     } finally {
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Distributor'; }
     }
@@ -11359,21 +11527,21 @@ window.kdEditRecord = async function(recordId) {
         document.getElementById('kdFormContainer').style.display = 'block';
         document.getElementById('kdFormContainer').scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-        alert('Could not load record: ' + err.message);
+        showToast('Could not load record: ' + err.message, 'error');
     }
 };
 
 // ── Delete ────────────────────────────────────────────────────
 window.kdDeleteRecord = async function(recordId) {
     if (!checkAdminAccess('delete')) return;
-    if (!confirm('Delete this distributor location?')) return;
+    if (!await showConfirmAsync('Delete this distributor location?')) return;
     try {
         const { error } = await supabaseClient
             .from('kd_distributors').delete().eq('id', recordId);
         if (error) throw error;
         await loadKeviltonDistributors();
     } catch (err) {
-        alert('Failed to delete: ' + err.message);
+        showToast('Failed to delete: ' + err.message, 'error');
     }
 };
 
@@ -11469,13 +11637,13 @@ function kdRoutePlannerInit() {
     // ─── Add Stop button ──────────────────────────────────────
     document.getElementById('kdRouteAddStopBtn')?.addEventListener('click', () => {
         const sel = document.getElementById('kdRouteStopSelector');
-        if (!sel || !sel.value) { alert('Please select a distributor to add.'); return; }
+        if (!sel || !sel.value) { showToast('Please select a distributor to add.', 'warning'); return; }
         const record = _kdAllData.find(r => String(r.id) === String(sel.value));
         if (!record) return;
 
         // Prevent duplicates
         if (_kdRouteStops.some(s => s.id === record.id)) {
-            alert(`"${record.distributor_name}" is already in the route.`);
+            showToast(`"${record.distributor_name}" is already in the route.`, 'warning');
             return;
         }
 
@@ -11491,7 +11659,7 @@ function kdRoutePlannerInit() {
 
     // ─── Generate Route button ────────────────────────────────
     document.getElementById('kdRouteGenerateBtn')?.addEventListener('click', () => {
-        if (_kdRouteStops.length === 0) { alert('Add at least one stop to generate a route.'); return; }
+        if (_kdRouteStops.length === 0) { showToast('Add at least one stop to generate a route.', 'warning'); return; }
         kdRouteDraw();
     });
 
@@ -11754,7 +11922,7 @@ async function kdRouteDraw() {
 
 // ── Generate + copy driver message ────────────────────────────
 function kdRouteCopyMessage() {
-    if (_kdRouteStops.length === 0) { alert('Add at least one stop first.'); return; }
+    if (_kdRouteStops.length === 0) { showToast('Add at least one stop first.', 'warning'); return; }
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-GB', {
@@ -11810,3 +11978,465 @@ function kdRouteCopyMessage() {
 }
 
 
+
+
+// ============================================================
+//  VEHICLE EXPIRY TRACKER MODULE (Fix 7)
+// ============================================================
+
+function initVehicleExpiryPage() {
+    document.getElementById('addExpiryBtn')?.addEventListener('click', () => {
+        document.getElementById('expiryFormContainer').style.display = 'block';
+        document.getElementById('expiryForm').reset();
+        document.getElementById('expiryRecordId').value = '';
+    });
+
+    document.getElementById('cancelExpiryBtn')?.addEventListener('click', () => {
+        document.getElementById('expiryFormContainer').style.display = 'none';
+        document.getElementById('expiryForm').reset();
+        document.getElementById('expiryRecordId').value = '';
+    });
+
+    document.getElementById('expiryForm')?.addEventListener('submit', saveVehicleExpiry);
+}
+
+async function loadVehicleExpiryPage() {
+    const userId = getQueryUserId();
+    if (!userId) return;
+
+    // Show skeleton while loading
+    const grid = document.getElementById('expiryVehicleGrid');
+    if (grid) {
+        grid.innerHTML = '<div style="color:var(--text-muted);text-align:center;grid-column:1/-1;padding:40px;"><div class="skeleton-card" style="height:150px;margin-bottom:12px;"></div><div class="skeleton-card" style="height:150px;"></div></div>';
+    }
+
+    try {
+        // Fetch all vehicles from both tables to construct the unique list of base registrations
+        const [{ data: hireV }, { data: commV }, { data: expiryData }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, terminated').eq('user_id', userId),
+            supabaseClient.from('commitment_vehicles').select('vehicle_number, terminated').eq('user_id', userId),
+            supabaseClient.from('vehicle_expiry').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+        ]);
+
+        // Populate vehicle dropdown with unique active base registrations
+        const baseNames = new Set();
+        hireV?.filter(v => !v.terminated).forEach(v => {
+            const base = extractBaseVehicleName(v.lorry_number);
+            if (base) baseNames.add(base);
+        });
+        commV?.filter(v => !v.terminated).forEach(v => {
+            const base = extractBaseVehicleName(v.vehicle_number);
+            if (base) baseNames.add(base);
+        });
+
+        const selectEl = document.getElementById('expiryVehicleSelect');
+        if (selectEl) {
+            selectEl.innerHTML = '<option value="">Select Vehicle…</option>';
+            Array.from(baseNames).sort().forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        // Cache the list of expiry records offline
+        setCachedAdminData('vehicle_expiry', expiryData || []);
+
+        renderVehicleExpiryGrid(expiryData || []);
+    } catch (err) {
+        console.error('Error loading vehicle expiry page:', err);
+        // Fallback to offline cache
+        const cached = getCachedAdminData('vehicle_expiry');
+        if (cached) {
+            showToast('Offline — showing cached expiry records.', 'warning');
+            renderVehicleExpiryGrid(cached);
+        } else {
+            showToast('Failed to load expiry data.', 'error');
+        }
+    }
+}
+
+function renderVehicleExpiryGrid(records) {
+    const grid = document.getElementById('expiryVehicleGrid');
+    const summaryBar = document.getElementById('expirySummaryBar');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    if (!records || records.length === 0) {
+        grid.innerHTML = '<div style="color:var(--text-muted);text-align:center;grid-column:1/-1;padding:40px;">No vehicles tracked yet. Click "+ Add / Update Vehicle" above to start tracking.</div>';
+        if (summaryBar) summaryBar.innerHTML = '';
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let expiredCount = 0;
+    let warningCount = 0;
+    let okCount = 0;
+
+    records.forEach(rec => {
+        const insExpiry = rec.insurance_expiry ? new Date(rec.insurance_expiry) : null;
+        const revExpiry = rec.revenue_license_expiry ? new Date(rec.revenue_license_expiry) : null;
+
+        if (insExpiry) insExpiry.setHours(0,0,0,0);
+        if (revExpiry) revExpiry.setHours(0,0,0,0);
+
+        const getStatus = (date) => {
+            if (!date) return { label: 'Not Set', class: 'status-muted', days: null };
+            const diff = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+            if (diff <= 0) return { label: 'Expired', class: 'status-expired', days: diff };
+            if (diff <= 30) return { label: `Due in ${diff}d`, class: 'status-due', days: diff };
+            return { label: `OK (${diff}d)`, class: 'status-ok', days: diff };
+        };
+
+        const insStatus = getStatus(insExpiry);
+        const revStatus = getStatus(revExpiry);
+
+        // Determine overall card class
+        let cardClass = 'ok';
+        if (insStatus.class === 'status-expired' || revStatus.class === 'status-expired') {
+            cardClass = 'expired';
+            expiredCount++;
+        } else if (insStatus.class === 'status-due' || revStatus.class === 'status-due') {
+            cardClass = 'due';
+            warningCount++;
+        } else {
+            okCount++;
+        }
+
+        const card = document.createElement('div');
+        card.className = `expiry-card ${cardClass}`;
+        
+        const actionButtons = userRole === 'viewer' ? '' : `
+            <div class="expiry-card-actions">
+                <button class="btn btn-edit btn-sm" onclick="editExpiryRecord(${rec.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteExpiryRecord(${rec.id})">Delete</button>
+            </div>
+        `;
+
+        card.innerHTML = `
+            <div class="expiry-card-header">
+                <h4>🚛 ${rec.base_registration}</h4>
+                ${actionButtons}
+            </div>
+            <div class="expiry-card-body">
+                <div class="expiry-field">
+                    <span>🛡️ Insurance:</span>
+                    <span class="status-badge ${insStatus.class}">${insStatus.label}</span>
+                    <small>${rec.insurance_expiry || 'Not set'}</small>
+                </div>
+                <div class="expiry-field">
+                    <span>📋 Revenue License:</span>
+                    <span class="status-badge ${revStatus.class}">${revStatus.label}</span>
+                    <small>${rec.revenue_license_expiry || 'Not set'}</small>
+                </div>
+                ${rec.notes ? `<div class="expiry-notes"><small>📝 ${rec.notes}</small></div>` : ''}
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    if (summaryBar) {
+        summaryBar.innerHTML = `
+            <div class="insurance-stat-card expired">
+                <div class="num">${expiredCount}</div>
+                <div class="lbl">Expired</div>
+            </div>
+            <div class="insurance-stat-card due">
+                <div class="num">${warningCount}</div>
+                <div class="lbl">Due Soon (≤30d)</div>
+            </div>
+            <div class="insurance-stat-card ok">
+                <div class="num">${okCount}</div>
+                <div class="lbl">Active & OK</div>
+            </div>
+        `;
+    }
+}
+
+async function saveVehicleExpiry(e) {
+    e.preventDefault();
+    if (!checkAdminAccess('save')) return;
+    const userId = getQueryUserId();
+    if (!userId) return;
+
+    const id = document.getElementById('expiryRecordId').value;
+    const baseRegistration = document.getElementById('expiryVehicleSelect').value;
+    const insuranceExpiry = document.getElementById('expiryInsuranceDate').value || null;
+    const revenueLicenseExpiry = document.getElementById('expiryRevenueLicenseDate').value || null;
+    const notes = document.getElementById('expiryNotes').value || '';
+
+    try {
+        const payload = {
+            user_id: userId,
+            base_registration: baseRegistration,
+            insurance_expiry: insuranceExpiry,
+            revenue_license_expiry: revenueLicenseExpiry,
+            notes: notes
+        };
+
+        let result;
+        if (id) {
+            result = await supabaseClient.from('vehicle_expiry').update(payload).eq('id', id);
+        } else {
+            result = await supabaseClient.from('vehicle_expiry').upsert(payload, { onConflict: 'user_id,base_registration' });
+        }
+
+        if (result.error) throw result.error;
+
+        showToast('Insurance record saved successfully.', 'success');
+        document.getElementById('expiryFormContainer').style.display = 'none';
+        document.getElementById('expiryForm').reset();
+        document.getElementById('expiryRecordId').value = '';
+        loadVehicleExpiryPage();
+        if (typeof loadNotifications === 'function') loadNotifications();
+    } catch (err) {
+        console.error('Error saving expiry record:', err);
+        showToast('Failed to save expiry record: ' + err.message, 'error');
+    }
+}
+
+async function editExpiryRecord(id) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const { data, error } = await supabaseClient.from('vehicle_expiry').select('*').eq('id', id).single();
+        if (error) throw error;
+
+        document.getElementById('expiryRecordId').value = data.id;
+        document.getElementById('expiryVehicleSelect').value = data.base_registration;
+        document.getElementById('expiryInsuranceDate').value = data.insurance_expiry || '';
+        document.getElementById('expiryRevenueLicenseDate').value = data.revenue_license_expiry || '';
+        document.getElementById('expiryNotes').value = data.notes || '';
+
+        document.getElementById('expiryFormContainer').style.display = 'block';
+        document.getElementById('expiryFormContainer').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+        console.error('Error loading record for edit:', err);
+        showToast('Failed to load record details.', 'error');
+    }
+}
+
+async function deleteExpiryRecord(id) {
+    if (!checkAdminAccess('delete')) return;
+    if (!await showConfirmAsync('Are you sure you want to stop tracking this vehicle\'s insurance and license?', {icon:'🗑️',yesLabel:'Delete',noLabel:'Cancel'})) return;
+
+    try {
+        const { error } = await supabaseClient.from('vehicle_expiry').delete().eq('id', id);
+        if (error) throw error;
+
+        showToast('Vehicle insurance tracking removed.', 'success');
+        loadVehicleExpiryPage();
+        if (typeof loadNotifications === 'function') loadNotifications();
+    } catch (err) {
+        console.error('Error deleting record:', err);
+        showToast('Failed to delete tracking record.', 'error');
+    }
+}
+
+async function fetchExpiryAlerts(userId) {
+    try {
+        const { data, error } = await supabaseClient.from('vehicle_expiry').select('*').eq('user_id', userId);
+        if (error || !data) return [];
+        const alerts = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        data.forEach(record => {
+            const checkExpiry = (expiryDateStr, name) => {
+                if (!expiryDateStr) return;
+                const expiryDate = new Date(expiryDateStr);
+                expiryDate.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 30) {
+                    let titleText = `🗓️ ${name} Expiry: ${record.base_registration}`;
+                    let descText = `${name} expires in ${diffDays} days (${expiryDateStr}).`;
+                    let iconText = `🟡`;
+                    if (diffDays <= 0) {
+                        titleText = `🚨 ${name} EXPIRED: ${record.base_registration}`;
+                        descText = `${name} expired on ${expiryDateStr}!`;
+                        iconText = `🔴`;
+                    }
+                    alerts.push({
+                        id: `expiry_${record.id}_${name.toLowerCase()}`,
+                        title: titleText,
+                        desc: descText,
+                        icon: iconText,
+                        type: 'expiry',
+                        date: expiryDateStr
+                    });
+                }
+            };
+
+            checkExpiry(record.insurance_expiry, 'Insurance');
+            checkExpiry(record.revenue_license_expiry, 'Revenue License');
+        });
+        return alerts;
+    } catch (e) {
+        console.error('Error fetching expiry alerts:', e);
+        return [];
+    }
+}
+
+// ====== DASHBOARD INSURANCE WIDGET INTEGRATION ======
+async function loadDashboardInsuranceWidget() {
+    const userId = getQueryUserId();
+    if (!userId) return;
+
+    const summaryEl = document.getElementById('dashInsuranceSummary');
+    const alertsEl = document.getElementById('dashInsuranceAlerts');
+
+    if (!summaryEl || !alertsEl) return;
+
+    try {
+        const { data, error } = await supabaseClient.from('vehicle_expiry').select('*').eq('user_id', userId);
+        if (error) throw error;
+
+        setCachedAdminData('vehicle_expiry', data || []);
+        renderDashboardInsuranceWidget(data || []);
+    } catch (err) {
+        console.error('Error loading dashboard insurance widget:', err);
+        const cached = getCachedAdminData('vehicle_expiry');
+        if (cached) {
+            renderDashboardInsuranceWidget(cached);
+        } else {
+            summaryEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;grid-column:1/-1;">Failed to load stats.</div>';
+            alertsEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:10px;">Failed to load alerts.</div>';
+        }
+    }
+}
+
+function renderDashboardInsuranceWidget(records) {
+    const summaryEl = document.getElementById('dashInsuranceSummary');
+    const alertsEl = document.getElementById('dashInsuranceAlerts');
+    if (!summaryEl || !alertsEl) return;
+
+    summaryEl.innerHTML = '';
+    alertsEl.innerHTML = '';
+
+    if (!records || records.length === 0) {
+        summaryEl.innerHTML = `
+            <div class="insurance-stat-card ok" style="grid-column: 1/-1; padding: 20px;">
+                <div class="num">0</div>
+                <div class="lbl">Vehicles Tracked</div>
+            </div>
+        `;
+        alertsEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No vehicles tracked yet.</div>';
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let expiredCount = 0;
+    let dueCount = 0;
+    let okCount = 0;
+    const vehicleListItems = [];
+
+    records.forEach(rec => {
+        const insExpiry = rec.insurance_expiry ? new Date(rec.insurance_expiry) : null;
+        const revExpiry = rec.revenue_license_expiry ? new Date(rec.revenue_license_expiry) : null;
+
+        if (insExpiry) insExpiry.setHours(0,0,0,0);
+        if (revExpiry) revExpiry.setHours(0,0,0,0);
+
+        const getStatusDetails = (date, dateStr, name) => {
+            if (!date) return { type: 'not-set', label: 'Not Set', badgeClass: 'status-muted', text: `${name}: Not set`, dateStr: '-' };
+            const diff = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+            if (diff <= 0) {
+                return { type: 'expired', label: 'Expired', badgeClass: 'status-expired', text: `${name} expired ${Math.abs(diff)}d ago`, dateStr };
+            }
+            if (diff <= 30) {
+                return { type: 'due', label: `Due in ${diff}d`, badgeClass: 'status-due', text: `${name} expires in ${diff}d`, dateStr };
+            }
+            return { type: 'ok', label: `OK (${diff}d)`, badgeClass: 'status-ok', text: `${name} is active`, dateStr };
+        };
+
+        const insStatus = getStatusDetails(insExpiry, rec.insurance_expiry, 'Insurance');
+        const revStatus = getStatusDetails(revExpiry, rec.revenue_license_expiry, 'Revenue License');
+
+        let isExpired = false;
+        let isDue = false;
+
+        if (insStatus.type === 'expired' || revStatus.type === 'expired') {
+            isExpired = true;
+        }
+        if (insStatus.type === 'due' || revStatus.type === 'due') {
+            isDue = true;
+        }
+
+        let overallType = 'ok';
+        if (isExpired) {
+            expiredCount++;
+            overallType = 'expired';
+        } else if (isDue) {
+            dueCount++;
+            overallType = 'due';
+        } else {
+            okCount++;
+        }
+
+        vehicleListItems.push({
+            plate: rec.base_registration,
+            overallType,
+            insStatus,
+            revStatus,
+            notes: rec.notes
+        });
+    });
+
+    summaryEl.innerHTML = `
+        <div class="insurance-stat-card expired">
+            <div class="num">${expiredCount}</div>
+            <div class="lbl">Expired</div>
+        </div>
+        <div class="insurance-stat-card due">
+            <div class="num">${dueCount}</div>
+            <div class="lbl">Due Soon (≤30d)</div>
+        </div>
+        <div class="insurance-stat-card ok">
+            <div class="num">${okCount}</div>
+            <div class="lbl">Active & OK</div>
+        </div>
+    `;
+
+    if (vehicleListItems.length === 0) {
+        alertsEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No vehicles tracked yet.</div>';
+    } else {
+        const typeOrder = { 'expired': 1, 'due': 2, 'ok': 3 };
+        vehicleListItems.sort((a, b) => typeOrder[a.overallType] - typeOrder[b.overallType]);
+        
+        vehicleListItems.forEach(item => {
+            const row = document.createElement('div');
+            row.className = `insurance-alert-item ${item.overallType}`;
+            row.style.display = 'flex';
+            row.style.flexDirection = 'column';
+            row.style.gap = '8px';
+            row.style.alignItems = 'stretch';
+            row.style.padding = '14px 16px';
+            
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--surface-border); padding-bottom: 6px; margin-bottom: 2px;">
+                    <span class="plate" style="font-size:15px; font-weight:800;">🚛 ${item.plate}</span>
+                    <span class="badge" style="font-size:10px;">${item.overallType === 'expired' ? '🚨 EXPIRED' : item.overallType === 'due' ? '⚠️ DUE SOON' : '🟢 ACTIVE'}</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div style="display:flex; flex-direction:column; gap:2px; border-right: 1px solid var(--surface-border); padding-right: 6px;">
+                        <span style="font-size:10px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">🛡️ INSURANCE</span>
+                        <span class="status-badge ${item.insStatus.badgeClass}" style="align-self:flex-start; font-size:10px; padding:2px 8px; margin-top:2px;">${item.insStatus.label}</span>
+                        <span style="font-size:11px; color:var(--text-secondary); margin-top:2px; font-family:monospace;">Date: ${item.insStatus.dateStr}</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:2px; padding-left: 6px;">
+                        <span style="font-size:10px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">📋 REVENUE LICENSE</span>
+                        <span class="status-badge ${item.revStatus.badgeClass}" style="align-self:flex-start; font-size:10px; padding:2px 8px; margin-top:2px;">${item.revStatus.label}</span>
+                        <span style="font-size:11px; color:var(--text-secondary); margin-top:2px; font-family:monospace;">Date: ${item.revStatus.dateStr}</span>
+                    </div>
+                </div>
+                ${item.notes ? `<div style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px; padding-top:4px; border-top: 1px dashed var(--surface-border);">📝 ${item.notes}</div>` : ''}
+            `;
+            alertsEl.appendChild(row);
+        });
+    }
+}
