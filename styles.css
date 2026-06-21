@@ -9037,4 +9037,402 @@ body.dark-mode .admin-offline-banner {
     }
 }
 
+/* =====================================================
+   RECORDS & HALL OF FAME WIDGET
+   ===================================================== */
+
+.records-hof-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 16px;
+}
+
+/* ── Individual Record Card ── */
+.records-hof-card {
+    position: relative;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 24px 20px 20px;
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: hofCardIn 0.5s cubic-bezier(0.23, 1.0, 0.32, 1) both;
+}
+
+.records-hof-card:nth-child(1) { animation-delay: 0.05s; }
+.records-hof-card:nth-child(2) { animation-delay: 0.1s; }
+.records-hof-card:nth-child(3) { animation-delay: 0.15s; }
+.records-hof-card:nth-child(4) { animation-delay: 0.2s; }
+.records-hof-card:nth-child(5) { animation-delay: 0.25s; }
+.records-hof-card:nth-child(6) { animation-delay: 0.3s; }
+.records-hof-card:nth-child(7) { animation-delay: 0.35s; }
+.records-hof-card:nth-child(8) { animation-delay: 0.4s; }
+
+@keyframes hofCardIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.records-hof-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-color: transparent;
+}
+
+/* ── Gradient accent strip at top ── */
+.records-hof-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+}
+
+.records-hof-card[data-accent="gold"]::before    { background: linear-gradient(90deg, #F7B731, #FFDA6A, #F7B731); }
+.records-hof-card[data-accent="crimson"]::before  { background: linear-gradient(90deg, #DC143C, #FF4D6A, #DC143C); }
+.records-hof-card[data-accent="emerald"]::before  { background: linear-gradient(90deg, #00B37E, #34D399, #00B37E); }
+.records-hof-card[data-accent="sapphire"]::before { background: linear-gradient(90deg, #0070E0, #38BDF8, #0070E0); }
+.records-hof-card[data-accent="purple"]::before   { background: linear-gradient(90deg, #8E44AD, #C084FC, #8E44AD); }
+.records-hof-card[data-accent="amber"]::before    { background: linear-gradient(90deg, #E07B00, #FBA94C, #E07B00); }
+.records-hof-card[data-accent="rose"]::before     { background: linear-gradient(90deg, #E01E5A, #FF758F, #E01E5A); }
+.records-hof-card[data-accent="teal"]::before     { background: linear-gradient(90deg, #008080, #2EC4B6, #008080); }
+
+/* ── Background glow (subtle) ── */
+.records-hof-card::after {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    opacity: 0.06;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.records-hof-card[data-accent="gold"]::after    { background: radial-gradient(circle, #F7B731, transparent 70%); }
+.records-hof-card[data-accent="crimson"]::after  { background: radial-gradient(circle, #DC143C, transparent 70%); }
+.records-hof-card[data-accent="emerald"]::after  { background: radial-gradient(circle, #00B37E, transparent 70%); }
+.records-hof-card[data-accent="sapphire"]::after { background: radial-gradient(circle, #0070E0, transparent 70%); }
+.records-hof-card[data-accent="purple"]::after   { background: radial-gradient(circle, #8E44AD, transparent 70%); }
+.records-hof-card[data-accent="amber"]::after    { background: radial-gradient(circle, #E07B00, transparent 70%); }
+.records-hof-card[data-accent="rose"]::after     { background: radial-gradient(circle, #E01E5A, transparent 70%); }
+.records-hof-card[data-accent="teal"]::after     { background: radial-gradient(circle, #008080, transparent 70%); }
+
+.records-hof-card:hover::after {
+    opacity: 0.12;
+}
+
+/* ── Card Header Row ── */
+.hof-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+/* ── Trophy / Medal Badge ── */
+.hof-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.hof-badge[data-accent="gold"]    { background: linear-gradient(135deg, rgba(247,183,49,0.15), rgba(247,183,49,0.05)); }
+.hof-badge[data-accent="crimson"]  { background: linear-gradient(135deg, rgba(220,20,60,0.15), rgba(220,20,60,0.05)); }
+.hof-badge[data-accent="emerald"]  { background: linear-gradient(135deg, rgba(0,179,126,0.15), rgba(0,179,126,0.05)); }
+.hof-badge[data-accent="sapphire"] { background: linear-gradient(135deg, rgba(0,112,224,0.15), rgba(0,112,224,0.05)); }
+.hof-badge[data-accent="purple"]   { background: linear-gradient(135deg, rgba(142,68,173,0.15), rgba(142,68,173,0.05)); }
+.hof-badge[data-accent="amber"]    { background: linear-gradient(135deg, rgba(224,123,0,0.15), rgba(224,123,0,0.05)); }
+.hof-badge[data-accent="rose"]     { background: linear-gradient(135deg, rgba(224,30,90,0.15), rgba(224,30,90,0.05)); }
+.hof-badge[data-accent="teal"]     { background: linear-gradient(135deg, rgba(0,128,128,0.15), rgba(0,128,128,0.05)); }
+
+/* ── Card Title / Subtitle ── */
+.hof-card-title-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.hof-card-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 3px;
+}
+
+.hof-card-label[data-accent="gold"]    { color: #C49000; }
+.hof-card-label[data-accent="crimson"]  { color: #DC143C; }
+.hof-card-label[data-accent="emerald"]  { color: #007A54; }
+.hof-card-label[data-accent="sapphire"] { color: #0070E0; }
+.hof-card-label[data-accent="purple"]   { color: #8E44AD; }
+.hof-card-label[data-accent="amber"]    { color: #A05A00; }
+.hof-card-label[data-accent="rose"]     { color: #D90429; }
+.hof-card-label[data-accent="teal"]     { color: #007A78; }
+
+.hof-card-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ── Driver/Vehicle Info Section ── */
+.hof-entity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: var(--surface-raised);
+    border-radius: 12px;
+    border: 1px solid var(--surface-border);
+    margin-bottom: 12px;
+    transition: background 0.2s;
+}
+
+.hof-entity:hover {
+    background: var(--surface-hover, var(--surface-raised));
+}
+
+/* ── Driver Photo Circle ── */
+.hof-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2.5px solid #F7B731;
+    box-shadow: 0 0 0 3px rgba(247, 183, 49, 0.15);
+    flex-shrink: 0;
+    background: var(--surface-bg);
+}
+
+.hof-photo-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    border: 2.5px solid var(--surface-border);
+    background: var(--surface-raised);
+}
+
+/* ── Entity Info ── */
+.hof-entity-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.hof-entity-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.hof-entity-role {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* ── Stat Value (big number) ── */
+.hof-stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+.hof-stat-value[data-accent="gold"]    { color: #C49000; }
+.hof-stat-value[data-accent="crimson"]  { color: #DC143C; }
+.hof-stat-value[data-accent="emerald"]  { color: #00B37E; }
+.hof-stat-value[data-accent="sapphire"] { color: #0070E0; }
+.hof-stat-value[data-accent="purple"]   { color: #8E44AD; }
+.hof-stat-value[data-accent="amber"]    { color: #E07B00; }
+.hof-stat-value[data-accent="rose"]     { color: #D90429; }
+.hof-stat-value[data-accent="teal"]     { color: #007A78; }
+
+.hof-stat-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+/* ── Extra Meta Row ── */
+.hof-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.hof-meta-tag {
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    white-space: nowrap;
+}
+
+/* ── No Data State ── */
+.hof-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.hof-empty-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.hof-empty-text {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ── Shimmer Loading ── */
+.hof-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-raised);
+    border-radius: 12px;
+    min-height: 160px;
+}
+
+.hof-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    animation: hofShimmer 1.5s infinite;
+}
+
+@keyframes hofShimmer {
+    to { left: 100%; }
+}
+
+/* ── Dark Mode Overrides ── */
+body.dark-mode .records-hof-card {
+    background: #1A1D26;
+    border-color: rgba(255,255,255,0.06);
+}
+
+body.dark-mode .records-hof-card:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    border-color: rgba(255,255,255,0.10);
+}
+
+body.dark-mode .hof-entity {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.06);
+}
+
+body.dark-mode .hof-card-label[data-accent="gold"]    { color: #FFDA6A; }
+body.dark-mode .hof-card-label[data-accent="crimson"]  { color: #FF6B81; }
+body.dark-mode .hof-card-label[data-accent="emerald"]  { color: #34D399; }
+body.dark-mode .hof-card-label[data-accent="sapphire"] { color: #38BDF8; }
+body.dark-mode .hof-card-label[data-accent="purple"]   { color: #C084FC; }
+body.dark-mode .hof-card-label[data-accent="amber"]    { color: #FBA94C; }
+body.dark-mode .hof-card-label[data-accent="rose"]     { color: #FF758F; }
+body.dark-mode .hof-card-label[data-accent="teal"]     { color: #2EC4B6; }
+
+body.dark-mode .hof-stat-value[data-accent="gold"]    { color: #FFDA6A; }
+body.dark-mode .hof-stat-value[data-accent="crimson"]  { color: #FF6B81; }
+body.dark-mode .hof-stat-value[data-accent="emerald"]  { color: #34D399; }
+body.dark-mode .hof-stat-value[data-accent="sapphire"] { color: #38BDF8; }
+body.dark-mode .hof-stat-value[data-accent="purple"]   { color: #C084FC; }
+body.dark-mode .hof-stat-value[data-accent="amber"]    { color: #FBA94C; }
+body.dark-mode .hof-stat-value[data-accent="rose"]     { color: #FF758F; }
+body.dark-mode .hof-stat-value[data-accent="teal"]     { color: #2EC4B6; }
+
+body.dark-mode .hof-photo {
+    border-color: #FFDA6A;
+    box-shadow: 0 0 0 3px rgba(255, 218, 106, 0.12);
+}
+
+body.dark-mode .hof-shimmer::after {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+}
+
+body.dark-mode .hof-meta-tag {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+    .records-hof-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .records-hof-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .records-hof-card {
+        padding: 20px 16px 16px;
+    }
+
+    .hof-stat-value {
+        font-size: 24px;
+    }
+}
+
+.records-hof-category {
+    margin-bottom: 30px;
+}
+
+.records-hof-category:last-child {
+    margin-bottom: 0;
+}
+
+.hof-category-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 28px 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px dashed var(--surface-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+
 

@@ -119,7 +119,7 @@ function removeSalaryReceipt() {
         document.getElementById('currentSalaryReceipt').style.display = 'none';
         document.getElementById('salaryReceipt').value = '';
         currentSalaryReceiptFile = null;
-    }
+    });
 }
 
 // Upload salary receipt to Supabase Storage
@@ -1022,7 +1022,7 @@ async function loadSalaryHistory() {
         if (!salaryRecords || salaryRecords.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="11" style="text-align: center; padding: 30px; color: #7F8C8D;">
+                    <td colspan="12" style="text-align: center; padding: 30px; color: #7F8C8D;">
                         No salary records found. Generate salary slips to see them here.
                     </td>
                 </tr>
@@ -1062,6 +1062,7 @@ async function loadSalaryHistory() {
                 <td style="font-weight: bold; color: #27AE60;">LKR ${(record.additional_allowance || 0).toFixed(2)}</td>
                 <td>LKR ${record.total_advances.toFixed(2)}</td>
                 <td style="font-weight: bold; color: #E74C3C;">LKR ${(record.other_deductions || 0).toFixed(2)}</td>
+                <td style="font-weight: bold; color: #8E44AD;">LKR ${((record.salary_data && record.salary_data.dayOffDeductions) ? record.salary_data.dayOffDeductions : 0).toFixed(2)}</td>
                 <td style="font-weight: bold; color: #2980b9;">LKR ${record.net_salary.toFixed(2)}</td>
                 <td>${formattedDate}</td>
                 <td>${receiptColumn}</td>
