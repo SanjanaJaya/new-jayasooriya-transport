@@ -3084,20 +3084,20 @@ async function loadDashboardData(monthValue, cachedData = null) {
             ? (cachedData.excessingLitres?.reduce((sum, r) => sum + (r.fuel_amount_l || 0), 0) || 0)
             : 0;
 
-        setText('totalRevenue', `LKR ${totalRevenue.toFixed(2)}`);
-        setText('fuelCost', `LKR ${totalFuelCost.toFixed(2)}`);
-        setText('fuelAllowance', `LKR ${fuelAllowance.toFixed(2)}`);
-        setText('totalHires', totalHires);
+        setText('totalRevenue', `LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('fuelCost', `LKR ${totalFuelCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('fuelAllowance', `LKR ${fuelAllowance.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('totalHires', totalHires.toLocaleString('en-US'));
 
         // NEW UI UPDATES
         setText('activeLorries', activeVehiclesSet.size);
-        setText('totalDistance', `${totalDistance.toLocaleString()} km`);
-        setText('totalDieselLitres', `${totalFuelLitres.toFixed(0)} L`);
-        setText('dashboardExcessingLitres', `${elTotalLitres.toFixed(2)} L`);
-        setText('dashboardExcessingCost', `LKR ${elActualCostForMonth.toFixed(2)}`);
+        setText('totalDistance', `${totalDistance.toLocaleString('en-US')} km`);
+        setText('totalDieselLitres', `${Math.round(totalFuelLitres).toLocaleString('en-US')} L`);
+        setText('dashboardExcessingLitres', `${elTotalLitres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})} L`);
+        setText('dashboardExcessingCost', `LKR ${elActualCostForMonth.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
 
         // Profit (Revenue - Fuel Cost + Fuel Allowance)
-        setText('netProfit', `LKR ${netProfit.toFixed(2)}`);
+        setText('netProfit', `LKR ${netProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
 
         // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
@@ -3367,11 +3367,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                             <td style="font-weight: bold;">${vehicle.number}</td>
                             <td>${vehicle.model}</td>
                             <td>${vehicle.ownership}</td>
-                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
                             <td style="min-width:140px;">
                                 ${vehicle.commitmentKmPct !== null ? `
                                     <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-align:center;">
-                                        ${vehicle.totalKm.toFixed(0)} / ${vehicle.kmLimit} km (${vehicle.commitmentKmPct.toFixed(0)}%)
+                                        ${Math.round(vehicle.totalKm).toLocaleString('en-US')} / ${vehicle.kmLimit.toLocaleString('en-US')} km (${vehicle.commitmentKmPct.toFixed(0)}%)
                                     </div>
                                     <div style="background:var(--surface-border);border-radius:6px;height:10px;overflow:hidden;">
                                         <div style="width:${vehicle.commitmentKmPct}%;height:100%;border-radius:6px;background:${vehicle.commitmentKmPct >= 100 ? '#E74C3C' : vehicle.commitmentKmPct >= 75 ? '#F39C12' : '#27AE60'};transition:width 0.4s;"></div>
@@ -3383,11 +3383,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
-                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toFixed(2)}
+                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                             </td>
                         </tr>
                     `;
@@ -3398,18 +3398,18 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                 <tfoot>
                                     <tr>
                                         <td colspan="3">Total</td>
-                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
                                         <td></td>
                                         <td style="text-align: center;">
                                             <span style="background: var(--blue-bg); color: var(--blue); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
-                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toFixed(2)}
+                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -3459,17 +3459,17 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                             <td style="font-weight: bold;">${vehicle.number}</td>
                             <td>${vehicle.model}</td>
                             <td>${vehicle.ownership}</td>
-                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
                             <td style="text-align: center;">
                                 <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
-                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toFixed(2)}
+                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                             </td>
                         </tr>
                     `;
@@ -3480,17 +3480,17 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                 <tfoot>
                                     <tr>
                                         <td colspan="3">Total</td>
-                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
                                         <td style="text-align: center;">
                                             <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
-                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toFixed(2)}
+                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -3536,17 +3536,17 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                     performanceHtml += `
                         <tr>
                             <td style="font-weight: bold;">${vehicle.number}</td>
-                            <td style="text-align: right;">${vehicle.totalKm.toFixed(0)} km</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
                             <td style="text-align: center;">
                                 <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toFixed(2)}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toFixed(2)}</td>
-                            <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toFixed(2)}
+                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                             </td>
                         </tr>
                     `;
@@ -3557,17 +3557,17 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                 <tfoot>
                                     <tr>
                                         <td>Total</td>
-                                        <td style="text-align: right;">${totalKm.toFixed(0)} km</td>
+                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
                                         <td style="text-align: center;">
                                             <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toFixed(2)}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toFixed(2)}</td>
-                                        <td style="text-align: right;">${totalFuelLitres.toFixed(0)} L</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toFixed(2)}
+                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -4041,8 +4041,8 @@ async function loadDashboardCharts(cachedData = null) {
         const avgProfit = totalProfit6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
 
-        document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toFixed(2)}`;
-        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toFixed(2)}`;
+        document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
 
@@ -4322,9 +4322,9 @@ async function loadAllTimeStatistics() {
 
         const totalProfit = totalRevenue - totalFuelCost;
 
-        document.getElementById('allTimeRevenue').textContent = `LKR ${totalRevenue.toFixed(2)}`;
-        document.getElementById('allTimeProfit').textContent = `LKR ${totalProfit.toFixed(2)}`;
-        document.getElementById('allTimeFuelCost').textContent = `LKR ${totalFuelCost.toFixed(2)}`;
+        document.getElementById('allTimeRevenue').textContent = `LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('allTimeProfit').textContent = `LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('allTimeFuelCost').textContent = `LKR ${totalFuelCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
         document.getElementById('allTimeHires').textContent = totalHires;
     } catch (error) {
         console.error('Error loading all-time statistics:', error.message);
@@ -5387,15 +5387,15 @@ async function loadAdvancedDashboardStats(monthValue, cachedData = null) {
 
         const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-        setText('profitPerKm', `LKR ${profitPerKm.toFixed(2)}`);
+        setText('profitPerKm', `LKR ${profitPerKm.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
         setText('utilizationRate', `${utilizationRate.toFixed(1)}%`);
-        setText('revPerVehicleDay', `LKR ${revPerVehDay.toFixed(2)}`);
+        setText('revPerVehicleDay', `LKR ${revPerVehDay.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
         setText('avgFuelEfficiency', `${avgEfficiency.toFixed(2)} Km/L`);
 
         setText('avgTripDistance', `${avgTripDist.toFixed(1)} km`);
-        setText('waitingRevenue', `LKR ${totalWaitingRev.toFixed(2)}`);
+        setText('waitingRevenue', `LKR ${totalWaitingRev.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
         setText('jobsPerVehicle', jobsPerVeh.toFixed(1));
-        setText('distPerVehicle', `${distPerVeh.toFixed(0)} km`);
+        setText('distPerVehicle', `${Math.round(distPerVeh).toLocaleString('en-US')} km`);
 
 
         // --- CHARTS GENERATION ---
