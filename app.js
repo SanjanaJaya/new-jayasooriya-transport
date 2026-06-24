@@ -1191,6 +1191,7 @@ document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverSalaryType').value = 'fixed';
     toggleDriverSalaryTypeFields();
     document.getElementById('driverFormContainer').style.display = 'block';
+    document.getElementById('driverFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     // Wire generate password button
     wireGeneratePasswordBtn();
 });
@@ -1588,7 +1589,7 @@ async function editDriver(id) {
         // Wire generate password button on edit open
         wireGeneratePasswordBtn();
         document.getElementById('driverFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('driverFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading driver: ' + error.message, 'error');
     }
@@ -1616,6 +1617,7 @@ document.getElementById('addHireVehicleBtn')?.addEventListener('click', () => {
         document.getElementById('hireVehicleTerminated').checked = false;
     }
     document.getElementById('hireVehicleFormContainer').style.display = 'block';
+    document.getElementById('hireVehicleFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelHireVehicleBtn')?.addEventListener('click', () => {
@@ -1779,7 +1781,7 @@ async function editHireVehicle(id) {
         }
 
         document.getElementById('hireVehicleFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('hireVehicleFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading vehicle: ' + error.message, 'error');
     }
@@ -1803,6 +1805,7 @@ document.getElementById('addHireRecordBtn')?.addEventListener('click', () => {
     document.getElementById('hireRecordForm').reset();
     document.getElementById('hireRecordId').value = '';
     document.getElementById('hireRecordFormContainer').style.display = 'block';
+    document.getElementById('hireRecordFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelHireRecordBtn')?.addEventListener('click', () => {
@@ -2055,7 +2058,7 @@ async function editHireRecord(id) {
         document.getElementById('hireLoading').checked = data.loading_applied;
         document.getElementById('hireOtherCharges').value = data.other_charges;
         document.getElementById('hireRecordFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('hireRecordFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading hire record: ' + error.message, 'error');
     }
@@ -2079,6 +2082,7 @@ document.getElementById('addOtherOperationHireBtn')?.addEventListener('click', (
     document.getElementById('otherOperationHireForm').reset();
     document.getElementById('otherOperationHireId').value = '';
     document.getElementById('otherOperationHireFormContainer').style.display = 'block';
+    document.getElementById('otherOperationHireFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelOtherOperationHireBtn')?.addEventListener('click', () => {
@@ -2301,7 +2305,7 @@ async function editOtherOperationHire(id) {
         document.getElementById('otherOpFuelPrice').value = data.fuel_price_per_litre;
 
         document.getElementById('otherOperationHireFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('otherOperationHireFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading record: ' + error.message, 'error');
     }
@@ -2329,6 +2333,7 @@ document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', ()
         document.getElementById('commitmentVehicleTerminated').checked = false;
     }
     document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
+    document.getElementById('commitmentVehicleFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelCommitmentVehicleBtn')?.addEventListener('click', () => {
@@ -2478,7 +2483,7 @@ async function editCommitmentVehicle(id) {
         }
 
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('commitmentVehicleFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading commitment vehicle: ' + error.message, 'error');
     }
@@ -2502,6 +2507,7 @@ document.getElementById('addCommitmentRecordBtn')?.addEventListener('click', () 
     document.getElementById('commitmentRecordForm').reset();
     document.getElementById('commitmentRecordId').value = '';
     document.getElementById('commitmentRecordFormContainer').style.display = 'block';
+    document.getElementById('commitmentRecordFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelCommitmentRecordBtn')?.addEventListener('click', () => {
@@ -2741,7 +2747,7 @@ async function editCommitmentRecord(id) {
         document.getElementById('commitmentFuelPrice').value = data.fuel_price_per_litre;
         // NOTE: extra_charges field removed from form — km charges now calculated at vehicle+month level
         document.getElementById('commitmentRecordFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('commitmentRecordFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading commitment record: ' + error.message, 'error');
     }
@@ -2765,6 +2771,7 @@ document.getElementById('addDayOffBtn')?.addEventListener('click', () => {
     document.getElementById('dayOffForm').reset();
     document.getElementById('dayOffId').value = '';
     document.getElementById('dayOffFormContainer').style.display = 'block';
+    document.getElementById('dayOffFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelDayOffBtn')?.addEventListener('click', () => {
@@ -2904,7 +2911,7 @@ async function editDayOff(id) {
         document.getElementById('dayOffVehicle').value = data.vehicle_id;
         document.getElementById('dayOffDate').value = data.day_off_date;
         document.getElementById('dayOffFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('dayOffFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading day off: ' + error.message, 'error');
     }
@@ -4635,6 +4642,7 @@ document.getElementById('addAdvanceBtn')?.addEventListener('click', () => {
     document.getElementById('currentReceipt').style.display = 'none';
     document.getElementById('uploadProgress').style.display = 'none';
     document.getElementById('advanceFormContainer').style.display = 'block';
+    document.getElementById('advanceFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelAdvanceBtn')?.addEventListener('click', () => {
@@ -5139,7 +5147,7 @@ async function editAdvance(id) {
         document.getElementById('advanceReceipt').value = '';
         document.getElementById('uploadProgress').style.display = 'none';
         document.getElementById('advanceFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('advanceFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading advance: ' + error.message, 'error');
     }
@@ -6779,6 +6787,7 @@ document.getElementById('addDriverDayOffBtn')?.addEventListener('click', () => {
     document.getElementById('driverDayOffId').value = '';
     document.getElementById('suggestedDeduction').textContent = '';
     document.getElementById('driverDayOffFormContainer').style.display = 'block';
+    document.getElementById('driverDayOffFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // Populate the dropdown inside the form
     updateDriverDayOffSelectors();
@@ -7054,7 +7063,7 @@ async function editDriverDayOff(id) {
         document.getElementById('suggestedDeduction').textContent = ''; // Clear auto-suggest text on edit
 
         document.getElementById('driverDayOffFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('driverDayOffFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading day off: ' + error.message, 'error');
     }
@@ -7080,6 +7089,7 @@ document.getElementById('addMaintenanceBtn')?.addEventListener('click', () => {
     document.getElementById('maintenanceForm').reset();
     document.getElementById('maintenanceId').value = '';
     document.getElementById('maintenanceFormContainer').style.display = 'block';
+    document.getElementById('maintenanceFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     populateMaintenanceVehicleDropdown();
 });
 
@@ -7405,7 +7415,7 @@ async function editMaintenanceRecord(id) {
         document.getElementById('maintenanceNotes').value = data.notes || '';
 
         document.getElementById('maintenanceFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('maintenanceFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showToast('Error loading maintenance record: ' + error.message, 'error');
     }
@@ -7678,7 +7688,9 @@ function initChequeBookForm() {
     if (toggleBtn && !toggleBtn._csInited) {
         toggleBtn._csInited = true;
         toggleBtn.addEventListener('click', () => {
-            formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+            const isOpening = formContainer.style.display === 'none' || formContainer.style.display === '';
+            formContainer.style.display = isOpening ? 'block' : 'none';
+            if (isOpening) formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
         cancelBtn.addEventListener('click', () => {
             formContainer.style.display = 'none';
@@ -11000,7 +11012,7 @@ document.getElementById('addElBtn')?.addEventListener('click', () => {
     document.getElementById('elRecordId').value = '';
     document.getElementById('elCostPreview').style.display = 'none';
     document.getElementById('elFormContainer').style.display = 'block';
-    window.scrollTo(0, 0);
+    document.getElementById('elFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 document.getElementById('cancelElBtn')?.addEventListener('click', () => {
@@ -11089,7 +11101,7 @@ async function elEdit(id) {
         document.getElementById('elFuelAmount').value  = data.fuel_amount_l;
         elUpdatePreview();
         document.getElementById('elFormContainer').style.display = 'block';
-        window.scrollTo(0, 0);
+        document.getElementById('elFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
         showToast('Error loading record: ' + err.message, 'error');
     }
