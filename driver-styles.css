@@ -959,12 +959,13 @@ input, button, textarea, select { font-family: inherit; }
    SALARY MODAL SHEET — Bottom Sheet
 ═══════════════════════════════════════════════════ */
 .salary-modal, .km-log-modal {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 100;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    align-items: center;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.35s var(--ease-smooth);
@@ -996,6 +997,7 @@ input, button, textarea, select { font-family: inherit; }
     border-top: 2px solid var(--brand);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     width: 100%;
+    max-width: 480px;
     max-height: 90%;
     display: flex;
     flex-direction: column;
@@ -1307,8 +1309,91 @@ input, button, textarea, select { font-family: inherit; }
     transform: scale(0.96) !important;
 }
 
-/* ─── Responsive (Desktop Preview) ─────────────────── */
-@media (min-width: 500px) {
+/* ════════════════════════════════════════════════════
+   RESPONSIVE — All screen sizes
+═══════════════════════════════════════════════════ */
+
+/* ─── Very small phones (≤360px width) ─────────────── */
+@media (max-width: 360px) {
+    .app-header {
+        padding: 10px 12px;
+        height: calc(62px + env(safe-area-inset-top));
+    }
+    .driver-profile { gap: 8px; max-width: 52%; }
+    .avatar-container { width: 36px; height: 36px; }
+    .driver-name { font-size: 14px; }
+    .header-right-actions { gap: 6px; }
+    .header-action-icon { width: 32px; height: 32px; font-size: 15px; }
+    .status-btn { padding: 6px 8px; font-size: 9px; letter-spacing: 0.8px; gap: 4px; }
+    .status-indicator { width: 6px; height: 6px; }
+    .lang-toggle-btn { padding: 4px 8px; font-size: 9px; height: 28px; }
+
+    .top-stat-section { padding: 10px 10px 8px; gap: 8px; }
+    .stat-card { padding: 12px 14px; border-radius: var(--r-md); }
+    .stat-value { font-size: 30px; }
+    .stat-label { font-size: 8px; letter-spacing: 1.2px; }
+    .touch-hint { font-size: 7px; padding: 2px 6px; }
+    .vehicle-plate { font-size: 16px; }
+    .vehicle-vector-container { width: 76px; height: 48px; }
+
+    .drawer-handle-bar { padding: 8px 14px; height: 40px; font-size: 9px; }
+    .bottom-drawer.open { height: min(230px, 28dvh); }
+
+    .salary-modal-header { padding: 12px 16px 14px; }
+    .header-title-bar h3 { font-size: 18px; }
+    .salary-modal-body { padding: 14px 14px; }
+    .breakdown-row { padding: 11px 12px; font-size: 12px; }
+    .summary-value { font-size: 18px; }
+}
+
+/* ─── Small phones (361px–390px) ───────────────────── */
+@media (min-width: 361px) and (max-width: 390px) {
+    .stat-value { font-size: 34px; }
+    .vehicle-vector-container { width: 86px; height: 52px; }
+    .bottom-drawer.open { height: min(260px, 30dvh); }
+}
+
+/* ─── Standard phones (391px–499px) ────────────────── */
+@media (min-width: 391px) and (max-width: 499px) {
+    .stat-value { font-size: 36px; }
+    .bottom-drawer.open { height: min(280px, 30dvh); }
+}
+
+/* ─── Short-screen phones (height ≤680px) ───────────── */
+@media (max-height: 680px) {
+    .login-header { margin-bottom: 22px; }
+    .login-logo { width: 60px; height: 60px; margin-bottom: 14px; }
+    .login-header h1 { font-size: 22px; }
+    .login-card { padding: 30px 22px 24px; }
+    .input-group { margin-bottom: 14px; }
+    .input-with-icon input { padding: 13px 14px 13px 44px; font-size: 14px; }
+    .btn { padding: 13px 20px; }
+
+    .top-stat-section { padding: 10px 12px 8px; gap: 8px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-value { font-size: clamp(26px, 7vw, 36px); }
+    .bottom-drawer.open { height: min(220px, 26dvh); }
+    .salary-modal-content { max-height: 94%; }
+}
+
+/* ─── Tall phones (height ≥800px) ───────────────────── */
+@media (min-height: 800px) {
+    .bottom-drawer.open { height: min(320px, 32dvh); }
+    .sub-list-container { max-height: 220px; }
+}
+
+/* Side-by-side stat cards on wider screens (tablet/landscape) */
+@media (min-width: 480px) {
+    .top-stat-section {
+        flex-direction: row;
+        align-items: stretch;
+    }
+    .top-stat-section .stat-card { flex: 1; }
+    .top-stat-section .km-glow { flex: 1.4; }
+}
+
+/* ─── Desktop preview mockup (≥1025px width) ──────── */
+@media (min-width: 1025px) {
     body {
         background: #030305;
         display: flex;
@@ -1317,20 +1402,14 @@ input, button, textarea, select { font-family: inherit; }
     }
 
     #loginView, #dashboardView {
-        width: 420px;
-        height: 860px;
+        /* Scale to fit the actual viewport — phone container preview on desktop */
+        width: min(440px, 96vw);
+        height: min(900px, 96dvh);
         position: relative;
         border-radius: 36px;
         box-shadow: 0 40px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06);
         border: 4px solid #1A1D26;
         overflow: hidden;
-    }
-
-    .salary-modal-content {
-        width: 420px;
-        position: absolute;
-        bottom: 0;
-        border-radius: var(--r-xl) var(--r-xl) 0 0;
     }
 }
 
@@ -1446,3 +1525,71 @@ input, button, textarea, select { font-family: inherit; }
 /* ─── Vehicle SVG Art ───────────────────────────────── */
 .vehicle-svg-art { width: 100%; height: 100%; }
 .vehicle-art-img { width: 100%; height: 100%; object-fit: contain; }
+
+/* ─── Sinhala Language Support ──────────────────────── */
+/* Add Noto Sans Sinhala as a font-family fallback for all text */
+html[lang="si"] body,
+html[lang="si"] input,
+html[lang="si"] button,
+html[lang="si"] textarea,
+html[lang="si"] select {
+    font-family: 'Noto Sans Sinhala', 'Inter', -apple-system, sans-serif;
+}
+
+/* ─── Language Toggle Button ────────────────────────── */
+.lang-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-strong);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.22s var(--ease-smooth);
+    white-space: nowrap;
+    height: 34px;
+}
+
+.lang-toggle-btn:active {
+    transform: scale(0.90);
+    background: var(--bg-glass);
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+@media (hover: hover) {
+    .lang-toggle-btn:hover {
+        background: var(--bg-glass);
+        border-color: var(--brand);
+        color: var(--brand);
+        box-shadow: 0 0 12px var(--brand-dim);
+    }
+}
+
+/* Sinhala active state — highlight SI button */
+.lang-toggle-btn[data-active="si"] {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-dim);
+}
+
+/* ─── Login Page Language Toggle ────────────────────── */
+.login-lang-toggle-wrap {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+}
+
+.login-lang-toggle-wrap .lang-toggle-btn {
+    font-size: 10px;
+    padding: 5px 10px;
+    height: 30px;
+}
+

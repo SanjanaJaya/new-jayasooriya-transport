@@ -1184,11 +1184,51 @@ async function calculateIndividualServiceKMs(tracker, elementId, allHireVehicles
 }
 
 // ============ DRIVERS ============
+function calculateAge(dobStr) {
+    if (!dobStr) return null;
+    const birthDate = new Date(dobStr);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+}
+
+function formatDriverAge(ageVal) {
+    if (!ageVal) return '-';
+    if (ageVal > 19000000) {
+        const y = Math.floor(ageVal / 10000);
+        const m = Math.floor((ageVal % 10000) / 100);
+        const d = ageVal % 100;
+        const dobStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const age = calculateAge(dobStr);
+        return age !== null ? `${age} years` : '-';
+    }
+    return `${ageVal} years`;
+}
+
+window.updateCalculatedAge = function() {
+    const dobVal = document.getElementById('driverDob')?.value;
+    const age = calculateAge(dobVal);
+    const displayEl = document.getElementById('driverAgeDisplay');
+    if (displayEl) {
+        displayEl.value = age !== null ? `${age} years` : '';
+    }
+};
 document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('driverForm').reset();
     document.getElementById('driverId').value = '';
     document.getElementById('driverSalaryType').value = 'fixed';
+    
+    // Clear Birthday and calculated age fields
+    const dobInput = document.getElementById('driverDob');
+    if (dobInput) dobInput.value = '';
+    const ageDisplay = document.getElementById('driverAgeDisplay');
+    if (ageDisplay) ageDisplay.value = '';
+
     toggleDriverSalaryTypeFields();
     document.getElementById('driverFormContainer').style.display = 'block';
     document.getElementById('driverFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1220,14 +1260,36 @@ function wireGeneratePasswordBtn() {
 // Toggle salary type fields in driver form
 function toggleDriverSalaryTypeFields() {
     const salaryType = document.getElementById('driverSalaryType').value;
+    const role = (document.getElementById('driverRole')?.value || '').toLowerCase();
     const fixedFields = document.getElementById('fixedSalaryFields');
     const perTipFields = document.getElementById('perTipSalaryFields');
+    
+    const kmLimitInput = document.getElementById('driverKmLimit');
+    const extraKmInput = document.getElementById('driverExtraKmRate');
+
     if (salaryType === 'per_tip') {
         if (fixedFields) fixedFields.style.display = 'none';
         if (perTipFields) perTipFields.style.display = 'block';
     } else {
         if (fixedFields) fixedFields.style.display = 'block';
         if (perTipFields) perTipFields.style.display = 'none';
+        
+        // Hide KM fields for fixed-salary helper
+        if (role === 'helper') {
+            if (kmLimitInput) kmLimitInput.style.display = 'none';
+            if (extraKmInput) {
+                extraKmInput.style.display = 'none';
+                const parentRow = extraKmInput.closest('.form-row');
+                if (parentRow) parentRow.style.display = 'none';
+            }
+        } else {
+            if (kmLimitInput) kmLimitInput.style.display = '';
+            if (extraKmInput) {
+                extraKmInput.style.display = '';
+                const parentRow = extraKmInput.closest('.form-row');
+                if (parentRow) parentRow.style.display = '';
+            }
+        }
     }
 }
 
@@ -1248,19 +1310,25 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     const nicknameInput = document.getElementById('driverNickname').value.trim();
     const combinedName = nicknameInput ? `${nameInput} (${nicknameInput})` : nameInput;
 
+    const isHelper = (document.getElementById('driverRole').value || '').toLowerCase() === 'helper';
     const data = {
         name: combinedName,
         contact: document.getElementById('driverContact').value,
         license_number: document.getElementById('driverLicense').value || null,
         password: document.getElementById('driverPassword')?.value?.trim() || null,
-        age: parseInt(document.getElementById('driverAge').value),
+        age: (() => {
+            const dobVal = document.getElementById('driverDob')?.value;
+            if (!dobVal) return null;
+            const parts = dobVal.split('-');
+            return parseInt(parts[0]) * 10000 + parseInt(parts[1]) * 100 + parseInt(parts[2]);
+        })(),
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
         role: document.getElementById('driverRole').value || null,
         salary_type: salaryType,
         basic_salary: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverBasicSalary').value) || null) : null,
-        km_limit: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverKmLimit').value) || null) : null,
-        extra_km_rate: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverExtraKmRate').value) || null) : null,
+        km_limit: (salaryType === 'fixed' && !isHelper) ? (parseFloat(document.getElementById('driverKmLimit').value) || null) : null,
+        extra_km_rate: (salaryType === 'fixed' && !isHelper) ? (parseFloat(document.getElementById('driverExtraKmRate').value) || null) : null,
         per_tip_charge: salaryType === 'per_tip' ? (parseFloat(document.getElementById('driverPerTipCharge').value) || null) : null,
         terminated: document.getElementById('driverTerminated') ? document.getElementById('driverTerminated').checked : false,
         user_id: adminUserId
@@ -1383,9 +1451,10 @@ async function loadDrivers() {
                 salaryInfo = driver.per_tip_charge ? `LKR ${driver.per_tip_charge.toFixed(2)} / tip` : '-';
             } else {
                 const parts = [];
+                const isHelper = (driver.role || '').toLowerCase() === 'helper';
                 if (driver.basic_salary) parts.push(`Basic: LKR ${driver.basic_salary.toFixed(2)}`);
-                if (driver.km_limit) parts.push(`KM Limit: ${driver.km_limit} km`);
-                if (driver.extra_km_rate) parts.push(`Extra: LKR ${driver.extra_km_rate.toFixed(2)}/km`);
+                if (driver.km_limit && !isHelper) parts.push(`KM Limit: ${driver.km_limit} km`);
+                if (driver.extra_km_rate && !isHelper) parts.push(`Extra: LKR ${driver.extra_km_rate.toFixed(2)}/km`);
                 salaryInfo = parts.length > 0 ? parts.join('<br>') : '-';
             }
 
@@ -1459,7 +1528,7 @@ async function loadDrivers() {
                         : '<span style="color:#bbb;font-size:12px;">Not set</span>'
                     }
                 </td>
-                <td>${driver.age}</td>
+                <td>${formatDriverAge(driver.age)}</td>
                 <td>${driver.address}</td>
                 <td style="font-size:12px;">${salaryInfo}</td>
                 ${actionButtons}
@@ -1573,7 +1642,22 @@ async function editDriver(id) {
         document.getElementById('driverContact').value = data.contact;
         document.getElementById('driverLicense').value = data.license_number || '';
         if (document.getElementById('driverPassword')) document.getElementById('driverPassword').value = data.password || '';
-        document.getElementById('driverAge').value = data.age;
+        if (data.age) {
+            if (data.age > 19000000) {
+                const y = Math.floor(data.age / 10000);
+                const m = Math.floor((data.age % 10000) / 100);
+                const d = data.age % 100;
+                const dobStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                document.getElementById('driverDob').value = dobStr;
+                document.getElementById('driverAgeDisplay').value = formatDriverAge(data.age);
+            } else {
+                document.getElementById('driverDob').value = '';
+                document.getElementById('driverAgeDisplay').value = `${data.age} years`;
+            }
+        } else {
+            document.getElementById('driverDob').value = '';
+            document.getElementById('driverAgeDisplay').value = '';
+        }
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';
         document.getElementById('driverRole').value = data.role || '';
@@ -8161,14 +8245,15 @@ async function loadNotifications() {
         const allCommVehicles = commV || [];
 
         // Concurrently run alert fetches
-        const [chequeAlerts, serviceAlerts, advanceAlerts, expiryAlerts] = await Promise.all([
+        const [chequeAlerts, serviceAlerts, advanceAlerts, expiryAlerts, birthdayAlerts] = await Promise.all([
             fetchChequeAlerts(userId),
             fetchServiceAlerts(userId, allHireVehicles, allCommVehicles),
             fetchAdvanceAlerts(userId),
-            fetchExpiryAlerts(userId)
+            fetchExpiryAlerts(userId),
+            fetchBirthdayAlerts(userId)
         ]);
 
-        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts, ...expiryAlerts];
+        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts, ...expiryAlerts, ...birthdayAlerts];
 
         // Filter out dismissed alerts from localStorage
         const dismissedIds = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
@@ -8246,6 +8331,21 @@ async function loadNotifications() {
                     switchPage('vehicle-expiry');
                     setTimeout(() => {
                         document.getElementById('expiryVehicleGrid')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 200);
+                } else if (alert.type === 'birthday') {
+                    currentPage = 'drivers';
+                    setActiveNavItem('drivers');
+                    switchPage('drivers');
+                    setTimeout(() => {
+                        const rows = document.querySelectorAll('#driversTable tbody tr');
+                        rows.forEach(row => {
+                            if (row.innerHTML.includes(`editDriver(${alert.driverId})`)) {
+                                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                const origBg = row.style.backgroundColor;
+                                row.style.backgroundColor = '#FCF3CF';
+                                setTimeout(() => { row.style.backgroundColor = origBg; }, 3000);
+                            }
+                        });
                     }, 200);
                 }
             });
@@ -8476,6 +8576,71 @@ async function fetchAdvanceAlerts(userId) {
         return alerts;
     } catch (e) {
         console.error('Error fetching advance alerts:', e);
+        return [];
+    }
+}
+
+function getDaysUntilBirthday(birthMonth, birthDay) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    let nextBirthday = new Date(currentYear, birthMonth - 1, birthDay);
+    
+    today.setHours(0,0,0,0);
+    nextBirthday.setHours(0,0,0,0);
+    
+    if (nextBirthday < today) {
+        nextBirthday.setFullYear(currentYear + 1);
+    }
+    
+    const diffTime = nextBirthday - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+}
+
+async function fetchBirthdayAlerts(userId) {
+    try {
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id, name, age')
+            .eq('user_id', userId)
+            .neq('terminated', true);
+
+        const alerts = [];
+        if (!drivers || drivers.length === 0) return alerts;
+
+        drivers.forEach(d => {
+            if (d.age && d.age > 19000000) {
+                const birthMonth = Math.floor((d.age % 10000) / 100);
+                const birthDay = d.age % 100;
+                const daysLeft = getDaysUntilBirthday(birthMonth, birthDay);
+
+                if (daysLeft <= 14) {
+                    const birthdayString = `${String(birthDay).padStart(2, '0')}/${String(birthMonth).padStart(2, '0')}`;
+                    let desc = '';
+                    if (daysLeft === 0) {
+                        desc = `Happy Birthday! Today is ${cleanDriverName(d.name)}'s birthday! 🎉`;
+                    } else if (daysLeft === 1) {
+                        desc = `${cleanDriverName(d.name)}'s birthday is tomorrow! 🎂`;
+                    } else {
+                        desc = `${cleanDriverName(d.name)}'s birthday is in ${daysLeft} days (${birthdayString})! 🎂`;
+                    }
+
+                    alerts.push({
+                        id: `bday_${d.id}_${birthMonth}_${birthDay}`,
+                        title: `🎂 Upcoming Birthday`,
+                        desc: desc,
+                        icon: `🎂`,
+                        type: 'birthday',
+                        driverId: d.id,
+                        date: birthdayString
+                    });
+                }
+            }
+        });
+
+        return alerts;
+    } catch (e) {
+        console.error('Error fetching birthday alerts:', e);
         return [];
     }
 }

@@ -12,7 +12,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
@@ -27,13 +27,19 @@
 <body class="dark-mode">
     <!-- Offline Warning Banner -->
     <div id="offlineWarningBanner" class="offline-banner hidden">
-        <span>⚠️ You are offline. Displaying cached information.</span>
+        <span data-i18n="offline.banner">⚠️ You are offline. Displaying cached information.</span>
     </div>
     
     <!-- ==================== LOGIN VIEW ==================== -->
     <div id="loginView" class="view active">
         <div class="login-wrapper">
             <div class="login-card">
+
+                <!-- Language toggle on login page (top-right of card) -->
+                <div class="login-lang-toggle-wrap">
+                    <button id="loginLangToggleBtn" class="lang-toggle-btn" title="Switch Language / භාෂාව මාරු කරන්න">🌐 EN</button>
+                </div>
+
                 <div class="login-header">
                     <img src="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png" alt="Jayasooriya Logo" class="login-logo">
                     <h1>JAYASOORIYA</h1>
@@ -44,30 +50,30 @@
                     <div id="loginError" class="login-error-msg"></div>
                     
                     <div class="input-group">
-                        <label for="loginContact">Phone Number</label>
+                        <label for="loginContact" data-i18n="login.phone">Phone Number</label>
                         <div class="input-with-icon">
                             <span class="input-icon">📞</span>
-                            <input type="tel" id="loginContact" placeholder="e.g. 0771234567" required autocomplete="tel">
+                            <input type="tel" id="loginContact" data-i18n-placeholder="login.phonePlaceholder" placeholder="e.g. 0771234567" required autocomplete="tel">
                         </div>
                     </div>
                     
                     <div class="input-group">
-                        <label for="loginLicense">Password</label>
+                        <label for="loginLicense" data-i18n="login.password">Password</label>
                         <div class="input-with-icon">
                             <span class="input-icon">🔑</span>
-                            <input type="password" id="loginLicense" placeholder="Enter your password" autocomplete="current-password">
+                            <input type="password" id="loginLicense" data-i18n-placeholder="login.passwordPlaceholder" placeholder="Enter your password" autocomplete="current-password">
                         </div>
-                        <span class="helper-text">Contact your administrator if you don't have a password yet.</span>
+                        <span class="helper-text" data-i18n="login.helper">Contact your administrator if you don't have a password yet.</span>
                     </div>
                     
                     <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
-                        <span>Sign In</span>
+                        <span data-i18n="login.signIn">Sign In</span>
                         <span class="btn-arrow">→</span>
                     </button>
                 </form>
                 
                 <div class="login-footer">
-                    <p>© 2026 Jayasooriya Transport Services</p>
+                    <p data-i18n="login.footer">© 2026 Jayasooriya Transport Services</p>
                 </div>
             </div>
         </div>
@@ -81,7 +87,7 @@
                     <img id="driverAvatar" src="https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png" alt="Driver Profile" class="avatar-img">
                 </div>
                 <div class="driver-info">
-                    <span class="welcome-text">Partner</span>
+                    <span class="welcome-text" data-i18n="dashboard.partner">Partner</span>
                     <span id="driverName" class="driver-name"><div class="skeleton skeleton-text"></div></span>
                 </div>
             </div>
@@ -90,12 +96,15 @@
             <div class="header-right-actions">
                 <!-- Race/Leaderboard Button -->
                 <button id="raceModalBtn" class="header-action-icon" title="View Month Race">🏁</button>
+
+                <!-- Language Toggle -->
+                <button id="langToggleBtn" class="lang-toggle-btn" title="Switch Language / භාෂාව මාරු කරන්න">🌐 EN</button>
                 
                 <!-- Status Toggle -->
                 <div class="status-toggle-wrapper">
                     <button id="statusToggleBtn" class="status-btn online">
                         <span class="status-indicator"></span>
-                        <span id="statusText">ONLINE</span>
+                        <span id="statusText" data-i18n="dashboard.online">ONLINE</span>
                     </button>
                 </div>
             </div>
@@ -106,12 +115,12 @@
             <!-- Distance / Earnings Card -->
             <div id="kmSummaryCard" class="stat-card km-glow" role="button" tabindex="0" title="Click to view full salary breakdown">
                 <div class="stat-header">
-                    <span class="stat-label">DISTANCE THIS MONTH</span>
-                    <span class="touch-hint">TAP FOR DETAILS ↗</span>
+                    <span class="stat-label" data-i18n="dashboard.distanceThisMonth">DISTANCE THIS MONTH</span>
+                    <span class="touch-hint" data-i18n="dashboard.tapForDetails">TAP FOR DETAILS ↗</span>
                 </div>
                 <div class="stat-main">
                     <span id="monthlyKmValue" class="stat-value"><div class="skeleton skeleton-value"></div></span>
-                    <span class="stat-unit">KM</span>
+                    <span class="stat-unit" data-i18n="dashboard.km">KM</span>
                 </div>
                 <div class="stat-footer">
                     <span id="salaryQuickEstimate" class="earnings-quick"><div class="skeleton skeleton-desc"></div></span>
@@ -121,7 +130,7 @@
             <!-- Assigned Vehicle Card -->
             <div id="vehicleSummaryCard" class="stat-card vehicle-glow" title="Assigned vehicle details">
                 <div class="vehicle-info-text">
-                    <span class="stat-label" style="margin-bottom: 6px;">ASSIGNED VEHICLE</span>
+                    <span class="stat-label" style="margin-bottom: 6px;" data-i18n="dashboard.assignedVehicle">ASSIGNED VEHICLE</span>
                     <span id="vehicleNumberDisplay" class="vehicle-plate"><div class="skeleton skeleton-text" style="width: 80px;"></div></span>
                     <span id="vehicleModelDisplay" class="vehicle-model"><div class="skeleton skeleton-text" style="width: 60px;"></div></span>
                 </div>
@@ -144,17 +153,17 @@
         <!-- Search / Distribution Points Drawer Control -->
         <div class="drawer-handle-bar" id="distributorDrawerHandle">
             <div class="drag-indicator"></div>
-            <span>Distribution Points List</span>
+            <span data-i18n="drawer.title">Distribution Points List</span>
             <span class="drawer-toggle-arrow">▲</span>
         </div>
         
         <!-- Distribution Points Slide Drawer -->
         <div id="distributorDrawer" class="bottom-drawer">
             <div class="drawer-search">
-                <input type="text" id="searchDistributors" placeholder="🔍 Search town or distributor...">
+                <input type="text" id="searchDistributors" data-i18n-placeholder="drawer.searchPlaceholder" placeholder="🔍 Search town or distributor...">
             </div>
             <div class="distributor-list-container" id="distributorsList">
-                <div class="loading-spinner">Loading locations...</div>
+                <div class="loading-spinner" data-i18n="drawer.loading">Loading locations...</div>
             </div>
         </div>
 
@@ -165,11 +174,11 @@
                 <div class="salary-modal-header">
                     <div class="header-indicator"></div>
                     <div class="header-title-bar">
-                        <h3>Salary & Earnings</h3>
+                        <h3 data-i18n="salary.title">Salary &amp; Earnings</h3>
                         <button class="close-modal-btn" id="closeSalaryModalBtn">&times;</button>
                     </div>
                     <div class="salary-month-selector-wrapper">
-                        <label for="salaryMonthFilter">Month:</label>
+                        <label for="salaryMonthFilter" data-i18n="salary.month">Month:</label>
                         <input type="month" id="salaryMonthFilter" class="month-picker">
                     </div>
                 </div>
@@ -179,8 +188,8 @@
                     <div id="salaryFinalizedBanner" class="finalized-banner hidden">
                         <span class="banner-icon">🔒</span>
                         <div class="banner-text">
-                            <strong>SALARY FINALIZED</strong>
-                            <span>Your administrator has finalized this month's salary.</span>
+                            <strong data-i18n="salary.finalizedTitle">SALARY FINALIZED</strong>
+                            <span data-i18n="salary.finalizedDesc">Your administrator has finalized this month's salary.</span>
                         </div>
                     </div>
                     
@@ -188,15 +197,15 @@
                     <div id="salaryEstimateBanner" class="estimate-banner hidden">
                         <span class="banner-icon">⚡</span>
                         <div class="banner-text">
-                            <strong>LIVE ESTIMATE</strong>
-                            <span>Calculated from active records. Subject to changes.</span>
+                            <strong data-i18n="salary.liveTitle">LIVE ESTIMATE</strong>
+                            <span data-i18n="salary.liveDesc">Calculated from active records. Subject to changes.</span>
                         </div>
                     </div>
 
                     <!-- KM Summary Card -->
                     <div class="salary-summary-cards">
                         <div class="summary-card net-card" style="width:100%;">
-                            <span class="summary-label">TOTAL KM THIS MONTH</span>
+                            <span class="summary-label" data-i18n="salary.totalKm">TOTAL KM THIS MONTH</span>
                             <span id="modalTotalKm" class="summary-value">0.00 km</span>
                         </div>
                     </div>
@@ -206,10 +215,10 @@
 
                         <!-- Advances Section -->
                         <div class="breakdown-group">
-                            <h4 class="section-title text-red">📉 Salary Advances</h4>
+                            <h4 class="section-title text-red" data-i18n="salary.advances">📉 Salary Advances</h4>
                             <div class="breakdown-card">
                                 <div class="breakdown-row total-row">
-                                    <span>Total Advances Drawn</span>
+                                    <span data-i18n="salary.totalAdvances">Total Advances Drawn</span>
                                     <span id="valTotalAdvances" class="text-red font-bold">LKR 0.00</span>
                                 </div>
                                 <div id="advancesListContainer" class="sub-list-container">
@@ -220,10 +229,10 @@
 
                         <!-- Day offs Section -->
                         <div class="breakdown-group">
-                            <h4 class="section-title text-purple">🗓️ Day Off Deductions</h4>
+                            <h4 class="section-title text-purple" data-i18n="salary.dayOffs">🗓️ Day Off Deductions</h4>
                             <div class="breakdown-card">
                                 <div class="breakdown-row total-row">
-                                    <span>Total Day-Off Deductions</span>
+                                    <span data-i18n="salary.totalDayOffs">Total Day-Off Deductions</span>
                                     <span id="valTotalDayOffs" class="text-purple font-bold">LKR 0.00</span>
                                 </div>
                                 <div id="dayOffsListContainer" class="sub-list-container">
@@ -234,10 +243,10 @@
 
                         <!-- Other Deductions Section -->
                         <div class="breakdown-group">
-                            <h4 class="section-title text-orange">⚠️ Other Deductions</h4>
+                            <h4 class="section-title text-orange" data-i18n="salary.otherDeductions">⚠️ Other Deductions</h4>
                             <div class="breakdown-card">
                                 <div class="breakdown-row total-row">
-                                    <span>Total Other Deductions</span>
+                                    <span data-i18n="salary.totalDeductions">Total Other Deductions</span>
                                     <span id="valTotalDeductions" class="text-orange font-bold">LKR 0.00</span>
                                 </div>
                                 <div id="deductionsListContainer" class="sub-list-container">
@@ -248,26 +257,26 @@
 
                         <!-- Profile Details Section -->
                         <div class="breakdown-group">
-                            <h4 class="section-title" style="color: #3498db;">👤 My Profile Details</h4>
+                            <h4 class="section-title" style="color: #3498db;" data-i18n="salary.profile">👤 My Profile Details</h4>
                             <div class="breakdown-card">
                                 <div class="breakdown-row">
-                                    <span>Role</span>
+                                    <span data-i18n="salary.role">Role</span>
                                     <span id="profileRole">-</span>
                                 </div>
                                 <div class="breakdown-row">
-                                    <span>Contact</span>
+                                    <span data-i18n="salary.contact">Contact</span>
                                     <span id="profileContact">-</span>
                                 </div>
                                 <div class="breakdown-row">
-                                    <span>License Number</span>
+                                    <span data-i18n="salary.license">License Number</span>
                                     <span id="profileLicense">-</span>
                                 </div>
                                 <div class="breakdown-row">
-                                    <span>Age</span>
+                                    <span data-i18n="salary.age">Age</span>
                                     <span id="profileAge">-</span>
                                 </div>
                                 <div class="breakdown-row">
-                                    <span>Address</span>
+                                    <span data-i18n="salary.address">Address</span>
                                     <span id="profileAddress">-</span>
                                 </div>
                             </div>
@@ -276,7 +285,7 @@
                 </div>
                 
                 <div class="salary-modal-footer">
-                    <button class="btn btn-outline-danger btn-block" id="logoutBtn">Logout App</button>
+                    <button class="btn btn-outline-danger btn-block" id="logoutBtn" data-i18n="salary.logout">Logout App</button>
                 </div>
             </div>
         </div>
@@ -288,16 +297,16 @@
                 <div class="salary-modal-header">
                     <div class="header-indicator"></div>
                     <div class="header-title-bar">
-                        <h3 style="color: #F1C40F;">🏁 Driver Race</h3>
+                        <h3 style="color: #F1C40F;" data-i18n="race.title">🏁 Driver Race</h3>
                         <button class="close-modal-btn" id="closeRaceModalBtn">&times;</button>
                     </div>
                     <div class="salary-month-selector-wrapper">
-                        <span id="raceMonthLabel" style="font-size: 13px; font-weight: 700; color: var(--text-secondary);">Standings</span>
+                        <span id="raceMonthLabel" style="font-size: 13px; font-weight: 700; color: var(--text-secondary);" data-i18n="race.standings">Standings</span>
                     </div>
                 </div>
                 
                 <div class="salary-modal-body" style="padding-top: 15px;">
-                    <div id="raceLoading" class="loading-spinner">Loading standings...</div>
+                    <div id="raceLoading" class="loading-spinner" data-i18n="race.loading">Loading standings...</div>
                     <div id="raceList" class="race-list hidden">
                         <!-- Dynamic items will be injected here -->
                     </div>

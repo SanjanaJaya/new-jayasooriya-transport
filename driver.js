@@ -17,6 +17,221 @@ let isOnline = true;
 let distributorsList = [];
 let locationWatchId = null; // Geolocation watcher ID
 
+// ============ LANGUAGE / TRANSLATIONS ============
+const TRANSLATIONS = {
+    en: {
+        'offline.banner': '⚠️ You are offline. Displaying cached information.',
+        'login.phone': 'Phone Number',
+        'login.phonePlaceholder': 'e.g. 0771234567',
+        'login.password': 'Password',
+        'login.passwordPlaceholder': 'Enter your password',
+        'login.helper': "Contact your administrator if you don't have a password yet.",
+        'login.signIn': 'Sign In',
+        'login.signingIn': 'Signing in...',
+        'login.footer': '© 2026 Jayasooriya Transport Services',
+        'dashboard.partner': 'Partner',
+        'dashboard.distanceThisMonth': 'DISTANCE THIS MONTH',
+        'dashboard.basicSalary': 'BASIC SALARY',
+        'dashboard.tapForDetails': 'TAP FOR DETAILS ↗',
+        'dashboard.km': 'KM',
+        'dashboard.assignedVehicle': 'ASSIGNED VEHICLE',
+        'dashboard.online': 'ONLINE',
+        'dashboard.offline': 'OFFLINE',
+        'drawer.title': 'Distribution Points List',
+        'drawer.searchPlaceholder': '🔍 Search town or distributor...',
+        'drawer.loading': 'Loading locations...',
+        'drawer.noResults': 'No distribution points found.',
+        'salary.title': 'Salary & Earnings',
+        'salary.month': 'Month:',
+        'salary.finalizedTitle': 'SALARY FINALIZED',
+        'salary.finalizedDesc': "Your administrator has finalized this month's salary.",
+        'salary.liveTitle': 'LIVE ESTIMATE',
+        'salary.liveDesc': 'Calculated from active records. Subject to changes.',
+        'salary.totalKm': 'TOTAL KM THIS MONTH',
+        'salary.advances': '📉 Salary Advances',
+        'salary.totalAdvances': 'Total Advances Drawn',
+        'salary.dayOffs': '🗓️ Day Off Deductions',
+        'salary.totalDayOffs': 'Total Day-Off Deductions',
+        'salary.otherDeductions': '⚠️ Other Deductions',
+        'salary.totalDeductions': 'Total Other Deductions',
+        'salary.profile': '👤 My Profile Details',
+        'salary.role': 'Role',
+        'salary.contact': 'Contact',
+        'salary.license': 'License Number',
+        'salary.age': 'Age',
+        'salary.address': 'Address',
+        'salary.logout': 'Logout App',
+        'salary.noAdvances': 'No advances taken this month',
+        'salary.noDayOffs': 'No day offs taken this month',
+        'salary.noDeductions': 'No other deductions this month',
+        'race.title': '🏁 Driver Race',
+        'race.standings': 'Standings',
+        'race.loading': 'Loading standings...',
+        'race.noDrivers': "No drivers in this month's race.",
+        'race.you': 'You',
+        'race.failed': 'Failed to load race: ',
+        'greeting.morning': 'Good morning',
+        'greeting.afternoon': 'Good afternoon',
+        'greeting.evening': 'Good evening',
+        'greeting.default': 'Hello',
+        'confirm.logout': 'Are you sure you want to log out?',
+        'confirm.yes': 'Yes',
+        'confirm.no': 'No',
+        'error.noDriver': 'No driver found with this phone number. Check the format or make sure your profile is active in the admin portal.',
+        'error.wrongPassword': 'Incorrect password. Please check your credentials or contact your administrator.',
+        'error.yearRange': 'Please select a month within the current year range.',
+        'map.youAreHere': 'You are here',
+        'map.openInMaps': '🗺️ Open in Google Maps',
+        'map.navigate': '🗺️ Navigate',
+        'map.copyLink': '📋 Copy Link',
+        'map.copied': 'Copied!',
+    },
+    si: {
+        'offline.banner': '⚠️ ඔබ අසබැඳිව සිටී. සුරැකි තොරතුරු පෙන්වමින් ඇත.',
+        'login.phone': 'දුරකථන අංකය',
+        'login.phonePlaceholder': 'උදා: 0771234567',
+        'login.password': 'මුරපදය',
+        'login.passwordPlaceholder': 'ඔබේ මුරපදය ඇතුළු කරන්න',
+        'login.helper': 'ඔබට තවම මුරපදයක් නොමැති නම් ඔබේ පරිපාලකයා අමතන්න.',
+        'login.signIn': 'ඇතුල් වන්න',
+        'login.signingIn': 'ඇතුල් වෙමින්...',
+        'login.footer': '© 2026 ජයසූරිය ප්‍රවාහන සේවා',
+        'dashboard.partner': 'හවුල්කරු',
+        'dashboard.distanceThisMonth': 'මෙම මාසයේ දුර',
+        'dashboard.basicSalary': 'මූලික වැටුප',
+        'dashboard.tapForDetails': 'විස්තර සඳහා තට්ටු කරන්න ↗',
+        'dashboard.km': 'කි.මී.',
+        'dashboard.assignedVehicle': 'පවරන ලද වාහනය',
+        'dashboard.online': 'සබැඳි',
+        'dashboard.offline': 'අසබැඳි',
+        'drawer.title': 'බෙදාහැරීම් ස්ථාන ලැයිස්තුව',
+        'drawer.searchPlaceholder': '🔍 නගරය හෝ බෙදාහරින්නා සොයන්න...',
+        'drawer.loading': 'ස්ථාන පූරණය වෙමින්...',
+        'drawer.noResults': 'බෙදාහැරීම් ස්ථාන හමු නොවීය.',
+        'salary.title': 'වැටුප් සහ ඉපැයීම්',
+        'salary.month': 'මාසය:',
+        'salary.finalizedTitle': 'වැටුප් අවසන් කරා',
+        'salary.finalizedDesc': 'ඔබේ පරිපාලකයා මෙම මාසයේ වැටුප් අවසන් කර ඇත.',
+        'salary.liveTitle': 'සජීවී ඇස්තමේන්තුව',
+        'salary.liveDesc': 'සක්‍රිය වාර්තාවලින් ගණනය කෙරේ. වෙනස් විය හැක.',
+        'salary.totalKm': 'මෙම මාසයේ සම්පූර්ණ කි.මී.',
+        'salary.advances': '📉 වැටුප් අත්තිකාරම්',
+        'salary.totalAdvances': 'ගත් මුළු අත්තිකාරම්',
+        'salary.dayOffs': '🗓️ දිනය ලබාගැනීමේ කැපීම්',
+        'salary.totalDayOffs': 'දිනය ලබාගැනීමේ මුළු කැපීම්',
+        'salary.otherDeductions': '⚠️ වෙනත් කැපීම්',
+        'salary.totalDeductions': 'මුළු වෙනත් කැපීම්',
+        'salary.profile': '👤 මගේ පැතිකඩ විස්තර',
+        'salary.role': 'භූමිකාව',
+        'salary.contact': 'ඇමතුම',
+        'salary.license': 'බලපත්‍ර අංකය',
+        'salary.age': 'වයස',
+        'salary.address': 'ලිපිනය',
+        'salary.logout': 'යෙදුමෙන් ඉවත් වන්න',
+        'salary.noAdvances': 'මෙම මාසයේ අත්තිකාරම් නොමැත',
+        'salary.noDayOffs': 'මෙම මාසයේ දිනය ලබාගැනීම් නොමැත',
+        'salary.noDeductions': 'මෙම මාසයේ වෙනත් කැපීම් නොමැත',
+        'race.title': '🏁 රියදුරු ධාවනය',
+        'race.standings': 'ශ්‍රේණිගත කිරීම',
+        'race.loading': 'ශ්‍රේණිගත කිරීම් පූරණය වෙමින්...',
+        'race.noDrivers': 'මෙම මාසයේ රියදුරු ධාවනයේ කිසිවෙකු නොමැත.',
+        'race.you': 'ඔබ',
+        'race.failed': 'ධාවනය පූරණය නොවීය: ',
+        'greeting.morning': 'සුබ උදෑසනක්',
+        'greeting.afternoon': 'සුබ දහවලක්',
+        'greeting.evening': 'සුබ සන්ධ්‍යාවක්',
+        'greeting.default': 'ආයුබෝවන්',
+        'confirm.logout': 'ඔබට ඇත්තෙන්ම ඉවත් වීමට අවශ්‍යද?',
+        'confirm.yes': 'ඔව්',
+        'confirm.no': 'නැහැ',
+        'error.noDriver': 'මෙම දුරකථන අංකයෙන් රියදුරෙකු හමු නොවීය. ආකෘතිය පරීක්ෂා කරන්න.',
+        'error.wrongPassword': 'වැරදි මුරපදය. ඔබේ අක්තපත්‍ර පරීක්ෂා කරන්න.',
+        'error.yearRange': 'කරුණාකර වත්මන් වර්ෂ පරාසය තුළ මාසයක් තෝරන්න.',
+        'map.youAreHere': 'ඔබ මෙහි සිටී',
+        'map.openInMaps': '🗺️ Google Maps හි විවෘත කරන්න',
+        'map.navigate': '🗺️ සංචාලනය',
+        'map.copyLink': '📋 සබැඳිය පිටපත් කරන්න',
+        'map.copied': 'පිටපත් කරා!',
+    }
+};
+
+// Translate helper — returns string for current language (falls back to English)
+function t(key) {
+    const lang = getCurrentLang();
+    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key])
+        || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key])
+        || key;
+}
+
+// Get saved language code (defaults to 'en')
+function getCurrentLang() {
+    return localStorage.getItem('jt_driver_lang') || 'en';
+}
+
+function calculateAge(dobStr) {
+    if (!dobStr) return null;
+    const birthDate = new Date(dobStr);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+}
+
+function formatDriverAge(ageVal) {
+    if (!ageVal) return '-';
+    if (ageVal > 19000000) {
+        const y = Math.floor(ageVal / 10000);
+        const m = Math.floor((ageVal % 10000) / 100);
+        const d = ageVal % 100;
+        const dobStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const age = calculateAge(dobStr);
+        return age !== null ? `${age} years` : '-';
+    }
+    return `${ageVal} years`;
+}
+
+// Apply language to all data-i18n elements in the DOM and update toggle buttons
+function setLanguage(lang) {
+    localStorage.setItem('jt_driver_lang', lang);
+    document.documentElement.lang = lang === 'si' ? 'si' : 'en';
+
+    // Update textContent for all labelled elements
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const val = (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]);
+        if (val !== undefined) el.textContent = val;
+    });
+
+    // Update placeholder attributes
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        const val = (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]);
+        if (val !== undefined) el.placeholder = val;
+    });
+
+    // Update the toggle button labels on both login and dashboard
+    const label = lang === 'si' ? '🌐 SI' : '🌐 EN';
+    const dashBtn = document.getElementById('langToggleBtn');
+    const loginBtn = document.getElementById('loginLangToggleBtn');
+    if (dashBtn) dashBtn.textContent = label;
+    if (loginBtn) loginBtn.textContent = label;
+
+    // Refresh status text to match new language
+    const statusTextEl = document.getElementById('statusText');
+    if (statusTextEl) {
+        statusTextEl.textContent = isOnline ? t('dashboard.online') : t('dashboard.offline');
+    }
+}
+
+// Toggle between English and Sinhala
+function toggleLanguage() {
+    const newLang = getCurrentLang() === 'en' ? 'si' : 'en';
+    setLanguage(newLang);
+}
+
 // Utility helpers for staff nicknames
 function cleanDriverName(fullName) {
     return (fullName || '').replace(/\s*\(.*?\)\s*$/, '').trim();
@@ -110,8 +325,8 @@ function showDriverConfirm(message, onYes, onNo = null) {
         <div class="driver-confirm-box">
             <div class="dc-msg">${message}</div>
             <div class="dc-btns">
-                <button class="dc-yes">Yes</button>
-                <button class="dc-no">No</button>
+                <button class="dc-yes">${t('confirm.yes')}</button>
+                <button class="dc-no">${t('confirm.no')}</button>
             </div>
         </div>`;
     document.body.appendChild(overlay);
@@ -162,6 +377,7 @@ function initApp() {
     updateOnlineStatus(); // Set initial online banner visibility state
     setDefaultMonth();
     setupEventHandlers();
+    setLanguage(getCurrentLang()); // Apply saved language on startup
     checkExistingSession();
 }
 
@@ -248,7 +464,7 @@ function setupEventHandlers() {
             errorEl.style.display = 'none';
             errorEl.textContent = '';
             submitBtn.disabled = true;
-            submitBtn.querySelector('span').textContent = 'Signing in...';
+            submitBtn.querySelector('span').textContent = t('login.signingIn');
 
             try {
                 const driver = await authenticateDriver(contact, license);
@@ -260,7 +476,7 @@ function setupEventHandlers() {
                 errorEl.style.display = 'block';
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.querySelector('span').textContent = 'Sign In';
+                submitBtn.querySelector('span').textContent = t('login.signIn');
             }
         });
     }
@@ -273,6 +489,10 @@ function setupEventHandlers() {
         });
     }
 
+    // Language Toggle Buttons (login page + dashboard)
+    document.getElementById('langToggleBtn')?.addEventListener('click', toggleLanguage);
+    document.getElementById('loginLangToggleBtn')?.addEventListener('click', toggleLanguage);
+
     // Toggle Offline / Online status
     const statusBtn = document.getElementById('statusToggleBtn');
     if (statusBtn) {
@@ -280,10 +500,10 @@ function setupEventHandlers() {
             isOnline = !isOnline;
             if (isOnline) {
                 statusBtn.className = 'status-btn online';
-                document.getElementById('statusText').textContent = 'ONLINE';
+                document.getElementById('statusText').textContent = t('dashboard.online');
             } else {
                 statusBtn.className = 'status-btn offline';
-                document.getElementById('statusText').textContent = 'OFFLINE';
+                document.getElementById('statusText').textContent = t('dashboard.offline');
                 statusBtn.style.color = '#FF2040';
                 statusBtn.style.borderColor = 'rgba(255, 32, 64, 0.4)';
             }
@@ -309,7 +529,7 @@ function setupEventHandlers() {
 
     // Logout Button in Modal
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        showDriverConfirm('Are you sure you want to log out?', () => logout());
+        showDriverConfirm(t('confirm.logout'), () => logout());
     });
 
     // Month Selector in Salary Modal — allows current year ± 1
@@ -319,7 +539,7 @@ function setupEventHandlers() {
             const selectedYear = parseInt(val.split('-')[0]);
             const currentYear = new Date().getFullYear();
             if (Math.abs(selectedYear - currentYear) > 1) {
-                showDriverToast('Please select a month within the current year range.', 'warning');
+                showDriverToast(t('error.yearRange'), 'warning');
                 const now = new Date();
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 activeMonth = `${currentYear}-${month}`;
@@ -395,7 +615,7 @@ async function authenticateDriver(contact, password) {
     }
 
     if (!data || data.length === 0) {
-        throw new Error('No driver found with this phone number. Check the format or make sure your profile is active in the admin portal.');
+        throw new Error(t('error.noDriver'));
     }
 
     // Check credentials:
@@ -413,7 +633,7 @@ async function authenticateDriver(contact, password) {
     });
 
     if (!matched) {
-        throw new Error('Incorrect password. Please check your credentials or contact your administrator.');
+        throw new Error(t('error.wrongPassword'));
     }
 
     return matched;
@@ -448,10 +668,10 @@ async function showDashboard() {
     
     // Update basic UI fields with dynamic greeting and cleaned name (no nickname)
     const hr = new Date().getHours();
-    let greeting = 'Hello';
-    if (hr < 12) greeting = 'Good morning';
-    else if (hr < 17) greeting = 'Good afternoon';
-    else greeting = 'Good evening';
+    let greeting = t('greeting.default');
+    if (hr < 12) greeting = t('greeting.morning');
+    else if (hr < 17) greeting = t('greeting.afternoon');
+    else greeting = t('greeting.evening');
     
     const welcomeEl = document.querySelector('.welcome-text');
     if (welcomeEl) {
@@ -461,6 +681,21 @@ async function showDashboard() {
     document.getElementById('driverName').textContent = cleanDriverName(currentDriver.name);
     if (currentDriver.photo_url) {
         document.getElementById('driverAvatar').src = currentDriver.photo_url;
+    }
+
+    const isHelper = (currentDriver.role || '').toLowerCase() === 'helper';
+    const isFixed = currentDriver.salary_type === 'fixed';
+    const labelEl = document.querySelector('#kmSummaryCard .stat-label');
+    if (isHelper && isFixed) {
+        if (labelEl) {
+            labelEl.setAttribute('data-i18n', 'dashboard.basicSalary');
+            labelEl.textContent = t('dashboard.basicSalary');
+        }
+    } else {
+        if (labelEl) {
+            labelEl.setAttribute('data-i18n', 'dashboard.distanceThisMonth');
+            labelEl.textContent = t('dashboard.distanceThisMonth');
+        }
     }
 
     // Populate profile details inside the modal
@@ -474,7 +709,7 @@ async function showDashboard() {
         document.getElementById('profileLicense').textContent = currentDriver.license_number || '-';
     }
     if (document.getElementById('profileAge')) {
-        document.getElementById('profileAge').textContent = currentDriver.age ? `${currentDriver.age} years` : '-';
+        document.getElementById('profileAge').textContent = formatDriverAge(currentDriver.age);
     }
     if (document.getElementById('profileAddress')) {
         document.getElementById('profileAddress').textContent = currentDriver.address || '-';
@@ -484,9 +719,13 @@ async function showDashboard() {
             document.getElementById('profileSalaryType').textContent = `Per Tip (LKR ${parseFloat(currentDriver.per_tip_charge || 0).toFixed(2)} / trip)`;
         } else {
             const basic = parseFloat(currentDriver.basic_salary || 0).toFixed(2);
-            const limit = currentDriver.km_limit || 0;
-            const rate = parseFloat(currentDriver.extra_km_rate || 0).toFixed(2);
-            document.getElementById('profileSalaryType').innerHTML = `Fixed Salary (LKR ${basic})<br><small style="color: var(--text-secondary);">Limit: ${limit} km | Extra: LKR ${rate}/km</small>`;
+            if (isHelper) {
+                document.getElementById('profileSalaryType').innerHTML = `Fixed Salary (LKR ${basic})`;
+            } else {
+                const limit = currentDriver.km_limit || 0;
+                const rate = parseFloat(currentDriver.extra_km_rate || 0).toFixed(2);
+                document.getElementById('profileSalaryType').innerHTML = `Fixed Salary (LKR ${basic})<br><small style="color: var(--text-secondary);">Limit: ${limit} km | Extra: LKR ${rate}/km</small>`;
+            }
         }
     }
 
@@ -643,6 +882,21 @@ function extractBaseVehicleName(name) {
 // Load Dashboard Statistics (KM & quick estimate with caching support)
 async function loadDashboardStats() {
     try {
+        const isHelper = (currentDriver.role || '').toLowerCase() === 'helper';
+        const isFixed = currentDriver.salary_type === 'fixed';
+        const unitEl = document.querySelector('#kmSummaryCard .stat-unit');
+
+        if (isHelper && isFixed) {
+            if (unitEl) unitEl.style.display = 'none';
+            const basic = parseFloat(currentDriver.basic_salary || 0);
+            document.getElementById('monthlyKmValue').textContent = `LKR ${basic.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            const estimateEl = document.getElementById('salaryQuickEstimate');
+            if (estimateEl) estimateEl.textContent = 'TAP FOR DETAILS';
+            return;
+        }
+
+        if (unitEl) unitEl.style.display = '';
+
         const [year, month] = activeMonth.split('-');
         const startDate = `${year}-${month}-01`;
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
@@ -766,7 +1020,7 @@ function trackUserLocation(centerMap = false) {
 
                 if (driverMap) {
                     userLocationMarker = L.marker([latitude, longitude], { icon: locationDotIcon }).addTo(driverMap);
-                    userLocationMarker.bindPopup('<strong>You are here</strong>');
+                    userLocationMarker.bindPopup(`<strong>${t('map.youAreHere')}</strong>`);
                 }
             }
 
@@ -891,7 +1145,7 @@ function plotDistributorsOnMap() {
             <div class="kd-popup-name" style="color:#0048B4;">🏭 ${KD_START_POINT.name}</div>
             <div class="kd-popup-town">📍 ${KD_START_POINT.town}</div>
             <div class="kd-popup-actions">
-                <a class="kd-popup-open-btn" href="${startMapsLink}" target="_blank">🗺️ Open in Google Maps</a>
+                <a class="kd-popup-open-btn" href="${startMapsLink}" target="_blank">${t('map.openInMaps')}</a>
             </div>
         </div>`;
     const startMarker = L.marker([KD_START_POINT.lat, KD_START_POINT.lng], { icon: createStartIcon() })
@@ -909,8 +1163,8 @@ function plotDistributorsOnMap() {
                 <div class="kd-popup-name">${r.distributor_name}</div>
                 <div class="kd-popup-town">📍 ${r.town_name}</div>
                 <div class="kd-popup-actions">
-                    <button class="kd-popup-copy-btn" onclick="copyMapLocation('${mapsLink}', this)">📋 Copy Link</button>
-                    <a class="kd-popup-open-btn" href="${mapsLink}" target="_blank">🗺️ Navigate</a>
+                    <button class="kd-popup-copy-btn" onclick="copyMapLocation('${mapsLink}', this)">${t('map.copyLink')}</button>
+                    <a class="kd-popup-open-btn" href="${mapsLink}" target="_blank">${t('map.navigate')}</a>
                 </div>
             </div>`;
 
@@ -925,10 +1179,10 @@ function plotDistributorsOnMap() {
 // Copy location link helper
 window.copyMapLocation = function(link, btn) {
     navigator.clipboard.writeText(link).then(() => {
-        btn.textContent = 'Copied!';
+        btn.textContent = t('map.copied');
         btn.style.background = '#00B37E';
         setTimeout(() => {
-            btn.textContent = '📋 Copy Link';
+            btn.textContent = t('map.copyLink');
             btn.style.background = '';
         }, 2000);
     }).catch(err => {
@@ -944,7 +1198,7 @@ function renderDistributorsList(filteredList = null) {
     const list = filteredList || distributorsList;
 
     if (list.length === 0) {
-        container.innerHTML = '<div class="no-results">No distribution points found.</div>';
+        container.innerHTML = `<div class="no-results">${t('drawer.noResults')}</div>`;
         return;
     }
 
@@ -1030,6 +1284,13 @@ function closeSalaryModal() {
 // Load salary details for the selected activeMonth with caching fallback
 async function loadSalaryDetails() {
     try {
+        const isHelper = (currentDriver.role || '').toLowerCase() === 'helper';
+        const isFixed = currentDriver.salary_type === 'fixed';
+        const modalKmCard = document.querySelector('#salaryModal .salary-summary-cards');
+        if (modalKmCard) {
+            modalKmCard.style.display = (isHelper && isFixed) ? 'none' : '';
+        }
+
         const [year, month] = activeMonth.split('-');
         const startDate = `${year}-${month}-01`;
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
@@ -1225,7 +1486,7 @@ function renderAdvancesList(list) {
     if (!container) return;
 
     if (list.length === 0) {
-        container.innerHTML = '<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">No advances taken this month</div>';
+        container.innerHTML = `<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">${t('salary.noAdvances')}</div>`;
         return;
     }
 
@@ -1249,7 +1510,7 @@ function renderDayOffsList(list) {
     if (!container) return;
 
     if (list.length === 0) {
-        container.innerHTML = '<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">No day offs taken this month</div>';
+        container.innerHTML = `<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">${t('salary.noDayOffs')}</div>`;
         return;
     }
 
@@ -1273,7 +1534,7 @@ function renderDeductionsList(list) {
     if (!container) return;
 
     if (list.length === 0) {
-        container.innerHTML = '<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">No other deductions this month</div>';
+        container.innerHTML = `<div class="sub-list-item" style="font-style:italic;color:var(--text-muted);">${t('salary.noDeductions')}</div>`;
         return;
     }
 
@@ -1348,7 +1609,7 @@ async function loadDriverRace() {
     // Format label strictly using 2026, e.g., "June 2026 Standings"
     const displayDate = new Date(2026, now.getMonth(), 1);
     const monthName = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-    if (labelEl) labelEl.textContent = `${monthName} Standings`;
+    if (labelEl) labelEl.textContent = `${monthName} ${t('race.standings')}`;
 
     if (!navigator.onLine) {
         const cached = getCachedData('jt_driver_race_standings');
@@ -1440,7 +1701,7 @@ async function loadDriverRace() {
         if (cached) {
             renderRaceListUI(cached.rankedDrivers, cached.maxKm);
         } else {
-            listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">Failed to load race: ${err.message}</div>`;
+            listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">${t('race.failed')}${err.message}</div>`;
         }
         loadingEl.classList.add('hidden');
         listContainer.classList.remove('hidden');
@@ -1454,7 +1715,7 @@ function renderRaceListUI(rankedDrivers, maxKm) {
     listContainer.innerHTML = '';
 
     if (rankedDrivers.length === 0) {
-        listContainer.innerHTML = '<div class="no-results">No drivers in this month\'s race.</div>';
+        listContainer.innerHTML = `<div class="no-results">${t('race.noDrivers')}</div>`;
         return;
     }
 
@@ -1494,7 +1755,7 @@ function renderRaceListUI(rankedDrivers, maxKm) {
             </div>
             <div class="race-details">
                 <div class="race-name-row">
-                    <span class="race-name">${cleanedName} ${isCurrentUser ? '<span class="race-badge-you">You</span>' : ''}</span>
+                    <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
                     <div class="race-value-container">
                         <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                         <span class="race-value-unit">KM</span>
