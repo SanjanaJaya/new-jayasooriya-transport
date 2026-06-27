@@ -1335,6 +1335,7 @@ input, button, textarea, select { font-family: inherit; }
     .touch-hint { font-size: 7px; padding: 2px 6px; }
     .vehicle-plate { font-size: 16px; }
     .vehicle-vector-container { width: 76px; height: 48px; }
+    .vehicle-glow { min-height: 70px; padding: 10px 12px; }
 
     .drawer-handle-bar { padding: 8px 14px; height: 40px; font-size: 9px; }
     .bottom-drawer.open { height: min(230px, 28dvh); }
@@ -1344,6 +1345,16 @@ input, button, textarea, select { font-family: inherit; }
     .salary-modal-body { padding: 14px 14px; }
     .breakdown-row { padding: 11px 12px; font-size: 12px; }
     .summary-value { font-size: 18px; }
+
+    /* Compact Standings items */
+    .race-item { padding: 8px 12px; gap: 8px; }
+    .race-rank-container { width: 24px; height: 24px; font-size: 15px; }
+    .race-avatar-container { width: 32px; height: 32px; }
+    .race-avatar-fallback { font-size: 12px; }
+    .race-name { font-size: 13px; }
+    .race-value { font-size: 15px; }
+    .race-badge { font-size: 8px; padding: 1px 4px; }
+    .race-section-header { margin: 12px 0 6px; font-size: 10px; }
 }
 
 /* ─── Small phones (361px–390px) ───────────────────── */
@@ -1369,9 +1380,13 @@ input, button, textarea, select { font-family: inherit; }
     .input-with-icon input { padding: 13px 14px 13px 44px; font-size: 14px; }
     .btn { padding: 13px 20px; }
 
-    .top-stat-section { padding: 10px 12px 8px; gap: 8px; }
-    .stat-card { padding: 12px 14px; }
-    .stat-value { font-size: clamp(26px, 7vw, 36px); }
+    .top-stat-section { padding: 8px 10px 6px; gap: 6px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-value { font-size: clamp(24px, 6vw, 32px); }
+    .vehicle-glow { min-height: 70px; padding: 8px 12px; }
+    .vehicle-plate { font-size: 16px; }
+    .vehicle-vector-container { width: 76px; height: 44px; }
+
     .bottom-drawer.open { height: min(220px, 26dvh); }
     .salary-modal-content { max-height: 94%; }
 }
@@ -1513,6 +1528,58 @@ input, button, textarea, select { font-family: inherit; }
 
 .race-item.current-user .race-progress-bar { background: #F1C40F; }
 .race-item.rank-1 .race-progress-bar { background: linear-gradient(90deg, var(--brand), #F1C40F); }
+
+.race-section-header {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #F1C40F;
+    margin: 16px 0 8px;
+    padding-left: 8px;
+    border-left: 2.5px solid #F1C40F;
+    display: flex;
+    align-items: center;
+    animation: fadeIn 0.4s var(--ease-out) both;
+}
+
+.race-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.race-badge-driver {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.race-badge-helper {
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.race-badge-new {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    animation: pulseNewGlow 2.5s infinite alternate;
+}
+
+@keyframes pulseNewGlow {
+    from { box-shadow: 0 0 2px rgba(16, 185, 129, 0.1); }
+    to { box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+}
 
 /* ─── Touch Hover Encapsulation ─────────────────────── */
 @media (hover: hover) {

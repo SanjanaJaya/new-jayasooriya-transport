@@ -85,6 +85,10 @@ const TRANSLATIONS = {
         'map.navigate': '🗺️ Navigate',
         'map.copyLink': '📋 Copy Link',
         'map.copied': 'Copied!',
+        'race.helpers': 'Helpers',
+        'race.driver': 'Driver',
+        'race.helper': 'Helper',
+        'race.new': 'NEW',
     },
     si: {
         'offline.banner': '⚠️ ඔබ අසබැඳිව සිටී. සුරැකි තොරතුරු පෙන්වමින් ඇත.',
@@ -152,6 +156,10 @@ const TRANSLATIONS = {
         'map.navigate': '🗺️ සංචාලනය',
         'map.copyLink': '📋 සබැඳිය පිටපත් කරන්න',
         'map.copied': 'පිටපත් කරා!',
+        'race.helpers': 'රිය සහයවරුන්',
+        'race.driver': 'රියදුරු',
+        'race.helper': 'රිය සහය',
+        'race.new': 'නව',
     }
 };
 
@@ -1614,7 +1622,7 @@ async function loadDriverRace() {
     if (!navigator.onLine) {
         const cached = getCachedData('jt_driver_race_standings');
         if (cached) {
-            renderRaceListUI(cached.rankedDrivers, cached.maxKm);
+            renderRaceListUI(cached.rankedDrivers, cached.maxKm, cached.helpers || []);
             loadingEl.classList.add('hidden');
             listContainer.classList.remove('hidden');
             return;
@@ -1629,10 +1637,10 @@ async function loadDriverRace() {
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        // 1. Fetch active drivers
+        // 1. Fetch active drivers and helpers
         const { data: drivers, error: driverError } = await supabaseClient
             .from('drivers')
-            .select('id, name, photo_url, role')
+            .select('id, name, photo_url, role, created_at')
             .eq('user_id', currentDriver.user_id)
             .neq('terminated', true);
 
@@ -1672,23 +1680,32 @@ async function loadDriverRace() {
                 };
             });
 
-        if (rankedDrivers.length === 0) {
-            listContainer.innerHTML = '<div class="no-results">No drivers in this month\'s race.</div>';
+        // Filter: only role === 'helper', exclude family members
+        const helpers = (drivers || [])
+            .filter(d => {
+                if ((d.role || '').toLowerCase() !== 'helper') return false;
+                const nameClean = cleanDriverName(d.name).toLowerCase();
+                if (nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya') return false;
+                return true;
+            });
+
+        if (rankedDrivers.length === 0 && helpers.length === 0) {
+            listContainer.innerHTML = `<div class="no-results">${t('race.noDrivers')}</div>`;
             loadingEl.classList.add('hidden');
             listContainer.classList.remove('hidden');
             // Cache empty standings
-            setCachedData('jt_driver_race_standings', { rankedDrivers: [], maxKm: 1 });
+            setCachedData('jt_driver_race_standings', { rankedDrivers: [], maxKm: 1, helpers: [] });
             return;
         }
 
         rankedDrivers.sort((a, b) => b.totalKm - a.totalKm);
 
-        const maxKm = rankedDrivers[0].totalKm || 1;
+        const maxKm = rankedDrivers.length > 0 ? (rankedDrivers[0].totalKm || 1) : 1;
 
         // Cache standings
-        setCachedData('jt_driver_race_standings', { rankedDrivers, maxKm });
+        setCachedData('jt_driver_race_standings', { rankedDrivers, maxKm, helpers });
 
-        renderRaceListUI(rankedDrivers, maxKm);
+        renderRaceListUI(rankedDrivers, maxKm, helpers);
 
         loadingEl.classList.add('hidden');
         listContainer.classList.remove('hidden');
@@ -1699,7 +1716,7 @@ async function loadDriverRace() {
         // Fallback to cache on error
         const cached = getCachedData('jt_driver_race_standings');
         if (cached) {
-            renderRaceListUI(cached.rankedDrivers, cached.maxKm);
+            renderRaceListUI(cached.rankedDrivers, cached.maxKm, cached.helpers || []);
         } else {
             listContainer.innerHTML = `<div class="no-results" style="color:var(--brand-red);">${t('race.failed')}${err.message}</div>`;
         }
@@ -1709,72 +1726,133 @@ async function loadDriverRace() {
 }
 
 // Render race rank items helper
-function renderRaceListUI(rankedDrivers, maxKm) {
+function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
     const listContainer = document.getElementById('raceList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
 
-    if (rankedDrivers.length === 0) {
+    if (rankedDrivers.length === 0 && helpers.length === 0) {
         listContainer.innerHTML = `<div class="no-results">${t('race.noDrivers')}</div>`;
         return;
     }
 
-    rankedDrivers.forEach((d, index) => {
-        const rank = index + 1;
-        const isCurrentUser = d.id === currentDriver.id;
-        
-        let rankHtml = '';
-        if (rank === 1) {
-            rankHtml = '<span class="race-rank-medal">🥇</span>';
-        } else if (rank === 2) {
-            rankHtml = '<span class="race-rank-medal">🥈</span>';
-        } else if (rank === 3) {
-            rankHtml = '<span class="race-rank-medal">🥉</span>';
-        } else {
-            rankHtml = `<span class="race-rank-number">#${rank}</span>`;
-        }
+    // Helper to determine if staff member is new (tenure <= 30 days)
+    function isNewStaff(createdAtStr) {
+        if (!createdAtStr) return false;
+        const createdAt = new Date(createdAtStr);
+        const now = new Date();
+        const diffTime = Math.abs(now - createdAt);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 30;
+    }
 
-        // Initials Fallback for Avatar
-        const cleanedName = cleanDriverName(d.name);
-        const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
-        const avatarHtml = d.photo_url 
-            ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-               <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
-            : `<div class="race-avatar-fallback">${initials}</div>`;
+    if (rankedDrivers.length > 0) {
+        rankedDrivers.forEach((d, index) => {
+            const rank = index + 1;
+            const isCurrentUser = d.id === currentDriver.id;
+            
+            let rankHtml = '';
+            if (rank === 1) {
+                rankHtml = '<span class="race-rank-medal">🥇</span>';
+            } else if (rank === 2) {
+                rankHtml = '<span class="race-rank-medal">🥈</span>';
+            } else if (rank === 3) {
+                rankHtml = '<span class="race-rank-medal">🥉</span>';
+            } else {
+                rankHtml = `<span class="race-rank-number">#${rank}</span>`;
+            }
 
-        const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
+            // Initials Fallback for Avatar
+            const cleanedName = cleanDriverName(d.name);
+            const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+            const avatarHtml = d.photo_url 
+                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                   <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
+                : `<div class="race-avatar-fallback">${initials}</div>`;
 
-        const card = document.createElement('div');
-        card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
-        card.innerHTML = `
-            <div class="race-rank-container">
-                ${rankHtml}
-            </div>
-            <div class="race-avatar-container">
-                ${avatarHtml}
-            </div>
-            <div class="race-details">
-                <div class="race-name-row">
-                    <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
-                    <div class="race-value-container">
-                        <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-                        <span class="race-value-unit">KM</span>
+            const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
+            const isNew = isNewStaff(d.created_at);
+
+            const card = document.createElement('div');
+            card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
+            card.innerHTML = `
+                <div class="race-rank-container">
+                    ${rankHtml}
+                </div>
+                <div class="race-avatar-container">
+                    ${avatarHtml}
+                </div>
+                <div class="race-details">
+                    <div class="race-name-row">
+                        <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
+                        <div class="race-value-container">
+                            <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                            <span class="race-value-unit">KM</span>
+                        </div>
+                    </div>
+                    <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
+                        <span class="race-badge race-badge-driver">${t('race.driver')}</span>
+                        ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
+                    </div>
+                    <div class="race-progress-bg" style="margin-top: 6px;">
+                        <div class="race-progress-bar" style="width: 0%;"></div>
                     </div>
                 </div>
-                <div class="race-progress-bg">
-                    <div class="race-progress-bar" style="width: 0%;"></div>
+            `;
+
+            listContainer.appendChild(card);
+
+            // Animate progress bar width slightly after appending for smooth micro-animation
+            setTimeout(() => {
+                const bar = card.querySelector('.race-progress-bar');
+                if (bar) bar.style.width = `${progressPercent}%`;
+            }, 100);
+        });
+    }
+
+    if (helpers.length > 0) {
+        // Section Header for Helpers
+        const sectionHeader = document.createElement('div');
+        sectionHeader.className = 'race-section-header';
+        sectionHeader.innerHTML = `<span data-i18n="race.helpers">${t('race.helpers')}</span>`;
+        listContainer.appendChild(sectionHeader);
+
+        helpers.forEach((d) => {
+            const isCurrentUser = d.id === currentDriver.id;
+            
+            // Initials Fallback for Avatar
+            const cleanedName = cleanDriverName(d.name);
+            const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+            const avatarHtml = d.photo_url 
+                ? `<img class="race-avatar-img" src="${d.photo_url}" alt="${cleanedName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                   <div class="race-avatar-fallback" style="display:none;">${initials}</div>`
+                : `<div class="race-avatar-fallback">${initials}</div>`;
+
+            const isNew = isNewStaff(d.created_at);
+
+            const card = document.createElement('div');
+            card.className = `race-item helper-item ${isCurrentUser ? 'current-user' : ''}`;
+            card.innerHTML = `
+                <div class="race-rank-container">
+                    <span class="race-rank-number">🤝</span>
                 </div>
-            </div>
-        `;
+                <div class="race-avatar-container">
+                    ${avatarHtml}
+                </div>
+                <div class="race-details">
+                    <div class="race-name-row">
+                        <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
+                    </div>
+                    <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
+                        <span class="race-badge race-badge-helper">${t('race.helper')}</span>
+                        ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
+                    </div>
+                </div>
+            `;
 
-        listContainer.appendChild(card);
-
-        // Animate progress bar width slightly after appending for smooth micro-animation
-        setTimeout(() => {
-            const bar = card.querySelector('.race-progress-bar');
-            if (bar) bar.style.width = `${progressPercent}%`;
-        }, 100);
-    });
+            listContainer.appendChild(card);
+        });
+    }
 }
 
 // Start everything when DOM is ready
