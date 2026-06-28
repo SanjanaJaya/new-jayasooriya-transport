@@ -9168,11 +9168,7 @@ async function loadDriverPerformance(monthValue) {
         if (!tableDiv) return;
 
         const driversOnly = drivers?.filter(d => (d.role || '').toLowerCase() === 'driver') || [];
-
-        if (driversOnly.length === 0) {
-            tableDiv.innerHTML = '<div style="color: #7f8c8d; padding: 20px; text-align: center; background: var(--surface-card); border-radius: var(--radius-md); border: 1px solid var(--surface-border);">No active drivers found.</div>';
-            return;
-        }
+        const helpersOnly = drivers?.filter(d => (d.role || '').toLowerCase() === 'helper') || [];
 
         // Group KM records, advances, and deductions by driver_id
         const kmByDriver = {};
@@ -9207,19 +9203,30 @@ async function loadDriverPerformance(monthValue) {
             return kmB - kmA;
         });
 
-        // Build per-driver data for both table rows and mobile cards
+        // Sort helpers by name
+        helpersOnly.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (driversOnly.length === 0 && helpersOnly.length === 0) {
+            tableDiv.innerHTML = '<div style="color: #7f8c8d; padding: 20px; text-align: center; background: var(--surface-card); border-radius: var(--radius-md); border: 1px solid var(--surface-border);">No active drivers or helpers found.</div>';
+            return;
+        }
+
+        // Build per-staff data for both table rows and mobile cards
         let tableRows = '';
         let mobileCards = '';
 
-        driversOnly.forEach((driver, index) => {
+        // Helper function to render a staff member's rows/cards
+        const renderStaffRow = (driver, isHelper, rank) => {
             const totalKm = kmByDriver[driver.id] || 0;
             const nameClean = cleanDriverName(driver.name);
             const skipSalary = nameClean === 'JAUK Jayasooriya' || nameClean === 'JAAP Jayasooriya';
 
-            const rank = index + 1;
             let rankEmoji = '';
             let rankDisplay = '';
-            if (rank === 1) {
+            if (isHelper) {
+                rankEmoji = '-';
+                rankDisplay = `<span style="font-weight: 600; color: var(--text-secondary); padding-left: 8px;">-</span>`;
+            } else if (rank === 1) {
                 rankEmoji = '🥇';
                 rankDisplay = '🥇 <span style="font-weight: 700; color: #f1c40f;">1</span>';
             } else if (rank === 2) {
@@ -9275,8 +9282,8 @@ async function loadDriverPerformance(monthValue) {
                 } else if (!isPerTip) {
                     const basicSalary = driver.basic_salary || 0;
                     const extraKmRate = driver.extra_km_rate || 0;
-                    const extraKm = Math.max(0, totalKm - kmLimit);
-                    const extraKmSalary = extraKm * extraKmRate;
+                    const extraKm = isHelper ? 0 : Math.max(0, totalKm - kmLimit);
+                    const extraKmSalary = isHelper ? 0 : (extraKm * extraKmRate);
                     const grossSalary = basicSalary + extraKmSalary;
                     const netSalary = grossSalary - totalAdv - totalDed;
 
@@ -9295,12 +9302,12 @@ async function loadDriverPerformance(monthValue) {
                 : '<span style="background:#27AE60;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">Fixed</span>';
 
             // Desktop table row
-            tableRows += `
+            const rowHtml = `
                 <tr style="border-bottom: 1px solid var(--surface-border);">
                     <td style="padding: 12px; text-align: center;">${rankDisplay}</td>
                     <td style="padding: 12px; font-weight: 600;">${driver.name}</td>
                     <td style="padding: 12px;">${salaryTypeBadge}</td>
-                    <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--blue);">${totalKm.toFixed(2)} km</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--blue);">${isHelper ? '-' : totalKm.toFixed(2) + ' km'}</td>
                     <td style="padding: 12px; text-align: right; font-weight: 600; color: ${salaryColor};">${fullSalaryText}</td>
                     <td style="padding: 12px; text-align: right; color: ${advColor};">${advText}</td>
                     <td style="padding: 12px; text-align: right; color: ${dedColor};">${dedText}</td>
@@ -9309,15 +9316,17 @@ async function loadDriverPerformance(monthValue) {
             `;
 
             // Mobile card
-            const rankBadgeStyle = rank === 1
-                ? 'background: linear-gradient(135deg,#f1c40f,#e67e22); color:#fff;'
-                : rank === 2
-                    ? 'background: linear-gradient(135deg,#95a5a6,#7f8c8d); color:#fff;'
-                    : rank === 3
-                        ? 'background: linear-gradient(135deg,#e67e22,#c0392b); color:#fff;'
-                        : 'background: var(--surface-hover); color: var(--text-secondary);';
+            const rankBadgeStyle = isHelper
+                ? 'background: var(--surface-hover); color: var(--text-secondary);'
+                : rank === 1
+                    ? 'background: linear-gradient(135deg,#f1c40f,#e67e22); color:#fff;'
+                    : rank === 2
+                        ? 'background: linear-gradient(135deg,#95a5a6,#7f8c8d); color:#fff;'
+                        : rank === 3
+                            ? 'background: linear-gradient(135deg,#e67e22,#c0392b); color:#fff;'
+                            : 'background: var(--surface-hover); color: var(--text-secondary);';
 
-            mobileCards += `
+            const cardHtml = `
                 <div class="driver-perf-card">
                     <div class="driver-perf-card-header">
                         <span class="driver-perf-rank-badge" style="${rankBadgeStyle}">${rankEmoji}</span>
@@ -9329,7 +9338,7 @@ async function loadDriverPerformance(monthValue) {
                     <div class="driver-perf-card-grid">
                         <div class="driver-perf-stat">
                             <span class="driver-perf-stat-label">KM Logged</span>
-                            <span class="driver-perf-stat-value" style="color:var(--blue);">${totalKm.toFixed(2)} km</span>
+                            <span class="driver-perf-stat-value" style="color:var(--blue);">${isHelper ? '-' : totalKm.toFixed(2) + ' km'}</span>
                         </div>
                         <div class="driver-perf-stat">
                             <span class="driver-perf-stat-label">Full Salary</span>
@@ -9350,7 +9359,51 @@ async function loadDriverPerformance(monthValue) {
                     </div>
                 </div>
             `;
-        });
+
+            return { rowHtml, cardHtml };
+        };
+
+        // Render Drivers
+        if (driversOnly.length > 0) {
+            tableRows += `
+                <tr style="background: var(--surface-hover); font-weight: bold; border-bottom: 2px solid var(--surface-border);">
+                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                        🚗 Drivers
+                    </td>
+                </tr>
+            `;
+            mobileCards += `
+                <div style="font-weight: 700; margin: 10px 0; color: var(--brand-red); font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                    🚗 Drivers
+                </div>
+            `;
+            driversOnly.forEach((driver, idx) => {
+                const { rowHtml, cardHtml } = renderStaffRow(driver, false, idx + 1);
+                tableRows += rowHtml;
+                mobileCards += cardHtml;
+            });
+        }
+
+        // Render Helpers
+        if (helpersOnly.length > 0) {
+            tableRows += `
+                <tr style="background: var(--surface-hover); font-weight: bold; border-top: 2px solid var(--surface-border); border-bottom: 2px solid var(--surface-border);">
+                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                        👥 Helpers
+                    </td>
+                </tr>
+            `;
+            mobileCards += `
+                <div style="font-weight: 700; margin: 20px 0 10px 0; color: var(--brand-red); font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                    👥 Helpers
+                </div>
+            `;
+            helpersOnly.forEach((helper) => {
+                const { rowHtml, cardHtml } = renderStaffRow(helper, true, null);
+                tableRows += rowHtml;
+                mobileCards += cardHtml;
+            });
+        }
 
         // Assemble: desktop table (scrollable) + mobile cards
         const html = `
@@ -9359,7 +9412,7 @@ async function loadDriverPerformance(monthValue) {
                     <thead>
                         <tr style="background: var(--brand-red); color: white;">
                             <th style="padding: 12px; text-align: center; width: 80px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);">Rank</th>
-                            <th style="padding: 12px; text-align: left;">Driver</th>
+                            <th style="padding: 12px; text-align: left;">Driver / Helper</th>
                             <th style="padding: 12px; text-align: left;">Salary Type</th>
                             <th style="padding: 12px; text-align: right;">Total KM Logged</th>
                             <th style="padding: 12px; text-align: right;">Full Salary</th>
