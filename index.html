@@ -1835,9 +1835,42 @@
                             </select>
                         </div>
                         <div class="control-group">
-                            <label for="otherOperationHiresTownSearch">🏙️ Search by Town</label>
-                            <input type="text" id="otherOperationHiresTownSearch" placeholder="Search by town..."
-                                title="Search by From or To location">
+                            <label for="otherOperationHiresTownSearch">🔍 Search Hires</label>
+                            <input type="text" id="otherOperationHiresTownSearch" placeholder="Search by town or operation..."
+                                title="Search by location or operation name">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Coca-Cola Hires Summary Widget -->
+                    <div id="cocacolaSummaryWidget" class="performance-section" style="display: none; margin-bottom: 24px;">
+                        <h3 style="color: #c41c1c;">🥤 Coca-Cola Hires Summary</h3>
+                        <div class="metrics-grid" style="margin-top: 15px;">
+                            <div class="metric-card" style="border-left: 4px solid #27AE60;">
+                                <div class="metric-content">
+                                    <div class="metric-label">Coca-Cola Hires</div>
+                                    <div class="metric-value" id="ccTotalHiresCount">0</div>
+                                </div>
+                            </div>
+                            <div class="metric-card" style="border-left: 4px solid #27AE60;">
+                                <div class="metric-content">
+                                    <div class="metric-label">Total Amount</div>
+                                    <div class="metric-value" id="ccTotalInvoiceValue">LKR 0.00</div>
+                                </div>
+                            </div>
+                            <div class="metric-card" style="border-left: 4px solid #2980B9;">
+                                <div class="metric-content">
+                                    <div class="metric-label">How Much Paid</div>
+                                    <div class="metric-value" id="ccMoneyPaid">LKR 0.00</div>
+                                    <small class="user-email" id="ccPaidHiresInfo" style="margin-top: 4px; display: block;">0 of 0 hires marked paid</small>
+                                </div>
+                            </div>
+                            <div class="metric-card" style="border-left: 4px solid #CB4335;">
+                                <div class="metric-content">
+                                    <div class="metric-label">How Much Need to Pay</div>
+                                    <div class="metric-value" id="ccMoneyRemaining">LKR 0.00</div>
+                                    <small class="user-email" id="ccRemainingHiresInfo" style="margin-top: 4px; display: block;">Includes unpaid 80% + all 20% balances</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1845,21 +1878,46 @@
                         <form id="otherOperationHireForm">
                             <div class="form-row">
                                 <input type="hidden" id="otherOperationHireId">
+                                <input type="hidden" id="otherOpOperationName">
                                 <select id="otherOpBaseVehicle" required>
                                     <option value="">Select Vehicle (e.g., 68 - 8556)</option>
                                 </select>
-                                <input type="text" id="otherOpOperationName" placeholder="Operation Name" required>
+                                <select id="otherOpOperationNameSelect" required>
+                                    <option value="">Select Operation</option>
+                                    <option value="COCACOLA">COCACOLA</option>
+                                    <option value="other">Other (Custom)</option>
+                                </select>
+                                <input type="text" id="otherOpOperationNameCustom" placeholder="Enter Custom Operation" style="display: none;">
                                 <input type="date" id="otherOpDate" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                                    <label for="otherOpHireType" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Hire Type</label>
+                                    <select id="otherOpHireType" required>
+                                        <option value="km_rate">Normal KM Rate</option>
+                                        <option value="exact_amount">Exact Amount Hire</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <input type="text" id="otherOpFrom" placeholder="From Location" required>
                                 <input type="text" id="otherOpTo" placeholder="To Location" required>
                             </div>
-                            <div class="form-row">
+                            <div class="form-row" id="otherOpRateFieldsRow">
                                 <input type="number" id="otherOpFirst100Rate" placeholder="First 100km Rate (LKR)"
                                     step="0.01" required>
                                 <input type="number" id="otherOpRestKmRate" placeholder="Rest KM Rate (LKR)" step="0.01"
                                     required>
+                            </div>
+                            <div class="form-row" id="otherOpExactAmountRow" style="display: none;">
+                                <input type="number" id="otherOpExactAmount" placeholder="Exact Hire Amount (LKR)"
+                                    step="0.01">
+                            </div>
+                            <div class="form-row" id="otherOpCocaColaPaidRow" style="display: none;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; width: 100%;">
+                                    <input type="checkbox" id="otherOpCocaColaPaid" style="width: auto; margin: 0;">
+                                    <span style="font-weight: 600; color: #27AE60;">🥤 Coca-Cola 80% Money Paid</span>
+                                </label>
                             </div>
                             <div class="form-row">
                                 <input type="number" id="otherOpDistance" placeholder="Distance / Hire KM Amount"

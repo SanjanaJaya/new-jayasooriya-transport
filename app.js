@@ -2165,6 +2165,32 @@ document.getElementById('addOtherOperationHireBtn')?.addEventListener('click', (
     if (!checkAdminAccess('add')) return;
     document.getElementById('otherOperationHireForm').reset();
     document.getElementById('otherOperationHireId').value = '';
+    
+    // Reset form dynamics
+    const rateFieldsRow = document.getElementById('otherOpRateFieldsRow');
+    const exactAmountRow = document.getElementById('otherOpExactAmountRow');
+    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
+    if (rateFieldsRow) rateFieldsRow.style.display = '';
+    if (exactAmountRow) exactAmountRow.style.display = 'none';
+    if (cocaRow) cocaRow.style.display = 'none';
+    
+    const first100Input = document.getElementById('otherOpFirst100Rate');
+    const restKmInput = document.getElementById('otherOpRestKmRate');
+    const exactAmountInput = document.getElementById('otherOpExactAmount');
+    if (first100Input) first100Input.required = true;
+    if (restKmInput) restKmInput.required = true;
+    if (exactAmountInput) exactAmountInput.required = false;
+
+    // Reset Operation Select & Custom Custom field
+    const nameSelect = document.getElementById('otherOpOperationNameSelect');
+    const customNameInput = document.getElementById('otherOpOperationNameCustom');
+    if (nameSelect) nameSelect.value = '';
+    if (customNameInput) {
+        customNameInput.style.display = 'none';
+        customNameInput.required = false;
+        customNameInput.value = '';
+    }
+
     document.getElementById('otherOperationHireFormContainer').style.display = 'block';
     document.getElementById('otherOperationHireFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
@@ -2177,6 +2203,82 @@ document.getElementById('otherOperationHiresMonth')?.addEventListener('change', 
 document.getElementById('otherOperationHiresVehicleFilter')?.addEventListener('change', loadOtherOperationHires);
 document.getElementById('otherOperationHiresTownSearch')?.addEventListener('input', loadOtherOperationHires);
 
+// Dynamic Form Listeners
+document.getElementById('otherOpHireType')?.addEventListener('change', (e) => {
+    const type = e.target.value;
+    const rateFieldsRow = document.getElementById('otherOpRateFieldsRow');
+    const exactAmountRow = document.getElementById('otherOpExactAmountRow');
+    const first100Input = document.getElementById('otherOpFirst100Rate');
+    const restKmInput = document.getElementById('otherOpRestKmRate');
+    const exactAmountInput = document.getElementById('otherOpExactAmount');
+
+    if (type === 'exact_amount') {
+        if (rateFieldsRow) rateFieldsRow.style.display = 'none';
+        if (exactAmountRow) exactAmountRow.style.display = '';
+        if (first100Input) first100Input.required = false;
+        if (restKmInput) restKmInput.required = false;
+        if (exactAmountInput) exactAmountInput.required = true;
+    } else {
+        if (rateFieldsRow) rateFieldsRow.style.display = '';
+        if (exactAmountRow) exactAmountRow.style.display = 'none';
+        if (first100Input) first100Input.required = true;
+        if (restKmInput) restKmInput.required = true;
+        if (exactAmountInput) exactAmountInput.required = false;
+    }
+});
+
+document.getElementById('otherOpOperationNameSelect')?.addEventListener('change', (e) => {
+    const value = e.target.value;
+    const customInput = document.getElementById('otherOpOperationNameCustom');
+    const realInput = document.getElementById('otherOpOperationName');
+    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
+
+    if (value === 'COCACOLA') {
+        if (customInput) {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+        if (realInput) {
+            realInput.value = 'COCACOLA';
+        }
+        if (cocaRow) cocaRow.style.display = '';
+    } else if (value === 'other') {
+        if (customInput) {
+            customInput.style.display = '';
+            customInput.required = true;
+        }
+        if (realInput) {
+            realInput.value = customInput ? customInput.value : '';
+        }
+        const isCocaCola = (customInput ? customInput.value : '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
+        if (cocaRow) cocaRow.style.display = isCocaCola ? '' : 'none';
+    } else {
+        if (customInput) {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+        if (realInput) {
+            realInput.value = '';
+        }
+        if (cocaRow) cocaRow.style.display = 'none';
+    }
+});
+
+document.getElementById('otherOpOperationNameCustom')?.addEventListener('input', (e) => {
+    const name = e.target.value || '';
+    const realInput = document.getElementById('otherOpOperationName');
+    if (realInput) {
+        realInput.value = name;
+    }
+    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
+    const isCocaCola = name.toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
+    if (cocaRow) {
+        cocaRow.style.display = isCocaCola ? '' : 'none';
+    }
+});
+
 document.getElementById('otherOperationHireForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!checkAdminAccess('save')) return;
@@ -2184,23 +2286,37 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
 
     const id = document.getElementById('otherOperationHireId').value;
     const distance = parseFloat(document.getElementById('otherOpDistance').value) || 0;
-    const first100Rate = parseFloat(document.getElementById('otherOpFirst100Rate').value) || 0;
-    const restRate = parseFloat(document.getElementById('otherOpRestKmRate').value) || 0;
-
+    const hireType = document.getElementById('otherOpHireType').value || 'km_rate';
+    
     let hireAmount = 0;
-    if (distance <= 100) {
-        hireAmount = distance * first100Rate;
+    let first100Rate = 0;
+    let restRate = 0;
+    let exactAmountVal = 0;
+
+    if (hireType === 'exact_amount') {
+        exactAmountVal = parseFloat(document.getElementById('otherOpExactAmount').value) || 0;
+        hireAmount = exactAmountVal;
     } else {
-        hireAmount = (100 * first100Rate) + ((distance - 100) * restRate);
+        first100Rate = parseFloat(document.getElementById('otherOpFirst100Rate').value) || 0;
+        restRate = parseFloat(document.getElementById('otherOpRestKmRate').value) || 0;
+        if (distance <= 100) {
+            hireAmount = distance * first100Rate;
+        } else {
+            hireAmount = (100 * first100Rate) + ((distance - 100) * restRate);
+        }
     }
 
     const fuelLitres = parseFloat(document.getElementById('otherOpFuel').value) || 0;
     const fuelPrice = parseFloat(document.getElementById('otherOpFuelPrice').value) || 0;
     const fuelCost = fuelLitres * fuelPrice;
 
+    const opName = document.getElementById('otherOpOperationName').value;
+    const isCocaCola = opName.toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
+    const cocacolaPaid80 = isCocaCola ? document.getElementById('otherOpCocaColaPaid').checked : false;
+
     const recordData = {
         base_lorry_number: document.getElementById('otherOpBaseVehicle').value,
-        operation_name: document.getElementById('otherOpOperationName').value,
+        operation_name: opName,
         hire_date: document.getElementById('otherOpDate').value,
         from_location: document.getElementById('otherOpFrom').value,
         to_location: document.getElementById('otherOpTo').value,
@@ -2211,6 +2327,9 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
         fuel_price_per_litre: fuelPrice,
         fuel_cost: fuelCost,
         hire_amount: hireAmount,
+        hire_type: hireType,
+        exact_amount: exactAmountVal,
+        cocacola_paid_80: cocacolaPaid80,
         user_id: adminUserId
     };
 
@@ -2260,18 +2379,44 @@ async function loadOtherOperationHires() {
         if (error) {
             console.warn('Error loading other operation hires (table might not exist yet):', error.message);
         } else if (data) {
+            // Update Coca-Cola Summary Widget for the month
+            const ccRecords = data.filter(r => (r.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola'));
+            const widget = document.getElementById('cocacolaSummaryWidget');
+            if (ccRecords.length > 0) {
+                if (widget) widget.style.display = 'block';
+                const totalInvoice = ccRecords.reduce((sum, r) => sum + (r.hire_amount || 0), 0);
+                const totalPaid = ccRecords.reduce((sum, r) => sum + (r.cocacola_paid_80 ? 0.8 * (r.hire_amount || 0) : 0), 0);
+                const totalRemaining = ccRecords.reduce((sum, r) => sum + (r.cocacola_paid_80 ? 0.2 * (r.hire_amount || 0) : (r.hire_amount || 0)), 0);
+                const paidCount = ccRecords.filter(r => r.cocacola_paid_80).length;
+
+                const totalHiresCountEl = document.getElementById('ccTotalHiresCount');
+                const totalInvoiceEl = document.getElementById('ccTotalInvoiceValue');
+                const moneyPaidEl = document.getElementById('ccMoneyPaid');
+                const paidHiresInfoEl = document.getElementById('ccPaidHiresInfo');
+                const moneyRemainingEl = document.getElementById('ccMoneyRemaining');
+
+                if (totalHiresCountEl) totalHiresCountEl.textContent = ccRecords.length;
+                if (totalInvoiceEl) totalInvoiceEl.textContent = `LKR ${totalInvoice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                if (moneyPaidEl) moneyPaidEl.textContent = `LKR ${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                if (paidHiresInfoEl) paidHiresInfoEl.textContent = `${paidCount} of ${ccRecords.length} hires marked 80% paid`;
+                if (moneyRemainingEl) moneyRemainingEl.textContent = `LKR ${totalRemaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            } else {
+                if (widget) widget.style.display = 'none';
+            }
+
             const tbody = document.querySelector('#otherOperationHiresTable tbody');
             if (tbody) {
                 tbody.innerHTML = '';
 
-                const townSearch = document.getElementById('otherOperationHiresTownSearch')?.value || '';
-                const lowercaseSearch = townSearch.toLowerCase().trim();
+                const searchQuery = document.getElementById('otherOperationHiresTownSearch')?.value || '';
+                const lowercaseSearch = searchQuery.toLowerCase().trim();
 
                 const filteredData = data.filter(record => {
                     if (!lowercaseSearch) return true;
                     const fromLoc = (record.from_location || '').toLowerCase();
                     const toLoc = (record.to_location || '').toLowerCase();
-                    return fromLoc.includes(lowercaseSearch) || toLoc.includes(lowercaseSearch);
+                    const opName = (record.operation_name || '').toLowerCase();
+                    return fromLoc.includes(lowercaseSearch) || toLoc.includes(lowercaseSearch) || opName.includes(lowercaseSearch);
                 });
 
                 filteredData.forEach(record => {
@@ -2282,14 +2427,39 @@ async function loadOtherOperationHires() {
                             <button class="btn btn-danger" onclick="deleteOtherOperationHire(${record.id})">Delete</button>
                         </td>
                     `;
+
+                    const isCocaCola = (record.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
+                    let operationCellHTML = record.operation_name;
+                    if (isCocaCola) {
+                        operationCellHTML = `
+                            <div class="cocacola-operation-cell" style="display: flex; align-items: center; gap: 8px; justify-content: flex-start;">
+                                <label class="switch-sm" title="Toggle 80% Payment Status">
+                                    <input type="checkbox" ${record.cocacola_paid_80 ? 'checked' : ''} onchange="toggleCocaColaPaid(${record.id}, this.checked)">
+                                    <span class="slider-sm"></span>
+                                </label>
+                                <span style="font-weight: 500;">${record.operation_name}</span>
+                                <span class="${record.cocacola_paid_80 ? 'cocacola-badge-paid' : 'cocacola-badge-pending'}">
+                                    ${record.cocacola_paid_80 ? '80% Paid' : 'Pending'}
+                                </span>
+                            </div>
+                        `;
+                    }
+
+                    let breakdownHTML = '';
+                    if (record.hire_type === 'exact_amount') {
+                        breakdownHTML = `<small>Type: Exact Amount<br><strong>Total Hire: LKR ${record.hire_amount.toFixed(2)}</strong></small>`;
+                    } else {
+                        breakdownHTML = `<small>First 100: LKR ${record.first_100km_rate.toFixed(2)}<br>Rest KM: LKR ${record.rest_km_rate.toFixed(2)}<br><strong>Total Hire: LKR ${record.hire_amount.toFixed(2)}</strong></small>`;
+                    }
+
                     row.innerHTML = `
                         <td>${record.hire_date}</td>
                         <td>${record.base_lorry_number}</td>
-                        <td>${record.operation_name}</td>
+                        <td>${operationCellHTML}</td>
                         <td>${record.from_location} - ${record.to_location}</td>
                         <td>${record.distance} km</td>
                         <td><small>Litres: ${record.fuel_litres}<br>Rate: LKR ${record.fuel_price_per_litre}<br><strong>Cost: LKR ${record.fuel_cost.toFixed(2)}</strong></small></td>
-                        <td><small>First 100: LKR ${record.first_100km_rate}<br>Rest KM: LKR ${record.rest_km_rate}<br><strong>Total Hire: LKR ${record.hire_amount.toFixed(2)}</strong></small></td>
+                        <td>${breakdownHTML}</td>
                         ${actionButtons}
                     `;
                     tbody.appendChild(row);
@@ -2302,6 +2472,24 @@ async function loadOtherOperationHires() {
     // Always update vehicle filter regardless of table existence
     updateOtherOperationHireVehicleFilter();
 }
+
+window.toggleCocaColaPaid = async function(id, checked) {
+    if (!checkAdminAccess('save')) return;
+    try {
+        const { error } = await supabaseClient
+            .from('other_operation_hires')
+            .update({ cocacola_paid_80: checked })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast('Coca-Cola payment status updated successfully!', 'success');
+        loadOtherOperationHires();
+    } catch (error) {
+        showToast('Error updating status: ' + error.message, 'error');
+        loadOtherOperationHires();
+    }
+};
 
 async function updateOtherOperationHireVehicleFilter() {
     try {
@@ -2378,7 +2566,36 @@ async function editOtherOperationHire(id) {
 
         document.getElementById('otherOperationHireId').value = data.id;
         document.getElementById('otherOpBaseVehicle').value = data.base_lorry_number;
-        document.getElementById('otherOpOperationName').value = data.operation_name;
+        
+        const opName = data.operation_name || '';
+        document.getElementById('otherOpOperationName').value = opName;
+        
+        const nameSelect = document.getElementById('otherOpOperationNameSelect');
+        const customInput = document.getElementById('otherOpOperationNameCustom');
+
+        if (opName === 'COCACOLA') {
+            if (nameSelect) nameSelect.value = 'COCACOLA';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opName !== '') {
+            if (nameSelect) nameSelect.value = 'other';
+            if (customInput) {
+                customInput.style.display = '';
+                customInput.required = true;
+                customInput.value = opName;
+            }
+        } else {
+            if (nameSelect) nameSelect.value = '';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
+
         document.getElementById('otherOpDate').value = data.hire_date;
         document.getElementById('otherOpFrom').value = data.from_location;
         document.getElementById('otherOpTo').value = data.to_location;
@@ -2387,6 +2604,40 @@ async function editOtherOperationHire(id) {
         document.getElementById('otherOpRestKmRate').value = data.rest_km_rate;
         document.getElementById('otherOpFuel').value = data.fuel_litres;
         document.getElementById('otherOpFuelPrice').value = data.fuel_price_per_litre;
+
+        // Load Hire Type and Exact Amount
+        const hireType = data.hire_type || 'km_rate';
+        document.getElementById('otherOpHireType').value = hireType;
+        document.getElementById('otherOpExactAmount').value = data.exact_amount || 0;
+
+        // Toggle UI states for Hire Type
+        const rateFieldsRow = document.getElementById('otherOpRateFieldsRow');
+        const exactAmountRow = document.getElementById('otherOpExactAmountRow');
+        const first100Input = document.getElementById('otherOpFirst100Rate');
+        const restKmInput = document.getElementById('otherOpRestKmRate');
+        const exactAmountInput = document.getElementById('otherOpExactAmount');
+
+        if (hireType === 'exact_amount') {
+            if (rateFieldsRow) rateFieldsRow.style.display = 'none';
+            if (exactAmountRow) exactAmountRow.style.display = '';
+            if (first100Input) first100Input.required = false;
+            if (restKmInput) restKmInput.required = false;
+            if (exactAmountInput) exactAmountInput.required = true;
+        } else {
+            if (rateFieldsRow) rateFieldsRow.style.display = '';
+            if (exactAmountRow) exactAmountRow.style.display = 'none';
+            if (first100Input) first100Input.required = true;
+            if (restKmInput) restKmInput.required = true;
+            if (exactAmountInput) exactAmountInput.required = false;
+        }
+
+        // Toggle UI states for Coca-Cola
+        const isCocaCola = (data.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
+        const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
+        if (cocaRow) {
+            cocaRow.style.display = isCocaCola ? '' : 'none';
+        }
+        document.getElementById('otherOpCocaColaPaid').checked = data.cocacola_paid_80 || false;
 
         document.getElementById('otherOperationHireFormContainer').style.display = 'block';
         document.getElementById('otherOperationHireFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });

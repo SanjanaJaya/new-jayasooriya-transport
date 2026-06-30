@@ -9434,5 +9434,99 @@ body.dark-mode .hof-meta-tag {
     letter-spacing: 0.8px;
 }
 
+/* Custom small switch styling */
+.switch-sm {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.switch-sm input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider-sm {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 20px;
+}
+body.dark-mode .slider-sm {
+    background-color: #444;
+}
+.slider-sm:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    top: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+.switch-sm input:checked + .slider-sm {
+    background-color: #27AE60;
+}
+.switch-sm input:checked + .slider-sm:before {
+    transform: translateX(18px);
+}
+
+
+/* Badge styles for Coca-Cola hires */
+.cocacola-badge-paid {
+    background: #E8F8F5;
+    color: #27AE60;
+    border: 1px solid #A3E4D7;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.cocacola-badge-pending {
+    background: #FDEDEC;
+    color: #CB4335;
+    border: 1px solid #FADBD8;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+body.dark-mode .cocacola-badge-paid {
+    background: rgba(39, 174, 96, 0.15);
+    color: #2EEBA0;
+    border-color: rgba(39, 174, 96, 0.3);
+}
+body.dark-mode .cocacola-badge-pending {
+    background: rgba(231, 76, 60, 0.15);
+    color: #FF6B81;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+/* Coca-Cola Summary Widget Values Color definitions */
+#ccTotalHiresCount { color: #2C3E50; }
+#ccTotalInvoiceValue { color: #2C3E50; }
+#ccMoneyPaid { color: #0062B1; }
+#ccMoneyRemaining { color: #C0392B; }
+
+body.dark-mode #ccTotalHiresCount { color: #EAECEE; }
+body.dark-mode #ccTotalInvoiceValue { color: #EAECEE; }
+body.dark-mode #ccMoneyPaid { color: #5BB8FF; }
+body.dark-mode #ccMoneyRemaining { color: #FF6060; }
+
+
+
 
 
