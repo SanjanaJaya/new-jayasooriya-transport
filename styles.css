@@ -7088,6 +7088,33 @@ body.dark-mode .lease-tile-current {
     background: linear-gradient(90deg, var(--green), #00B37E) !important;
 }
 
+/* ── Settled section divider in list ── */
+.leasing-settled-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 22px 10px;
+}
+
+.leasing-settled-section-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(0, 179, 126, 0.30);
+}
+
+.leasing-settled-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--green);
+    white-space: nowrap;
+    background: rgba(0, 179, 126, 0.10);
+    border: 1px solid rgba(0, 179, 126, 0.25);
+    border-radius: var(--radius-pill);
+    padding: 3px 12px;
+}
+
 /* ── Settled month tile ── */
 .lease-tile-settled-tile {
     border-color: var(--surface-border);

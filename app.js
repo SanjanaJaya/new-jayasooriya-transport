@@ -11041,8 +11041,14 @@ function renderLeasingVehicleRows(entries, paidMap) {
         return;
     }
 
+    // Split into active and settled
+    const activeEntries = entries.filter(v => !v.settled);
+    const settledEntries = entries.filter(v => v.settled);
+
     listEl.innerHTML = '';
-    entries.forEach(v => {
+
+    // Render active entries first
+    const renderRow = (v) => {
         const isWeeklyOrFortnightly = v.payment_freq === 'weekly' || v.payment_freq === 'fortnightly';
         const isLoan = v.entry_type === 'loan';
         const todayKey = leasingTodayKey(isWeeklyOrFortnightly);
@@ -11094,7 +11100,23 @@ function renderLeasingVehicleRows(entries, paidMap) {
             </div>
         `;
         listEl.appendChild(row);
-    });
+    };
+
+    // Render active entries
+    activeEntries.forEach(renderRow);
+
+    // Render settled section if there are any settled entries
+    if (settledEntries.length > 0) {
+        const divider = document.createElement('div');
+        divider.className = 'leasing-settled-section-header';
+        divider.innerHTML = `
+            <div class="leasing-settled-section-line"></div>
+            <span class="leasing-settled-section-label">🏁 Settled (${settledEntries.length})</span>
+            <div class="leasing-settled-section-line"></div>
+        `;
+        listEl.appendChild(divider);
+        settledEntries.forEach(renderRow);
+    }
 }
 
 // ── Open Calendar ─────────────────────────────────────────────
