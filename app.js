@@ -5161,6 +5161,7 @@ async function loadDriverAdvances() {
         const driverFilter = document.getElementById('advanceDriverFilter')?.value;
 
         await loadAdvanceSummary();
+        loadWeeklyAdvanceSummary(); // Refresh weekly tracker
 
         let query = supabaseClient
             .from('driver_advances')
@@ -5349,6 +5350,136 @@ async function loadAdvanceSummary() {
         }
     } catch (error) {
         console.error('Error loading advance summary:', error.message);
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  WEEKLY ADVANCE TRACKER (Admin)
+//  Shows per-driver ring widgets for the current Mon–Sun week
+// ══════════════════════════════════════════════════════════
+async function loadWeeklyAdvanceSummary() {
+    const grid = document.getElementById('weeklyAdvanceTrackerGrid');
+    const weekLabel = document.getElementById('watWeekLabel');
+    if (!grid) return;
+
+    const WEEKLY_LIMIT = 7000;
+
+    // Compute current week bounds (Monday → Sunday)
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const diffToMon = (day === 0) ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const fmt = d => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    };
+    const weekStart = fmt(monday);
+    const weekEnd   = fmt(sunday);
+
+    // Update week label
+    const monLabel = monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const sunLabel = sunday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    if (weekLabel) weekLabel.textContent = `${monLabel} – ${sunLabel}`;
+
+    grid.innerHTML = '<div class="wat-loading">Loading…</div>';
+
+    try {
+        const uid = getQueryUserId();
+
+        // 1. Get all active drivers
+        const { data: drivers, error: dErr } = await supabaseClient
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', uid)
+            .neq('terminated', true)
+            .order('name', { ascending: true });
+
+        if (dErr) throw dErr;
+        if (!drivers || drivers.length === 0) {
+            grid.innerHTML = '<div class="wat-loading">No active staff found.</div>';
+            return;
+        }
+
+        // Exclude family drivers (JAUK & JAAP Jayasooriya — no advance limit applies)
+        const FAMILY_EXCLUSIONS = ['jauk', 'jaap'];
+        const filteredDrivers = drivers.filter(d => {
+            const nameLower = (d.name || '').toLowerCase();
+            return !FAMILY_EXCLUSIONS.some(keyword => nameLower.includes(keyword));
+        });
+
+        if (filteredDrivers.length === 0) {
+            grid.innerHTML = '<div class="wat-loading">No staff to track this week.</div>';
+            return;
+        }
+
+        // 2. Fetch this week's advances for all drivers
+        const { data: advances, error: aErr } = await supabaseClient
+            .from('driver_advances')
+            .select('driver_id, amount')
+            .eq('user_id', uid)
+            .gte('advance_date', weekStart)
+            .lte('advance_date', weekEnd);
+
+        if (aErr) throw aErr;
+
+        // 3. Sum advances per driver
+        const usedByDriver = {};
+        (advances || []).forEach(a => {
+            usedByDriver[a.driver_id] = (usedByDriver[a.driver_id] || 0) + parseFloat(a.amount || 0);
+        });
+
+        // 4. Render cards
+        const circumference = 2 * Math.PI * 36; // r=36
+        grid.innerHTML = '';
+
+        filteredDrivers.forEach(d => {
+            const used = usedByDriver[d.id] || 0;
+            const remaining = Math.max(0, WEEKLY_LIMIT - used);
+            const pct = Math.round((remaining / WEEKLY_LIMIT) * 100);
+            const remainArc = (remaining / WEEKLY_LIMIT) * circumference;
+
+            let colorClass = 'wat-green';
+            let badge = '✅ Safe';
+            if (remaining < 1000) { colorClass = 'wat-red'; badge = '🔴 Near Limit'; }
+            else if (remaining < 3500) { colorClass = 'wat-amber'; badge = '⚠️ Low'; }
+
+            const fmtLKR = v => `LKR ${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Clean driver name (strip nicknames)
+            const cleanName = (d.name || '').replace(/\s*\(.*?\)\s*$/, '').trim();
+
+            const card = document.createElement('div');
+            card.className = `wat-card ${colorClass}`;
+            card.innerHTML = `
+                <div class="wat-ring-wrap">
+                    <svg class="wat-ring-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle class="wat-ring-track" cx="50" cy="50" r="36"/>
+                        <circle class="wat-ring-arc" cx="50" cy="50" r="36"
+                            style="stroke-dasharray:${remainArc.toFixed(2)} ${circumference.toFixed(2)};"/>
+                    </svg>
+                    <div class="wat-ring-inner">
+                        <span class="wat-pct">${pct}%</span>
+                        <span class="wat-sublabel">left</span>
+                    </div>
+                </div>
+                <div class="wat-name">${cleanName}</div>
+                <div class="wat-remaining">${remaining <= 0 ? '⚠️ Limit Reached' : fmtLKR(remaining)}</div>
+                <div class="wat-used">${fmtLKR(used)} used of ${fmtLKR(WEEKLY_LIMIT)}</div>
+                <span class="wat-badge">${badge}</span>
+            `;
+            grid.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error('Weekly advance tracker error:', err.message);
+        grid.innerHTML = `<div class="wat-loading" style="color:#E74C3C;">Failed to load: ${err.message}</div>`;
     }
 }
 

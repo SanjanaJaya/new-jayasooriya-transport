@@ -84,6 +84,11 @@ html, body {
     position: fixed;
     touch-action: manipulation;
     -webkit-font-smoothing: antialiased;
+    /* Prevent mobile browsers from auto-inflating font sizes */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: 16px; /* anchor base for rem */
 }
 
 input { user-select: text !important; }
@@ -1658,5 +1663,263 @@ html[lang="si"] select {
     font-size: 10px;
     padding: 5px 10px;
     height: 30px;
+}
+
+/* ════════════════════════════════════════════════════
+   WEEKLY ADVANCE LIMIT WIDGET
+═══════════════════════════════════════════════════ */
+.weekly-advance-widget {
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.4s var(--ease-smooth), box-shadow 0.4s var(--ease-smooth);
+    animation: fadeUp 0.4s var(--ease-out) both;
+}
+
+/* Top shimmer line */
+.weekly-advance-widget::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    transition: background 0.4s ease;
+}
+
+/* Green state */
+.weekly-advance-widget.waw-green {
+    border-color: rgba(0, 214, 143, 0.35);
+    box-shadow: 0 4px 24px rgba(0, 214, 143, 0.1), inset 0 0 40px rgba(0, 214, 143, 0.03);
+}
+.weekly-advance-widget.waw-green::before {
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: shimmerLine 3s ease-in-out infinite;
+}
+.weekly-advance-widget.waw-green .waw-arc   { stroke: var(--green); filter: drop-shadow(0 0 6px rgba(0,214,143,0.6)); }
+.weekly-advance-widget.waw-green .waw-pct-text { color: var(--green); }
+.weekly-advance-widget.waw-green .waw-info-amount { color: var(--green); }
+.weekly-advance-widget.waw-green .waw-reset-badge { background: var(--green-dim); color: var(--green); border-color: rgba(0,214,143,0.25); }
+
+/* Amber state */
+.weekly-advance-widget.waw-amber {
+    border-color: rgba(255, 179, 0, 0.4);
+    box-shadow: 0 4px 24px rgba(255, 179, 0, 0.12), inset 0 0 40px rgba(255, 179, 0, 0.04);
+}
+.weekly-advance-widget.waw-amber::before {
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    animation: shimmerLine 2.5s ease-in-out infinite;
+}
+.weekly-advance-widget.waw-amber .waw-arc   { stroke: var(--amber); filter: drop-shadow(0 0 6px rgba(255,179,0,0.6)); }
+.weekly-advance-widget.waw-amber .waw-pct-text { color: var(--amber); }
+.weekly-advance-widget.waw-amber .waw-info-amount { color: var(--amber); }
+.weekly-advance-widget.waw-amber .waw-reset-badge { background: var(--amber-dim); color: var(--amber); border-color: rgba(255,179,0,0.3); }
+
+/* Red state */
+.weekly-advance-widget.waw-red {
+    border-color: rgba(232, 0, 29, 0.45);
+    box-shadow: 0 4px 24px rgba(232, 0, 29, 0.15), inset 0 0 40px rgba(232, 0, 29, 0.05);
+    animation: fadeUp 0.4s var(--ease-out) both, wawDangerPulse 2s ease-in-out infinite;
+}
+.weekly-advance-widget.waw-red::before {
+    background: linear-gradient(90deg, transparent, var(--brand), transparent);
+    animation: shimmerLine 2s ease-in-out infinite;
+}
+.weekly-advance-widget.waw-red .waw-arc   { stroke: var(--brand); filter: drop-shadow(0 0 8px rgba(232,0,29,0.7)); }
+.weekly-advance-widget.waw-red .waw-pct-text { color: var(--brand); }
+.weekly-advance-widget.waw-red .waw-info-amount { color: var(--brand); }
+.weekly-advance-widget.waw-red .waw-reset-badge { background: var(--brand-dim); color: var(--brand); border-color: rgba(232,0,29,0.3); }
+
+@keyframes wawDangerPulse {
+    0%, 100% { box-shadow: 0 4px 24px rgba(232,0,29,0.15), inset 0 0 40px rgba(232,0,29,0.05); }
+    50%       { box-shadow: 0 6px 32px rgba(232,0,29,0.28), inset 0 0 50px rgba(232,0,29,0.08); }
+}
+
+/* Header row */
+.waw-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.waw-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: var(--text-3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.waw-reset-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    border: 1px solid transparent;
+    letter-spacing: 0.5px;
+    transition: all 0.4s ease;
+}
+
+/* Body: ring + info side by side; stacks vertically on narrow screens */
+.waw-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: nowrap;
+}
+
+/* SVG Ring */
+.waw-ring-wrap {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+}
+
+.waw-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* start arc from top */
+}
+
+.waw-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 8;
+}
+
+.waw-arc {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    /* Default full ring — JS will set stroke-dasharray dynamically */
+    stroke-dasharray: 238.76 238.76;
+    stroke-dashoffset: 0;
+    transition: stroke-dasharray 0.9s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease, filter 0.4s ease;
+}
+
+/* Centre text overlay */
+.waw-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+}
+
+.waw-pct-text {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.5px;
+    transition: color 0.4s ease;
+}
+
+.waw-pct-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Info column */
+.waw-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.waw-info-remaining-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text-3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.waw-info-amount {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    transition: color 0.4s ease;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+.waw-info-used {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-top: 2px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.waw-info-reset {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    margin-top: 4px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--r-pill);
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+}
+
+/* Small phone adjustments (≤ 360px) */
+@media (max-width: 360px) {
+    .weekly-advance-widget { padding: 12px 10px; }
+    .waw-header { margin-bottom: 10px; }
+    /* Stack ring above text on very small phones */
+    .waw-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .waw-ring-wrap { width: 80px; height: 80px; align-self: center; }
+    .waw-pct-text { font-size: 17px; }
+    .waw-info { width: 100%; }
+    .waw-info-amount { font-size: 15px; }
+    .waw-info-used { font-size: 10px; }
+    .waw-info-reset { font-size: 9px; }
+    .waw-label { font-size: 8px; letter-spacing: 1.5px; }
+    .waw-reset-badge { font-size: 8px; padding: 2px 7px; }
+}
+
+/* Mid phones (361–390px) */
+@media (min-width: 361px) and (max-width: 390px) {
+    .waw-ring-wrap { width: 86px; height: 86px; }
+    .waw-pct-text { font-size: 18px; }
+    .waw-info-amount { font-size: 16px; }
+    .waw-body { gap: 14px; }
+    .weekly-advance-widget { padding: 14px; }
+}
+
+/* Standard phones (391–430px) */
+@media (min-width: 391px) and (max-width: 430px) {
+    .waw-ring-wrap { width: 90px; height: 90px; }
+    .waw-info-amount { font-size: 17px; }
+}
+
+/* Missing keyframe for shimmer top line */
+@keyframes shimmerLine {
+    0%, 100% { opacity: 0.35; transform: scaleX(0.5); }
+    50%       { opacity: 1;    transform: scaleX(1); }
 }
 

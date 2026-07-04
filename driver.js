@@ -9,6 +9,7 @@ let supabaseClient = null;
 let currentDriver = null; // Stored driver partner record
 let driverLorry = null;   // Assigned vehicle/lorry plate number
 let driverLorryId = null; // Associated vehicle ID in table
+let weeklyAdvanceChannel = null; // Supabase Realtime channel for weekly advance tracking
 let activeMonth = "";     // YYYY-MM
 let driverMap = null;
 let markers = [];
@@ -64,6 +65,16 @@ const TRANSLATIONS = {
         'salary.noAdvances': 'No advances taken this month',
         'salary.noDayOffs': 'No day offs taken this month',
         'salary.noDeductions': 'No other deductions this month',
+        'advance.weeklyLimit': '📅 WEEKLY ADVANCE LIMIT',
+        'advance.remaining': 'REMAINING THIS WEEK',
+        'advance.resetsMonday': 'Resets Monday',
+        'advance.resetsIn': 'Resets in',
+        'advance.days': 'days',
+        'advance.day': 'day',
+        'advance.today': 'Resets today (Monday) ✨',
+        'advance.usedOf': 'used of',
+        'advance.left': 'left',
+        'advance.limitReached': '⚠️ Weekly limit reached',
         'race.title': '🏁 Driver Race',
         'race.standings': 'Standings',
         'race.loading': 'Loading standings...',
@@ -135,6 +146,16 @@ const TRANSLATIONS = {
         'salary.noAdvances': 'මෙම මාසයේ අත්තිකාරම් නොමැත',
         'salary.noDayOffs': 'මෙම මාසයේ දිනය ලබාගැනීම් නොමැත',
         'salary.noDeductions': 'මෙම මාසයේ වෙනත් කැපීම් නොමැත',
+        'advance.weeklyLimit': '📅 සතිය අත්තිකාරම් සීමාව',
+        'advance.remaining': 'මෙම සතියේ ඉතිරිය',
+        'advance.resetsMonday': 'සඳුදා යළිත් ආරම්භ',
+        'advance.resetsIn': 'යළිත් ආරම්භ',
+        'advance.days': 'දිනවල',
+        'advance.day': 'දිනෙකින්',
+        'advance.today': 'අද (සඳුදා) යළිත් ✨',
+        'advance.usedOf': 'භාවිතා කෙරිනි',
+        'advance.left': 'ඉතිරිව ඇත',
+        'advance.limitReached': '⚠️ සතිය සීමාව ළඟා',
         'race.title': '🏁 රියදුරු ධාවනය',
         'race.standings': 'ශ්‍රේණිගත කිරීම',
         'race.loading': 'ශ්‍රේණිගත කිරීම් පූරණය වෙමින්...',
@@ -658,6 +679,9 @@ function logout() {
         userLocationMarker = null;
     }
 
+    // Unsubscribe weekly advance realtime channel
+    unsubscribeWeeklyAdvance();
+
     localStorage.removeItem('jt_driver_session');
     currentDriver = null;
     driverLorry = null;
@@ -748,6 +772,9 @@ async function showDashboard() {
 
     // Fetch and plot Kevilton distribution locations
     await loadKeviltonDistributors();
+
+    // Subscribe to real-time weekly advance updates
+    subscribeWeeklyAdvanceRealtime();
 }
 
 // Fetch staff lorry assignment (caches and handles vector art details)
@@ -1278,6 +1305,7 @@ function openSalaryModal() {
     if (modal) {
         modal.classList.add('active');
         loadSalaryDetails();
+        loadWeeklyAdvanceWidget(); // Refresh weekly widget on open
     }
 }
 
@@ -1559,6 +1587,196 @@ function renderDeductionsList(list) {
         `;
         container.appendChild(item);
     });
+}
+
+// ==================== WEEKLY ADVANCE LIMIT WIDGET ====================
+
+const WEEKLY_ADVANCE_LIMIT = 7000; // LKR 7,000 per week
+
+/**
+ * Returns the Monday and Sunday of the current ISO week as YYYY-MM-DD strings.
+ */
+function getWeekBounds() {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+    const diffToMonday = (day === 0) ? -6 : 1 - day; // Monday is start
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const fmt = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    };
+    return { start: fmt(monday), end: fmt(sunday) };
+}
+
+/**
+ * Returns how many days until next Monday (0 = today is Monday).
+ */
+function daysUntilMonday() {
+    const day = new Date().getDay(); // 0=Sun, 1=Mon,...
+    if (day === 1) return 0; // Today is Monday
+    return day === 0 ? 1 : 8 - day;
+}
+
+/**
+ * Fetch this week's advances and update the widget UI.
+ */
+async function loadWeeklyAdvanceWidget() {
+    const widget = document.getElementById('weeklyAdvanceWidget');
+    if (!widget || !currentDriver) return;
+
+    // Family drivers (JAUK / JAAP Jayasooriya) have no weekly advance limit — hide widget
+    const driverNameLower = (currentDriver.name || currentDriver.nickname || '').toLowerCase();
+    const isFamilyDriver = ['jauk', 'jaap'].some(k => driverNameLower.includes(k));
+    if (isFamilyDriver) {
+        widget.style.display = 'none';
+        return;
+    }
+    widget.style.display = ''; // ensure visible for other drivers
+
+    // Show skeleton state
+    const remainingEl = document.getElementById('wawRemaining');
+    const usedEl = document.getElementById('wawUsedOf');
+    if (remainingEl) remainingEl.textContent = 'Loading...';
+    if (usedEl) usedEl.textContent = '';
+
+    try {
+        const { start, end } = getWeekBounds();
+
+        let weeklyUsed = 0;
+
+        if (!navigator.onLine) {
+            // Offline: use cached value
+            weeklyUsed = getCachedData('jt_driver_weekly_advance') || 0;
+        } else {
+            const { data, error } = await supabaseClient
+                .from('driver_advances')
+                .select('amount')
+                .eq('driver_id', currentDriver.id)
+                .eq('user_id', currentDriver.user_id)
+                .gte('advance_date', start)
+                .lte('advance_date', end);
+
+            if (error) throw error;
+
+            weeklyUsed = (data || []).reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+            setCachedData('jt_driver_weekly_advance', weeklyUsed);
+        }
+
+        updateWeeklyAdvanceUI(weeklyUsed, WEEKLY_ADVANCE_LIMIT);
+
+    } catch (err) {
+        console.warn('Weekly advance widget error:', err.message);
+        const cached = getCachedData('jt_driver_weekly_advance');
+        updateWeeklyAdvanceUI(cached || 0, WEEKLY_ADVANCE_LIMIT);
+    }
+}
+
+/**
+ * Update the widget DOM elements with the given used/limit values.
+ */
+function updateWeeklyAdvanceUI(used, limit) {
+    const widget = document.getElementById('weeklyAdvanceWidget');
+    const arcEl = document.getElementById('wawRingArc');
+    const pctEl = document.getElementById('wawPct');
+    const remainingEl = document.getElementById('wawRemaining');
+    const usedEl = document.getElementById('wawUsedOf');
+    const daysEl = document.getElementById('wawDaysLeft');
+
+    if (!widget || !arcEl) return;
+
+    const remaining = Math.max(0, limit - used);
+    const usedClamped = Math.min(used, limit);
+    const pct = Math.round((remaining / limit) * 100);
+
+    // SVG arc: circumference = 2 * PI * r (r=38)
+    const circumference = 2 * Math.PI * 38; // ≈ 238.76
+    const fillDash = (usedClamped / limit) * circumference;
+    const remainDash = circumference - fillDash;
+
+    // Animate arc: we show remaining as the filled portion
+    const remainFill = (remaining / limit) * circumference;
+    arcEl.style.strokeDasharray = `${remainFill} ${circumference - remainFill}`;
+
+    // Update percentage text
+    if (pctEl) pctEl.textContent = `${pct}%`;
+
+    // Update amounts
+    const fmtLKR = (val) => `LKR ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (remainingEl) {
+        remainingEl.textContent = remaining <= 0 ? t('advance.limitReached') : fmtLKR(remaining);
+    }
+    if (usedEl) {
+        usedEl.textContent = `${fmtLKR(used)} ${t('advance.usedOf')} ${fmtLKR(limit)}`;
+    }
+
+    // Update reset countdown
+    if (daysEl) {
+        const days = daysUntilMonday();
+        if (days === 0) {
+            daysEl.textContent = t('advance.today');
+        } else if (days === 1) {
+            daysEl.textContent = `${t('advance.resetsIn')} 1 ${t('advance.day')}`;
+        } else {
+            daysEl.textContent = `${t('advance.resetsIn')} ${days} ${t('advance.days')}`;
+        }
+    }
+
+    // Apply colour state
+    widget.classList.remove('waw-green', 'waw-amber', 'waw-red');
+    if (remaining >= 3500) {
+        widget.classList.add('waw-green');
+    } else if (remaining >= 1000) {
+        widget.classList.add('waw-amber');
+    } else {
+        widget.classList.add('waw-red');
+    }
+}
+
+/**
+ * Subscribe to Supabase Realtime for live weekly advance updates.
+ * Updates the widget whenever admin adds/edits/deletes an advance for this driver.
+ */
+function subscribeWeeklyAdvanceRealtime() {
+    if (!supabaseClient || !currentDriver) return;
+
+    // Skip realtime subscription for family drivers (no weekly limit applies)
+    const nameLower = (currentDriver.name || currentDriver.nickname || '').toLowerCase();
+    if (['jauk', 'jaap'].some(k => nameLower.includes(k))) return;
+
+    unsubscribeWeeklyAdvance(); // clean up any existing channel
+
+    weeklyAdvanceChannel = supabaseClient
+        .channel(`weekly_advance_${currentDriver.id}`)
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'driver_advances',
+            filter: `driver_id=eq.${currentDriver.id}`
+        }, (payload) => {
+            console.log('Weekly advance realtime update:', payload.eventType);
+            loadWeeklyAdvanceWidget();
+        })
+        .subscribe((status) => {
+            console.log('Weekly advance channel status:', status);
+        });
+}
+
+/**
+ * Unsubscribe and clean up the Realtime channel.
+ */
+function unsubscribeWeeklyAdvance() {
+    if (weeklyAdvanceChannel && supabaseClient) {
+        supabaseClient.removeChannel(weeklyAdvanceChannel);
+        weeklyAdvanceChannel = null;
+    }
 }
 
 // Helper: Animate numeric text elements
