@@ -8317,7 +8317,7 @@ async function updateChequeSummaryStrip(uid) {
     try {
         const { data, error } = await supabaseClient
             .from('cheque_leaves')
-            .select('status, amount')
+            .select('status, amount, cheque_date')
             .eq('user_id', uid);
         if (error) throw error;
 
@@ -8340,11 +8340,29 @@ async function updateChequeSummaryStrip(uid) {
         const stoppedAmt = data.filter(l => l.status === 'stopped').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
         const returnedAmt = data.filter(l => l.status === 'returned').reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
 
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${currentYear}-${currentMonth}`; // "YYYY-MM"
+
+        const needToPayMonthAmt = data
+            .filter(l => l.status === 'issued' && l.cheque_date && l.cheque_date.startsWith(currentMonthStr))
+            .reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+
+        const needToPayAllTimeAmt = data
+            .filter(l => l.status === 'issued')
+            .reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+
         const formatLKR = val => 'LKR ' + val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         document.getElementById('amtPaid').textContent = formatLKR(paidAmt);
         document.getElementById('amtStopped').textContent = formatLKR(stoppedAmt);
         document.getElementById('amtReturned').textContent = formatLKR(returnedAmt);
+
+        const amtNeedToPayMonthEl = document.getElementById('amtNeedToPayMonth');
+        const amtNeedToPayAllTimeEl = document.getElementById('amtNeedToPayAllTime');
+        if (amtNeedToPayMonthEl) amtNeedToPayMonthEl.textContent = formatLKR(needToPayMonthAmt);
+        if (amtNeedToPayAllTimeEl) amtNeedToPayAllTimeEl.textContent = formatLKR(needToPayAllTimeAmt);
     } catch (err) {
         console.error('Error updating cheque summary strip:', err);
     }

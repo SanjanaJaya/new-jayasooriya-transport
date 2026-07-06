@@ -4313,13 +4313,19 @@ body.dark-mode .ldd-search {
    ===================================================== */
 .cheque-amount-strip {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
     margin-bottom: 24px;
 }
 
+@media (max-width: 1200px) {
+    .cheque-amount-strip {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 /* Mid-range: 2 columns for cheque amount strip */
-@media (min-width: 481px) and (max-width: 768px) {
+@media (max-width: 768px) {
     .cheque-amount-strip {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -4386,6 +4392,24 @@ body.dark-mode .ldd-search {
 .cheque-amount-card.card-returned .cheque-amount-icon {
     background: rgba(209, 0, 31, 0.1);
     color: #D1001F;
+}
+
+/* Amber/Orange theme for issued this month */
+.cheque-amount-card.card-issued-month {
+    border-left: 4px solid #E07B00;
+}
+.cheque-amount-card.card-issued-month .cheque-amount-icon {
+    background: rgba(224, 123, 0, 0.1);
+    color: #E07B00;
+}
+
+/* Purple theme for all-time issued */
+.cheque-amount-card.card-issued-all {
+    border-left: 4px solid #8E44AD;
+}
+.cheque-amount-card.card-issued-all .cheque-amount-icon {
+    background: rgba(142, 68, 173, 0.1);
+    color: #8E44AD;
 }
 
 .cheque-amount-info {
