@@ -1880,16 +1880,13 @@ async function loadDriverRace() {
             kmByDriver[r.driver_id] = (kmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
         });
 
-        // Filter: only role === 'driver', exclude 'JAAP Jayasooriya' & 'JAUK Jayasooriya', and must have run (>0 km)
+        // Filter: only role === 'driver', exclude 'JAAP Jayasooriya' & 'JAUK Jayasooriya'
         const rankedDrivers = (drivers || [])
             .filter(d => {
                 if ((d.role || '').toLowerCase() !== 'driver') return false;
                 const nameClean = cleanDriverName(d.name).toLowerCase();
                 if (nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya') return false;
-                
-                // Exclude if they didn't run this month
-                const totalKm = kmByDriver[d.id] || 0;
-                return totalKm > 0;
+                return true;
             })
             .map(d => {
                 return {
