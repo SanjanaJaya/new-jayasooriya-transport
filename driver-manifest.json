@@ -5,10 +5,17 @@
     "id": "/driver.html",
     "start_url": "/driver.html",
     "scope": "/",
+    "lang": "en",
+    "dir": "ltr",
     "display": "standalone",
-    "background_color": "#0F1014",
-    "theme_color": "#D1001F",
+    "background_color": "#080A0F",
+    "theme_color": "#080A0F",
     "orientation": "portrait",
+    "categories": [
+        "business",
+        "productivity",
+        "utilities"
+    ],
     "icons": [
         {
             "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
@@ -21,6 +28,37 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Month Race",
+            "short_name": "Race",
+            "description": "View driver standings and race details",
+            "url": "/driver.html",
+            "icons": [
+                {
+                    "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "screenshot-mobile.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Driver Dashboard Mobile View"
+        },
+        {
+            "src": "screenshot-desktop.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Driver Dashboard Desktop View"
         }
     ]
 }
