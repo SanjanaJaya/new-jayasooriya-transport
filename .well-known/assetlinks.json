@@ -5,7 +5,7 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "me.gamesgrid.transportnew.driver",
+      "package_name": "me.gamesgrid.transportnew.twa",
       "sha256_cert_fingerprints": [
         "60:05:D7:C9:6D:F0:E6:81:E5:73:21:1E:5A:52:51:2D:27:B2:04:86:F8:2C:F1:F8:5C:14:44:BD:FC:73:DC:2A"
       ]
