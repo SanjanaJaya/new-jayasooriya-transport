@@ -261,6 +261,35 @@ function toggleLanguage() {
     setLanguage(newLang);
 }
 
+// ============ THEME / LIGHT-DARK MODE ============
+function getCurrentTheme() {
+    return localStorage.getItem('jt_driver_theme') || 'dark';
+}
+
+function applyTheme(theme) {
+    localStorage.setItem('jt_driver_theme', theme);
+    const isDark = theme === 'dark';
+    document.body.classList.toggle('light-mode', !isDark);
+    document.body.classList.toggle('dark-mode', isDark);
+
+    // Update theme-color meta tag for Android status bar
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', isDark ? '#080A0F' : '#F5F6FA');
+    }
+
+    // Update all theme toggle button icons
+    const icon = isDark ? '\u{1F319}' : '\u2600\uFE0F';
+    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+        btn.textContent = icon;
+    });
+}
+
+function toggleTheme() {
+    const newTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+}
+
 // Utility helpers for staff nicknames
 function cleanDriverName(fullName) {
     return (fullName || '').replace(/\s*\(.*?\)\s*$/, '').trim();
@@ -407,6 +436,7 @@ function initApp() {
     setDefaultMonth();
     setupEventHandlers();
     setLanguage(getCurrentLang()); // Apply saved language on startup
+    applyTheme(getCurrentTheme()); // Apply saved theme on startup
     checkExistingSession();
 }
 
@@ -521,6 +551,10 @@ function setupEventHandlers() {
     // Language Toggle Buttons (login page + dashboard)
     document.getElementById('langToggleBtn')?.addEventListener('click', toggleLanguage);
     document.getElementById('loginLangToggleBtn')?.addEventListener('click', toggleLanguage);
+
+    // Theme Toggle Buttons (login page + dashboard)
+    document.getElementById('themeToggleBtn')?.addEventListener('click', toggleTheme);
+    document.getElementById('loginThemeToggleBtn')?.addEventListener('click', toggleTheme);
 
     // Toggle Offline / Online status
     const statusBtn = document.getElementById('statusToggleBtn');
@@ -1177,10 +1211,14 @@ function plotDistributorsOnMap() {
     const startMapsLink = `https://maps.google.com/?q=${KD_START_POINT.lat},${KD_START_POINT.lng}`;
     const startPopup = `
         <div class="kd-popup">
-            <div class="kd-popup-name" style="color:#0048B4;">🏭 ${KD_START_POINT.name}</div>
+            <div class="kd-popup-name">🏭 ${KD_START_POINT.name}</div>
             <div class="kd-popup-town">📍 ${KD_START_POINT.town}</div>
+            <span class="kd-popup-type type-start">Start Point</span>
+            <div class="kd-popup-divider"></div>
             <div class="kd-popup-actions">
-                <a class="kd-popup-open-btn" href="${startMapsLink}" target="_blank">${t('map.openInMaps')}</a>
+                <a class="kd-popup-navigate-btn" href="${startMapsLink}" target="_blank">
+                    ${t('map.navigate')}
+                </a>
             </div>
         </div>`;
     const startMarker = L.marker([KD_START_POINT.lat, KD_START_POINT.lng], { icon: createStartIcon() })
@@ -1197,9 +1235,15 @@ function plotDistributorsOnMap() {
             <div class="kd-popup">
                 <div class="kd-popup-name">${r.distributor_name}</div>
                 <div class="kd-popup-town">📍 ${r.town_name}</div>
+                <span class="kd-popup-type type-distributor">Distributor</span>
+                <div class="kd-popup-divider"></div>
                 <div class="kd-popup-actions">
-                    <button class="kd-popup-copy-btn" onclick="copyMapLocation('${mapsLink}', this)">${t('map.copyLink')}</button>
-                    <a class="kd-popup-open-btn" href="${mapsLink}" target="_blank">${t('map.navigate')}</a>
+                    <button class="kd-popup-copy-btn" onclick="copyMapLocation('${mapsLink}', this)">
+                        ${t('map.copyLink')}
+                    </button>
+                    <a class="kd-popup-navigate-btn" href="${mapsLink}" target="_blank">
+                        ${t('map.navigate')}
+                    </a>
                 </div>
             </div>`;
 
@@ -1214,11 +1258,12 @@ function plotDistributorsOnMap() {
 // Copy location link helper
 window.copyMapLocation = function(link, btn) {
     navigator.clipboard.writeText(link).then(() => {
-        btn.textContent = t('map.copied');
-        btn.style.background = '#00B37E';
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = `<span class="kd-popup-btn-icon">✅</span> ${t('map.copied')}`;
+        btn.classList.add('copied');
         setTimeout(() => {
-            btn.textContent = t('map.copyLink');
-            btn.style.background = '';
+            btn.innerHTML = origHTML;
+            btn.classList.remove('copied');
         }, 2000);
     }).catch(err => {
         console.error('Failed to copy:', err);

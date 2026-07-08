@@ -1,6 +1,6 @@
 {
-    "name": "Driver Partner | Jayasooriya",
-    "short_name": "Driver Partner",
+    "name": "Jayasooriya Transport Driver Partner",
+    "short_name": "JT Driver Partner",
     "description": "Driver Partner Portal for Jayasooriya Transport Services",
     "id": "/driver.html",
     "start_url": "/driver.html",
@@ -8,7 +8,7 @@
     "lang": "en",
     "dir": "ltr",
     "display": "standalone",
-    "background_color": "#080A0F",
+    "background_color": "#FFFFFF",
     "theme_color": "#080A0F",
     "orientation": "portrait",
     "categories": [
