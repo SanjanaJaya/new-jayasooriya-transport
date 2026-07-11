@@ -13136,7 +13136,7 @@ async function loadRecordsHallOfFame(monthValue) {
         ] = await Promise.all([
             supabaseClient.from('driver_km_records').select('driver_id, km_amount, record_date').eq('user_id', uid),
             supabaseClient.from('driver_km_records').select('driver_id, km_amount').eq('user_id', uid).gte('record_date', cmStart).lte('record_date', cmEnd),
-            supabaseClient.from('drivers').select('id, name, photo_url, role').eq('user_id', uid).neq('terminated', true),
+            supabaseClient.from('drivers').select('id, name, photo_url, role, terminated').eq('user_id', uid),
             supabaseClient.from('hire_to_pay_records').select('vehicle_id, distance, hire_date').eq('user_id', uid),
             supabaseClient.from('hire_to_pay_records').select('vehicle_id, distance').eq('user_id', uid).gte('hire_date', cmStart).lte('hire_date', cmEnd),
             supabaseClient.from('commitment_records').select('vehicle_id, distance, hire_date').eq('user_id', uid),
@@ -13226,12 +13226,15 @@ async function loadRecordsHallOfFame(monthValue) {
         }
 
         // Helper to build a card
-        function buildCard(accent, icon, label, subtitle, entityHTML, statValue, statUnit, metaTags) {
+        function buildCard(accent, icon, label, subtitle, entityHTML, statValue, statUnit, metaTags, clickType) {
             const metaHTML = metaTags && metaTags.length > 0
                 ? `<div class="hof-meta">${metaTags.map(t => `<span class="hof-meta-tag">${t}</span>`).join('')}</div>`
                 : '';
+            // Escape single quotes in subtitle and label to not break JS onclick
+            const escLabel = label.replace(/'/g, "\\'");
+            const escSubtitle = subtitle.replace(/'/g, "\\'");
             return `
-                <div class="records-hof-card" data-accent="${accent}">
+                <div class="records-hof-card" data-accent="${accent}" onclick="showHofDetails('${accent}', '${escLabel}', '${escSubtitle}', '${clickType}')">
                     <div class="hof-card-header">
                         <div class="hof-badge" data-accent="${accent}">${icon}</div>
                         <div class="hof-card-title-wrap">
@@ -13274,15 +13277,26 @@ async function loadRecordsHallOfFame(monthValue) {
         (allKmRecords || []).forEach(r => {
             allTimeKmByDriver[r.driver_id] = (allTimeKmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
         });
-        const topAllTimeKmDriverId = Object.keys(allTimeKmByDriver).sort((a, b) => allTimeKmByDriver[b] - allTimeKmByDriver[a])[0];
+        const sortedAllTimeKmDrivers = Object.keys(allTimeKmByDriver)
+            .map(id => ({
+                id,
+                driver: driverMap[id],
+                value: allTimeKmByDriver[id]
+            }))
+            .filter(item => item.driver)
+            .sort((a, b) => b.value - a.value);
+        
+        const topAllTimeKmDriverId = sortedAllTimeKmDrivers[0]?.id;
 
         if (topAllTimeKmDriverId && driverMap[topAllTimeKmDriverId]) {
             const d = driverMap[topAllTimeKmDriverId];
             const km = allTimeKmByDriver[topAllTimeKmDriverId];
+            const driverNameWithTerm = cleanDriverName(d.name) + (d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '');
             allTimeCards += buildCard('gold', '🏆', 'Highest KMs – All Time', 'Driver with the most kilometers ever',
-                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${cleanDriverName(d.name)}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
+                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${driverNameWithTerm}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
                 km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km total',
-                ['🥇 All-Time Champion']
+                ['🥇 All-Time Champion'],
+                'allTimeKmDrivers'
             );
         } else {
             allTimeCards += emptyCard('gold', '🏆', 'Highest KMs – All Time', 'No KM records yet');
@@ -13293,22 +13307,33 @@ async function loadRecordsHallOfFame(monthValue) {
         (currentMonthKmRecords || []).forEach(r => {
             monthKmByDriver[r.driver_id] = (monthKmByDriver[r.driver_id] || 0) + parseFloat(r.km_amount || 0);
         });
-        const topMonthKmDriverId = Object.keys(monthKmByDriver).sort((a, b) => monthKmByDriver[b] - monthKmByDriver[a])[0];
+        const sortedMonthKmDrivers = Object.keys(monthKmByDriver)
+            .map(id => ({
+                id,
+                driver: driverMap[id],
+                value: monthKmByDriver[id]
+            }))
+            .filter(item => item.driver)
+            .sort((a, b) => b.value - a.value);
+
+        const topMonthKmDriverId = sortedMonthKmDrivers[0]?.id;
 
         if (topMonthKmDriverId && driverMap[topMonthKmDriverId]) {
             const d = driverMap[topMonthKmDriverId];
             const km = monthKmByDriver[topMonthKmDriverId];
             const monthLabel = new Date(parseInt(cYear), parseInt(cMonth) - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+            const driverNameWithTerm = cleanDriverName(d.name) + (d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '');
             currentMonthCards += buildCard('crimson', '🔥', 'Highest KMs – This Month', monthLabel,
-                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${cleanDriverName(d.name)}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
+                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${driverNameWithTerm}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
                 km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km this month',
-                ['📅 Monthly Record']
+                ['📅 Monthly Record'],
+                'monthKmDrivers'
             );
         } else {
             currentMonthCards += emptyCard('crimson', '🔥', 'Highest KMs – This Month', 'No KM records this month');
         }
 
-        // ───────── 3. HIGHEST KM DRIVER – HISTORICAL PEAK MONTH (NEW) ─────────
+        // ───────── 3. HIGHEST KM DRIVER – HISTORICAL PEAK MONTH ─────────
         const driverMonthKm = {}; // "driverId_YYYY-MM" -> km
         (allKmRecords || []).forEach(r => {
             const monthKey = r.record_date ? r.record_date.substring(0, 7) : '';
@@ -13317,7 +13342,20 @@ async function loadRecordsHallOfFame(monthValue) {
                 driverMonthKm[key] = (driverMonthKm[key] || 0) + parseFloat(r.km_amount || 0);
             }
         });
-        const topDriverMonthKey = Object.keys(driverMonthKm).sort((a, b) => driverMonthKm[b] - driverMonthKm[a])[0];
+        const sortedDriverPeakMonths = Object.keys(driverMonthKm)
+            .map(key => {
+                const [driverId, monthKey] = key.split('_');
+                return {
+                    id: driverId,
+                    driver: driverMap[driverId],
+                    month: monthKey,
+                    value: driverMonthKm[key]
+                };
+            })
+            .filter(item => item.driver)
+            .sort((a, b) => b.value - a.value);
+
+        const topDriverMonthKey = sortedDriverPeakMonths[0] ? `${sortedDriverPeakMonths[0].id}_${sortedDriverPeakMonths[0].month}` : null;
 
         if (topDriverMonthKey) {
             const [driverId, monthKey] = topDriverMonthKey.split('_');
@@ -13326,10 +13364,12 @@ async function loadRecordsHallOfFame(monthValue) {
                 const km = driverMonthKm[topDriverMonthKey];
                 const [yr, mn] = monthKey.split('-');
                 const monthName = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                const driverNameWithTerm = cleanDriverName(d.name) + (d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '');
                 peakCards += buildCard('rose', '📈', 'Highest KMs in a Month (Driver)', 'All-time peak driver month',
-                    `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${cleanDriverName(d.name)}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
+                    `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${driverNameWithTerm}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
                     km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km record',
-                    [`📅 ${monthName}`, '⚡ Peak Performance']
+                    [`📅 ${monthName}`, '⚡ Peak Performance'],
+                    'driverPeakMonths'
                 );
             } else {
                 peakCards += emptyCard('rose', '📈', 'Highest KMs in a Month (Driver)', 'No active driver found for peak');
@@ -13347,26 +13387,33 @@ async function loadRecordsHallOfFame(monthValue) {
                 allTimeKmByMonth[r.driver_id].add(monthKey);
             }
         });
-        let mostSuccessAllTime = null;
-        let maxScore = -1;
-        Object.keys(allTimeKmByDriver).forEach(dId => {
-            const months = allTimeKmByMonth[dId] ? allTimeKmByMonth[dId].size : 0;
-            const totalKm = allTimeKmByDriver[dId] || 0;
-            const score = months * 100000 + totalKm;
-            if (score > maxScore && driverMap[dId]) {
-                maxScore = score;
-                mostSuccessAllTime = dId;
-            }
-        });
+        const sortedActiveDrivers = Object.keys(allTimeKmByDriver)
+            .map(id => {
+                const months = allTimeKmByMonth[id] ? allTimeKmByMonth[id].size : 0;
+                const totalKm = allTimeKmByDriver[id] || 0;
+                return {
+                    id,
+                    driver: driverMap[id],
+                    months,
+                    totalKm,
+                    score: months * 100000 + totalKm
+                };
+            })
+            .filter(item => item.driver)
+            .sort((a, b) => b.score - a.score);
+
+        const mostSuccessAllTime = sortedActiveDrivers[0]?.id;
 
         if (mostSuccessAllTime && driverMap[mostSuccessAllTime]) {
             const d = driverMap[mostSuccessAllTime];
             const months = allTimeKmByMonth[mostSuccessAllTime] ? allTimeKmByMonth[mostSuccessAllTime].size : 0;
             const km = allTimeKmByDriver[mostSuccessAllTime] || 0;
+            const driverNameWithTerm = cleanDriverName(d.name) + (d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '');
             allTimeCards += buildCard('emerald', '⭐', 'Most Active Driver', 'All-time consistency champion',
-                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${cleanDriverName(d.name)}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
+                `<div class="hof-entity">${driverPhotoHTML(d)}<div class="hof-entity-info"><div class="hof-entity-name">${driverNameWithTerm}</div><div class="hof-entity-role">${getNickname(d.name) || 'Driver'}</div></div></div>`,
                 months, 'active months',
-                [`${km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km total`, '🌟 Star Driver']
+                [`${km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km total`, '🌟 Star Driver'],
+                'activeDrivers'
             );
         } else {
             allTimeCards += emptyCard('emerald', '⭐', 'Most Active Driver', 'No data available');
@@ -13392,8 +13439,16 @@ async function loadRecordsHallOfFame(monthValue) {
                 allTimeVehicleKm[baseReg] = (allTimeVehicleKm[baseReg] || 0) + parseFloat(r.distance || 0);
             }
         });
+        const sortedAllTimeKmVehicles = Object.keys(allTimeVehicleKm)
+            .map(baseReg => ({
+                baseReg,
+                vehicle: getOrCreateVehicleEntry(baseReg),
+                value: allTimeVehicleKm[baseReg]
+            }))
+            .filter(item => item.vehicle)
+            .sort((a, b) => b.value - a.value);
 
-        const topAllTimeVehicleKey = Object.keys(allTimeVehicleKm).sort((a, b) => allTimeVehicleKm[b] - allTimeVehicleKm[a])[0];
+        const topAllTimeVehicleKey = sortedAllTimeKmVehicles[0]?.baseReg;
 
         if (topAllTimeVehicleKey) {
             const v = getOrCreateVehicleEntry(topAllTimeVehicleKey);
@@ -13401,7 +13456,8 @@ async function loadRecordsHallOfFame(monthValue) {
             allTimeCards += buildCard('sapphire', '🚛', 'Most KMs Ran Vehicle', 'All operations combined',
                 `<div class="hof-entity">${vehiclePhotoHTML(v)}<div class="hof-entity-info"><div class="hof-entity-name">${v.number}</div><div class="hof-entity-role">${v.model || v.type}</div></div></div>`,
                 km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km total',
-                [`🏷️ ${v.type}`, '🛣️ Road Warrior']
+                [`🏷️ ${v.type}`, '🛣️ Road Warrior'],
+                'allTimeKmVehicles'
             );
         } else {
             allTimeCards += emptyCard('sapphire', '🚛', 'Most KMs Ran Vehicle', 'No vehicle records yet');
@@ -13427,8 +13483,16 @@ async function loadRecordsHallOfFame(monthValue) {
                 monthVehicleKm[baseReg] = (monthVehicleKm[baseReg] || 0) + parseFloat(r.distance || 0);
             }
         });
+        const sortedMonthKmVehicles = Object.keys(monthVehicleKm)
+            .map(baseReg => ({
+                baseReg,
+                vehicle: getOrCreateVehicleEntry(baseReg),
+                value: monthVehicleKm[baseReg]
+            }))
+            .filter(item => item.vehicle)
+            .sort((a, b) => b.value - a.value);
 
-        const topMonthVehicleKey = Object.keys(monthVehicleKm).sort((a, b) => monthVehicleKm[b] - monthVehicleKm[a])[0];
+        const topMonthVehicleKey = sortedMonthKmVehicles[0]?.baseReg;
 
         if (topMonthVehicleKey) {
             const v = getOrCreateVehicleEntry(topMonthVehicleKey);
@@ -13437,13 +13501,14 @@ async function loadRecordsHallOfFame(monthValue) {
             currentMonthCards += buildCard('purple', '🎯', 'Best Vehicle – This Month', monthLabel,
                 `<div class="hof-entity">${vehiclePhotoHTML(v)}<div class="hof-entity-info"><div class="hof-entity-name">${v.number}</div><div class="hof-entity-role">${v.model || v.type}</div></div></div>`,
                 km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km this month',
-                [`🏷️ ${v.type}`, '📅 Monthly Best']
+                [`🏷️ ${v.type}`, '📅 Monthly Best'],
+                'monthKmVehicles'
             );
         } else {
             currentMonthCards += emptyCard('purple', '🎯', 'Best Vehicle – This Month', 'No vehicle records this month');
         }
 
-        // ───────── 7. HIGHEST KM VEHICLE – HISTORICAL PEAK MONTH (NEW) ─────────
+        // ───────── 7. HIGHEST KM VEHICLE – HISTORICAL PEAK MONTH ─────────
         const vehicleMonthKm = {}; // "baseReg_YYYY-MM" -> km
         // Hire records
         (allHireRecords || []).forEach(r => {
@@ -13472,8 +13537,22 @@ async function loadRecordsHallOfFame(monthValue) {
                 vehicleMonthKm[key] = (vehicleMonthKm[key] || 0) + parseFloat(r.distance || 0);
             }
         });
+        const sortedVehiclePeakMonths = Object.keys(vehicleMonthKm)
+            .map(key => {
+                const lastUnderscoreIdx = key.lastIndexOf('_');
+                const baseReg = key.substring(0, lastUnderscoreIdx);
+                const monthKey = key.substring(lastUnderscoreIdx + 1);
+                return {
+                    baseReg,
+                    vehicle: getOrCreateVehicleEntry(baseReg),
+                    month: monthKey,
+                    value: vehicleMonthKm[key]
+                };
+            })
+            .filter(item => item.vehicle)
+            .sort((a, b) => b.value - a.value);
 
-        const topVehicleMonthKey = Object.keys(vehicleMonthKm).sort((a, b) => vehicleMonthKm[b] - vehicleMonthKm[a])[0];
+        const topVehicleMonthKey = sortedVehiclePeakMonths[0] ? `${sortedVehiclePeakMonths[0].baseReg}_${sortedVehiclePeakMonths[0].month}` : null;
 
         if (topVehicleMonthKey) {
             const lastUnderscoreIdx = topVehicleMonthKey.lastIndexOf('_');
@@ -13488,7 +13567,8 @@ async function loadRecordsHallOfFame(monthValue) {
             peakCards += buildCard('teal', '📊', 'Highest KMs in a Month (Vehicle)', 'All-time peak vehicle month',
                 `<div class="hof-entity">${vehiclePhotoHTML(v)}<div class="hof-entity-info"><div class="hof-entity-name">${v.number}</div><div class="hof-entity-role">${v.model || v.type}</div></div></div>`,
                 km.toLocaleString(undefined, { maximumFractionDigits: 0 }), 'km record',
-                [`📅 ${monthName}`, '⚡ Peak Performance']
+                [`📅 ${monthName}`, '⚡ Peak Performance'],
+                'vehiclePeakMonths'
             );
         } else {
             peakCards += emptyCard('teal', '📊', 'Highest KMs in a Month (Vehicle)', 'No vehicle records yet');
@@ -13514,8 +13594,17 @@ async function loadRecordsHallOfFame(monthValue) {
                 allTimeVehicleHires[baseReg] = (allTimeVehicleHires[baseReg] || 0) + 1;
             }
         });
+        const sortedBestVehicles = Object.keys(allTimeVehicleHires)
+            .map(baseReg => ({
+                baseReg,
+                vehicle: getOrCreateVehicleEntry(baseReg),
+                value: allTimeVehicleHires[baseReg],
+                km: allTimeVehicleKm[baseReg] || 0
+            }))
+            .filter(item => item.vehicle)
+            .sort((a, b) => b.value - a.value);
 
-        const topAllTimeBestVehicle = Object.keys(allTimeVehicleHires).sort((a, b) => allTimeVehicleHires[b] - allTimeVehicleHires[a])[0];
+        const topAllTimeBestVehicle = sortedBestVehicles[0]?.baseReg;
 
         if (topAllTimeBestVehicle) {
             const v = getOrCreateVehicleEntry(topAllTimeBestVehicle);
@@ -13524,11 +13613,24 @@ async function loadRecordsHallOfFame(monthValue) {
             allTimeCards += buildCard('amber', '👑', 'All-Time Best Vehicle', 'Most hires completed overall',
                 `<div class="hof-entity">${vehiclePhotoHTML(v)}<div class="hof-entity-info"><div class="hof-entity-name">${v.number}</div><div class="hof-entity-role">${v.model || v.type}</div></div></div>`,
                 hires.toLocaleString(), 'hires completed',
-                [`${km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km driven`, `🏷️ ${v.type}`]
+                [`${km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km driven`, `🏷️ ${v.type}`],
+                'bestVehicles'
             );
         } else {
             allTimeCards += emptyCard('amber', '👑', 'All-Time Best Vehicle', 'No hire records yet');
         }
+
+        // Expose top lists globally for details popup
+        window.hofData = {
+            allTimeKmDrivers: sortedAllTimeKmDrivers,
+            monthKmDrivers: sortedMonthKmDrivers,
+            driverPeakMonths: sortedDriverPeakMonths,
+            activeDrivers: sortedActiveDrivers,
+            allTimeKmVehicles: sortedAllTimeKmVehicles,
+            monthKmVehicles: sortedMonthKmVehicles,
+            vehiclePeakMonths: sortedVehiclePeakMonths,
+            bestVehicles: sortedBestVehicles
+        };
 
         widget.innerHTML = `
             <div class="records-hof-category">
@@ -13560,4 +13662,169 @@ async function loadRecordsHallOfFame(monthValue) {
             </div>`;
     }
 }
+
+// ====== RECORDS DETAILS MODAL CONTROLLERS ======
+function showHofDetails(accent, label, subtitle, type) {
+    const modal = document.getElementById('recordDetailModal');
+    const titleEl = document.getElementById('recordDetailTitle');
+    const subtitleEl = document.getElementById('recordDetailSubtitle');
+    const listEl = document.getElementById('recordDetailList');
+    if (!modal || !listEl) return;
+
+    titleEl.textContent = label;
+    subtitleEl.textContent = subtitle;
+    listEl.innerHTML = '';
+
+    const data = window.hofData ? window.hofData[type] : [];
+    if (!data || data.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No record holders found.</div>';
+        modal.classList.add('active');
+        return;
+    }
+
+    data.forEach((item, index) => {
+        const rank = index + 1;
+        const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+
+        let itemHTML = '';
+        if (type === 'allTimeKmDrivers' || type === 'monthKmDrivers' || type === 'activeDrivers') {
+            const d = item.driver;
+            const photo = d.photo_url 
+                ? `<img class="hof-modal-photo" src="${d.photo_url}" alt="${d.name}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>👤</div>';">`
+                : '<div class="hof-modal-photo-placeholder">👤</div>';
+            
+            const terminatedLabel = d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '';
+            
+            let valDisplay = '';
+            if (type === 'activeDrivers') {
+                valDisplay = `<strong>${item.months}</strong> <span style="font-size:11px;color:var(--text-muted)">months</span> (${item.totalKm.toLocaleString(undefined, { maximumFractionDigits: 0 })} km)`;
+            } else {
+                valDisplay = `<strong>${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> <span style="font-size:11px;color:var(--text-muted)">km</span>`;
+            }
+
+            itemHTML = `
+                <div class="hof-modal-item">
+                    <div class="hof-modal-rank ${rankClass}">${rank}</div>
+                    ${photo}
+                    <div class="hof-modal-info">
+                        <div class="hof-modal-name">${cleanDriverName(d.name)}${terminatedLabel}</div>
+                        <div class="hof-modal-sub">${getNickname(d.name) || 'Driver'}</div>
+                    </div>
+                    <div class="hof-modal-value">${valDisplay}</div>
+                </div>
+            `;
+        } else if (type === 'driverPeakMonths') {
+            const d = item.driver;
+            const photo = d.photo_url 
+                ? `<img class="hof-modal-photo" src="${d.photo_url}" alt="${d.name}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>👤</div>';">`
+                : '<div class="hof-modal-photo-placeholder">👤</div>';
+            
+            const terminatedLabel = d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '';
+            const [yr, mn] = item.month.split('-');
+            const monthName = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
+
+            itemHTML = `
+                <div class="hof-modal-item">
+                    <div class="hof-modal-rank ${rankClass}">${rank}</div>
+                    ${photo}
+                    <div class="hof-modal-info">
+                        <div class="hof-modal-name">${cleanDriverName(d.name)}${terminatedLabel}</div>
+                        <div class="hof-modal-sub">${monthName} • ${getNickname(d.name) || 'Driver'}</div>
+                    </div>
+                    <div class="hof-modal-value">
+                        <strong>${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> <span style="font-size:11px;color:var(--text-muted)">km</span>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'allTimeKmVehicles' || type === 'monthKmVehicles') {
+            const v = item.vehicle;
+            const photo = v.photo_url 
+                ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
+                : '<div class="hof-modal-photo-placeholder">🚚</div>';
+
+            itemHTML = `
+                <div class="hof-modal-item">
+                    <div class="hof-modal-rank ${rankClass}">${rank}</div>
+                    ${photo}
+                    <div class="hof-modal-info">
+                        <div class="hof-modal-name">${v.number}</div>
+                        <div class="hof-modal-sub">${v.model || v.type}</div>
+                    </div>
+                    <div class="hof-modal-value">
+                        <strong>${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> <span style="font-size:11px;color:var(--text-muted)">km</span>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'vehiclePeakMonths') {
+            const v = item.vehicle;
+            const photo = v.photo_url 
+                ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
+                : '<div class="hof-modal-photo-placeholder">🚚</div>';
+            
+            const [yr, mn] = item.month.split('-');
+            const monthName = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
+
+            itemHTML = `
+                <div class="hof-modal-item">
+                    <div class="hof-modal-rank ${rankClass}">${rank}</div>
+                    ${photo}
+                    <div class="hof-modal-info">
+                        <div class="hof-modal-name">${v.number}</div>
+                        <div class="hof-modal-sub">${monthName} • ${v.model || v.type}</div>
+                    </div>
+                    <div class="hof-modal-value">
+                        <strong>${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> <span style="font-size:11px;color:var(--text-muted)">km</span>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'bestVehicles') {
+            const v = item.vehicle;
+            const photo = v.photo_url 
+                ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
+                : '<div class="hof-modal-photo-placeholder">🚚</div>';
+
+            itemHTML = `
+                <div class="hof-modal-item">
+                    <div class="hof-modal-rank ${rankClass}">${rank}</div>
+                    ${photo}
+                    <div class="hof-modal-info">
+                        <div class="hof-modal-name">${v.number}</div>
+                        <div class="hof-modal-sub">${v.model || v.type} • ${item.km.toLocaleString(undefined, { maximumFractionDigits: 0 })} km</div>
+                    </div>
+                    <div class="hof-modal-value">
+                        <strong>${item.value.toLocaleString()}</strong> <span style="font-size:11px;color:var(--text-muted)">hires</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        listEl.insertAdjacentHTML('beforeend', itemHTML);
+    });
+
+    modal.classList.add('active');
+}
+
+
+function closeRecordDetailModal() {
+    const modal = document.getElementById('recordDetailModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Wire up the close handlers for the Records modal
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('recordDetailModal')?.addEventListener('click', (e) => {
+        if (e.target === document.getElementById('recordDetailModal')) {
+            closeRecordDetailModal();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeRecordDetailModal();
+        }
+    });
+});
+
 
