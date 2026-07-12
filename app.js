@@ -39,6 +39,7 @@ let costVsRevenueChart = null;
 let dailyKmChart = null;
 let dailyFuelChart = null;
 let weeklyVehicleKmChart = null;
+let cumulativeKmCompareChart = null;
 
 // Initialize Supabase
 function initSupabase() {
@@ -865,7 +866,8 @@ async function loadDashboard() {
             loadCostVsRevenueChart(monthValue, cachedData),
             loadDailyKmChart(monthValue, cachedData),
             loadDailyFuelChart(monthValue, cachedData),
-            loadWeeklyVehicleKmChart(monthValue, cachedData)
+            loadWeeklyVehicleKmChart(monthValue, cachedData),
+            loadCumulativeKmCompareChart(monthValue, cachedData)
         ]).catch(err => console.error("Error loading deferred dashboard components:", err));
 
         // Load heavy all-time statistics last
@@ -6847,6 +6849,269 @@ async function loadDailyKmChart(monthValue, cachedData = null) {
         });
     } catch (error) {
         console.error('Error loading daily KM chart:', error.message);
+    }
+}
+
+// ============ CUMULATIVE DAILY KM — CURRENT vs LAST MONTH ============
+async function loadCumulativeKmCompareChart(monthValue, cachedData = null) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const yr = parseInt(year);
+        const mo = parseInt(month);
+
+        // Current month boundaries
+        const monthPadded = String(mo).padStart(2, '0');
+        const startDate = `${yr}-${monthPadded}-01`;
+        const lastDay = new Date(yr, mo, 0).getDate();
+        const endDate = `${yr}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+
+        // Previous month boundaries
+        const prevDate = new Date(yr, mo - 2, 1); // JS month is 0-indexed, so mo-2
+        const prevYr = prevDate.getFullYear();
+        const prevMo = prevDate.getMonth() + 1;
+        const prevMoPadded = String(prevMo).padStart(2, '0');
+        const prevStartDate = `${prevYr}-${prevMoPadded}-01`;
+        const prevLastDay = new Date(prevYr, prevMo, 0).getDate();
+        const prevEndDate = `${prevYr}-${prevMoPadded}-${String(prevLastDay).padStart(2, '0')}`;
+
+        const currentQueryUserId = getQueryUserId();
+
+        // ── Fetch current month data (use cached if available) ──
+        let curHire, curCommit, curOther;
+        if (cachedData) {
+            curHire = cachedData.hireRecords;
+            curCommit = cachedData.commitmentRecords;
+            curOther = cachedData.otherOpHires;
+        } else {
+            const [{ data: rH }, { data: rC }, { data: rO }] = await Promise.all([
+                supabaseClient.from('hire_to_pay_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('other_operation_hires').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate)
+            ]);
+            curHire = rH;
+            curCommit = rC;
+            curOther = rO;
+        }
+
+        // ── Always fetch previous month data ──
+        const [{ data: prevHire }, { data: prevCommit }, { data: prevOther }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate),
+            supabaseClient.from('commitment_records').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate),
+            supabaseClient.from('other_operation_hires').select('hire_date, distance').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate)
+        ]);
+
+        // ── Build daily KM arrays ──
+        const maxDays = Math.max(lastDay, prevLastDay);
+
+        // Current month daily KMs
+        const curDailyKms = new Array(lastDay).fill(0);
+        [...(curHire || []), ...(curCommit || []), ...(curOther || [])].forEach(r => {
+            const day = parseInt((r.hire_date || '').split('-')[2]);
+            if (day >= 1 && day <= lastDay) curDailyKms[day - 1] += (r.distance || 0);
+        });
+
+        // Previous month daily KMs
+        const prevDailyKms = new Array(prevLastDay).fill(0);
+        [...(prevHire || []), ...(prevCommit || []), ...(prevOther || [])].forEach(r => {
+            const day = parseInt((r.hire_date || '').split('-')[2]);
+            if (day >= 1 && day <= prevLastDay) prevDailyKms[day - 1] += (r.distance || 0);
+        });
+
+        // ── Build cumulative arrays ──
+        const curCumulative = [];
+        const prevCumulative = [];
+        let curSum = 0, prevSum = 0;
+
+        for (let i = 0; i < maxDays; i++) {
+            if (i < lastDay) {
+                curSum += curDailyKms[i];
+                curCumulative.push(curSum);
+            } else {
+                curCumulative.push(null);
+            }
+            if (i < prevLastDay) {
+                prevSum += prevDailyKms[i];
+                prevCumulative.push(prevSum);
+            } else {
+                prevCumulative.push(null);
+            }
+        }
+
+        // Day labels 1..maxDays
+        const labels = [];
+        for (let i = 1; i <= maxDays; i++) labels.push(i);
+
+        // Month names for legend
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const curMonthName = monthNames[mo - 1] + ' ' + yr;
+        const prevMonthName = monthNames[prevMo - 1] + ' ' + prevYr;
+
+        // Totals for subtitle
+        const curTotal = curCumulative.filter(v => v !== null).pop() || 0;
+        const prevTotal = prevCumulative.filter(v => v !== null).pop() || 0;
+        const diffPct = prevTotal > 0 ? (((curTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 'N/A';
+        const diffSign = typeof diffPct === 'string' ? '' : (parseFloat(diffPct) >= 0 ? '+' : '');
+
+        // ── Render chart ──
+        if (cumulativeKmCompareChart) { cumulativeKmCompareChart.destroy(); cumulativeKmCompareChart = null; }
+
+        const ctx = document.getElementById('cumulativeKmCompareChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const theme = getChartTheme();
+
+        // Gradient for current month area
+        const curGradient = ctx.createLinearGradient(0, 0, 0, 400);
+        curGradient.addColorStop(0, 'rgba(0, 179, 126, 0.35)');
+        curGradient.addColorStop(1, 'rgba(0, 179, 126, 0.02)');
+
+        // Gradient for previous month area
+        const prevGradient = ctx.createLinearGradient(0, 0, 0, 400);
+        prevGradient.addColorStop(0, 'rgba(155, 89, 182, 0.18)');
+        prevGradient.addColorStop(1, 'rgba(155, 89, 182, 0.01)');
+
+        cumulativeKmCompareChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: curMonthName + ' (Current)',
+                        data: curCumulative,
+                        borderColor: '#00B37E',
+                        backgroundColor: curGradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#00B37E',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 7,
+                        fill: true,
+                        tension: 0.35,
+                        spanGaps: false
+                    },
+                    {
+                        label: prevMonthName + ' (Last Month)',
+                        data: prevCumulative,
+                        borderColor: '#9B59B6',
+                        backgroundColor: prevGradient,
+                        borderWidth: 2.5,
+                        borderDash: [8, 4],
+                        pointBackgroundColor: '#9B59B6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.35,
+                        spanGaps: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: [
+                            `Cumulative Daily KM — ${curMonthName} vs ${prevMonthName}`,
+                            `Current: ${curTotal.toLocaleString()} km  |  Last: ${prevTotal.toLocaleString()} km  |  ${diffSign}${diffPct}%`
+                        ],
+                        color: theme.titleColor,
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: theme.textColor,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 18,
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: theme.tooltipBg,
+                        titleColor: theme.tooltipText,
+                        bodyColor: theme.tooltipText,
+                        borderColor: theme.tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 10,
+                        padding: 14,
+                        callbacks: {
+                            title: function (items) {
+                                return `Day ${items[0].label}`;
+                            },
+                            label: function (item) {
+                                const dayIdx = item.dataIndex;
+                                const isCurrent = item.datasetIndex === 0;
+                                const dailyVal = isCurrent
+                                    ? (dayIdx < curDailyKms.length ? curDailyKms[dayIdx] : 0)
+                                    : (dayIdx < prevDailyKms.length ? prevDailyKms[dayIdx] : 0);
+                                const cumVal = item.parsed.y;
+                                if (cumVal === null) return null;
+                                return `${item.dataset.label}: ${cumVal.toLocaleString()} km (Day: ${dailyVal.toLocaleString()} km)`;
+                            },
+                            afterBody: function (items) {
+                                const dayIdx = items[0]?.dataIndex;
+                                if (dayIdx === undefined) return '';
+                                const curVal = dayIdx < curCumulative.length ? curCumulative[dayIdx] : null;
+                                const prevVal = dayIdx < prevCumulative.length ? prevCumulative[dayIdx] : null;
+                                if (curVal !== null && prevVal !== null && prevVal > 0) {
+                                    const diff = curVal - prevVal;
+                                    const pct = ((diff / prevVal) * 100).toFixed(1);
+                                    const sign = diff >= 0 ? '+' : '';
+                                    return `\n📈 Variance: ${sign}${diff.toLocaleString()} km (${sign}${pct}%)`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `${v.toLocaleString()} km`,
+                            color: theme.textColor,
+                            font: { size: 11 }
+                        },
+                        grid: { color: theme.gridColor },
+                        title: {
+                            display: true,
+                            text: 'Cumulative Distance (km)',
+                            color: theme.textColor,
+                            font: { size: 11 }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 10 },
+                            maxRotation: 0,
+                            color: theme.textColor,
+                            callback: function (value, index) {
+                                // Show every 5th day label + 1st and last
+                                const day = labels[index];
+                                if (day === 1 || day === maxDays || day % 5 === 0) return day;
+                                return '';
+                            }
+                        },
+                        grid: { color: theme.gridColor },
+                        title: {
+                            display: true,
+                            text: 'Day of Month',
+                            color: theme.textColor,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading cumulative KM compare chart:', error.message);
     }
 }
 
