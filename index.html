@@ -30,7 +30,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=13">
     <!-- Leaflet.js for interactive map -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
@@ -243,6 +243,14 @@
                 <button class="nav-item" data-page="kevilton-distributions">
                     <span class="nav-icon">🗺️</span>
                     <span>Kevilton Distributions</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
+                <!-- Vehicle Tracker — standalone -->
+                <button class="nav-item" data-page="vehicle-tracker">
+                    <span class="nav-icon">🛰️</span>
+                    <span>Vehicle Tracker</span>
                 </button>
 
                 <div class="nav-divider"></div>
@@ -2908,6 +2916,152 @@
                     </div>
                 </div>
 
+                <!-- ═══════════════════════════════════════════════
+                     VEHICLE TRACKER PAGE (Wialon GPS)
+                ═══════════════════════════════════════════════ -->
+                <div id="vehicle-tracker" class="page">
+
+                    <!-- Connection Status Bar -->
+                    <div class="tracker-connection-bar" id="trackerConnectionBar">
+                        <div class="tracker-conn-left">
+                            <span class="tracker-conn-dot" id="trackerConnDot"></span>
+                            <span class="tracker-conn-text" id="trackerConnText">Disconnected</span>
+                        </div>
+                        <div class="tracker-conn-right">
+                            <span class="tracker-last-update" id="trackerLastUpdate">Last update: —</span>
+                            <button class="btn btn-sm tracker-fullscreen-btn" id="trackerFullscreenBtn" style="background:var(--blue);color:#fff;border:none;margin-right:5px;">🖥️ Fullscreen</button>
+                            <button class="btn btn-sm tracker-reconnect-btn" id="trackerReconnectBtn" title="Reconnect">🔄 Reconnect</button>
+                            <button class="btn btn-sm tracker-settings-btn" id="trackerSettingsToggle" title="Settings">⚙️</button>
+                        </div>
+                    </div>
+
+                    <!-- Settings Panel (collapsible) -->
+                    <div class="tracker-settings-panel" id="trackerSettingsPanel" style="display:none;">
+                        <div class="tracker-settings-inner">
+                            <h4>🛰️ Wialon Connection Settings</h4>
+                            <div class="tracker-settings-grid">
+                                <div class="form-group">
+                                    <label for="trackerServerUrl">Server URL</label>
+                                    <input type="text" id="trackerServerUrl" placeholder="e.g., hst-api.wialon.com" value="hst-api.wialon.com">
+                                    <small>Your Wialon/Haulmatic server domain (without https://)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trackerApiToken">API Token</label>
+                                    <input type="password" id="trackerApiToken" placeholder="Paste your Wialon API token here">
+                                    <small>Generate from your Wialon account → Manage Applications</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trackerRefreshInterval">Refresh Interval</label>
+                                    <select id="trackerRefreshInterval">
+                                        <option value="15">Every 15 seconds</option>
+                                        <option value="30" selected>Every 30 seconds</option>
+                                        <option value="60">Every 1 minute</option>
+                                        <option value="120">Every 2 minutes</option>
+                                        <option value="300">Every 5 minutes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="tracker-settings-actions">
+                                <button class="btn btn-primary" id="trackerSaveSettingsBtn">💾 Save & Connect</button>
+                                <button class="btn btn-secondary" id="trackerClearTokenBtn">🗑️ Clear Token</button>
+                            </div>
+                            <div class="tracker-token-help">
+                                <details>
+                                    <summary>📖 How to get your API Token</summary>
+                                    <ol>
+                                        <li>Open this link in a new tab:<br>
+                                            <a id="trackerTokenLinkAnchor" href="https://hst-api.wialon.com/login.html?client_id=JayasooriyaTransport&access_type=0x100&duration=0&redirect_uri=https://jayasooriyatransport.com&flags=0x1" target="_blank">
+                                                <code id="trackerTokenLink" style="cursor:pointer;color:var(--brand-red);">https://hst-api.wialon.com/login.html?client_id=JayasooriyaTransport&access_type=0x100&duration=0&redirect_uri=https://jayasooriyatransport.com&flags=0x1</code>
+                                            </a>
+                                            <button class="btn btn-sm" id="trackerCopyLinkBtn" style="margin-left:8px;">📋 Copy</button>
+                                        </li>
+                                        <li>Log in with your Wialon/Haulmatic credentials</li>
+                                        <li>After login, check the URL bar — it will contain <code>access_token=XXXXXXXXX</code></li>
+                                        <li>Copy that token and paste it in the field above</li>
+                                    </ol>
+                                </details>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Strip -->
+                    <div class="tracker-stats-strip" id="trackerStatsStrip">
+                        <div class="tracker-stat-card">
+                            <span class="tracker-stat-icon">🚛</span>
+                            <div>
+                                <div class="tracker-stat-label">Total Vehicles</div>
+                                <div class="tracker-stat-value" id="trackerTotalCount">0</div>
+                            </div>
+                        </div>
+                        <div class="tracker-stat-card tracker-stat-online">
+                            <span class="tracker-stat-icon">🟢</span>
+                            <div>
+                                <div class="tracker-stat-label">Online</div>
+                                <div class="tracker-stat-value" id="trackerOnlineCount">0</div>
+                            </div>
+                        </div>
+                        <div class="tracker-stat-card tracker-stat-moving">
+                            <span class="tracker-stat-icon">🚀</span>
+                            <div>
+                                <div class="tracker-stat-label">Moving</div>
+                                <div class="tracker-stat-value" id="trackerMovingCount">0</div>
+                            </div>
+                        </div>
+                        <div class="tracker-stat-card tracker-stat-idle">
+                            <span class="tracker-stat-icon">⏸️</span>
+                            <div>
+                                <div class="tracker-stat-label">Idle / Parked</div>
+                                <div class="tracker-stat-value" id="trackerIdleCount">0</div>
+                            </div>
+                        </div>
+                        <div class="tracker-stat-card tracker-stat-offline">
+                            <span class="tracker-stat-icon">🔴</span>
+                            <div>
+                                <div class="tracker-stat-label">Offline</div>
+                                <div class="tracker-stat-value" id="trackerOfflineCount">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Layout Wrapper -->
+                    <div class="tracker-split-layout" id="trackerSplitLayout">
+
+                        <!-- Leaflet Map -->
+                        <div class="tracker-map-wrapper">
+                            <div id="trackerMap" class="tracker-map-container"></div>
+                        </div>
+
+                        <!-- Vehicle Cards Grid -->
+                        <div class="tracker-vehicles-section">
+                            <div class="tracker-vehicles-header">
+                                <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                                    <h3 style="margin:0;">🚛 Fleet Status</h3>
+                                    <button class="btn btn-sm" id="trackerExitFSBtn" style="display:none;background:var(--brand-red);color:#fff;border:none;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;">✖ Exit Fullscreen</button>
+                                </div>
+                                <div class="tracker-filter-group">
+                                    <input type="text" id="trackerSearchInput" placeholder="🔍 Search vehicle..." class="tracker-search-input">
+                                    <select id="trackerStatusFilter" class="tracker-status-filter" style="flex:1;">
+                                        <option value="all">All Status</option>
+                                        <option value="moving">Moving</option>
+                                        <option value="idle">Idle / Parked</option>
+                                        <option value="offline">Offline</option>
+                                    </select>
+                                    <button class="btn btn-sm" id="trackerZoomSriLankaBtn" title="Zoom to Sri Lanka" style="padding:6px 10px; font-size:11px; white-space:nowrap; background:var(--blue); color:#fff; border:none; display:flex; align-items:center; gap:4px; border-radius:4px; cursor:pointer;">🌍 Map</button>
+                                </div>
+                            </div>
+                            <div class="tracker-vehicle-grid" id="trackerVehicleGrid">
+                                <div class="tracker-empty-state" id="trackerEmptyState">
+                                    <div class="tracker-empty-icon">🛰️</div>
+                                    <h3>Vehicle Tracker</h3>
+                                    <p>Connect to your Wialon/Haulmatic account to see live vehicle locations, speed, and status.</p>
+                                    <button class="btn btn-primary" id="trackerSetupBtn">⚙️ Setup Connection</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -3029,14 +3183,17 @@
     </script>
     <!-- Leaflet.js -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Wialon JS SDK -->
+    <script src="https://hst-api.wialon.com/wsdk/script/wialon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=15"></script>
     <script src="excel-export.js"></script>
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
+    <script src="vehicle-tracker.js?v=17"></script>
 
 
 </body>

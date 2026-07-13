@@ -580,6 +580,7 @@ const PAGE_GROUP_MAP = {
     'commitment-dayoffs': 'navGroupFleet',
     'lorry-maintenance': 'navGroupFleet',
     'vehicle-expiry': 'navGroupFleet',
+    'vehicle-tracker': null,
 };
 
 function openNavGroup(groupId) {
@@ -664,6 +665,7 @@ function switchPage(page) {
         'other-operation-hires': 'Other Operation Hires',
         'kevilton-distributions': 'Kevilton Distributions',
         'vehicle-expiry': 'Insurance Expiry Tracker',
+        'vehicle-tracker': 'Vehicle Tracker',
     };
 
     const titleEl = document.getElementById('pageTitle');
@@ -709,6 +711,9 @@ function switchPage(page) {
     }
     if (page === 'vehicle-expiry') {
         loadVehicleExpiryPage();
+    }
+    if (page === 'vehicle-tracker') {
+        if (typeof initVehicleTracker === 'function') initVehicleTracker();
     }
 }
 
