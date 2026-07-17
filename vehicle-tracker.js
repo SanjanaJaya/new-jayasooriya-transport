@@ -113,7 +113,16 @@
     }
 
     function buildPopupHtml(unit) {
-        var speedColor = unit.speed > 80 ? '#e74c3c' : unit.speed > 60 ? '#FFA000' : unit.speed > 0 ? '#00B878' : '#6B7280';
+        var speedColor;
+        if (unit.speed <= 0) {
+            speedColor = '#6B7280';
+        } else if (unit.speed < 60) {
+            speedColor = '#00B878';
+        } else if (unit.speed <= 90) {
+            speedColor = '#FFA000';
+        } else {
+            speedColor = '#e74c3c';
+        }
         
         var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
         var assignment = trackerAssignments.find(function(a) { 
@@ -219,9 +228,20 @@
                     var popupContent = buildPopupHtml(unit);
                     trackerMarkers[unit.id].setPopupContent(popupContent);
                 }
-            }
 
-            renderTrackerCards(trackerUnits);
+                // Update specific card's address directly in DOM to avoid full list refresh
+                var grid = document.getElementById('trackerVehicleGrid');
+                if (grid) {
+                    var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
+                    if (card) {
+                        var addrVal = card.querySelector('.tracker-card-address-value');
+                        if (addrVal) {
+                            addrVal.textContent = displayAddr;
+                            addrVal.setAttribute('title', displayAddr);
+                        }
+                    }
+                }
+            }
             
         } catch (e) {
             console.error('Error geocoding unit:', item.id, e);
@@ -310,8 +330,8 @@
 
     function getSpeedClass(speed) {
         if (speed <= 0) return 'speed-zero';
-        if (speed <= 60) return 'speed-normal';
-        if (speed <= 80) return 'speed-fast';
+        if (speed < 60) return 'speed-normal';
+        if (speed <= 90) return 'speed-fast';
         return 'speed-danger';
     }
 
@@ -508,6 +528,46 @@
         });
     }
 
+    // Slide transition animation for Leaflet markers
+    function slideMarkerTo(marker, toLatLng, duration) {
+        if (marker._animFrameId) {
+            cancelAnimationFrame(marker._animFrameId);
+        }
+        
+        var start = performance.now();
+        var fromLatLng = marker.getLatLng();
+        var fromLat = fromLatLng.lat;
+        var fromLng = fromLatLng.lng;
+        var toLat = Array.isArray(toLatLng) ? toLatLng[0] : toLatLng.lat;
+        var toLng = Array.isArray(toLatLng) ? toLatLng[1] : toLatLng.lng;
+        
+        if (fromLat === toLat && fromLng === toLng) return;
+        
+        var distance = Math.sqrt(Math.pow(toLat - fromLat, 2) + Math.pow(toLng - fromLng, 2));
+        if (distance > 0.5) {
+            marker.setLatLng([toLat, toLng]);
+            return;
+        }
+        
+        function step(timestamp) {
+            var elapsed = timestamp - start;
+            var progress = Math.min(elapsed / duration, 1);
+            var easeProgress = progress * (2 - progress);
+            
+            var currentLat = fromLat + (toLat - fromLat) * easeProgress;
+            var currentLng = fromLng + (toLng - fromLng) * easeProgress;
+            marker.setLatLng([currentLat, currentLng]);
+            
+            if (progress < 1) {
+                marker._animFrameId = requestAnimationFrame(step);
+            } else {
+                marker._animFrameId = null;
+            }
+        }
+        
+        marker._animFrameId = requestAnimationFrame(step);
+    }
+
     // ── Render Map Markers ──
     function renderTrackerMap(units) {
         if (!trackerMap) initTrackerMap();
@@ -527,8 +587,18 @@
             var status = getMotionStatus(unit);
             var markerClass = 'marker-' + status;
 
-            // Simplified marker with vehicle number label
+            var arrowHtml = '';
+            if (status === 'moving') {
+                arrowHtml = '<div class="tracker-marker-arrow-wrap" style="transform: rotate(' + (unit.course || 0) + 'deg);">' +
+                    '<svg class="tracker-marker-arrow" viewBox="0 0 24 24">' +
+                    '<path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" />' +
+                    '</svg>' +
+                    '</div>';
+            }
+
+            // Simplified marker with vehicle number label & direction arrow
             var iconHtml = '<div class="tracker-marker-icon ' + markerClass + '">' +
+                arrowHtml +
                 '<span class="tracker-marker-lorry">🚛</span>' +
                 '<div class="tracker-marker-label">' + unit.name + '</div>' +
                 '</div>';
@@ -544,7 +614,7 @@
 
             if (trackerMarkers[unit.id]) {
                 // Update existing marker position smoothly
-                trackerMarkers[unit.id].setLatLng([unit.lat, unit.lng]);
+                slideMarkerTo(trackerMarkers[unit.id], [unit.lat, unit.lng], 1500);
                 trackerMarkers[unit.id].setIcon(customIcon);
                 trackerMarkers[unit.id].setPopupContent(popupContent);
             } else {
@@ -565,6 +635,277 @@
 
         // Make sure Kevilton distributor markers match the toggle state
         updateDistributorMarkersOnMap();
+    }
+
+    // Helper to create a new card element
+    function createCardElement(unit, i) {
+        var card = document.createElement('div');
+        card.dataset.unitId = unit.id;
+        
+        // Build card skeleton with placeholders to be updated by patchCard
+        card.innerHTML = '<div class="tracker-card-header">' +
+            '<span class="tracker-card-name">🚛 ' + unit.name + '</span>' +
+            '<span class="tracker-status-badge"></span>' +
+            '</div>' +
+            '<div class="tracker-card-speed-wrapper" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; width:100%;">' +
+            '<div class="tracker-driver-face-container" style="width:38px; height:38px;"></div>' +
+            '<div class="tracker-card-speed" style="display:flex; flex-direction:column; flex:1; min-width:0;">' +
+            '<div style="display:flex; align-items:center; justify-content:space-between; width:100%;">' +
+            '<div style="display:flex; align-items:baseline; gap:6px;">' +
+            '<span class="tracker-speed-value" style="font-family:\'Barlow Condensed\', sans-serif; font-size:32px; font-weight:900; line-height:1;"></span>' +
+            '<span class="tracker-speed-unit" style="font-size:12px; font-weight:600; color:var(--text-muted);">km/h</span>' +
+            '</div>' +
+            '<span class="tracker-engine-status"></span>' +
+            '</div>' +
+            '<div class="tracker-speed-meter-bar" style="background:var(--surface-border); height:6px; border-radius:3px; overflow:hidden; margin-top:6px; width:100%;">' +
+            '<div style="height:100%; transition:width 0.5s ease;"></div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="tracker-card-address">' +
+            '<span class="tracker-card-address-icon">📍</span>' +
+            '<span class="tracker-card-address-value"></span>' +
+            '</div>' +
+            '<div class="tracker-card-details">' +
+            // Driver Detail Row
+            '<div class="tracker-detail-row">' +
+            '<span class="detail-icon">👤</span>' +
+            '<span class="detail-text">Driver</span>' +
+            '<span class="detail-value" style="font-weight:700; color:var(--text-primary);"></span>' +
+            '</div>' +
+            '<div class="tracker-detail-row">' +
+            '<span class="detail-icon">\uD83D\uDCCD</span>' +
+            '<span class="detail-text">Position</span>' +
+            '<span class="detail-value"></span>' +
+            '</div>' +
+            '<div class="tracker-detail-row">' +
+            '<span class="detail-icon">\uD83E\uDDED</span>' +
+            '<span class="detail-text">Course</span>' +
+            '<span class="detail-value"></span>' +
+            '</div>' +
+            '<div class="tracker-detail-row">' +
+            '<span class="detail-icon">\uD83D\uDCE1</span>' +
+            '<span class="detail-text">Satellites</span>' +
+            '<span class="detail-value"></span>' +
+            '</div>' +
+            '</div>' +
+            '<div class="tracker-time-ago">' +
+            '<span class="live-dot"></span>' +
+            '<span class="time-ago-text"></span>' +
+            '</div>';
+
+        // Add event listener to fly to map
+        card.addEventListener('click', function () {
+            var latestUnit = trackerUnits.find(function (u) { return String(u.id) === String(card.dataset.unitId); });
+            if (latestUnit && latestUnit.hasPosition && trackerMap) {
+                trackerMap.flyTo([latestUnit.lat, latestUnit.lng], 15, { duration: 1.2 });
+                if (trackerMarkers[latestUnit.id]) {
+                    trackerMarkers[latestUnit.id].openPopup();
+                }
+                var mapEl = document.getElementById('trackerMap');
+                if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
+        // Prevent CSS keyframe animations from re-triggering when card is moved in the DOM
+        card.addEventListener('animationend', function () {
+            card.style.animation = 'none';
+        }, { once: true });
+
+        // Patch initial data
+        patchCard(card, unit, i);
+        return card;
+    }
+
+    // Helper to update card content in-place without rebuilding DOM
+    function patchCard(card, unit, i) {
+        var status = getMotionStatus(unit);
+        
+        var targetClassName = 'tracker-vehicle-card status-' + status;
+        if (card.className !== targetClassName) {
+            card.className = targetClassName;
+        }
+        
+        // 1. Update status badge
+        var badge = card.querySelector('.tracker-status-badge');
+        if (badge) {
+            var badgeClass = status === 'moving' ? 'badge-moving' : status === 'idle' ? 'badge-idle' : 'badge-offline';
+            var badgeText = status === 'moving' ? '\u25CF Moving' : status === 'idle' ? '\u25CF Idle' : '\u25CF Offline';
+            
+            if (badge.dataset.status !== status) {
+                badge.className = 'tracker-status-badge ' + badgeClass;
+                badge.textContent = badgeText;
+                badge.dataset.status = status;
+            }
+        }
+        
+        // 2. Update speed value & class
+        var speedVal = card.querySelector('.tracker-speed-value');
+        if (speedVal) {
+            var speedClass = 'speed-zero';
+            if (unit.speed > 0) {
+                if (unit.speed < 60) speedClass = 'speed-normal';
+                else if (unit.speed <= 90) speedClass = 'speed-fast';
+                else speedClass = 'speed-danger';
+            }
+            
+            if (speedVal.dataset.speedClass !== speedClass) {
+                speedVal.className = 'tracker-speed-value ' + speedClass;
+                speedVal.dataset.speedClass = speedClass;
+            }
+            
+            var roundedSpeed = String(Math.round(unit.speed));
+            if (speedVal.textContent !== roundedSpeed) {
+                speedVal.textContent = roundedSpeed;
+            }
+        }
+        
+        // 3. Update engine status
+        var engineStatus = card.querySelector('.tracker-engine-status');
+        if (engineStatus) {
+            var engineStatusText = '';
+            var engineStatusColor = '';
+            var engineStatusBg = '';
+            if (status === 'offline') {
+                engineStatusText = 'Engine Stopped';
+                engineStatusColor = '#e74c3c';
+                engineStatusBg = 'rgba(231, 76, 60, 0.1)';
+            } else if (status === 'idle') {
+                engineStatusText = 'Start Idle';
+                engineStatusColor = '#FFA000';
+                engineStatusBg = 'rgba(255, 160, 0, 0.1)';
+            } else {
+                engineStatusText = 'Engine Running';
+                engineStatusColor = '#00B878';
+                engineStatusBg = 'rgba(0, 184, 120, 0.1)';
+            }
+            
+            if (engineStatus.dataset.statusText !== engineStatusText) {
+                engineStatus.textContent = engineStatusText;
+                engineStatus.style.color = engineStatusColor;
+                engineStatus.style.background = engineStatusBg;
+                engineStatus.dataset.statusText = engineStatusText;
+            }
+        }
+        
+        // 4. Update speed meter bar
+        var speedBar = card.querySelector('.tracker-speed-meter-bar div');
+        if (speedBar) {
+            var speedPct = Math.min((unit.speed / 120) * 100, 100) + '%';
+            var meterColor;
+            if (unit.speed <= 0 || status === 'idle' || status === 'offline') {
+                meterColor = '#6B7280';
+            } else if (unit.speed < 60) {
+                meterColor = '#00B878';
+            } else if (unit.speed <= 90) {
+                meterColor = '#FFA000';
+            } else {
+                meterColor = '#e74c3c';
+            }
+            
+            if (speedBar.dataset.widthPct !== speedPct) {
+                speedBar.style.width = speedPct;
+                speedBar.dataset.widthPct = speedPct;
+            }
+            
+            if (speedBar.dataset.color !== meterColor) {
+                speedBar.style.backgroundColor = meterColor;
+                speedBar.dataset.color = meterColor;
+            }
+        }
+        
+        // 5. Update Address
+        var addrVal = card.querySelector('.tracker-card-address-value');
+        if (addrVal) {
+            var displayAddr = unit.address || 'Loading location...';
+            if (addrVal.textContent !== displayAddr) {
+                addrVal.textContent = displayAddr;
+                addrVal.setAttribute('title', displayAddr);
+            }
+        }
+        
+        // 6. Update Driver assigned
+        var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+        var assignment = trackerAssignments.find(function(a) { 
+            var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : a.lorry_number.trim().toUpperCase();
+            return aLorry === baseName; 
+        });
+        var driver = assignment ? trackerDrivers.find(function(d) { return d.id === assignment.driver_id; }) : null;
+        
+        var targetDriverId = driver ? String(driver.id) : '';
+        if (card.dataset.driverId !== targetDriverId) {
+            card.dataset.driverId = targetDriverId;
+            
+            var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
+            var driverName = driver 
+                ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
+                : 'Not Assigned';
+                
+            var detailRows = card.querySelectorAll('.tracker-detail-row');
+            if (detailRows && detailRows.length >= 4) {
+                var driverVal = detailRows[0].querySelector('.detail-value');
+                if (driverVal) driverVal.textContent = driverName;
+            }
+            
+            // Driver photo
+            var imgContainer = card.querySelector('.tracker-driver-face-container');
+            if (imgContainer) {
+                if (driver && driver.photo_url) {
+                    var currentImg = imgContainer.querySelector('img');
+                    if (!currentImg) {
+                        currentImg = document.createElement('img');
+                        currentImg.className = 'tracker-driver-photo';
+                        currentImg.onerror = function() { this.style.display = 'none'; };
+                        imgContainer.innerHTML = '';
+                        imgContainer.appendChild(currentImg);
+                    }
+                    currentImg.src = driver.photo_url;
+                    currentImg.style.display = '';
+                    
+                    imgContainer.style.border = '1.5px solid var(--surface-border, #eee)';
+                    imgContainer.style.background = '#f0f2f5';
+                } else {
+                    imgContainer.innerHTML = '👤';
+                    imgContainer.style.border = 'none';
+                    imgContainer.style.background = 'transparent';
+                }
+            }
+        }
+        
+        var detailRows = card.querySelectorAll('.tracker-detail-row');
+        if (detailRows && detailRows.length >= 4) {
+            // Position
+            var posVal = detailRows[1].querySelector('.detail-value');
+            var posText = unit.hasPosition ? unit.lat.toFixed(4) + ', ' + unit.lng.toFixed(4) : 'No data';
+            if (posVal && posVal.textContent !== posText) posVal.textContent = posText;
+            
+            // Course
+            var courseVal = detailRows[2].querySelector('.detail-value');
+            var courseText = unit.course + '\u00B0';
+            if (courseVal && courseVal.textContent !== courseText) courseVal.textContent = courseText;
+            
+            // Satellites
+            var satVal = detailRows[3].querySelector('.detail-value');
+            var satText = String(unit.satellites);
+            if (satVal && satVal.textContent !== satText) satVal.textContent = satText;
+        }
+        
+        // 7. Update time-ago dot & text
+        var liveDot = card.querySelector('.tracker-time-ago .live-dot');
+        if (liveDot) {
+            var isOnline = status !== 'offline';
+            if (isOnline) {
+                if (liveDot.classList.contains('offline')) liveDot.classList.remove('offline');
+            } else {
+                if (!liveDot.classList.contains('offline')) liveDot.classList.add('offline');
+            }
+        }
+        
+        var timeText = card.querySelector('.time-ago-text');
+        if (timeText) {
+            var targetTime = timeAgo(unit.lastTime);
+            if (timeText.textContent !== targetTime) timeText.textContent = targetTime;
+        }
     }
 
     // ── Render Vehicle Cards ──
@@ -597,139 +938,53 @@
             return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        if (emptyState) emptyState.style.display = (filtered.length === 0 && units.length === 0) ? '' : 'none';
+        // Hide emptyState initially
+        if (emptyState) emptyState.style.display = 'none';
 
-        // Build cards HTML
-        var cardsHtml = '';
-        filtered.forEach(function (unit, i) {
-            var status = unit.status;
-            var speedClass = getSpeedClass(unit.speed);
-            var badgeClass = status === 'moving' ? 'badge-moving' : status === 'idle' ? 'badge-idle' : 'badge-offline';
-            var badgeText = status === 'moving' ? '\u25CF Moving' : status === 'idle' ? '\u25CF Idle' : '\u25CF Offline';
-            var isOnline = status !== 'offline';
-
-            // Speed meter percentage (out of 120 km/h) & color
-            var speedPct = Math.min((unit.speed / 120) * 100, 100);
-            var meterColor = status === 'moving' ? (unit.speed > 80 ? '#e74c3c' : unit.speed > 60 ? '#FFA000' : '#00B878') : '#6B7280';
-            if (status === 'offline') meterColor = '#999999';
-
-            // Fetch Driver assignments
-            var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
-            var assignment = trackerAssignments.find(function(a) { 
-                var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : a.lorry_number.trim().toUpperCase();
-                return aLorry === baseName; 
-            });
-            var driver = assignment ? trackerDrivers.find(function(d) { return d.id === assignment.driver_id; }) : null;
-
-            var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
-            var driverName = driver 
-                ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
-                : 'Not Assigned';
-            var driverFaceHtml = driver && driver.photo_url 
-                ? '<img src="' + driver.photo_url + '" class="tracker-driver-photo" onerror="this.style.display=\'none\';">' 
-                : '';
-            var driverFaceContainerHtml = '<div class="tracker-driver-face-container" style="border:' + (driverFaceHtml ? '1.5px solid var(--surface-border, #eee)' : 'none') + '; background:' + (driverFaceHtml ? '#f0f2f5' : 'transparent') + '; width:38px; height:38px;">' + driverFaceHtml + '</div>';
-
-            // Engine status text and styles
-            var engineStatusText = '';
-            var engineStatusColor = '';
-            var engineStatusBg = '';
-            if (status === 'offline') {
-                engineStatusText = 'Engine Stopped';
-                engineStatusColor = '#e74c3c';
-                engineStatusBg = 'rgba(231, 76, 60, 0.1)';
-            } else if (status === 'idle') {
-                engineStatusText = 'Start Idle';
-                engineStatusColor = '#FFA000';
-                engineStatusBg = 'rgba(255, 160, 0, 0.1)';
-            } else {
-                engineStatusText = 'Engine Running';
-                engineStatusColor = '#00B878';
-                engineStatusBg = 'rgba(0, 184, 120, 0.1)';
+        if (units.length === 0) {
+            grid.innerHTML = '';
+            if (emptyState) {
+                emptyState.style.display = '';
+                grid.appendChild(emptyState);
             }
+            return;
+        }
 
-            var engineStatusHtml = '<span class="tracker-engine-status" style="color:' + engineStatusColor + '; background:' + engineStatusBg + ';">' + engineStatusText + '</span>';
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">No vehicles match your filter</div>';
+            return;
+        }
 
-            cardsHtml += '<div class="tracker-vehicle-card status-' + status + '" style="animation-delay: ' + (i * 0.05) + 's" data-unit-id="' + unit.id + '">' +
-                '<div class="tracker-card-header">' +
-                '<span class="tracker-card-name">🚛 ' + unit.name + '</span>' +
-                '<span class="tracker-status-badge ' + badgeClass + '">' + badgeText + '</span>' +
-                '</div>' +
-                // Wrap speed widget in a horizontal flex layout with driver face on the left
-                '<div class="tracker-card-speed-wrapper" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; width:100%;">' +
-                driverFaceContainerHtml +
-                '<div class="tracker-card-speed" style="display:flex; flex-direction:column; flex:1; min-width:0;">' +
-                '<div style="display:flex; align-items:center; justify-content:space-between; width:100%;">' +
-                '<div style="display:flex; align-items:baseline; gap:6px;">' +
-                '<span class="tracker-speed-value ' + speedClass + '" style="font-family:\'Barlow Condensed\', sans-serif; font-size:32px; font-weight:900; line-height:1;">' + Math.round(unit.speed) + '</span>' +
-                '<span class="tracker-speed-unit" style="font-size:12px; font-weight:600; color:var(--text-muted);">km/h</span>' +
-                '</div>' +
-                engineStatusHtml +
-                '</div>' +
-                '<div class="tracker-speed-meter-bar" style="background:var(--surface-border); height:6px; border-radius:3px; overflow:hidden; margin-top:6px; width:100%;">' +
-                '<div style="height:100%; width:' + speedPct + '%; background:' + meterColor + '; transition:width 0.5s ease;"></div>' +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="tracker-card-address">' +
-                '<span class="tracker-card-address-icon">📍</span>' +
-                '<span class="tracker-card-address-value" title="' + (unit.address || 'Loading location...') + '">' + (unit.address || 'Loading location...') + '</span>' +
-                '</div>' +
-                '<div class="tracker-card-details">' +
-                // Driver Detail Row
-                '<div class="tracker-detail-row">' +
-                '<span class="detail-icon">👤</span>' +
-                '<span class="detail-text">Driver</span>' +
-                '<span class="detail-value" style="font-weight:700; color:var(--text-primary);">' + driverName + '</span>' +
-                '</div>' +
-                '<div class="tracker-detail-row">' +
-                '<span class="detail-icon">\uD83D\uDCCD</span>' +
-                '<span class="detail-text">Position</span>' +
-                '<span class="detail-value">' + (unit.hasPosition ? unit.lat.toFixed(4) + ', ' + unit.lng.toFixed(4) : 'No data') + '</span>' +
-                '</div>' +
-                '<div class="tracker-detail-row">' +
-                '<span class="detail-icon">\uD83E\uDDED</span>' +
-                '<span class="detail-text">Course</span>' +
-                '<span class="detail-value">' + unit.course + '\u00B0</span>' +
-                '</div>' +
-                '<div class="tracker-detail-row">' +
-                '<span class="detail-icon">\uD83D\uDCE1</span>' +
-                '<span class="detail-text">Satellites</span>' +
-                '<span class="detail-value">' + unit.satellites + '</span>' +
-                '</div>' +
-                '</div>' +
-                '<div class="tracker-time-ago">' +
-                '<span class="live-dot ' + (isOnline ? '' : 'offline') + '"></span>' +
-                timeAgo(unit.lastTime) +
-                '</div>' +
-                '</div>';
+        // Remove any full-grid messages or loading blocks if they exist
+        var matchFilterEl = grid.querySelector('div[style*="grid-column"]');
+        var loadingEl = grid.querySelector('.tracker-loading');
+        if (matchFilterEl || loadingEl) {
+            grid.innerHTML = '';
+        }
+
+        // In-place DOM updates & sorting
+        filtered.forEach(function (unit, i) {
+            var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
+            if (card) {
+                patchCard(card, unit, i);
+            } else {
+                card = createCardElement(unit, i);
+            }
+            
+            // Only move/insert element in the DOM if it's not already in the correct position.
+            // This prevents re-triggering of animations or layout recalculations.
+            if (grid.children[i] !== card) {
+                grid.insertBefore(card, grid.children[i] || null);
+            }
         });
 
-        // Show cards or empty message
-        if (units.length > 0) {
-            if (filtered.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">No vehicles match your filter</div>';
-            } else {
-                grid.innerHTML = cardsHtml;
+        // Remove cards that are no longer filtered/matching
+        var activeIds = filtered.map(function (u) { return String(u.id); });
+        Array.from(grid.querySelectorAll('.tracker-vehicle-card')).forEach(function (card) {
+            if (activeIds.indexOf(card.dataset.unitId) === -1) {
+                card.remove();
             }
-
-            // Click handler: fly to vehicle on map
-            grid.querySelectorAll('.tracker-vehicle-card').forEach(function (card) {
-                card.addEventListener('click', function () {
-                    var unitId = card.dataset.unitId;
-                    var unit = units.find(function (u) { return u.id == unitId; });
-                    if (unit && unit.hasPosition && trackerMap) {
-                        trackerMap.flyTo([unit.lat, unit.lng], 15, { duration: 1.2 });
-                        if (trackerMarkers[unitId]) {
-                            trackerMarkers[unitId].openPopup();
-                        }
-                        // Scroll map into view
-                        var mapEl = document.getElementById('trackerMap');
-                        if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                });
-            });
-        }
+        });
     }
 
     // ── Render Stats Strip ──

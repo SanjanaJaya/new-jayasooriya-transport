@@ -10234,7 +10234,7 @@ body.dark-mode .terminated-badge {
 }
 
 /* Speed color classes */
-.speed-zero    { color: var(--text-muted); }
+.speed-zero    { color: #6B7280; }
 .speed-normal  { color: #00B878; }
 .speed-fast    { color: #FFA000; }
 .speed-danger  { color: #e74c3c; }
@@ -10428,6 +10428,30 @@ body.dark-mode .terminated-badge {
 .tracker-marker-icon.marker-offline {
     background: linear-gradient(135deg, #999, #bbb);
     opacity: 0.7;
+}
+
+.tracker-marker-arrow-wrap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    transition: transform 0.5s ease;
+}
+
+.tracker-marker-arrow {
+    position: absolute;
+    top: -15px;
+    left: calc(50% - 8px);
+    width: 16px;
+    height: 16px;
+    fill: #00B878;
+    stroke: #ffffff;
+    stroke-width: 2px;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 /* ── Loading spinner for tracker ── */
