@@ -10612,26 +10612,104 @@ body.dark-mode .terminated-badge {
     box-shadow: var(--shadow-md);
 }
 
-/* Reverse Geocoding Address display */
+/* Reverse Geocoding Address display - styled as a readable dark translucent tag */
 .tracker-card-address {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--surface-border);
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: rgba(26, 29, 36, 0.85); /* Solid readability background */
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
     font-size: 11px;
-    color: var(--text-muted);
+    color: #ffffff; /* White color text as requested */
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    z-index: 1;
+    position: relative;
 }
 .tracker-card-address-icon {
-    font-size: 13px;
-    color: var(--brand-red);
+    font-size: 12px;
+    color: var(--brand-red, #D1001F);
+    filter: drop-shadow(0 0 2px rgba(209, 0, 31, 0.5));
 }
 .tracker-card-address-value {
-    font-weight: 500;
+    color: #ffffff; /* White text for contrast */
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: 0.2px;
+}
+
+/* Lorry vector image background with shade and styling */
+.tracker-card-vector-bg {
+    position: absolute;
+    right: -15px;
+    bottom: -15px;
+    width: 155px;
+    height: 105px;
+    opacity: 0.12; /* shade/tint opacity - slightly lower to maintain text readability at larger size */
+    pointer-events: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: right bottom;
+    z-index: 0;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12));
+    transition: transform var(--ease-base, 0.3s), opacity var(--ease-base, 0.3s), filter var(--ease-base, 0.3s);
+}
+
+.tracker-vehicle-card:hover .tracker-card-vector-bg {
+    transform: scale(1.08) rotate(-2deg) translate(-4px, -2px);
+    opacity: 0.22; /* brighter shade on hover */
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.22));
+}
+
+/* Status-based radial glow shades behind vector art */
+.tracker-vehicle-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.tracker-vehicle-card::after {
+    content: '';
+    position: absolute;
+    right: -40px;
+    bottom: -40px;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(209, 0, 31, 0.07) 0%, rgba(209, 0, 31, 0) 70%);
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity var(--ease-base, 0.3s), transform var(--ease-base, 0.3s);
+}
+
+.tracker-vehicle-card.status-moving::after {
+    background: radial-gradient(circle, rgba(0, 184, 120, 0.08) 0%, rgba(0, 184, 120, 0) 70%);
+}
+
+.tracker-vehicle-card.status-idle::after {
+    background: radial-gradient(circle, rgba(255, 160, 0, 0.08) 0%, rgba(255, 160, 0, 0) 70%);
+}
+
+.tracker-vehicle-card.status-offline::after {
+    background: radial-gradient(circle, rgba(153, 153, 153, 0.08) 0%, rgba(153, 153, 153, 0) 70%);
+}
+
+.tracker-vehicle-card:hover::after {
+    transform: scale(1.25);
+}
+
+.tracker-vehicle-card.status-moving:hover::after {
+    background: radial-gradient(circle, rgba(0, 184, 120, 0.14) 0%, rgba(0, 184, 120, 0) 70%);
+}
+
+.tracker-vehicle-card.status-idle:hover::after {
+    background: radial-gradient(circle, rgba(255, 160, 0, 0.14) 0%, rgba(255, 160, 0, 0) 70%);
+}
+
+.tracker-vehicle-card.status-offline:hover::after {
+    background: radial-gradient(circle, rgba(231, 76, 60, 0.12) 0%, rgba(231, 76, 60, 0) 70%);
 }
 
 /* Responsive Stacking for Tablets and Phones */

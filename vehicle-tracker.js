@@ -22,9 +22,11 @@
     let trackerShowDistributors = false; // Toggle state for distributor markers on map
     let trackerDistributorMarkers = [];  // Distributor map markers
     let trackerDistributors = [];        // Cache of distributors
+    let trackerFocusedUnitId = null;     // Current inspected vehicle ID
 
     // Fuel consumption calculation cache & state
     let trackerVehicleFuelConsumption = {}; // { baseVehicleName: { kmpl: X, km: Y, L: Z } }
+    let trackerVehicleVectorArts = {};      // { baseVehicleName: vectorArtUrl }
     let lastFuelConsumptionCalcTime = 0;
     const FUEL_CALC_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
@@ -40,6 +42,31 @@
         } catch (e) {
             console.error('Error fetching distributors for tracker map:', e);
         }
+    }
+
+    // ── Map Focus and Bounds Auto-Fit Management ──
+    function fitMapToAllVehicles() {
+        if (!trackerMap) return;
+        var validUnits = trackerUnits.filter(function (u) { return u.hasPosition; });
+        if (validUnits.length > 0) {
+            var bounds = L.latLngBounds(validUnits.map(function (u) { return [u.lat, u.lng]; }));
+            trackerMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
+    }
+
+    function setTrackerVehicleFocus(unitId) {
+        trackerFocusedUnitId = unitId;
+    }
+
+    function clearTrackerVehicleFocus() {
+        trackerFocusedUnitId = null;
+        
+        // Close any open popups on the map when clearing focus
+        if (trackerMap) {
+            trackerMap.closePopup();
+        }
+        
+        fitMapToAllVehicles();
     }
 
     function createDistributorMarkerIcon() {
@@ -109,12 +136,30 @@
 
             var pDrivers = supabaseClient.from('drivers').select('*').eq('user_id', userId).neq('terminated', true);
             var pAssignments = supabaseClient.from('staff_lorry_assignments').select('*').eq('user_id', userId);
+            var pHire = supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url').eq('user_id', userId).neq('terminated', true);
+            var pCommit = supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url').eq('user_id', userId).neq('terminated', true);
 
-            var results = await Promise.all([pDrivers, pAssignments]);
+            var results = await Promise.all([pDrivers, pAssignments, pHire, pCommit]);
             trackerDrivers = results[0].data || [];
             trackerAssignments = results[1].data || [];
+
+            trackerVehicleVectorArts = {};
+            (results[2].data || []).forEach(function(v) {
+                var base = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
+                if (v.vector_art_url) {
+                    trackerVehicleVectorArts[base] = v.vector_art_url;
+                }
+            });
+            (results[3].data || []).forEach(function(v) {
+                var base = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
+                if (v.vector_art_url) {
+                    trackerVehicleVectorArts[base] = v.vector_art_url;
+                }
+            });
         } catch (e) {
-            console.error('Error fetching drivers/assignments for tracker:', e);
+            console.error('Error fetching drivers/assignments/vehicles for tracker:', e);
         }
     }
 
@@ -810,15 +855,27 @@
                 var marker = L.marker([unit.lat, unit.lng], { icon: customIcon })
                     .bindPopup(popupContent)
                     .addTo(trackerMap);
+                
+                // Add click listener on marker to set focus
+                marker.on('click', function () {
+                    setTrackerVehicleFocus(unit.id);
+                    trackerMap.flyTo(marker.getLatLng(), 15, { duration: 1.2 });
+                });
+
                 trackerMarkers[unit.id] = marker;
             }
         });
 
-        // Fit map to show all markers (only on first load)
-        if (validUnits.length > 0 && trackerMapFirstFit) {
-            var bounds = L.latLngBounds(validUnits.map(function (u) { return [u.lat, u.lng]; }));
-            trackerMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-            trackerMapFirstFit = false;
+        // Fit map bounds: follow focused vehicle or auto-fit all active vehicles
+        if (trackerFocusedUnitId) {
+            var focusedUnit = validUnits.find(function (u) { return String(u.id) === String(trackerFocusedUnitId); });
+            if (focusedUnit && focusedUnit.hasPosition) {
+                // Smoothly pan to follow the focused moving unit
+                trackerMap.panTo([focusedUnit.lat, focusedUnit.lng]);
+            }
+        } else {
+            // Automatically fit bounds to display all vehicles
+            fitMapToAllVehicles();
         }
 
         // Make sure Kevilton distributor markers match the toggle state
@@ -831,11 +888,11 @@
         card.dataset.unitId = unit.id;
         
         // Build card skeleton with placeholders to be updated by patchCard
-        card.innerHTML = '<div class="tracker-card-header">' +
+        card.innerHTML = '<div class="tracker-card-header" style="z-index: 1; position: relative;">' +
             '<span class="tracker-card-name">🚛 ' + unit.name + '</span>' +
             '<span class="tracker-status-badge"></span>' +
             '</div>' +
-            '<div class="tracker-card-speed-wrapper" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; width:100%;">' +
+            '<div class="tracker-card-speed-wrapper" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; width:100%; z-index: 1; position: relative;">' +
             '<div class="tracker-driver-face-container" style="width:38px; height:38px;"></div>' +
             '<div class="tracker-card-speed" style="display:flex; flex-direction:column; flex:1; min-width:0;">' +
             '<div style="display:flex; align-items:center; justify-content:space-between; width:100%;">' +
@@ -850,30 +907,20 @@
             '</div>' +
             '</div>' +
             '</div>' +
-            '<div class="tracker-card-address">' +
+            '<div class="tracker-card-address" style="z-index: 1; position: relative;">' +
             '<span class="tracker-card-address-icon">📍</span>' +
             '<span class="tracker-card-address-value"></span>' +
             '</div>' +
-            '<div class="tracker-card-details">' +
+            '<div class="tracker-card-details" style="z-index: 1; position: relative;">' +
             // Driver Detail Row
-            '<div class="tracker-detail-row">' +
+            '<div class="tracker-detail-row tracker-driver-row">' +
             '<span class="detail-icon">👤</span>' +
             '<span class="detail-text">Driver</span>' +
             '<span class="detail-value" style="font-weight:700; color:var(--text-primary);"></span>' +
             '</div>' +
-            '<div class="tracker-detail-row">' +
+            '<div class="tracker-detail-row tracker-position-row">' +
             '<span class="detail-icon">\uD83D\uDCCD</span>' +
             '<span class="detail-text">Position</span>' +
-            '<span class="detail-value"></span>' +
-            '</div>' +
-            '<div class="tracker-detail-row">' +
-            '<span class="detail-icon">\uD83E\uDDED</span>' +
-            '<span class="detail-text">Course</span>' +
-            '<span class="detail-value"></span>' +
-            '</div>' +
-            '<div class="tracker-detail-row">' +
-            '<span class="detail-icon">\uD83D\uDCE1</span>' +
-            '<span class="detail-text">Satellites</span>' +
             '<span class="detail-value"></span>' +
             '</div>' +
             '<div class="tracker-detail-row tracker-fuel-row">' +
@@ -882,15 +929,19 @@
             '<span class="detail-value fuel-consumption-val" style="font-weight:700; color:var(--text-primary);">Calculating...</span>' +
             '</div>' +
             '</div>' +
-            '<div class="tracker-time-ago">' +
+            '<div class="tracker-time-ago" style="z-index: 1; position: relative;">' +
             '<span class="live-dot"></span>' +
             '<span class="time-ago-text"></span>' +
-            '</div>';
+            '</div>' +
+            '<div class="tracker-card-vector-bg"></div>';
 
         // Add event listener to fly to map
         card.addEventListener('click', function () {
             var latestUnit = trackerUnits.find(function (u) { return String(u.id) === String(card.dataset.unitId); });
             if (latestUnit && latestUnit.hasPosition && trackerMap) {
+                // Focus the vehicle and start the focus auto-clear timer
+                setTrackerVehicleFocus(latestUnit.id);
+
                 trackerMap.flyTo([latestUnit.lat, latestUnit.lng], 15, { duration: 1.2 });
                 if (trackerMarkers[latestUnit.id]) {
                     trackerMarkers[latestUnit.id].openPopup();
@@ -1034,11 +1085,8 @@
                 ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
                 : 'Not Assigned';
                 
-            var detailRows = card.querySelectorAll('.tracker-detail-row');
-            if (detailRows && detailRows.length >= 4) {
-                var driverVal = detailRows[0].querySelector('.detail-value');
-                if (driverVal) driverVal.textContent = driverName;
-            }
+            var driverVal = card.querySelector('.tracker-driver-row .detail-value');
+            if (driverVal) driverVal.textContent = driverName;
             
             // Driver photo
             var imgContainer = card.querySelector('.tracker-driver-face-container');
@@ -1065,22 +1113,27 @@
             }
         }
         
-        var detailRows = card.querySelectorAll('.tracker-detail-row');
-        if (detailRows && detailRows.length >= 4) {
-            // Position
-            var posVal = detailRows[1].querySelector('.detail-value');
+        // Position
+        var posVal = card.querySelector('.tracker-position-row .detail-value');
+        if (posVal) {
             var posText = unit.hasPosition ? unit.lat.toFixed(4) + ', ' + unit.lng.toFixed(4) : 'No data';
-            if (posVal && posVal.textContent !== posText) posVal.textContent = posText;
-            
-            // Course
-            var courseVal = detailRows[2].querySelector('.detail-value');
-            var courseText = unit.course + '\u00B0';
-            if (courseVal && courseVal.textContent !== courseText) courseVal.textContent = courseText;
-            
-            // Satellites
-            var satVal = detailRows[3].querySelector('.detail-value');
-            var satText = String(unit.satellites);
-            if (satVal && satVal.textContent !== satText) satVal.textContent = satText;
+            if (posVal.textContent !== posText) posVal.textContent = posText;
+        }
+
+        // 9. Update Vector Art Background
+        var bgEl = card.querySelector('.tracker-card-vector-bg');
+        if (bgEl) {
+            var vectorArtUrl = trackerVehicleVectorArts[baseName] || '';
+            var targetBg = '';
+            var defaultLorrySVG = '<svg viewBox="0 0 100 50" class="vehicle-svg-art" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/><rect x="57" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/><path d="M5,12 h46 v24 h-46 z" fill="#1E212D" rx="2"/><path d="M51,18 h18 l10,8 v10 h-28 z" fill="#D1001F" rx="2"/><path d="M58,20 h8 l5,5 v4 h-13 z" fill="#0F1014" rx="1"/><circle cx="20" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/><circle cx="62" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/><circle cx="20" cy="38" r="2" fill="#FFF"/><circle cx="62" cy="38" r="2" fill="#FFF"/></svg>';
+            if (vectorArtUrl) {
+                targetBg = 'url("' + vectorArtUrl + '")';
+            } else {
+                targetBg = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(defaultLorrySVG) + '")';
+            }
+            if (bgEl.style.backgroundImage !== targetBg) {
+                bgEl.style.backgroundImage = targetBg;
+            }
         }
         
         // 7. Update time-ago dot & text
@@ -1496,13 +1549,11 @@
             exitFSBtn.addEventListener('click', toggleBrowserFullscreen);
         }
 
-        // Zoom to Sri Lanka Map Button
+        // Zoom to Sri Lanka Map Button (clears focus and fits all vehicles)
         var zoomSLBtn = document.getElementById('trackerZoomSriLankaBtn');
         if (zoomSLBtn) {
             zoomSLBtn.addEventListener('click', function () {
-                if (trackerMap) {
-                    trackerMap.setView([7.8731, 80.7718], 7);
-                }
+                clearTrackerVehicleFocus();
             });
         }
     }
