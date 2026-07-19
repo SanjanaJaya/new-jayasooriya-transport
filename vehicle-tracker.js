@@ -23,6 +23,12 @@
     let trackerDistributorMarkers = [];  // Distributor map markers
     let trackerDistributors = [];        // Cache of distributors
 
+    // Fuel consumption calculation cache & state
+    let trackerVehicleFuelConsumption = {}; // { baseVehicleName: { kmpl: X, km: Y, L: Z } }
+    let lastFuelConsumptionCalcTime = 0;
+    const FUEL_CALC_INTERVAL = 10 * 60 * 1000; // 10 minutes
+
+
     async function fetchDistributors() {
         try {
             if (typeof supabaseClient === 'undefined') return;
@@ -109,6 +115,188 @@
             trackerAssignments = results[1].data || [];
         } catch (e) {
             console.error('Error fetching drivers/assignments for tracker:', e);
+        }
+    }
+
+    // ── Fetch ONLY fuel litres per vehicle from DB (this month) ──
+    async function fetchCurrentMonthFuelLitresPerVehicle() {
+        try {
+            if (typeof supabaseClient === 'undefined') return {};
+            var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : null;
+            if (!userId) return {};
+
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var startDate = year + '-' + month + '-01';
+            var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+            var endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+
+            var results = await Promise.all([
+                supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId),
+                supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', userId),
+                supabaseClient.from('hire_to_pay_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('other_operation_hires').select('base_lorry_number, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate)
+            ]);
+
+            var hireVehiclesMap = {};
+            (results[0].data || []).forEach(function(v) {
+                hireVehiclesMap[v.id] = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
+            });
+            var commitmentVehiclesMap = {};
+            (results[1].data || []).forEach(function(v) {
+                commitmentVehiclesMap[v.id] = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
+            });
+
+            var litresMap = {}; // { 'LP - 8810': 532.83, ... }
+            var add = function(name, litres) {
+                if (!name) return;
+                var key = name.trim().toUpperCase();
+                litresMap[key] = (litresMap[key] || 0) + (litres || 0);
+            };
+
+            (results[2].data || []).forEach(function(r) { add(hireVehiclesMap[r.vehicle_id], r.fuel_litres); });
+            (results[3].data || []).forEach(function(r) { add(commitmentVehiclesMap[r.vehicle_id], r.fuel_litres); });
+            (results[4].data || []).forEach(function(r) {
+                if (r.base_lorry_number) {
+                    var n = typeof extractBaseVehicleName === 'function'
+                        ? extractBaseVehicleName(r.base_lorry_number) : r.base_lorry_number;
+                    add(n, r.fuel_litres);
+                }
+            });
+
+            console.log('[Fuel] Litres map from DB:', litresMap);
+            return litresMap;
+        } catch (e) {
+            console.error('[Fuel] Error fetching fuel litres from DB:', e);
+            return {};
+        }
+    }
+
+    // ── Update fuel value element on every rendered card ──
+    function updateFuelConsumptionOnCards() {
+        var grid = document.getElementById('trackerVehicleGrid');
+        if (!grid) return;
+
+        trackerUnits.forEach(function(unit) {
+            var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
+            if (!card) return;
+            var valEl = card.querySelector('.fuel-consumption-val');
+            if (!valEl) return;
+
+            var baseName = typeof extractBaseVehicleName === 'function'
+                ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+            var data = trackerVehicleFuelConsumption[baseName];
+
+            if (data !== undefined) {
+                if (data.L === 0) {
+                    valEl.textContent = 'No fuel record';
+                    valEl.style.color = 'var(--text-muted, #9CA3AF)';
+                } else if (data.km === 0) {
+                    valEl.textContent = data.L.toFixed(0) + ' L (no GPS trips)';
+                    valEl.style.color = 'var(--text-muted, #9CA3AF)';
+                } else {
+                    valEl.textContent = data.kmpl.toFixed(1) + ' km/L';
+                    valEl.style.color = '#00B878';
+                }
+                valEl.title = 'GPS km: ' + Math.round(data.km) + ' km | Fuel: ' + data.L.toFixed(1) + ' L';
+            }
+        });
+    }
+
+    // ── Calculate fuel consumption: Wialon GPS km ÷ DB fuel litres ──
+    async function calculateAndPopulateFuelConsumption() {
+        try {
+            console.log('[Fuel] Starting fuel consumption calculation...');
+
+            // Step 1: Get fuel litres from DB
+            var litresMap = await fetchCurrentMonthFuelLitresPerVehicle();
+            console.log('[Fuel] Litres from DB:', litresMap);
+
+            // Immediately populate cards with litres (so something shows right away)
+            trackerUnits.forEach(function(unit) {
+                var baseName = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+                if (!(baseName in trackerVehicleFuelConsumption)) {
+                    trackerVehicleFuelConsumption[baseName] = { kmpl: 0, km: 0, L: litresMap[baseName] || 0 };
+                }
+            });
+            updateFuelConsumptionOnCards();
+
+            // Step 2: Get monthly mileage from Wialon
+            if (typeof wialon === 'undefined' || !wialon.core || !wialon.core.Remote) {
+                console.warn('[Fuel] Wialon SDK not available, skipping GPS mileage.');
+                return;
+            }
+
+            var now = new Date();
+            var timeFrom = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+            var timeTo   = Math.floor(now.getTime() / 1000);
+            var remote   = wialon.core.Remote.getInstance();
+
+            console.log('[Fuel] Fetching Wialon trips. timeFrom=' + timeFrom + ' timeTo=' + timeTo);
+
+            for (var i = 0; i < trackerUnits.length; i++) {
+                var unit = trackerUnits[i];
+                var baseName = typeof extractBaseVehicleName === 'function'
+                    ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+                var litres = litresMap[baseName] || 0;
+
+                var km = await new Promise(function(resolve) {
+                    var capturedUnit = unit;
+                    var done = false;
+                    var guard = setTimeout(function() {
+                        if (!done) { done = true; console.warn('[Fuel] Timeout for', capturedUnit.name); resolve(0); }
+                    }, 45000); // Increased to 45s for units with high ping counts (e.g. 200k pings)
+
+                    // Step 2a: Load messages into the session (simplest flags: load all data messages)
+                    console.log('[Fuel] messages/load_interval for', capturedUnit.name, 'id=' + capturedUnit.id);
+                    remote.remoteCall('messages/load_interval', {
+                        itemId:    capturedUnit.id,
+                        timeFrom:  timeFrom,
+                        timeTo:    timeTo,
+                        flags:     0,
+                        flagsMask: 0,
+                        loadCount: 0xffffffff
+                    }, function(loadCode, loadData) {
+                        console.log('[Fuel] load_interval result for', capturedUnit.name, 'code=' + loadCode, 'data=', loadData);
+                        if (loadCode !== 0) {
+                            // load_interval failed — store 0 km but keep litres
+                            if (!done) { done = true; clearTimeout(guard); resolve(0); }
+                            return;
+                        }
+
+                        // Step 2b: Get trips from loaded messages
+                        remote.remoteCall('unit/get_trips', {
+                            itemId:     capturedUnit.id,
+                            msgsSource: 1,
+                            timeFrom:   timeFrom,
+                            timeTo:     timeTo
+                        }, function(tripsCode, trips) {
+                            if (done) return;
+                            done = true;
+                            clearTimeout(guard);
+                            console.log('[Fuel] get_trips for', capturedUnit.name, 'code=' + tripsCode, 'trips=', trips);
+                            if (tripsCode !== 0) { resolve(0); return; }
+                            var totalM = 0;
+                            if (Array.isArray(trips)) trips.forEach(function(t) { totalM += (t.m || 0); });
+                            resolve(totalM / 1000);
+                        });
+                    });
+                });
+
+                var kmpl = (km > 0 && litres > 0) ? (km / litres) : 0;
+                trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: km, L: litres };
+                console.log('[Fuel]', baseName, '→', km.toFixed(1), 'km /', litres, 'L =', kmpl.toFixed(2), 'km/L');
+                updateFuelConsumptionOnCards();
+            }
+
+            console.log('[Fuel] Complete. Map:', JSON.stringify(trackerVehicleFuelConsumption));
+        } catch (e) {
+            console.error('[Fuel] Error:', e);
         }
     }
 
@@ -688,6 +876,11 @@
             '<span class="detail-text">Satellites</span>' +
             '<span class="detail-value"></span>' +
             '</div>' +
+            '<div class="tracker-detail-row tracker-fuel-row">' +
+            '<span class="detail-icon">⛽</span>' +
+            '<span class="detail-text">Fuel Consumption</span>' +
+            '<span class="detail-value fuel-consumption-val" style="font-weight:700; color:var(--text-primary);">Calculating...</span>' +
+            '</div>' +
             '</div>' +
             '<div class="tracker-time-ago">' +
             '<span class="live-dot"></span>' +
@@ -906,6 +1099,27 @@
             var targetTime = timeAgo(unit.lastTime);
             if (timeText.textContent !== targetTime) timeText.textContent = targetTime;
         }
+
+        // 8. Update Fuel Consumption
+        var fuelVal = card.querySelector('.fuel-consumption-val');
+        if (fuelVal) {
+            var baseName2 = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+            var fuelData = trackerVehicleFuelConsumption[baseName2];
+            if (fuelData !== undefined) {
+                if (fuelData.L === 0) {
+                    fuelVal.textContent = 'No fuel record';
+                    fuelVal.style.color = 'var(--text-muted, #9CA3AF)';
+                } else if (fuelData.km === 0) {
+                    fuelVal.textContent = fuelData.L.toFixed(0) + ' L (no GPS trips)';
+                    fuelVal.style.color = 'var(--text-muted, #9CA3AF)';
+                } else {
+                    fuelVal.textContent = fuelData.kmpl.toFixed(1) + ' km/L';
+                    fuelVal.style.color = '#00B878';
+                }
+                fuelVal.title = 'GPS km: ' + Math.round(fuelData.km) + ' km | Fuel: ' + fuelData.L.toFixed(1) + ' L';
+            }
+            // else: still shows "Calculating..." from the card template
+        }
     }
 
     // ── Render Vehicle Cards ──
@@ -1028,6 +1242,16 @@
             renderTrackerMap(units);
             renderTrackerCards(units);
             setLastUpdate();
+
+            // Trigger fuel consumption calculation asynchronously
+            var now = Date.now();
+            if (now - lastFuelConsumptionCalcTime > FUEL_CALC_INTERVAL) {
+                lastFuelConsumptionCalcTime = now;
+                calculateAndPopulateFuelConsumption();
+            } else {
+                // Keep cards updated with cached data if already fetched
+                updateFuelConsumptionOnCards();
+            }
             console.log('Vehicle data successfully updated. Total units:', units.length);
         } catch (err) {
             console.error('Error during vehicle data refresh:', err);

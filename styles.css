@@ -10751,6 +10751,21 @@ body.dark-mode .terminated-badge {
     padding-right: 4px !important;
 }
 
+/* Ensure vehicle cards auto-expand in vertical sidebar mode (desktop & fullscreen) to show details */
+.tracker-vehicles-section .tracker-vehicle-card {
+    height: auto !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Ensure details section is visible and fits nicely */
+.tracker-vehicles-section .tracker-card-details {
+    display: flex !important;
+    margin-top: 10px !important;
+}
+
+
 
 
 
