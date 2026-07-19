@@ -566,6 +566,7 @@ const PAGE_GROUP_MAP = {
     'cheque-status': null,
     'excessing-litres': null,
     'leasing': null,
+    'credit-cards': null,
     'kevilton-distributions': null,
     'drivers': 'navGroupStaff',
     'driver-advances': 'navGroupStaff',
@@ -651,6 +652,7 @@ function switchPage(page) {
         'cheque-status': 'Cheque Status',
         'excessing-litres': 'Excessing Litres',
         'leasing': 'Leasing & Loans',
+        'credit-cards': 'Credit Cards',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
         'driver-salary': 'Staff Salary Calculator & Salary Slips',
@@ -674,6 +676,7 @@ function switchPage(page) {
     if (page === 'dashboard') loadDashboard();
     if (page === 'cheque-status') loadChequeStatus();
     if (page === 'leasing') loadLeasingPage();
+    if (page === 'credit-cards') loadCreditCardsPage();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
 
@@ -8915,15 +8918,16 @@ async function loadNotifications() {
         const allCommVehicles = commV || [];
 
         // Concurrently run alert fetches
-        const [chequeAlerts, serviceAlerts, advanceAlerts, expiryAlerts, birthdayAlerts] = await Promise.all([
+        const [chequeAlerts, serviceAlerts, advanceAlerts, expiryAlerts, birthdayAlerts, creditCardAlerts] = await Promise.all([
             fetchChequeAlerts(userId),
             fetchServiceAlerts(userId, allHireVehicles, allCommVehicles),
             fetchAdvanceAlerts(userId),
             fetchExpiryAlerts(userId),
-            fetchBirthdayAlerts(userId)
+            fetchBirthdayAlerts(userId),
+            typeof window.fetchCreditCardAlerts === 'function' ? window.fetchCreditCardAlerts(userId) : Promise.resolve([])
         ]);
 
-        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts, ...expiryAlerts, ...birthdayAlerts];
+        const allAlerts = [...chequeAlerts, ...serviceAlerts, ...advanceAlerts, ...expiryAlerts, ...birthdayAlerts, ...creditCardAlerts];
 
         // Filter out dismissed alerts from localStorage
         const dismissedIds = JSON.parse(localStorage.getItem('jtms_dismissed_alerts') || '[]');
@@ -9017,6 +9021,10 @@ async function loadNotifications() {
                             }
                         });
                     }, 200);
+                } else if (alert.type === 'credit-card') {
+                    currentPage = 'credit-cards';
+                    setActiveNavItem('credit-cards');
+                    switchPage('credit-cards');
                 }
             });
 
@@ -9056,6 +9064,21 @@ async function fetchChequeAlerts(userId) {
             const payeeName = leaf.payee ? leaf.payee : 'Unknown Payee';
 
             if (leaf.status === 'returned') {
+                const refDateStr = leaf.updated_at || leaf.cheque_date;
+                if (refDateStr) {
+                    const refDate = new Date(refDateStr);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    const refMidnight = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+                    const diffTime = today - refMidnight;
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays > 7) {
+                        return; // Only show returned cheques for 1 week after returned/maturity
+                    }
+                }
+
                 alerts.push({
                     id: `cheque_returned_${leaf.id}`,
                     title: `⚠️ Bounced Cheque: ${bankName}`,

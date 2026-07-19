@@ -10759,11 +10759,355 @@ body.dark-mode .terminated-badge {
     flex-direction: column !important;
 }
 
+
 /* Ensure details section is visible and fits nicely */
 .tracker-vehicles-section .tracker-card-details {
     display: flex !important;
     margin-top: 10px !important;
 }
+
+
+/* =====================================================
+   CREDIT CARDS PAGE STYLES
+   ===================================================== */
+
+/* Grid and Wrapper */
+.credit-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    padding: 16px 0;
+}
+
+.credit-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--ease-base), box-shadow var(--ease-base);
+}
+
+.credit-card-wrapper:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Card Visual Container */
+.credit-card-container {
+    aspect-ratio: 1.586 / 1;
+    border-radius: 16px;
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+/* Card network styles */
+.credit-card-container.card-visa {
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.credit-card-container.card-mastercard {
+    background: linear-gradient(135deg, #141414 0%, #2b2b2b 60%, #1a1a1a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.credit-card-container.card-amex {
+    background: linear-gradient(135deg, #8a6f27 0%, #b89742 50%, #d4b56a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Faded status for closed cards */
+.credit-card-wrapper.cc-settled-card {
+    opacity: 0.65;
+}
+.credit-card-wrapper.cc-settled-card .credit-card-container {
+    filter: grayscale(0.5);
+    box-shadow: none;
+}
+
+/* Inner Background Details */
+.credit-card-container::before {
+    content: '';
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 40%;
+    bottom: -90px;
+    left: -60px;
+    pointer-events: none;
+    transform: rotate(30deg);
+}
+
+.credit-card-container::after {
+    content: '';
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    top: -40px;
+    right: -40px;
+    pointer-events: none;
+}
+
+/* Gold Chip */
+.card-chip-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.card-chip-gold {
+    width: 40px;
+    height: 28px;
+    background: linear-gradient(135deg, #fce89e 0%, #cba135 100%);
+    border-radius: 6px;
+    position: relative;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: inset 1px 1px 2px rgba(255,255,255,0.4);
+}
+
+.card-chip-gold::before {
+    content: '';
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.card-type-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Card Details */
+.card-bank-display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-number-display {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin: 8px 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: flex-start;
+}
+
+.card-limit-display {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2px;
+}
+
+.card-bottom-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.card-due-display {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.65);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.card-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Status Badges */
+.card-status-display {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    text-transform: uppercase;
+}
+
+.badge-paid {
+    background: #27ae60;
+    color: #ffffff;
+}
+
+.badge-unpaid {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.25);
+}
+
+.badge-due-soon {
+    background: #e67e22;
+    color: #ffffff;
+    animation: ccPulseGlow 2s infinite;
+}
+
+.badge-due-today {
+    background: #c41c1c;
+    color: #ffffff;
+    animation: ccFlashAlert 1s infinite alternate;
+}
+
+.badge-overdue {
+    background: #c41c1c;
+    color: #ffffff;
+    animation: ccFlashAlert 0.8s infinite alternate;
+}
+
+.badge-upcoming-day {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+/* Status Container Shadows and Outlines */
+.credit-card-container.card-overdue-state {
+    box-shadow: 0 8px 24px rgba(196, 28, 28, 0.3);
+    border: 1px solid rgba(196, 28, 28, 0.4);
+}
+
+.credit-card-container.card-due-today-state {
+    box-shadow: 0 8px 24px rgba(196, 28, 28, 0.3);
+    border: 1px solid rgba(196, 28, 28, 0.4);
+}
+
+.credit-card-container.card-due-soon-state {
+    box-shadow: 0 8px 24px rgba(230, 126, 34, 0.25);
+    border: 1px solid rgba(230, 126, 34, 0.3);
+}
+
+/* Actions grid below the card */
+.credit-card-actions {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.credit-card-actions .btn {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.btn-card-pay {
+    font-weight: 700;
+    transition: all var(--ease-fast);
+    cursor: pointer;
+}
+
+.btn-pay {
+    background: rgba(39, 174, 96, 0.12) !important;
+    color: #27ae60 !important;
+    border: 1.5px solid rgba(39, 174, 96, 0.25) !important;
+}
+
+.btn-pay:hover {
+    background: #27ae60 !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+.btn-unpay {
+    background: rgba(220, 20, 60, 0.1) !important;
+    color: #dc143c !important;
+    border: 1.5px solid rgba(220, 20, 60, 0.20) !important;
+}
+
+.btn-unpay:hover {
+    background: #dc143c !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+/* Animations */
+@keyframes ccPulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(230, 126, 34, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
+}
+
+@keyframes ccFlashAlert {
+    0% { box-shadow: 0 0 0 0 rgba(196, 28, 28, 0.7); }
+    100% { box-shadow: 0 0 0 10px rgba(196, 28, 28, 0); }
+}
+
+/* Dark mode tweaks */
+body.dark-mode .credit-card-wrapper {
+    background: var(--surface-card);
+    border-color: var(--surface-border);
+}
+body.dark-mode .btn-pay {
+    background: rgba(39, 174, 96, 0.08) !important;
+}
+body.dark-mode .btn-unpay {
+    background: rgba(220, 20, 60, 0.08) !important;
+}
+
+@media (max-width: 768px) {
+    .credit-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .credit-card-container {
+        padding: 16px;
+    }
+    .card-number-display {
+        font-size: 18px;
+    }
+    .credit-card-actions {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    .credit-card-actions .btn {
+        width: 100% !important;
+    }
+}
+
 
 
 

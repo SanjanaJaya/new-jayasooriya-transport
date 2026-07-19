@@ -239,6 +239,14 @@
 
                 <div class="nav-divider"></div>
 
+                <!-- Credit Cards — standalone -->
+                <button class="nav-item" data-page="credit-cards">
+                    <span class="nav-icon">💳</span>
+                    <span>Credit Cards</span>
+                </button>
+
+                <div class="nav-divider"></div>
+
                 <!-- Kevilton Distributions — standalone -->
                 <button class="nav-item" data-page="kevilton-distributions">
                     <span class="nav-icon">🗺️</span>
@@ -2618,6 +2626,125 @@
 
 
                 <!-- ═══════════════════════════════════════════════
+                     CREDIT CARDS PAGE
+                ═══════════════════════════════════════════════ -->
+                <div id="credit-cards" class="page">
+
+                    <!-- CREDIT CARDS DUE SOON BANNER -->
+                    <div class="cheques-due-banner" id="ccDueBanner" style="display:none; background: linear-gradient(135deg, #c41c1c 0%, #dc143c 100%); border-color: #c41c1c; margin-bottom: 20px;">
+                        <div class="cheques-due-banner-icon">⚠️</div>
+                        <div class="cheques-due-banner-content">
+                            <div class="cheques-due-banner-title" style="color: #ffffff; font-weight: bold;">Credit Cards Due Soon!</div>
+                            <div class="cheques-due-banner-list" id="ccDueBannerList" style="color: #ffffff;"></div>
+                        </div>
+                    </div>
+
+                    <!-- ── FINANCIAL SUMMARY STRIP ── -->
+                    <div class="leasing-summary-strip" id="ccSummaryStrip">
+                        <div class="lss-card lss-prev-due" style="border-left: 4px solid var(--brand-red);">
+                            <span class="lss-icon">⚠️</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Overdue Bills</div>
+                                <div class="lss-value" id="ccOverdueCount">0 Payments</div>
+                                <div class="lss-sub">Unpaid past due dates</div>
+                            </div>
+                        </div>
+                        <div class="lss-card lss-curr-due" style="border-left: 4px solid var(--blue);">
+                            <span class="lss-icon">📅</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Unpaid Cards (Current)</div>
+                                <div class="lss-value" id="ccUnpaidCount">0 Cards</div>
+                                <div class="lss-sub" id="ccCurrentMonthLabel">—</div>
+                            </div>
+                        </div>
+                        <div class="lss-card lss-monthly-commit" style="border-left: 4px solid var(--green);">
+                            <span class="lss-icon">💳</span>
+                            <div class="lss-info">
+                                <div class="lss-label">Total Credit Limit</div>
+                                <div class="lss-value" id="ccTotalLimit">LKR 0.00</div>
+                                <div class="lss-sub">Sum of all active limits</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── MAIN PANEL ── -->
+                    <div class="leasing-panel">
+                        <div class="leasing-panel-header">
+                            <span class="leasing-panel-icon">💳</span>
+                            <h3 class="leasing-panel-title">Credit Card Manager</h3>
+                            <button class="btn btn-primary btn-sm" id="toggleAddCardFormBtn">+ Add Credit Card</button>
+                        </div>
+
+                        <!-- ── ADD / EDIT FORM ── -->
+                        <div class="form-container" id="addCardFormContainer" style="display:none;">
+                            <form id="addCreditCardForm">
+                                <input type="hidden" id="cardId">
+
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:2;">
+                                        <label for="cardBankName" style="font-size:12px;color:#666;">🏦 Card Issuing Bank</label>
+                                        <input type="text" id="cardBankName" placeholder="e.g. Commercial Bank, Sampath Bank" required>
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="cardLast4" style="font-size:12px;color:#666;">🔢 Last 4 Digits</label>
+                                        <input type="text" id="cardLast4" placeholder="e.g. 1234" maxlength="4" pattern="\d{4}" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="font-size:12px;color:#666;margin-bottom:6px;display:block;">💳 Card Network / Brand</label>
+                                        <div class="lease-type-selector">
+                                            <button type="button" class="lease-type-btn active" data-network="visa" id="btnNetVisa">Visa</button>
+                                            <button type="button" class="lease-type-btn" data-network="mastercard" id="btnNetMastercard">Mastercard</button>
+                                            <button type="button" class="lease-type-btn" data-network="amex" id="btnNetAmex">Amex</button>
+                                        </div>
+                                        <input type="hidden" id="cardNetwork" value="visa">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="cardDueDay" style="font-size:12px;color:#666;">📅 Minimum Due Day (of month)</label>
+                                        <input type="number" id="cardDueDay" placeholder="e.g. 15" min="1" max="31" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="cardLimit" style="font-size:12px;color:#666;">💰 Credit Limit (LKR)</label>
+                                        <input type="number" id="cardLimit" placeholder="e.g. 500000" min="1" step="0.01" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                                            <input type="checkbox" id="cardSettledCheck" style="width:16px;height:16px;cursor:pointer;">
+                                            🏁 Mark as Closed / Inactive
+                                        </label>
+                                    </div>
+                                    <div class="form-group" style="flex:2; display:none;" id="cardSettledNotesWrap">
+                                        <label for="cardSettledNotes" style="font-size:12px;color:#666;">📝 Closing Notes (optional)</label>
+                                        <input type="text" id="cardSettledNotes" placeholder="e.g. Card cancelled in July 2026">
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-success">💾 Save Card</button>
+                                    <button type="button" class="btn btn-secondary" id="cancelAddCardBtn">✖ Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Credit Cards Grid -->
+                        <div id="creditCardsGridContainer" class="credit-cards-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END CREDIT CARDS PAGE -->
+
+
+                <!-- ═══════════════════════════════════════════════
                      EXCESSING LITRES PAGE
                 ═══════════════════════════════════════════════ -->
                 <div id="excessing-litres" class="page">
@@ -3195,6 +3322,7 @@
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
     <script src="vehicle-tracker.js?v=24"></script>
+    <script src="credit-cards.js"></script>
 
 
 </body>
