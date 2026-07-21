@@ -478,12 +478,7 @@
             
         } catch (e) {
             console.error('Error geocoding unit:', item.id, e);
-            item.retries = (item.retries || 0) + 1;
-            if (item.retries < 3) {
-                geocodeQueue.push(item);
-            } else {
-                console.warn('Geocoding failed 3 times for unit:', item.id, 'dropping request.');
-            }
+            geocodeQueue.push(item);
         }
 
         setTimeout(processGeocodeQueue, 1200);
@@ -610,27 +605,23 @@
     }
 
     // ── Connect to Wialon via SDK ──
-    function connectWialon(isBackground) {
+    function connectWialon() {
         return new Promise((resolve) => {
             const config = getTrackerConfig();
             if (!config.token) {
-                if (!isBackground) {
-                    setConnStatus(false, 'No API token configured');
-                    showTrackerSettings();
-                }
+                setConnStatus(false, 'No API token configured');
+                showTrackerSettings();
                 resolve(false);
                 return;
             }
 
-            setConnStatus(false, isBackground ? 'Session expired, reconnecting...' : 'Connecting...');
+            setConnStatus(false, 'Connecting...');
 
             try {
                 // Ensure wialon SDK is loaded
                 if (typeof wialon === 'undefined' || !wialon.core || !wialon.core.Session) {
                     setConnStatus(false, '❌ Wialon SDK not loaded');
-                    if (!isBackground && typeof showToast === 'function') {
-                        showToast('Wialon SDK failed to load. Check internet connection.', 'error');
-                    }
+                    if (typeof showToast === 'function') showToast('Wialon SDK failed to load. Check internet connection.', 'error');
                     resolve(false);
                     return;
                 }
@@ -648,56 +639,35 @@
                     console.log('Session already initialized, skipping initSession:', initErr.message);
                 }
 
-                var doLogin = function () {
-                    session.loginToken(config.token, "", function (code) {
-                        if (code) {
-                            const errorMessages = {
-                                1: 'Invalid session',
-                                2: 'Invalid service name',
-                                3: 'Invalid result',
-                                4: 'Invalid input',
-                                7: 'Access denied — check token permissions',
-                                8: 'Invalid token — please regenerate',
-                                1003: 'Token has expired — regenerate a new one'
-                            };
-                            var errorText = wialon.core.Errors.getErrorText(code) || ('Wialon error code: ' + code);
-                            var msg = errorMessages[code] || errorText;
-                            trackerSessionId = null; // Clear session ID on failure
-                            setConnStatus(false, '❌ ' + msg);
-                            if (!isBackground && typeof showToast === 'function') {
-                                showToast(msg, 'error');
-                            }
-                            resolve(false);
-                        } else {
-                            trackerSessionId = session.getId();
-                            var user = session.getCurrUser();
-                            var userName = user ? user.getName() : 'Wialon';
-                            setConnStatus(true, 'Connected as ' + userName);
-                            if (!isBackground && typeof showToast === 'function') {
-                                showToast('🛰️ Connected to Wialon!', 'success');
-                            }
-                            resolve(true);
-                        }
-                    });
-                };
-
-                // If session is already initialized with an ID, log out first to clean up internal state
-                if (session.getId()) {
-                    console.log('Logging out from existing session:', session.getId());
-                    session.logout(function (logoutCode) {
-                        console.log('Logout completed. Code:', logoutCode);
-                        doLogin();
-                    });
-                } else {
-                    doLogin();
-                }
+                session.loginToken(config.token, "", function (code) {
+                    if (code) {
+                        const errorMessages = {
+                            1: 'Invalid session',
+                            2: 'Invalid service name',
+                            3: 'Invalid result',
+                            4: 'Invalid input',
+                            7: 'Access denied — check token permissions',
+                            8: 'Invalid token — please regenerate',
+                            1003: 'Token has expired — regenerate a new one'
+                        };
+                        var errorText = wialon.core.Errors.getErrorText(code) || ('Wialon error code: ' + code);
+                        var msg = errorMessages[code] || errorText;
+                        setConnStatus(false, '❌ ' + msg);
+                        if (typeof showToast === 'function') showToast(msg, 'error');
+                        resolve(false);
+                    } else {
+                        trackerSessionId = session.getId();
+                        var user = session.getCurrUser();
+                        var userName = user ? user.getName() : 'Wialon';
+                        setConnStatus(true, 'Connected as ' + userName);
+                        if (typeof showToast === 'function') showToast('🛰️ Connected to Wialon!', 'success');
+                        resolve(true);
+                    }
+                });
             } catch (err) {
                 console.error('Wialon connection error:', err);
-                trackerSessionId = null;
                 setConnStatus(false, '❌ Connection failed');
-                if (!isBackground && typeof showToast === 'function') {
-                    showToast('Failed to connect to Wialon: ' + err.message, 'error');
-                }
+                if (typeof showToast === 'function') showToast('Failed to connect to Wialon: ' + err.message, 'error');
                 resolve(false);
             }
         });
@@ -733,7 +703,7 @@
                         if (code === 1) {
                             // Session expired — try to reconnect
                             setConnStatus(false, 'Session expired, reconnecting...');
-                            connectWialon(true).then(function (reconnected) {
+                            connectWialon().then(function (reconnected) {
                                 if (reconnected) {
                                     fetchTrackerUnits().then(resolve);
                                 } else {
@@ -1310,12 +1280,6 @@
 
     // ── Refresh Data ──
     async function refreshTrackerData() {
-        var pageEl = document.getElementById('vehicle-tracker');
-        if (pageEl && !pageEl.classList.contains('active')) {
-            console.log('Skipping refresh: Vehicle tracker page is not active.');
-            return;
-        }
-
         if (!trackerSessionId) {
             console.log('Skipping refresh: No active trackerSessionId.');
             return;
@@ -1325,12 +1289,6 @@
             console.log('Fetching live vehicle positions from Wialon...');
             await fetchDriversAndAssignments();
             var units = await fetchTrackerUnits();
-
-            if ((!units || units.length === 0) && trackerUnits && trackerUnits.length > 0) {
-                console.warn('Fetched 0 units, keeping existing units in UI.');
-                return;
-            }
-
             trackerUnits = units;
 
             renderTrackerStats(units);
@@ -1661,7 +1619,6 @@
         } else if (trackerSessionId) {
             // Already connected, just refresh
             await refreshTrackerData();
-            startTrackerRefresh();
         } else {
             // No token — show empty state and settings
             showTrackerSettings();
