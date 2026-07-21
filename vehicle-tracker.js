@@ -30,6 +30,11 @@
     let lastFuelConsumptionCalcTime = 0;
     const FUEL_CALC_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
+    // Memory management constants
+    const MAX_GEOCODE_QUEUE_SIZE = 30;     // Cap geocode queue to prevent unbounded growth
+    const MAX_ADDRESS_CACHE_SIZE = 200;    // Cap address cache entries
+    const WIALON_MSG_LOAD_COUNT = 0xffffffff;   // Load all messages (memory is freed by messages/unload after each vehicle)
+
 
     async function fetchDistributors() {
         try {
@@ -60,12 +65,12 @@
 
     function clearTrackerVehicleFocus() {
         trackerFocusedUnitId = null;
-        
+
         // Close any open popups on the map when clearing focus
         if (trackerMap) {
             trackerMap.closePopup();
         }
-        
+
         fitMapToAllVehicles();
     }
 
@@ -89,7 +94,7 @@
         return L.divIcon({
             html: html,
             className: '',
-            iconSize:   [size, size],
+            iconSize: [size, size],
             iconAnchor: [size / 2, size],
             popupAnchor: [0, -(size + 4)],
         });
@@ -122,7 +127,7 @@
 
             var m = L.marker([d.lat, d.lng], { icon: markerIcon })
                 .bindPopup(popupContent);
-            
+
             m.addTo(trackerMap);
             trackerDistributorMarkers.push(m);
         });
@@ -144,14 +149,14 @@
             trackerAssignments = results[1].data || [];
 
             trackerVehicleVectorArts = {};
-            (results[2].data || []).forEach(function(v) {
+            (results[2].data || []).forEach(function (v) {
                 var base = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
                 if (v.vector_art_url) {
                     trackerVehicleVectorArts[base] = v.vector_art_url;
                 }
             });
-            (results[3].data || []).forEach(function(v) {
+            (results[3].data || []).forEach(function (v) {
                 var base = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
                 if (v.vector_art_url) {
@@ -186,26 +191,26 @@
             ]);
 
             var hireVehiclesMap = {};
-            (results[0].data || []).forEach(function(v) {
+            (results[0].data || []).forEach(function (v) {
                 hireVehiclesMap[v.id] = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
             });
             var commitmentVehiclesMap = {};
-            (results[1].data || []).forEach(function(v) {
+            (results[1].data || []).forEach(function (v) {
                 commitmentVehiclesMap[v.id] = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
             });
 
             var litresMap = {}; // { 'LP - 8810': 532.83, ... }
-            var add = function(name, litres) {
+            var add = function (name, litres) {
                 if (!name) return;
                 var key = name.trim().toUpperCase();
                 litresMap[key] = (litresMap[key] || 0) + (litres || 0);
             };
 
-            (results[2].data || []).forEach(function(r) { add(hireVehiclesMap[r.vehicle_id], r.fuel_litres); });
-            (results[3].data || []).forEach(function(r) { add(commitmentVehiclesMap[r.vehicle_id], r.fuel_litres); });
-            (results[4].data || []).forEach(function(r) {
+            (results[2].data || []).forEach(function (r) { add(hireVehiclesMap[r.vehicle_id], r.fuel_litres); });
+            (results[3].data || []).forEach(function (r) { add(commitmentVehiclesMap[r.vehicle_id], r.fuel_litres); });
+            (results[4].data || []).forEach(function (r) {
                 if (r.base_lorry_number) {
                     var n = typeof extractBaseVehicleName === 'function'
                         ? extractBaseVehicleName(r.base_lorry_number) : r.base_lorry_number;
@@ -213,7 +218,7 @@
                 }
             });
 
-            console.log('[Fuel] Litres map from DB:', litresMap);
+            console.log('[Fuel] Litres map loaded. Vehicle count:', Object.keys(litresMap).length);
             return litresMap;
         } catch (e) {
             console.error('[Fuel] Error fetching fuel litres from DB:', e);
@@ -226,7 +231,7 @@
         var grid = document.getElementById('trackerVehicleGrid');
         if (!grid) return;
 
-        trackerUnits.forEach(function(unit) {
+        trackerUnits.forEach(function (unit) {
             var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
             if (!card) return;
             var valEl = card.querySelector('.fuel-consumption-val');
@@ -259,10 +264,9 @@
 
             // Step 1: Get fuel litres from DB
             var litresMap = await fetchCurrentMonthFuelLitresPerVehicle();
-            console.log('[Fuel] Litres from DB:', litresMap);
 
             // Immediately populate cards with litres (so something shows right away)
-            trackerUnits.forEach(function(unit) {
+            trackerUnits.forEach(function (unit) {
                 var baseName = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
                 if (!(baseName in trackerVehicleFuelConsumption)) {
@@ -279,10 +283,8 @@
 
             var now = new Date();
             var timeFrom = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
-            var timeTo   = Math.floor(now.getTime() / 1000);
-            var remote   = wialon.core.Remote.getInstance();
-
-            console.log('[Fuel] Fetching Wialon trips. timeFrom=' + timeFrom + ' timeTo=' + timeTo);
+            var timeTo = Math.floor(now.getTime() / 1000);
+            var remote = wialon.core.Remote.getInstance();
 
             for (var i = 0; i < trackerUnits.length; i++) {
                 var unit = trackerUnits[i];
@@ -290,56 +292,58 @@
                     ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
                 var litres = litresMap[baseName] || 0;
 
-                var km = await new Promise(function(resolve) {
+                var km = await new Promise(function (resolve) {
                     var capturedUnit = unit;
                     var done = false;
-                    var guard = setTimeout(function() {
+                    var guard = setTimeout(function () {
                         if (!done) { done = true; console.warn('[Fuel] Timeout for', capturedUnit.name); resolve(0); }
-                    }, 45000); // Increased to 45s for units with high ping counts (e.g. 200k pings)
+                    }, 45000);
 
-                    // Step 2a: Load messages into the session (simplest flags: load all data messages)
-                    console.log('[Fuel] messages/load_interval for', capturedUnit.name, 'id=' + capturedUnit.id);
+                    // Step 2a: Load messages into the session
                     remote.remoteCall('messages/load_interval', {
-                        itemId:    capturedUnit.id,
-                        timeFrom:  timeFrom,
-                        timeTo:    timeTo,
-                        flags:     0,
+                        itemId: capturedUnit.id,
+                        timeFrom: timeFrom,
+                        timeTo: timeTo,
+                        flags: 0,
                         flagsMask: 0,
-                        loadCount: 0xffffffff
-                    }, function(loadCode, loadData) {
-                        console.log('[Fuel] load_interval result for', capturedUnit.name, 'code=' + loadCode, 'data=', loadData);
+                        loadCount: WIALON_MSG_LOAD_COUNT
+                    }, function (loadCode, loadData) {
                         if (loadCode !== 0) {
-                            // load_interval failed — store 0 km but keep litres
                             if (!done) { done = true; clearTimeout(guard); resolve(0); }
                             return;
                         }
 
                         // Step 2b: Get trips from loaded messages
                         remote.remoteCall('unit/get_trips', {
-                            itemId:     capturedUnit.id,
+                            itemId: capturedUnit.id,
                             msgsSource: 1,
-                            timeFrom:   timeFrom,
-                            timeTo:     timeTo
-                        }, function(tripsCode, trips) {
+                            timeFrom: timeFrom,
+                            timeTo: timeTo
+                        }, function (tripsCode, trips) {
                             if (done) return;
                             done = true;
                             clearTimeout(guard);
-                            console.log('[Fuel] get_trips for', capturedUnit.name, 'code=' + tripsCode, 'trips=', trips);
-                            if (tripsCode !== 0) { resolve(0); return; }
-                            var totalM = 0;
-                            if (Array.isArray(trips)) trips.forEach(function(t) { totalM += (t.m || 0); });
-                            resolve(totalM / 1000);
+
+                            var totalKm = 0;
+                            if (tripsCode === 0 && Array.isArray(trips)) {
+                                trips.forEach(function (t) { totalKm += (t.m || 0); });
+                            }
+
+                            // CRITICAL: Unload messages from Wialon session memory to prevent OOM
+                            // Wait for unload to complete before resolving so next vehicle starts clean
+                            remote.remoteCall('messages/unload', {}, function () {
+                                resolve(totalKm / 1000);
+                            });
                         });
                     });
                 });
 
                 var kmpl = (km > 0 && litres > 0) ? (km / litres) : 0;
                 trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: km, L: litres };
-                console.log('[Fuel]', baseName, '→', km.toFixed(1), 'km /', litres, 'L =', kmpl.toFixed(2), 'km/L');
                 updateFuelConsumptionOnCards();
             }
 
-            console.log('[Fuel] Complete. Map:', JSON.stringify(trackerVehicleFuelConsumption));
+            console.log('[Fuel] Complete for', trackerUnits.length, 'units.');
         } catch (e) {
             console.error('[Fuel] Error:', e);
         }
@@ -356,19 +360,19 @@
         } else {
             speedColor = '#e74c3c';
         }
-        
+
         var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
-        var assignment = trackerAssignments.find(function(a) { 
+        var assignment = trackerAssignments.find(function (a) {
             var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : a.lorry_number.trim().toUpperCase();
-            return aLorry === baseName; 
+            return aLorry === baseName;
         });
-        var driver = assignment ? trackerDrivers.find(function(d) { return d.id === assignment.driver_id; }) : null;
-        
+        var driver = assignment ? trackerDrivers.find(function (d) { return d.id === assignment.driver_id; }) : null;
+
         var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
-        var driverName = driver 
+        var driverName = driver
             ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
             : 'Not Assigned';
-        var driverPhotoHtml = driver && driver.photo_url 
+        var driverPhotoHtml = driver && driver.photo_url
             ? '<img src="' + driver.photo_url + '" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid #eee; flex-shrink:0;">'
             : '<div style="width:30px; height:30px; border-radius:50%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; color:#95a5a6; border: 1.5px dashed #ccc;">👤</div>';
 
@@ -400,20 +404,41 @@
     function loadAddressCache() {
         try {
             var raw = localStorage.getItem(TRACKER_ADDRESS_CACHE_KEY);
-            if (raw) trackerAddressCache = JSON.parse(raw);
-        } catch (e) {}
+            if (raw) {
+                var parsed = JSON.parse(raw);
+                // Evict oldest entries if cache is too large
+                var keys = Object.keys(parsed);
+                if (keys.length > MAX_ADDRESS_CACHE_SIZE) {
+                    var toRemove = keys.slice(0, keys.length - MAX_ADDRESS_CACHE_SIZE);
+                    toRemove.forEach(function (k) { delete parsed[k]; });
+                }
+                trackerAddressCache = parsed;
+            }
+        } catch (e) {
+            trackerAddressCache = {};
+        }
     }
 
     function saveAddressCache() {
         try {
+            // Evict oldest entries before saving
+            var keys = Object.keys(trackerAddressCache);
+            if (keys.length > MAX_ADDRESS_CACHE_SIZE) {
+                var toRemove = keys.slice(0, keys.length - MAX_ADDRESS_CACHE_SIZE);
+                toRemove.forEach(function (k) { delete trackerAddressCache[k]; });
+            }
             localStorage.setItem(TRACKER_ADDRESS_CACHE_KEY, JSON.stringify(trackerAddressCache));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function queueGeocode(unit) {
-        if (geocodeQueue.some(function(item) { return item.id === unit.id; })) return;
+        if (geocodeQueue.some(function (item) { return item.id === unit.id; })) return;
+        // Cap queue size to prevent unbounded memory growth
+        if (geocodeQueue.length >= MAX_GEOCODE_QUEUE_SIZE) {
+            geocodeQueue.shift(); // Drop oldest pending request
+        }
         geocodeQueue.push({ id: unit.id, lat: unit.lat, lng: unit.lng });
-        
+
         if (!geocodeProcessing) {
             geocodeProcessing = true;
             setTimeout(processGeocodeQueue, 100);
@@ -427,16 +452,16 @@
         }
 
         var item = geocodeQueue.shift();
-        
+
         try {
             var response = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + item.lat + '&lon=' + item.lng + '&email=jayasooriyatransport@gmail.com');
             var data = await response.json();
-            
+
             var addr = data.address || {};
             var road = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || "";
             var town = addr.town || addr.city || addr.village || addr.hamlet || addr.county || "";
             var displayAddr = road + (road && town ? ", " : "") + town;
-            
+
             if (!displayAddr && data.display_name) {
                 displayAddr = data.display_name.split(',').slice(0, 2).join(', ');
             }
@@ -452,10 +477,10 @@
             saveAddressCache();
 
             // Update in-memory unit
-            var unit = trackerUnits.find(function(u) { return u.id === item.id; });
+            var unit = trackerUnits.find(function (u) { return u.id === item.id; });
             if (unit) {
                 unit.address = displayAddr;
-                
+
                 // Update marker popup dynamically
                 if (trackerMarkers[unit.id]) {
                     var popupContent = buildPopupHtml(unit);
@@ -475,10 +500,15 @@
                     }
                 }
             }
-            
+
         } catch (e) {
             console.error('Error geocoding unit:', item.id, e);
-            geocodeQueue.push(item);
+            item.retries = (item.retries || 0) + 1;
+            if (item.retries < 3) {
+                geocodeQueue.push(item);
+            } else {
+                console.warn('Geocoding failed 3 times for unit:', item.id, 'dropping request.');
+            }
         }
 
         setTimeout(processGeocodeQueue, 1200);
@@ -499,10 +529,10 @@
                 return parsed;
             }
         } catch (e) { }
-        return { 
-            server: 'hst-api.wialon.com', 
-            token: '2dc41f89a60d68ba8fd0a5e34722386f728895444F6CEE221D45222A43B65B5606DE57A0', 
-            interval: 30 
+        return {
+            server: 'hst-api.wialon.com',
+            token: '2dc41f89a60d68ba8fd0a5e34722386f728895444F6CEE221D45222A43B65B5606DE57A0',
+            interval: 30
         };
     }
 
@@ -605,23 +635,27 @@
     }
 
     // ── Connect to Wialon via SDK ──
-    function connectWialon() {
+    function connectWialon(isBackground) {
         return new Promise((resolve) => {
             const config = getTrackerConfig();
             if (!config.token) {
-                setConnStatus(false, 'No API token configured');
-                showTrackerSettings();
+                if (!isBackground) {
+                    setConnStatus(false, 'No API token configured');
+                    showTrackerSettings();
+                }
                 resolve(false);
                 return;
             }
 
-            setConnStatus(false, 'Connecting...');
+            setConnStatus(false, isBackground ? 'Session expired, reconnecting...' : 'Connecting...');
 
             try {
                 // Ensure wialon SDK is loaded
                 if (typeof wialon === 'undefined' || !wialon.core || !wialon.core.Session) {
                     setConnStatus(false, '❌ Wialon SDK not loaded');
-                    if (typeof showToast === 'function') showToast('Wialon SDK failed to load. Check internet connection.', 'error');
+                    if (!isBackground && typeof showToast === 'function') {
+                        showToast('Wialon SDK failed to load. Check internet connection.', 'error');
+                    }
                     resolve(false);
                     return;
                 }
@@ -639,35 +673,56 @@
                     console.log('Session already initialized, skipping initSession:', initErr.message);
                 }
 
-                session.loginToken(config.token, "", function (code) {
-                    if (code) {
-                        const errorMessages = {
-                            1: 'Invalid session',
-                            2: 'Invalid service name',
-                            3: 'Invalid result',
-                            4: 'Invalid input',
-                            7: 'Access denied — check token permissions',
-                            8: 'Invalid token — please regenerate',
-                            1003: 'Token has expired — regenerate a new one'
-                        };
-                        var errorText = wialon.core.Errors.getErrorText(code) || ('Wialon error code: ' + code);
-                        var msg = errorMessages[code] || errorText;
-                        setConnStatus(false, '❌ ' + msg);
-                        if (typeof showToast === 'function') showToast(msg, 'error');
-                        resolve(false);
-                    } else {
-                        trackerSessionId = session.getId();
-                        var user = session.getCurrUser();
-                        var userName = user ? user.getName() : 'Wialon';
-                        setConnStatus(true, 'Connected as ' + userName);
-                        if (typeof showToast === 'function') showToast('🛰️ Connected to Wialon!', 'success');
-                        resolve(true);
-                    }
-                });
+                var doLogin = function () {
+                    session.loginToken(config.token, "", function (code) {
+                        if (code) {
+                            const errorMessages = {
+                                1: 'Invalid session',
+                                2: 'Invalid service name',
+                                3: 'Invalid result',
+                                4: 'Invalid input',
+                                7: 'Access denied — check token permissions',
+                                8: 'Invalid token — please regenerate',
+                                1003: 'Token has expired — regenerate a new one'
+                            };
+                            var errorText = wialon.core.Errors.getErrorText(code) || ('Wialon error code: ' + code);
+                            var msg = errorMessages[code] || errorText;
+                            trackerSessionId = null; // Clear session ID on failure
+                            setConnStatus(false, '❌ ' + msg);
+                            if (!isBackground && typeof showToast === 'function') {
+                                showToast(msg, 'error');
+                            }
+                            resolve(false);
+                        } else {
+                            trackerSessionId = session.getId();
+                            var user = session.getCurrUser();
+                            var userName = user ? user.getName() : 'Wialon';
+                            setConnStatus(true, 'Connected as ' + userName);
+                            if (!isBackground && typeof showToast === 'function') {
+                                showToast('🛰️ Connected to Wialon!', 'success');
+                            }
+                            resolve(true);
+                        }
+                    });
+                };
+
+                // If session is already initialized with an ID, log out first to clean up internal state
+                if (session.getId()) {
+                    console.log('Logging out from existing session:', session.getId());
+                    session.logout(function (logoutCode) {
+                        console.log('Logout completed. Code:', logoutCode);
+                        doLogin();
+                    });
+                } else {
+                    doLogin();
+                }
             } catch (err) {
                 console.error('Wialon connection error:', err);
+                trackerSessionId = null;
                 setConnStatus(false, '❌ Connection failed');
-                if (typeof showToast === 'function') showToast('Failed to connect to Wialon: ' + err.message, 'error');
+                if (!isBackground && typeof showToast === 'function') {
+                    showToast('Failed to connect to Wialon: ' + err.message, 'error');
+                }
                 resolve(false);
             }
         });
@@ -690,7 +745,7 @@
                         propValueMask: '*',
                         sortType: 'sys_name'
                     },
-                    force: 1,
+                    force: 0,  // FIXED: Don't force-reload items into SDK cache every refresh (prevents OOM)
                     flags: 1025, // 1 (base) + 1024 (last position)
                     from: 0,
                     to: 0
@@ -699,11 +754,11 @@
                 var remote = wialon.core.Remote.getInstance();
                 var callback = function (code, data) {
                     if (code) {
-                        console.error('Error fetching units:', code);
+                        console.error('Error fetching units, code:', code);
                         if (code === 1) {
                             // Session expired — try to reconnect
                             setConnStatus(false, 'Session expired, reconnecting...');
-                            connectWialon().then(function (reconnected) {
+                            connectWialon(true).then(function (reconnected) {
                                 if (reconnected) {
                                     fetchTrackerUnits().then(resolve);
                                 } else {
@@ -753,7 +808,22 @@
                     resolve(parsedUnits);
                 };
 
-                remote.remoteCall("core/search_items", params, callback);
+                remote.remoteCall("core/search_items", params, function (code, data) {
+                    callback(code, data);
+
+                    // CRITICAL: Cleanup — tell Wialon to release the search result from session memory
+                    // This prevents the SDK from accumulating items across repeated searches
+                    if (!code && data && data.searchSpec) {
+                        remote.remoteCall("core/update_data_flags", {
+                            spec: [{
+                                type: 'type',
+                                data: 'avl_unit',
+                                flags: 1025,
+                                mode: 2  // mode 2 = remove flags (unsubscribe)
+                            }]
+                        }, function () { });
+                    }
+                });
             } catch (err) {
                 console.error('Error in fetchTrackerUnits:', err);
                 resolve([]);
@@ -766,38 +836,38 @@
         if (marker._animFrameId) {
             cancelAnimationFrame(marker._animFrameId);
         }
-        
+
         var start = performance.now();
         var fromLatLng = marker.getLatLng();
         var fromLat = fromLatLng.lat;
         var fromLng = fromLatLng.lng;
         var toLat = Array.isArray(toLatLng) ? toLatLng[0] : toLatLng.lat;
         var toLng = Array.isArray(toLatLng) ? toLatLng[1] : toLatLng.lng;
-        
+
         if (fromLat === toLat && fromLng === toLng) return;
-        
+
         var distance = Math.sqrt(Math.pow(toLat - fromLat, 2) + Math.pow(toLng - fromLng, 2));
         if (distance > 0.5) {
             marker.setLatLng([toLat, toLng]);
             return;
         }
-        
+
         function step(timestamp) {
             var elapsed = timestamp - start;
             var progress = Math.min(elapsed / duration, 1);
             var easeProgress = progress * (2 - progress);
-            
+
             var currentLat = fromLat + (toLat - fromLat) * easeProgress;
             var currentLng = fromLng + (toLng - fromLng) * easeProgress;
             marker.setLatLng([currentLat, currentLng]);
-            
+
             if (progress < 1) {
                 marker._animFrameId = requestAnimationFrame(step);
             } else {
                 marker._animFrameId = null;
             }
         }
-        
+
         marker._animFrameId = requestAnimationFrame(step);
     }
 
@@ -855,7 +925,7 @@
                 var marker = L.marker([unit.lat, unit.lng], { icon: customIcon })
                     .bindPopup(popupContent)
                     .addTo(trackerMap);
-                
+
                 // Add click listener on marker to set focus
                 marker.on('click', function () {
                     setTrackerVehicleFocus(unit.id);
@@ -886,7 +956,7 @@
     function createCardElement(unit, i) {
         var card = document.createElement('div');
         card.dataset.unitId = unit.id;
-        
+
         // Build card skeleton with placeholders to be updated by patchCard
         card.innerHTML = '<div class="tracker-card-header" style="z-index: 1; position: relative;">' +
             '<span class="tracker-card-name">🚛 ' + unit.name + '</span>' +
@@ -964,25 +1034,25 @@
     // Helper to update card content in-place without rebuilding DOM
     function patchCard(card, unit, i) {
         var status = getMotionStatus(unit);
-        
+
         var targetClassName = 'tracker-vehicle-card status-' + status;
         if (card.className !== targetClassName) {
             card.className = targetClassName;
         }
-        
+
         // 1. Update status badge
         var badge = card.querySelector('.tracker-status-badge');
         if (badge) {
             var badgeClass = status === 'moving' ? 'badge-moving' : status === 'idle' ? 'badge-idle' : 'badge-offline';
             var badgeText = status === 'moving' ? '\u25CF Moving' : status === 'idle' ? '\u25CF Idle' : '\u25CF Offline';
-            
+
             if (badge.dataset.status !== status) {
                 badge.className = 'tracker-status-badge ' + badgeClass;
                 badge.textContent = badgeText;
                 badge.dataset.status = status;
             }
         }
-        
+
         // 2. Update speed value & class
         var speedVal = card.querySelector('.tracker-speed-value');
         if (speedVal) {
@@ -992,18 +1062,18 @@
                 else if (unit.speed <= 90) speedClass = 'speed-fast';
                 else speedClass = 'speed-danger';
             }
-            
+
             if (speedVal.dataset.speedClass !== speedClass) {
                 speedVal.className = 'tracker-speed-value ' + speedClass;
                 speedVal.dataset.speedClass = speedClass;
             }
-            
+
             var roundedSpeed = String(Math.round(unit.speed));
             if (speedVal.textContent !== roundedSpeed) {
                 speedVal.textContent = roundedSpeed;
             }
         }
-        
+
         // 3. Update engine status
         var engineStatus = card.querySelector('.tracker-engine-status');
         if (engineStatus) {
@@ -1023,7 +1093,7 @@
                 engineStatusColor = '#00B878';
                 engineStatusBg = 'rgba(0, 184, 120, 0.1)';
             }
-            
+
             if (engineStatus.dataset.statusText !== engineStatusText) {
                 engineStatus.textContent = engineStatusText;
                 engineStatus.style.color = engineStatusColor;
@@ -1031,7 +1101,7 @@
                 engineStatus.dataset.statusText = engineStatusText;
             }
         }
-        
+
         // 4. Update speed meter bar
         var speedBar = card.querySelector('.tracker-speed-meter-bar div');
         if (speedBar) {
@@ -1046,18 +1116,18 @@
             } else {
                 meterColor = '#e74c3c';
             }
-            
+
             if (speedBar.dataset.widthPct !== speedPct) {
                 speedBar.style.width = speedPct;
                 speedBar.dataset.widthPct = speedPct;
             }
-            
+
             if (speedBar.dataset.color !== meterColor) {
                 speedBar.style.backgroundColor = meterColor;
                 speedBar.dataset.color = meterColor;
             }
         }
-        
+
         // 5. Update Address
         var addrVal = card.querySelector('.tracker-card-address-value');
         if (addrVal) {
@@ -1067,27 +1137,27 @@
                 addrVal.setAttribute('title', displayAddr);
             }
         }
-        
+
         // 6. Update Driver assigned
         var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
-        var assignment = trackerAssignments.find(function(a) { 
+        var assignment = trackerAssignments.find(function (a) {
             var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : a.lorry_number.trim().toUpperCase();
-            return aLorry === baseName; 
+            return aLorry === baseName;
         });
-        var driver = assignment ? trackerDrivers.find(function(d) { return d.id === assignment.driver_id; }) : null;
-        
+        var driver = assignment ? trackerDrivers.find(function (d) { return d.id === assignment.driver_id; }) : null;
+
         var targetDriverId = driver ? String(driver.id) : '';
         if (card.dataset.driverId !== targetDriverId) {
             card.dataset.driverId = targetDriverId;
-            
+
             var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
-            var driverName = driver 
+            var driverName = driver
                 ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
                 : 'Not Assigned';
-                
+
             var driverVal = card.querySelector('.tracker-driver-row .detail-value');
             if (driverVal) driverVal.textContent = driverName;
-            
+
             // Driver photo
             var imgContainer = card.querySelector('.tracker-driver-face-container');
             if (imgContainer) {
@@ -1096,13 +1166,13 @@
                     if (!currentImg) {
                         currentImg = document.createElement('img');
                         currentImg.className = 'tracker-driver-photo';
-                        currentImg.onerror = function() { this.style.display = 'none'; };
+                        currentImg.onerror = function () { this.style.display = 'none'; };
                         imgContainer.innerHTML = '';
                         imgContainer.appendChild(currentImg);
                     }
                     currentImg.src = driver.photo_url;
                     currentImg.style.display = '';
-                    
+
                     imgContainer.style.border = '1.5px solid var(--surface-border, #eee)';
                     imgContainer.style.background = '#f0f2f5';
                 } else {
@@ -1112,7 +1182,7 @@
                 }
             }
         }
-        
+
         // Position
         var posVal = card.querySelector('.tracker-position-row .detail-value');
         if (posVal) {
@@ -1135,7 +1205,7 @@
                 bgEl.style.backgroundImage = targetBg;
             }
         }
-        
+
         // 7. Update time-ago dot & text
         var liveDot = card.querySelector('.tracker-time-ago .live-dot');
         if (liveDot) {
@@ -1146,7 +1216,7 @@
                 if (!liveDot.classList.contains('offline')) liveDot.classList.add('offline');
             }
         }
-        
+
         var timeText = card.querySelector('.time-ago-text');
         if (timeText) {
             var targetTime = timeAgo(unit.lastTime);
@@ -1187,8 +1257,10 @@
         var searchTerm = (searchInput ? searchInput.value : '').toLowerCase();
         var statusVal = statusFilter ? statusFilter.value : 'all';
 
+        // Reuse status property on existing unit objects instead of cloning (avoids allocating new objects every refresh)
         var filtered = units.map(function (unit) {
-            return Object.assign({}, unit, { status: getMotionStatus(unit) });
+            unit._status = getMotionStatus(unit);
+            return unit;
         });
 
         if (searchTerm) {
@@ -1197,7 +1269,7 @@
             });
         }
         if (statusVal !== 'all') {
-            filtered = filtered.filter(function (u) { return u.status === statusVal; });
+            filtered = filtered.filter(function (u) { return u._status === statusVal; });
         }
 
         // Sort alphabetically/numerically by vehicle name so displaying order is completely static
@@ -1237,7 +1309,7 @@
             } else {
                 card = createCardElement(unit, i);
             }
-            
+
             // Only move/insert element in the DOM if it's not already in the correct position.
             // This prevents re-triggering of animations or layout recalculations.
             if (grid.children[i] !== card) {
@@ -1280,15 +1352,27 @@
 
     // ── Refresh Data ──
     async function refreshTrackerData() {
+        var pageEl = document.getElementById('vehicle-tracker');
+        if (pageEl && !pageEl.classList.contains('active')) {
+            // MEMORY FIX: Stop the refresh timer when not on the tracker page
+            stopTrackerRefresh();
+            console.log('Stopped refresh: Vehicle tracker page is not active.');
+            return;
+        }
+
         if (!trackerSessionId) {
-            console.log('Skipping refresh: No active trackerSessionId.');
             return;
         }
 
         try {
-            console.log('Fetching live vehicle positions from Wialon...');
             await fetchDriversAndAssignments();
             var units = await fetchTrackerUnits();
+
+            if ((!units || units.length === 0) && trackerUnits && trackerUnits.length > 0) {
+                console.warn('Fetched 0 units, keeping existing units in UI.');
+                return;
+            }
+
             trackerUnits = units;
 
             renderTrackerStats(units);
@@ -1305,7 +1389,6 @@
                 // Keep cards updated with cached data if already fetched
                 updateFuelConsumptionOnCards();
             }
-            console.log('Vehicle data successfully updated. Total units:', units.length);
         } catch (err) {
             console.error('Error during vehicle data refresh:', err);
         }
@@ -1348,11 +1431,11 @@
         if (!el) return;
 
         if (!document.fullscreenElement) {
-            el.requestFullscreen().then(function() {
-                setTimeout(function() {
+            el.requestFullscreen().then(function () {
+                setTimeout(function () {
                     if (trackerMap) trackerMap.invalidateSize();
                 }, 300);
-            }).catch(function(err) {
+            }).catch(function (err) {
                 console.error("Error enabling fullscreen:", err);
             });
         } else {
@@ -1361,11 +1444,11 @@
     }
 
     // Monitor native fullscreen state changes
-    document.addEventListener('fullscreenchange', function() {
+    document.addEventListener('fullscreenchange', function () {
         var el = document.getElementById('vehicle-tracker');
         var btn = document.getElementById('trackerFullscreenBtn');
         var exitFSBtn = document.getElementById('trackerExitFSBtn');
-        
+
         if (document.fullscreenElement) {
             if (el) el.classList.add('fullscreen-active');
             if (btn) {
@@ -1381,8 +1464,8 @@
             }
             if (exitFSBtn) exitFSBtn.style.display = 'none';
         }
-        
-        setTimeout(function() {
+
+        setTimeout(function () {
             if (trackerMap) trackerMap.invalidateSize();
         }, 300);
     });
@@ -1619,6 +1702,7 @@
         } else if (trackerSessionId) {
             // Already connected, just refresh
             await refreshTrackerData();
+            startTrackerRefresh();
         } else {
             // No token — show empty state and settings
             showTrackerSettings();
