@@ -10275,7 +10275,10 @@ body.dark-mode .terminated-badge {
     font-size: 11px;
     text-align: right;
     word-break: break-word;
-    max-width: 65%;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Time ago badge */
@@ -10415,6 +10418,8 @@ body.dark-mode .terminated-badge {
     text-transform: uppercase;
     letter-spacing: 0.3px;
     display: inline-block;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 
@@ -10593,18 +10598,26 @@ body.dark-mode .terminated-badge {
 
 .tracker-vehicle-grid {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    display: grid;
-    grid-template-columns: 1fr !important; /* Force cards into single column */
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px;
     margin-top: 10px;
-    padding-right: 4px;
+    padding-right: 6px;
 }
 
 .tracker-vehicle-card {
     margin: 0;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
+    flex-shrink: 0 !important;
+    height: auto !important;
+    min-height: max-content !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
 
 .tracker-vehicle-card:hover {
@@ -10806,42 +10819,119 @@ body.dark-mode .terminated-badge {
 #vehicle-tracker.fullscreen-active .tracker-vehicles-section,
 #vehicle-tracker:fullscreen .tracker-vehicles-section,
 #vehicle-tracker:-webkit-full-screen .tracker-vehicles-section {
-    width: 480px !important;
+    width: 520px !important;
     height: 100% !important;
     border-radius: 0 !important;
     border: none !important;
     border-left: 1px solid var(--surface-border) !important;
-    padding: 20px !important;
+    padding: 16px !important;
     background: var(--surface-card) !important;
     display: flex !important;
     flex-direction: column !important;
     flex-shrink: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 #vehicle-tracker.fullscreen-active .tracker-vehicle-grid,
 #vehicle-tracker:fullscreen .tracker-vehicle-grid,
 #vehicle-tracker:-webkit-full-screen .tracker-vehicle-grid {
     flex: 1 !important;
+    min-height: 0 !important;
     overflow-y: auto !important;
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px !important;
     margin-top: 15px !important;
-    padding-right: 4px !important;
+    padding-right: 6px !important;
 }
 
 /* Ensure vehicle cards auto-expand in vertical sidebar mode (desktop & fullscreen) to show details */
 .tracker-vehicles-section .tracker-vehicle-card {
     height: auto !important;
-    overflow: visible !important;
+    min-height: max-content !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
+/* Ensure all child blocks inside the card do not shrink or get clipped */
+.tracker-vehicles-section .tracker-card-header,
+.tracker-vehicles-section .tracker-card-speed-wrapper,
+.tracker-vehicles-section .tracker-card-address,
+.tracker-vehicles-section .tracker-card-details,
+.tracker-vehicles-section .tracker-time-ago {
+    flex-shrink: 0 !important;
+}
 
 /* Ensure details section is visible and fits nicely */
 .tracker-vehicles-section .tracker-card-details {
     display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
     margin-top: 10px !important;
+    width: 100% !important;
+}
+
+/* Ensure detail rows don't overflow the card in fullscreen sidebar */
+.tracker-vehicles-section .tracker-detail-row {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+}
+
+.tracker-vehicles-section .tracker-detail-row .detail-value {
+    max-width: 60% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Fullscreen-specific: wider detail values since sidebar is larger */
+#vehicle-tracker.fullscreen-active .tracker-detail-row .detail-value,
+#vehicle-tracker:fullscreen .tracker-detail-row .detail-value,
+#vehicle-tracker:-webkit-full-screen .tracker-detail-row .detail-value {
+    max-width: 65% !important;
+}
+
+/* Ensure the card header doesn't overflow */
+.tracker-vehicles-section .tracker-card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+}
+
+.tracker-vehicles-section .tracker-card-name {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+}
+
+/* Prevent speed wrapper from pushing content out */
+.tracker-vehicles-section .tracker-card-speed-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure address doesn't overflow the card */
+.tracker-vehicles-section .tracker-card-address {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 
