@@ -1,18 +1,12 @@
-// report-generator.js - PDF Report Generator for Jayasooriya Transport
-// Enhanced with premium styling, data-fetching fixes, and comprehensive operations breakdown
+// report-generator.js - Simplified Monthly Report Generator for Jayasooriya Transport
+// Shows: Individual Lorry Performance, Leasing Deductions (>30% util only), Simple Financial Summary
 
 /**
  * Normalise a vehicle registration number to a canonical key used for
- * cross-table matching.  Mirrors extractBaseVehicleName() in app.js.
- * Examples:
- *   "LP-9262"      -> "lp - 9262"
- *   "LP - 9262"    -> "lp - 9262"
- *   "WP LP-9262"   -> "lp - 9262"  (picks last prefix-number pair)
- *   "ND-1234"      -> "nd - 1234"
+ * cross-table matching.
  */
 function normaliseVehicleKey(name) {
     if (!name) return '';
-    // Match common Sri-Lankan plate formats: 1-4 alphanumeric chars, optional spaces, hyphen, 1-4 digits
     const match = name.match(/([a-zA-Z0-9]{1,4})\s*-\s*([0-9]{1,4})/);
     if (match) {
         return `${match[1].trim().toLowerCase()} - ${match[2].trim()}`;
@@ -22,12 +16,6 @@ function normaliseVehicleKey(name) {
 
 /**
  * Returns the canonical human-readable display name for a vehicle number.
- * Strips suffixes like " Other", " other", leading province codes etc.
- * Examples:
- *   "LP - 9262 Other"  -> "LP - 9262"
- *   "LP-9262"          -> "LP - 9262"
- *   "WP LP-9262"       -> "LP - 9262"
- *   "GB - 5157 Other"  -> "GB - 5157"
  */
 function normaliseVehicleDisplay(name) {
     if (!name) return '';
@@ -47,11 +35,8 @@ async function addLogoToReport(doc, x, y, size) {
         
         img.onload = function() {
             try {
-                // Draw white circle background
                 doc.setFillColor(255, 255, 255);
                 doc.circle(x + size/2, y + size/2, size/2, 'F');
-                
-                // Add logo image
                 doc.addImage(img, 'PNG', x + 2, y + 2, size - 4, size - 4);
                 resolve();
             } catch (error) {
@@ -71,19 +56,20 @@ async function addLogoToReport(doc, x, y, size) {
 
 // Stylized section header helper
 function drawSectionHeader(doc, title, margin, yPos) {
-    doc.setFillColor(220, 20, 60); // Crimson Red accent bar
+    doc.setFillColor(220, 20, 60);
     doc.rect(margin, yPos - 4.5, 4, 6, 'F');
     
-    doc.setTextColor(44, 62, 80); // Dark slate charcoal
+    doc.setTextColor(44, 62, 80);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text(title, margin + 6, yPos);
 }
 
-// Custom table-drawing function to render professional data layouts
+// Custom table-drawing function
 function drawPDFTable(doc, startY, headers, colWidths, rows, rowHeight = 7.5) {
     let y = startY;
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - (2 * margin);
 
@@ -107,9 +93,27 @@ function drawPDFTable(doc, startY, headers, colWidths, rows, rowHeight = 7.5) {
     // Draw rows
     doc.setFontSize(8);
     rows.forEach((row, rowIndex) => {
-        // Alternate row colors for enhanced readability
+        // Page break check
+        if (y + rowHeight > pageHeight - 20) {
+            doc.addPage();
+            y = margin + 10;
+            
+            // Re-draw header on new page
+            doc.setFillColor(220, 20, 60);
+            doc.rect(margin, y, contentWidth, rowHeight, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            currentX = margin + 3;
+            headers.forEach((header, i) => {
+                doc.text(header, currentX, y + rowHeight - 2.5);
+                currentX += colWidths[i];
+            });
+            y += rowHeight;
+        }
+
+        // Alternate row colors
         if (rowIndex === rows.length - 1 && row[0]?.isTotal) {
-            // Total/Grand Summary Row
             doc.setFillColor(240, 240, 240);
             doc.rect(margin, y, contentWidth, rowHeight, 'F');
             doc.setDrawColor(220, 20, 60);
@@ -124,7 +128,6 @@ function drawPDFTable(doc, startY, headers, colWidths, rows, rowHeight = 7.5) {
             }
             doc.rect(margin, y, contentWidth, rowHeight, 'F');
             
-            // Soft cell divider
             doc.setDrawColor(230, 230, 230);
             doc.setLineWidth(0.2);
             doc.line(margin, y + rowHeight, margin + contentWidth, y + rowHeight);
@@ -170,7 +173,7 @@ async function generateMonthlyReport(monthValue) {
             year: 'numeric'
         });
         
-        // Fetch and calculate fixed report data
+        // Fetch and calculate report data
         const reportData = await fetchReportData(startDate, endDate);
         
         const { jsPDF } = window.jspdf;
@@ -191,15 +194,18 @@ async function generateMonthlyReport(monthValue) {
             }
             return false;
         }
+
+        // Format currency helper
+        function fmtLKR(val) {
+            return `LKR ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
         
         // ==================== HEADER ====================
         doc.setFillColor(220, 20, 60);
         doc.rect(0, 0, pageWidth, 48, 'F');
         
-        // Add logo
         await addLogoToReport(doc, 15, 9, 30);
         
-        // Title block
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
@@ -215,291 +221,125 @@ async function generateMonthlyReport(monthValue) {
         
         yPosition = 58;
         
-        // ==================== FINANCIAL EXECUTIVE SUMMARY ====================
-        drawSectionHeader(doc, 'Executive Financial Summary', margin, yPosition);
+        // ==================== FINANCIAL SUMMARY CARDS ====================
+        drawSectionHeader(doc, 'Financial Summary', margin, yPosition);
         yPosition += 8;
         
-        // Stylized summary grid (Premium Left-Border Accent Cards)
         const summaryData = [
-            { label: 'Total Revenue (inc. Fuel Allowance)', value: reportData.totalRevenue + reportData.fuelAllowance, color: [39, 174, 96] }, // Green
-            { label: 'Total Expenses (Fuel + Staff Cost)', value: reportData.totalExpenses, color: [231, 76, 60] }, // Red
-            { label: 'Final Net Profit', value: reportData.netProfit, color: [142, 68, 173] }, // Purple
-            { label: 'Net Profit Margin', value: reportData.profitMargin.toFixed(1) + '%', color: [52, 152, 219] } // Blue
+            { label: 'Total Revenue', value: reportData.totalRevenue, color: [39, 174, 96] },
+            { label: 'Fuel Deductions (Net after 18% VAT Refund)', value: reportData.netFuelCost, color: [231, 76, 60] },
+            { label: 'Total Salary Deductions', value: reportData.totalStaffCost, color: [230, 126, 34] },
+            { label: 'Total Leasing Deductions', value: reportData.totalLeasingDeducted, color: [155, 89, 182] },
+            { label: 'Net Profit', value: reportData.netProfit, color: reportData.netProfit >= 0 ? [39, 174, 96] : [220, 20, 60] }
         ];
         
+        // Render as 2 columns, last item (Net Profit) spans full width
         const boxWidth = (contentWidth - 6) / 2;
         const boxHeight = 22;
-        let xPos = margin;
         let row = 0;
         
-        summaryData.forEach((item, index) => {
-            if (index % 2 === 0 && index > 0) {
-                row++;
-                xPos = margin;
+        for (let i = 0; i < summaryData.length; i++) {
+            const item = summaryData[i];
+            const isLastItem = (i === summaryData.length - 1);
+            const isLeftCol = (i % 2 === 0);
+            
+            let boxX, bw;
+            if (isLastItem && summaryData.length % 2 === 1) {
+                // Full width for the last (odd) item
+                boxX = margin;
+                bw = contentWidth;
+            } else {
+                boxX = isLeftCol ? margin : margin + boxWidth + 6;
+                bw = boxWidth;
+            }
+            
+            if (isLeftCol) {
+                row = Math.floor(i / 2);
             }
             
             const boxY = yPosition + (row * (boxHeight + 4));
             
-            // Draw clean white card background with soft border
+            // Card background
             doc.setFillColor(255, 255, 255);
-            doc.rect(xPos, boxY, boxWidth, boxHeight, 'F');
+            doc.rect(boxX, boxY, bw, boxHeight, 'F');
             doc.setDrawColor(220, 220, 220);
             doc.setLineWidth(0.3);
-            doc.rect(xPos, boxY, boxWidth, boxHeight, 'D');
+            doc.rect(boxX, boxY, bw, boxHeight, 'D');
             
             // Colored left border accent
             doc.setFillColor(item.color[0], item.color[1], item.color[2]);
-            doc.rect(xPos, boxY, 4, boxHeight, 'F');
+            doc.rect(boxX, boxY, 4, boxHeight, 'F');
             
             // Label
             doc.setTextColor(110, 110, 110);
             doc.setFontSize(8.5);
             doc.setFont('helvetica', 'bold');
-            doc.text(item.label, xPos + 8, boxY + 7);
+            doc.text(item.label, boxX + 8, boxY + 7);
             
             // Value
-            doc.setTextColor(30, 30, 30);
-            doc.setFontSize(12.5);
+            doc.setTextColor(item.color[0], item.color[1], item.color[2]);
+            doc.setFontSize(isLastItem ? 14 : 12.5);
             doc.setFont('helvetica', 'bold');
-            const valueText = typeof item.value === 'number' && item.label !== 'Net Profit Margin' 
-                ? `LKR ${item.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-                : item.value;
-            doc.text(valueText, xPos + 8, boxY + 16);
-            
-            xPos += boxWidth + 6;
-        });
-        
-        yPosition += (Math.ceil(summaryData.length / 2) * (boxHeight + 4)) + 12;
-        
-        // ==================== REVENUE SEGMENTS DETAIL ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Revenue Streams Detail', margin, yPosition);
-        yPosition += 8;
-        
-        const breakdownHeaders = ['Revenue Segment', 'Amount (LKR)'];
-        const breakdownColWidths = [120, 60];
-        const breakdownRows = [
-            ['Hire-to-Pay Revenue', { text: `LKR ${reportData.hireToPayRevenue.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Commitment Revenue (Ran Lorries Only)', { text: `LKR ${reportData.commitmentRevenue.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Other Operations (Ad-hoc Hires)', { text: `LKR ${reportData.otherOperationRevenue.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Add: Fuel Allowance (18.00% Fuel Refund)', { text: `LKR ${reportData.fuelAllowance.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', color: [39, 174, 96] }],
-            ['Less: Day Off Deductions (Ran Lorries Only)', { text: `- LKR ${reportData.dayOffDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', color: [220, 20, 60] }],
-            [{ text: 'Total Net Income (Revenue + Fuel Allowance)', bold: true, isTotal: true }, { text: `LKR ${(reportData.totalRevenue + reportData.fuelAllowance).toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true, color: [39, 174, 96] }]
-        ];
-        
-        yPosition = drawPDFTable(doc, yPosition, breakdownHeaders, breakdownColWidths, breakdownRows, 8);
-        yPosition += 12;
-
-        // ==================== OPERATING EXPENSES DETAIL ====================
-        checkNewPage(50);
-        doc.setFillColor(240, 240, 240);
-        drawSectionHeader(doc, 'Operating Expenses Detail', margin, yPosition);
-        yPosition += 8;
-        
-        const expenseHeaders = ['Expense Category', 'Amount (LKR)'];
-        const expenseColWidths = [120, 60];
-        const expenseRows = [
-            ['Total Fuel Cost (All Operations)', { text: `LKR ${reportData.totalFuelCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Staff Salaries (Gross - Paid Drivers / Helpers)', { text: `LKR ${reportData.totalGrossSalaries.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Unpaid Driver/Helper Advances (Not yet calculated in salary)', { text: `LKR ${reportData.totalUnpaidAdvances.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right' }],
-            ['Excessing Litres Actual Cost Deduction', { text: `- LKR ${reportData.excessingLitresActualCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', color: [220, 20, 60] }],
-            [{ text: 'Total Operating Expenses', bold: true, isTotal: true }, { text: `LKR ${reportData.totalExpenses.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true, color: [220, 20, 60] }]
-        ];
-        
-        yPosition = drawPDFTable(doc, yPosition, expenseHeaders, expenseColWidths, expenseRows, 8);
-        yPosition += 12;
-        
-        // ==================== HIRE-TO-PAY VEHICLES ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Hire-to-Pay Fleet Performance', margin, yPosition);
-        yPosition += 8;
-        
-        if (reportData.hireVehiclePerformance.length > 0) {
-            const hireHeaders = ['Vehicle No', 'Ownership', 'Distance', 'Revenue (LKR)', 'Fuel Cost (LKR)', 'Net Profit (LKR)'];
-            const hireColWidths = [30, 25, 25, 33, 33, 34];
-            
-            let tKm = 0, tRev = 0, tFuel = 0, tProf = 0;
-            const hireTableRows = reportData.hireVehiclePerformance.map(v => {
-                tKm += v.totalKm; tRev += v.revenue; tFuel += v.fuelCost; tProf += v.profit;
-                return [
-                    v.number,
-                    v.ownership,
-                    { text: `${v.totalKm.toFixed(0)} km`, align: 'right' },
-                    { text: v.revenue.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.fuelCost.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.profit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', color: v.profit >= 0 ? [39, 174, 96] : [220, 20, 60], bold: true }
-                ];
-            });
-            
-            hireTableRows.push([
-                { text: 'Total', bold: true, isTotal: true },
-                '',
-                { text: `${tKm.toFixed(0)} km`, align: 'right', bold: true },
-                { text: tRev.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tFuel.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tProf.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true, color: tProf >= 0 ? [39, 174, 96] : [220, 20, 60] }
-            ]);
-            
-            yPosition = drawPDFTable(doc, yPosition, hireHeaders, hireColWidths, hireTableRows, 8);
-        } else {
-            doc.setFontSize(9);
-            doc.setTextColor(120, 120, 120);
-            doc.text('No hire-to-pay vehicle records found for this period.', margin, yPosition + 4);
-            yPosition += 8;
+            doc.text(fmtLKR(item.value), boxX + 8, boxY + 16);
         }
         
-        yPosition += 12;
+        const totalRows = Math.ceil(summaryData.length / 2);
+        yPosition += (totalRows * (boxHeight + 4)) + 12;
         
-        // ==================== COMMITMENT VEHICLES ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Commitment Fleet Performance (Ran Lorries Only)', margin, yPosition);
-        yPosition += 8;
-        
-        if (reportData.commitmentVehiclePerformance.length > 0) {
-            const commitHeaders = ['Vehicle No', 'Distance', 'Revenue (LKR)', 'Fuel Cost (LKR)', 'Net Profit (LKR)'];
-            const commitColWidths = [45, 30, 35, 35, 35];
-            
-            let tKm = 0, tRev = 0, tFuel = 0, tProf = 0;
-            const commitTableRows = reportData.commitmentVehiclePerformance.map(v => {
-                tKm += v.totalKm; tRev += v.revenue; tFuel += v.fuelCost; tProf += v.profit;
-                return [
-                    v.number,
-                    { text: `${v.totalKm.toFixed(0)} km`, align: 'right' },
-                    { text: v.revenue.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.fuelCost.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.profit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', color: v.profit >= 0 ? [39, 174, 96] : [220, 20, 60], bold: true }
-                ];
-            });
-            
-            commitTableRows.push([
-                { text: 'Total', bold: true, isTotal: true },
-                { text: `${tKm.toFixed(0)} km`, align: 'right', bold: true },
-                { text: tRev.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tFuel.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tProf.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true, color: tProf >= 0 ? [39, 174, 96] : [220, 20, 60] }
-            ]);
-            
-            yPosition = drawPDFTable(doc, yPosition, commitHeaders, commitColWidths, commitTableRows, 8);
-        } else {
-            doc.setFontSize(9);
-            doc.setTextColor(120, 120, 120);
-            doc.text('No active commitment vehicle records found for this period.', margin, yPosition + 4);
-            yPosition += 8;
-        }
-        
-        yPosition += 12;
-
-        // ==================== IDLE / DID NOT RUN COMMITMENT VEHICLES ====================
-        checkNewPage(45);
-        drawSectionHeader(doc, 'Idle Commitment Vehicles (Did Not Run)', margin, yPosition);
-        yPosition += 8;
-        
-        if (reportData.idleCommitmentVehicles.length > 0) {
-            const idleHeaders = ['Vehicle No', 'Standard Fixed payment (LKR)', 'Monthly Status'];
-            const idleColWidths = [60, 60, 60];
-            const idleTableRows = reportData.idleCommitmentVehicles.map(v => [
-                v.vehicle_number,
-                { text: (v.fixed_monthly_payment || 0).toLocaleString(), align: 'right' },
-                { text: 'IDLE (0 Hires Recorded)', color: [220, 20, 60], bold: true }
-            ]);
-            
-            // Add note that no revenue was added for these vehicles
-            idleTableRows.push([
-                { text: 'Note: These vehicles did not run, so fixed monthly payments were excluded from revenue.', bold: true, isTotal: true },
-                '', ''
-            ]);
-
-            yPosition = drawPDFTable(doc, yPosition, idleHeaders, idleColWidths, idleTableRows, 8);
-        } else {
-            doc.setFontSize(9.5);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(39, 174, 96);
-            doc.text('✓ All active commitment vehicles were operational (ran hires) this month.', margin + 2, yPosition + 4);
-            yPosition += 10;
-        }
-        
-        yPosition += 12;
-        
-        // ==================== OTHER OPERATIONS VEHICLES ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Other Operations Fleet Performance', margin, yPosition);
-        yPosition += 8;
-        
-        if (reportData.otherVehiclePerformance.length > 0) {
-            const otherHeaders = ['Vehicle No', 'Distance', 'Revenue (LKR)', 'Fuel Cost (LKR)', 'Net Profit (LKR)'];
-            const otherColWidths = [45, 30, 35, 35, 35];
-            
-            let tKm = 0, tRev = 0, tFuel = 0, tProf = 0;
-            const otherTableRows = reportData.otherVehiclePerformance.map(v => {
-                tKm += v.totalKm; tRev += v.revenue; tFuel += v.fuelCost; tProf += v.profit;
-                return [
-                    v.number,
-                    { text: `${v.totalKm.toFixed(0)} km`, align: 'right' },
-                    { text: v.revenue.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.fuelCost.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: v.profit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', color: v.profit >= 0 ? [39, 174, 96] : [220, 20, 60], bold: true }
-                ];
-            });
-            
-            otherTableRows.push([
-                { text: 'Total', bold: true, isTotal: true },
-                { text: `${tKm.toFixed(0)} km`, align: 'right', bold: true },
-                { text: tRev.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tFuel.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: tProf.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true, color: tProf >= 0 ? [39, 174, 96] : [220, 20, 60] }
-            ]);
-            
-            yPosition = drawPDFTable(doc, yPosition, otherHeaders, otherColWidths, otherTableRows, 8);
-        } else {
-            doc.setFontSize(9);
-            doc.setTextColor(120, 120, 120);
-            doc.text('No other operation hires found for this period.', margin, yPosition + 4);
-            yPosition += 8;
-        }
-        
-        yPosition += 12;
-
-        // ==================== LORRY-BY-LORRY PURE PROFIT ====================
+        // ==================== INDIVIDUAL LORRY PERFORMANCE ====================
         checkNewPage(60);
-        drawSectionHeader(doc, 'Lorry-by-Lorry Pure Profit Analysis', margin, yPosition);
+        drawSectionHeader(doc, 'Individual Lorry Performance', margin, yPosition);
         yPosition += 5;
         
         // Subtitle note
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100, 100, 100);
-        doc.text('Fuel shown as net (82%) after 18% allowance refund. Driver salary deducted if assigned. Leasing deducted only if utilization > 30%.', margin + 2, yPosition + 3);
+        doc.text('Fuel = net 82% after 18% VAT refund. Leasing only if util > 30%. Salary: finalized or estimated (full salary - deductions).', margin + 2, yPosition + 3);
         yPosition += 8;
 
         if (reportData.lorryProfitBreakdown.length > 0) {
-            const lpHeaders = ['Lorry No.', 'Revenue (LKR)', 'Net Fuel 82% (LKR)', 'Driver Cost (LKR)', 'Leasing Inst. (LKR)', 'Util %', 'Pure Profit (LKR)'];
-            const lpColWidths = [27, 27, 27, 27, 28, 14, 30];
+            const lpHeaders = ['Lorry', 'Driver', 'Revenue', 'Fuel 82%', 'Salary', 'Leasing', 'Util %', 'Net Profit'];
+            //                   22       20       24         24         24        24         14        28  = 180mm
+            const lpColWidths = [22, 20, 24, 24, 24, 24, 14, 28];
 
-            let lpTotRev = 0, lpTotFuel = 0, lpTotDriver = 0, lpTotLease = 0, lpTotProfit = 0;
+            // Extract nickname: "RH Rajapaksha (Hasala)" → "Hasala", fallback to first name
+            function getShortName(fullName) {
+                if (!fullName) return '-';
+                const nickMatch = fullName.match(/\(([^)]+)\)/);
+                if (nickMatch) return nickMatch[1].trim();
+                // Fallback: return first name part only
+                const parts = fullName.trim().split(/\s+/);
+                return parts.length > 1 ? parts[1] : parts[0];
+            }
+
+            let lpTotRev = 0, lpTotFuel = 0, lpTotSalary = 0, lpTotLease = 0, lpTotProfit = 0;
             const lpRows = reportData.lorryProfitBreakdown.map(lp => {
                 lpTotRev += lp.revenue;
-                lpTotFuel += lp.effectiveFuelCost;
-                lpTotDriver += lp.driverCost;
+                lpTotFuel += lp.netFuelCost;
+                lpTotSalary += lp.driverCost;
                 lpTotLease += lp.leasingDeducted;
-                lpTotProfit += lp.pureProfit;
+                lpTotProfit += lp.netProfit;
                 const utilStr = lp.utilizationPct.toFixed(0) + '%';
                 const utilColor = lp.utilizationPct >= 30 ? [39, 174, 96] : [220, 20, 60];
                 return [
                     lp.lorryNumber,
+                    getShortName(lp.driverName),
                     { text: lp.revenue.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
-                    { text: lp.effectiveFuelCost.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
+                    { text: lp.netFuelCost.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right' },
                     { text: lp.driverCost > 0 ? lp.driverCost.toLocaleString(undefined, {maximumFractionDigits:0}) : '-', align: 'right', color: lp.driverCost > 0 ? [220, 20, 60] : [150,150,150] },
-                    { text: lp.leasingDeducted > 0 ? lp.leasingDeducted.toLocaleString(undefined, {maximumFractionDigits:0}) : (lp.leasingInstallment > 0 ? 'Skipped (Low Util)' : '-'), align: 'right', color: lp.leasingDeducted > 0 ? [220, 20, 60] : [150,150,150] },
+                    { text: lp.leasingDeducted > 0 ? lp.leasingDeducted.toLocaleString(undefined, {maximumFractionDigits:0}) : (lp.leasingInstallment > 0 ? 'Skip' : '-'), align: 'right', color: lp.leasingDeducted > 0 ? [220, 20, 60] : [150,150,150] },
                     { text: utilStr, align: 'right', color: utilColor, bold: lp.utilizationPct < 30 },
-                    { text: lp.pureProfit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', color: lp.pureProfit >= 0 ? [39, 174, 96] : [220, 20, 60], bold: true }
+                    { text: lp.netProfit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', color: lp.netProfit >= 0 ? [39, 174, 96] : [220, 20, 60], bold: true }
                 ];
             });
 
             lpRows.push([
                 { text: 'Total', bold: true, isTotal: true },
+                '',
                 { text: lpTotRev.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
                 { text: lpTotFuel.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
-                { text: lpTotDriver.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
+                { text: lpTotSalary.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
                 { text: lpTotLease.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true },
                 '',
                 { text: lpTotProfit.toLocaleString(undefined, {maximumFractionDigits:0}), align: 'right', bold: true, color: lpTotProfit >= 0 ? [39, 174, 96] : [220, 20, 60] }
@@ -515,79 +355,25 @@ async function generateMonthlyReport(monthValue) {
 
         yPosition += 12;
 
-        // ==================== EXCESSING LITRES DEDUCTION ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Excessing Litres Deduction', margin, yPosition);
+        // ==================== SIMPLE FINANCIAL SUMMARY TABLE ====================
+        checkNewPage(60);
+        drawSectionHeader(doc, 'Financial Breakdown', margin, yPosition);
         yPosition += 8;
 
-        if (reportData.excessingLitresRecords.length > 0) {
-            const elHeaders = ['Date', 'Fuel Price/L (LKR)', 'Fuel Amount (L)', 'Cost (LKR)', 'Actual Cost Deducted (LKR)'];
-            const elColWidths = [30, 40, 35, 40, 35];
-
-            const elRows = reportData.excessingLitresRecords.map(r => [
-                r.date,
-                { text: parseFloat(r.fuel_price_per_l).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right' },
-                { text: parseFloat(r.fuel_amount_l).toFixed(2) + ' L', align: 'right' },
-                { text: parseFloat(r.cost).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right' },
-                { text: parseFloat(r.actual_cost).toLocaleString(undefined, {minimumFractionDigits:2}), align: 'right', color: [220, 20, 60], bold: true }
-            ]);
-
-            elRows.push([
-                { text: 'Total Deduction', bold: true, isTotal: true },
-                '',
-                '',
-                { text: `LKR ${reportData.excessingLitresCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true },
-                { text: `- LKR ${reportData.excessingLitresActualCost.toLocaleString(undefined, {minimumFractionDigits:2})}`, align: 'right', bold: true, color: [220, 20, 60] }
-            ]);
-
-            yPosition = drawPDFTable(doc, yPosition, elHeaders, elColWidths, elRows, 8);
-        } else {
-            doc.setFontSize(9);
-            doc.setTextColor(120, 120, 120);
-            doc.text('No excessing litres records found for this period.', margin, yPosition + 4);
-            yPosition += 8;
-        }
-
-        yPosition += 12;
-        
-        // ==================== OPERATIONAL STATISTICS ====================
-        checkNewPage(50);
-        drawSectionHeader(doc, 'Operational Summary Statistics', margin, yPosition);
-        yPosition += 8;
-        
-        const stats = [
-            { label: 'Total Hire-to-Pay Jobs Completed', value: reportData.hireToPayCount },
-            { label: 'Total Commitment Trips Completed', value: reportData.commitmentCount },
-            { label: 'Total Day-Off Deductions Registered', value: reportData.dayOffCount },
-            { label: 'Total Operational Distance Covered', value: `${reportData.totalDistance.toLocaleString()} km` },
-            { label: 'Average Revenue per Transport Hire', value: `LKR ${reportData.avgRevenuePerHire.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` },
-            { label: 'Driver Salary Advances Paid Out (Total)', value: `LKR ${reportData.driverAdvancesTotalSum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` },
-            { label: 'Total Driver Salaries Paid Out (Gross)', value: `LKR ${reportData.totalGrossSalaries.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` }
+        const finHeaders = ['Description', 'Amount (LKR)'];
+        const finColWidths = [120, 60];
+        const finRows = [
+            ['Total Revenue', { text: fmtLKR(reportData.totalRevenue), align: 'right', color: [39, 174, 96], bold: true }],
+            ['Less: Gross Fuel Cost', { text: `- ${fmtLKR(reportData.totalFuelCost)}`, align: 'right', color: [220, 20, 60] }],
+            ['Add: 18% VAT Fuel Refund', { text: `+ ${fmtLKR(reportData.fuelVATRefund)}`, align: 'right', color: [39, 174, 96] }],
+            ['Net Fuel Deduction (82%)', { text: `- ${fmtLKR(reportData.netFuelCost)}`, align: 'right', color: [220, 20, 60], bold: true }],
+            ['Less: Salary Deductions', { text: `- ${fmtLKR(reportData.totalStaffCost)}`, align: 'right', color: [220, 20, 60] }],
+            ['Less: Leasing Deductions (Util > 30% Only)', { text: `- ${fmtLKR(reportData.totalLeasingDeducted)}`, align: 'right', color: [220, 20, 60] }],
+            [{ text: 'Net Profit', bold: true, isTotal: true }, { text: fmtLKR(reportData.netProfit), align: 'right', bold: true, color: reportData.netProfit >= 0 ? [39, 174, 96] : [220, 20, 60] }]
         ];
-        
-        doc.setFillColor(255, 255, 255);
-        doc.rect(margin, yPosition, contentWidth, stats.length * 7.5, 'F');
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.3);
-        doc.rect(margin, yPosition, contentWidth, stats.length * 7.5, 'D');
-        
-        stats.forEach((item, index) => {
-            const statY = yPosition + (index * 7.5);
-            if (index > 0) {
-                doc.setDrawColor(240, 240, 240);
-                doc.line(margin, statY, margin + contentWidth, statY);
-            }
-            doc.setFontSize(8.5);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(80, 80, 80);
-            doc.text(item.label, margin + 4, statY + 5);
-            
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 30, 30);
-            doc.text(item.value.toString(), pageWidth - margin - 4, statY + 5, { align: 'right' });
-        });
-        
-        yPosition += (stats.length * 7.5) + 12;
+
+        yPosition = drawPDFTable(doc, yPosition, finHeaders, finColWidths, finRows, 9);
+        yPosition += 12;
         
         // ==================== FOOTER RENDERER ====================
         const totalPages = doc.internal.getNumberOfPages();
@@ -602,15 +388,12 @@ async function generateMonthlyReport(monthValue) {
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
             
-            // Footer bottom background bar
-            doc.setFillColor(220, 20, 60); // Brand Crimson
+            doc.setFillColor(220, 20, 60);
             doc.rect(0, pageHeight - 14, pageWidth, 14, 'F');
             
-            // Thin boundary accent line above the bottom bar
-            doc.setFillColor(44, 62, 80); // Secondary Slate Accent
+            doc.setFillColor(44, 62, 80);
             doc.rect(0, pageHeight - 15, pageWidth, 1, 'F');
             
-            // Footer text
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(7.5);
             doc.setFont('helvetica', 'bold');
@@ -635,7 +418,7 @@ async function generateMonthlyReport(monthValue) {
     }
 }
 
-// Fetch all data from Supabase
+// Fetch all data from Supabase - Simplified
 async function fetchReportData(startDate, endDate) {
     const userId = getQueryUserId();
     const startMonth = startDate.substring(0, 7);
@@ -658,7 +441,7 @@ async function fetchReportData(startDate, endDate) {
         .lte('hire_date', endDate);
     if (crErr) throw crErr;
     
-    // 3. Fetch day offs (Commitment vehicle day offs)
+    // 3. Fetch day offs
     const { data: dayOffs, error: doErr } = await supabaseClient
         .from('commitment_day_offs')
         .select('*')
@@ -692,7 +475,7 @@ async function fetchReportData(startDate, endDate) {
         .eq('user_id', userId);
     if (cvErr) throw cvErr;
 
-    // 7. Fetch driver salary records for the selected month to deduct
+    // 7. Fetch driver salary records (finalized)
     const { data: salaryRecords, error: sErr } = await supabaseClient
         .from('driver_salary')
         .select('driver_id, net_salary, gross_salary')
@@ -700,16 +483,7 @@ async function fetchReportData(startDate, endDate) {
         .eq('salary_month', startMonth);
     if (sErr) throw sErr;
 
-    // 8. Fetch excessing litres actual cost for the month
-    const { data: elRecords, error: elErr } = await supabaseClient
-        .from('excessing_litres')
-        .select('actual_cost, fuel_price_per_l, fuel_amount_l, cost, date')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', endDate);
-    if (elErr) throw elErr;
-
-    // 9. Fetch leasing vehicles (active leases only, not settled)
+    // 8. Fetch leasing vehicles (active leases only)
     const { data: leasingVehicles, error: lvErr } = await supabaseClient
         .from('leasing_vehicles')
         .select('vehicle_number, installment_amount, entry_type, settled')
@@ -718,107 +492,92 @@ async function fetchReportData(startDate, endDate) {
         .neq('settled', true);
     if (lvErr) throw lvErr;
 
-    // 10. Fetch staff lorry assignments (driver assigned to each lorry)
+    // 9. Fetch staff lorry assignments
     const { data: staffAssignments, error: saErr } = await supabaseClient
         .from('staff_lorry_assignments')
         .select('driver_id, lorry_number, driver_role')
         .eq('user_id', userId);
     if (saErr) throw saErr;
 
-    // 11. Fetch all drivers (to get their salary info for cross-reference)
+    // 10. Fetch all drivers (with salary fields for estimation)
     const { data: allDrivers, error: drErr } = await supabaseClient
         .from('drivers')
-        .select('id, name, terminated')
+        .select('id, name, terminated, basic_salary, km_limit, extra_km_rate, salary_type, per_tip_charge, role')
         .eq('user_id', userId);
     if (drErr) throw drErr;
 
-    const excessingLitresActualCost = elRecords?.reduce((sum, r) => sum + (r.actual_cost || 0), 0) || 0;
-    const excessingLitresCost = elRecords?.reduce((sum, r) => sum + (r.cost || 0), 0) || 0;
-    const excessingLitresCount = elRecords?.length || 0;
+    // 11. Fetch driver KM records for salary estimation
+    const { data: driverKmRecords, error: kmErr } = await supabaseClient
+        .from('driver_km_records')
+        .select('driver_id, km_amount')
+        .eq('user_id', userId)
+        .gte('record_date', startDate)
+        .lte('record_date', endDate);
+    if (kmErr) throw kmErr;
+
+    // 12. Fetch staff deductions for salary estimation
+    const { data: staffDeductions, error: sdErr } = await supabaseClient
+        .from('staff_deductions')
+        .select('driver_id, amount')
+        .eq('user_id', userId)
+        .eq('salary_month', startMonth);
+    if (sdErr) throw sdErr;
+
+    // 13. Fetch driver day-off deductions for salary estimation
+    const { data: driverDayOffs, error: ddErr } = await supabaseClient
+        .from('driver_day_offs')
+        .select('driver_id, deduction_amount')
+        .eq('user_id', userId)
+        .gte('day_off_date', startDate)
+        .lte('day_off_date', endDate);
+    if (ddErr) throw ddErr;
+
+    // === Calculate Revenue ===
     
-    // Filtering commitment vehicles that actually ran during the month
+    // Commitment vehicles that ran
     const ranCommitmentVehicleIds = new Set(commitmentRecords?.map(r => r.vehicle_id));
-    
-    // Commitment vehicles that actually ran during the month
     const ranCommitmentVehicles = (commitmentVehicles || []).filter(v => ranCommitmentVehicleIds.has(v.id));
 
-    // Commitment vehicles that are active but did NOT run
-    const idleCommitmentVehicles = (commitmentVehicles || []).filter(v => !v.terminated && !ranCommitmentVehicleIds.has(v.id));
-    
-    // Calculate hire-to-pay metrics
-    let hireRevenue = 0;
-    let hireFuelCost = 0;
-    let hireDistance = 0;
-    const hireVehicleMap = new Map();
-    
+    // Hire-to-pay revenue & fuel
+    let hireRevenue = 0, hireFuelCost = 0;
     hireRecords?.forEach(record => {
         hireRevenue += record.hire_amount || 0;
         hireFuelCost += record.fuel_cost || 0;
-        hireDistance += record.distance || 0;
-        
-        const vehicleId = record.vehicle_id;
-        if (!hireVehicleMap.has(vehicleId)) {
-            hireVehicleMap.set(vehicleId, {
-                number: record.hire_to_pay_vehicles?.lorry_number || 'Unknown',
-                ownership: record.hire_to_pay_vehicles?.ownership === 'company' ? 'Company' : 'Rented',
-                totalKm: 0,
-                revenue: 0,
-                fuelCost: 0,
-                profit: 0
-            });
-        }
-        
-        const vehicle = hireVehicleMap.get(vehicleId);
-        vehicle.totalKm += record.distance || 0;
-        vehicle.revenue += record.hire_amount || 0;
-        vehicle.fuelCost += record.fuel_cost || 0;
-        vehicle.profit = vehicle.revenue - vehicle.fuelCost;
     });
+
+    // Commitment revenue & fuel
+    let commitmentBaseRevenue = 0, commitmentFuelCost = 0;
+    let dayOffDeductions = 0, extraKmCharges = 0;
     
-    // Calculate commitment metrics (using only ran commitment vehicles)
-    let commitmentBaseRevenue = 0;
-    let commitmentFuelCost = 0;
-    let commitmentDistance = 0;
-    let extraKmCharges = 0;
-    let dayOffDeductions = 0;
     const commitmentVehicleMap = new Map();
-    
     ranCommitmentVehicles.forEach(vehicle => {
         commitmentBaseRevenue += vehicle.fixed_monthly_payment || 0;
-        
         commitmentVehicleMap.set(vehicle.id, {
             number: vehicle.vehicle_number,
             totalKm: 0,
             revenue: vehicle.fixed_monthly_payment || 0,
-            fuelCost: 0,
-            profit: vehicle.fixed_monthly_payment || 0,
-            fixedPayment: vehicle.fixed_monthly_payment || 0,
             kmLimit: vehicle.km_limit_per_month || 0,
             extraKmRate: vehicle.extra_km_charge || 0
         });
     });
-    
+
     dayOffs?.forEach(dayOff => {
         if (commitmentVehicleMap.has(dayOff.vehicle_id)) {
             dayOffDeductions += dayOff.deduction_amount || 0;
             const vData = commitmentVehicleMap.get(dayOff.vehicle_id);
             vData.revenue -= dayOff.deduction_amount || 0;
-            vData.profit -= dayOff.deduction_amount || 0;
-        }
-    });
-    
-    commitmentRecords?.forEach(record => {
-        commitmentFuelCost += record.fuel_cost || 0;
-        commitmentDistance += record.distance || 0;
-        
-        if (commitmentVehicleMap.has(record.vehicle_id)) {
-            const vData = commitmentVehicleMap.get(record.vehicle_id);
-            vData.totalKm += record.distance || 0;
-            vData.fuelCost += record.fuel_cost || 0;
         }
     });
 
-    // Compute extra KM charges at the vehicle level and add to revenue/extraKmCharges
+    commitmentRecords?.forEach(record => {
+        commitmentFuelCost += record.fuel_cost || 0;
+        if (commitmentVehicleMap.has(record.vehicle_id)) {
+            const vData = commitmentVehicleMap.get(record.vehicle_id);
+            vData.totalKm += record.distance || 0;
+        }
+    });
+
+    // Extra KM charges
     ranCommitmentVehicles.forEach(vehicle => {
         if (commitmentVehicleMap.has(vehicle.id)) {
             const vData = commitmentVehicleMap.get(vehicle.id);
@@ -826,74 +585,112 @@ async function fetchReportData(startDate, endDate) {
             const extraChg = excKm * vData.extraKmRate;
             extraKmCharges += extraChg;
             vData.revenue += extraChg;
-            vData.profit = vData.revenue - vData.fuelCost;
         }
     });
-    
-    // Calculate other operation metrics & vehicle map
-    let otherOpRevenue = 0;
-    let otherOpFuelCost = 0;
-    let otherOpDistance = 0;
-    const otherVehicleMap = new Map();
-    
+
+    // Other operations revenue & fuel
+    let otherOpRevenue = 0, otherOpFuelCost = 0;
     otherOpHires?.forEach(record => {
         otherOpRevenue += record.hire_amount || 0;
         otherOpFuelCost += record.fuel_cost || 0;
-        otherOpDistance += record.distance || 0;
-        
-        const baseName = record.base_lorry_number || 'Other';
-        if (!otherVehicleMap.has(baseName)) {
-            otherVehicleMap.set(baseName, {
-                number: baseName,
-                totalKm: 0,
-                revenue: 0,
-                fuelCost: 0,
-                profit: 0
-            });
-        }
-        
-        const vData = otherVehicleMap.get(baseName);
-        vData.totalKm += record.distance || 0;
-        vData.revenue += record.hire_amount || 0;
-        vData.fuelCost += record.fuel_cost || 0;
-        vData.profit = vData.revenue - vData.fuelCost;
     });
 
-    // Business Expenses & Salaries Rules:
-    // If a driver's salary is calculated, advances are already deducted inside their Net Salary.
-    // Outlay for paid driver = Gross Salary = Net Salary + Advances + Other Deductions
-    // Outlay for unpaid driver = Advances given during the month.
-    const salaryDriverIds = new Set(salaryRecords?.map(r => r.driver_id) || []);
-    
-    const totalGrossSalaries = salaryRecords?.reduce((sum, r) => sum + (r.gross_salary || 0), 0) || 0;
-    
-    // We sum advances only for drivers who do NOT have salary records
-    const totalUnpaidAdvances = driverAdvances?.filter(a => !salaryDriverIds.has(a.driver_id)).reduce((sum, a) => sum + (a.amount || 0), 0) || 0;
-    
-    const totalStaffCost = totalGrossSalaries + totalUnpaidAdvances;
-    
-    // Fetch total sum of all advances given in the month (for display statistics only)
-    const driverAdvancesTotalSum = driverAdvances?.reduce((sum, a) => sum + (a.amount || 0), 0) || 0;
-
+    // === Total Revenue & Fuel ===
     const totalRevenue = hireRevenue + commitmentBaseRevenue - dayOffDeductions + extraKmCharges + otherOpRevenue;
     const totalFuelCost = hireFuelCost + commitmentFuelCost + otherOpFuelCost;
+    const fuelVATRefund = totalFuelCost * 0.18;  // 18% VAT refund on fuel
+    const netFuelCost = totalFuelCost * 0.82;    // Effective fuel cost after 18% VAT refund
+
+    // === Salary Calculations ===
+    // Build finalized salary map: driver_id -> gross_salary
+    const finalizedSalaryMap = new Map();
+    (salaryRecords || []).forEach(s => {
+        finalizedSalaryMap.set(s.driver_id, s.gross_salary || 0);
+    });
+
+    // Build driver info map: driver_id -> driver object
+    const driverInfoMap = new Map();
+    (allDrivers || []).forEach(d => {
+        driverInfoMap.set(d.id, d);
+    });
+
+    // Build KM per driver map for salary estimation
+    const kmByDriverMap = new Map();
+    (driverKmRecords || []).forEach(r => {
+        const prev = kmByDriverMap.get(r.driver_id) || 0;
+        kmByDriverMap.set(r.driver_id, prev + parseFloat(r.km_amount || 0));
+    });
+
+    // Build staff deductions per driver map
+    const staffDedByDriver = new Map();
+    (staffDeductions || []).forEach(d => {
+        const prev = staffDedByDriver.get(d.driver_id) || 0;
+        staffDedByDriver.set(d.driver_id, prev + (d.amount || 0));
+    });
+
+    // Build day-off deductions per driver map
+    const dayOffDedByDriver = new Map();
+    (driverDayOffs || []).forEach(d => {
+        const prev = dayOffDedByDriver.get(d.driver_id) || 0;
+        dayOffDedByDriver.set(d.driver_id, prev + (d.deduction_amount || 0));
+    });
+
+    /**
+     * Get salary cost for a driver:
+     * - If finalized salary exists: use gross_salary
+     * - If not finalized: estimate as (basic_salary + extra_km_salary) - staff_deductions - day_off_deductions
+     *   NO advances deducted.
+     */
+    function getDriverSalaryCost(driverId) {
+        // Check if salary is finalized
+        if (finalizedSalaryMap.has(driverId)) {
+            return finalizedSalaryMap.get(driverId);
+        }
+
+        // Not finalized - estimate
+        const driver = driverInfoMap.get(driverId);
+        if (!driver) return 0;
+
+        const isHelper = (driver.role || '').toLowerCase() === 'helper';
+        const isPerTip = driver.salary_type === 'per_tip';
+
+        let grossSalary = 0;
+        if (isPerTip) {
+            // Per-tip drivers can't be estimated without tip count, skip
+            return 0;
+        } else {
+            const basicSalary = driver.basic_salary || 0;
+            const kmLimit = driver.km_limit || 0;
+            const extraKmRate = driver.extra_km_rate || 0;
+            const totalKm = kmByDriverMap.get(driverId) || 0;
+
+            let extraKmSalary = 0;
+            if (!isHelper && totalKm > kmLimit) {
+                extraKmSalary = (totalKm - kmLimit) * extraKmRate;
+            }
+            grossSalary = basicSalary + extraKmSalary;
+        }
+
+        // Deduct staff deductions and day-off deductions (NOT advances)
+        const deductions = (staffDedByDriver.get(driverId) || 0) + (dayOffDedByDriver.get(driverId) || 0);
+        return Math.max(0, grossSalary - deductions);
+    }
+
+    // Calculate total staff cost across ALL assigned drivers
+    // We'll compute per-lorry costs in the lorry loop and also compute a global total
+    const allAssignedDriverIds = new Set();
+    (staffAssignments || []).forEach(a => {
+        if (a.driver_id) allAssignedDriverIds.add(a.driver_id);
+    });
+
+    let totalStaffCost = 0;
+    allAssignedDriverIds.forEach(driverId => {
+        totalStaffCost += getDriverSalaryCost(driverId);
+    });
+
+    // === Lorry-by-Lorry Breakdown with Leasing ===
     
-    // Fuel Allowance = 18% of total Fuel Cost
-    const fuelAllowance = totalFuelCost * 0.18;
-
-    // Total Expenses includes Fuel Cost + total staff costs + excessing litres actual cost
-    const totalExpenses = totalFuelCost + totalStaffCost + excessingLitresActualCost;
-
-    // Net Profit = Revenue + Fuel Allowance - Expenses (which now includes EL deduction)
-    const netProfit = (totalRevenue + fuelAllowance) - totalExpenses;
-    
-    const totalHires = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpHires?.length || 0);
-    const totalDistance = hireDistance + commitmentDistance + otherOpDistance;
-    const avgRevenuePerHire = totalHires > 0 ? totalRevenue / totalHires : 0;
-    const profitMargin = (totalRevenue + fuelAllowance) > 0 ? (netProfit / (totalRevenue + fuelAllowance)) * 100 : 0;
-
-    // ── Lorry-by-Lorry Pure Profit Calculation ──────────────────────────
-    // Build leasing map: normalised vehicle key -> installment_amount
+    // Build leasing map
     const leasingMap = new Map();
     (leasingVehicles || []).forEach(lv => {
         if (lv.vehicle_number) {
@@ -901,7 +698,7 @@ async function fetchReportData(startDate, endDate) {
         }
     });
 
-    // Build driver assignment map: normalised lorry key -> driver_id (role = 'driver' only)
+    // Build driver assignment map: lorry key -> driver_id (role = 'driver' only)
     const lorryDriverMap = new Map();
     (staffAssignments || []).forEach(a => {
         if ((a.driver_role || '').toLowerCase() === 'driver' && a.lorry_number) {
@@ -909,36 +706,27 @@ async function fetchReportData(startDate, endDate) {
         }
     });
 
-    // Build salary map: driver_id -> gross_salary
-    const driverSalaryMap = new Map();
-    (salaryRecords || []).forEach(s => {
-        driverSalaryMap.set(s.driver_id, s.gross_salary || 0);
-    });
-
-    // Total days in the report month
+    // Total days in month
     const totalDaysInMonth = new Date(
         parseInt(startDate.substring(0, 4)),
         parseInt(startDate.substring(5, 7)),
         0
     ).getDate();
 
-    // Build per-lorry aggregated data from all operation types.
-    // Key = normalised vehicle key (e.g. "lp - 9262") so formats like
-    // "LP-9262", "LP - 9262", "WP LP-9262" all collapse to the same entry.
-    const lorryAggMap = new Map(); // normKey -> { lorryNumber, revenue, fuelCost, hireDates }
+    // Aggregate all lorry data
+    const lorryAggMap = new Map();
 
     function getOrCreateLorryAgg(lorryNumber) {
         const key = normaliseVehicleKey(lorryNumber);
         const cleanDisplay = normaliseVehicleDisplay(lorryNumber);
         if (!lorryAggMap.has(key)) {
             lorryAggMap.set(key, {
-                lorryNumber: cleanDisplay,  // always use the canonical display name
+                lorryNumber: cleanDisplay,
                 revenue: 0,
                 fuelCost: 0,
                 hireDates: new Set()
             });
         } else {
-            // If we get a new name that is shorter (cleaner), prefer it as the display
             const existing = lorryAggMap.get(key);
             if (cleanDisplay.length < existing.lorryNumber.length) {
                 existing.lorryNumber = cleanDisplay;
@@ -947,7 +735,7 @@ async function fetchReportData(startDate, endDate) {
         return lorryAggMap.get(key);
     }
 
-    // Aggregate hire-to-pay records
+    // Aggregate hire-to-pay
     hireRecords?.forEach(record => {
         const lorryNum = record.hire_to_pay_vehicles?.lorry_number || 'Unknown';
         const agg = getOrCreateLorryAgg(lorryNum);
@@ -956,24 +744,21 @@ async function fetchReportData(startDate, endDate) {
         if (record.hire_date) agg.hireDates.add(record.hire_date);
     });
 
-    // Aggregate commitment records
+    // Aggregate commitment
     commitmentRecords?.forEach(record => {
         const lorryNum = record.commitment_vehicles?.vehicle_number || 'Unknown';
         const agg = getOrCreateLorryAgg(lorryNum);
-        // Revenue for commitment vehicles is from the vehicle map (already computed)
-        // We only add fuel cost here; revenue will be patched from commitmentVehicleMap below
         agg.fuelCost += record.fuel_cost || 0;
         if (record.hire_date) agg.hireDates.add(record.hire_date);
     });
 
-    // Patch commitment vehicle revenue into the lorry agg map
+    // Patch commitment vehicle revenue
     commitmentVehicleMap.forEach((vData) => {
         const agg = getOrCreateLorryAgg(vData.number);
         agg.revenue += vData.revenue;
-        // fuelCost already accumulated above from records, don't double-add
     });
 
-    // Aggregate other operation hires
+    // Aggregate other operations
     otherOpHires?.forEach(record => {
         const lorryNum = record.base_lorry_number || 'Other';
         const agg = getOrCreateLorryAgg(lorryNum);
@@ -982,75 +767,61 @@ async function fetchReportData(startDate, endDate) {
         if (record.hire_date) agg.hireDates.add(record.hire_date);
     });
 
-    // Now compute pure profit for each lorry
+    // Compute per-lorry profit
     const lorryProfitBreakdown = [];
+    let totalLeasingDeducted = 0;
+
     lorryAggMap.forEach((agg, normKey) => {
         const utilizationPct = totalDaysInMonth > 0 ? (agg.hireDates.size / totalDaysInMonth) * 100 : 0;
         const highUtilization = utilizationPct > 30;
 
-        // Effective fuel cost = fuelCost * 0.82 (company gets 18% fuel allowance refund)
-        const effectiveFuelCost = agg.fuelCost * 0.82;
-
-        // Leasing installment: only deduct if utilization > 30%
+        // Leasing: only deduct if utilization > 30%
         const leasingInstallment = leasingMap.get(normKey) || 0;
         const leasingDeducted = highUtilization ? leasingInstallment : 0;
+        totalLeasingDeducted += leasingDeducted;
 
-        // Driver salary: deduct if there is an assigned driver with a salary record
+        // Driver salary (finalized or estimated)
         const assignedDriverId = lorryDriverMap.get(normKey);
-        const driverCost = assignedDriverId ? (driverSalaryMap.get(assignedDriverId) || 0) : 0;
+        const driverCost = assignedDriverId ? getDriverSalaryCost(assignedDriverId) : 0;
+        
+        // Driver name lookup
+        const assignedDriver = assignedDriverId ? driverInfoMap.get(assignedDriverId) : null;
+        const driverName = assignedDriver ? assignedDriver.name : '';
 
-        const pureProfit = agg.revenue - effectiveFuelCost - driverCost - leasingDeducted;
+        // Effective fuel cost = 82% (after 18% VAT refund)
+        const lorryNetFuel = agg.fuelCost * 0.82;
+        const netProfit = agg.revenue - lorryNetFuel - driverCost - leasingDeducted;
 
         lorryProfitBreakdown.push({
             lorryNumber: agg.lorryNumber,
+            driverName,
             revenue: agg.revenue,
             fuelCost: agg.fuelCost,
-            effectiveFuelCost,
+            netFuelCost: lorryNetFuel,
             driverCost,
             leasingInstallment,
             leasingDeducted,
             utilizationPct,
             utilizationDays: agg.hireDates.size,
             totalDays: totalDaysInMonth,
-            pureProfit
+            netProfit
         });
     });
 
-    // Sort by pure profit descending
-    lorryProfitBreakdown.sort((a, b) => b.pureProfit - a.pureProfit);
-    
+    // Sort by net profit descending
+    lorryProfitBreakdown.sort((a, b) => b.netProfit - a.netProfit);
+
+    // === Net Profit (Revenue - Net Fuel 82% - Salary - Leasing) ===
+    const netProfit = totalRevenue - netFuelCost - totalStaffCost - totalLeasingDeducted;
+
     return {
         totalRevenue,
         totalFuelCost,
-        totalGrossSalaries,
-        totalUnpaidAdvances,
+        fuelVATRefund,
+        netFuelCost,
         totalStaffCost,
-        driverAdvancesTotalSum,
-        totalExpenses,
-        fuelAllowance,
+        totalLeasingDeducted,
         netProfit,
-        totalHires,
-        hireRevenue,
-        commitmentBaseRevenue,
-        extraKmCharges,
-        dayOffDeductions,
-        excessingLitresActualCost,
-        excessingLitresCost,
-        excessingLitresCount,
-        excessingLitresRecords: elRecords || [],
-        hireToPayCount: hireRecords?.length || 0,
-        commitmentCount: commitmentRecords?.length || 0,
-        dayOffCount: dayOffs?.length || 0,
-        totalDistance,
-        avgRevenuePerHire,
-        profitMargin,
-        hireToPayRevenue: hireRevenue,
-        commitmentRevenue: commitmentBaseRevenue - dayOffDeductions + extraKmCharges,
-        otherOperationRevenue: otherOpRevenue,
-        hireVehiclePerformance: Array.from(hireVehicleMap.values()),
-        commitmentVehiclePerformance: Array.from(commitmentVehicleMap.values()),
-        otherVehiclePerformance: Array.from(otherVehicleMap.values()),
-        idleCommitmentVehicles,
         lorryProfitBreakdown
     };
 }
