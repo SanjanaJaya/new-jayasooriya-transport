@@ -1961,9 +1961,9 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
     // --- DUPLICATE JOB NUMBER CHECK ---
     const _jobNum = document.getElementById('jobNumber')?.value?.trim();
     if (_jobNum && typeof isJobNumberDuplicate === 'function') {
-        const _isDup = await isJobNumberDuplicate(_jobNum, id ? 'hire_to_pay_records' : null, id ? parseInt(id) : null);
+        const _isDup = await isJobNumberDuplicate(_jobNum, 'hire_to_pay_records', id ? parseInt(id) : null);
         if (_isDup) {
-            showToast(`Job Number "${_jobNum}" already exists! Please use a unique Job Number.`, 'error', 5000);
+            showToast(`Job Number "${_jobNum}" already exists in Hire to Pay! Please use a unique Job Number.`, 'error', 5000);
             const _jInput = document.getElementById('jobNumber');
             if (_jInput) { _jInput.focus(); _jInput.style.borderColor = '#e74c3c'; _jInput.style.boxShadow = '0 0 0 3px rgba(231,76,60,0.2)'; setTimeout(() => { _jInput.style.borderColor = ''; _jInput.style.boxShadow = ''; }, 3000); }
             return;
@@ -2938,9 +2938,9 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
     // --- DUPLICATE JOB NUMBER CHECK ---
     const _cJobNum = document.getElementById('commitmentJobNumber')?.value?.trim();
     if (_cJobNum && typeof isJobNumberDuplicate === 'function') {
-        const _cIsDup = await isJobNumberDuplicate(_cJobNum, id ? 'commitment_records' : null, id ? parseInt(id) : null);
+        const _cIsDup = await isJobNumberDuplicate(_cJobNum, 'commitment_records', id ? parseInt(id) : null);
         if (_cIsDup) {
-            showToast(`Job Number "${_cJobNum}" already exists! Please use a unique Job Number.`, 'error', 5000);
+            showToast(`Job Number "${_cJobNum}" already exists in Commitment Records! Please use a unique Job Number.`, 'error', 5000);
             const _cjInput = document.getElementById('commitmentJobNumber');
             if (_cjInput) { _cjInput.focus(); _cjInput.style.borderColor = '#e74c3c'; _cjInput.style.boxShadow = '0 0 0 3px rgba(231,76,60,0.2)'; setTimeout(() => { _cjInput.style.borderColor = ''; _cjInput.style.boxShadow = ''; }, 3000); }
             return;
@@ -14278,40 +14278,30 @@ async function getNextJobNumber(section = 'hire') {
 }
 
 /**
- * Check if a job number already exists in hire_to_pay_records or commitment_records.
+ * Check if a job number already exists in a specific table/section (e.g., hire_to_pay_records or commitment_records).
+ * Each section maintains its job numbers independently.
  * Optionally exclude a specific record ID when editing.
  */
-async function isJobNumberDuplicate(jobNumber, excludeTable = null, excludeId = null) {
+async function isJobNumberDuplicate(jobNumber, targetTable = 'hire_to_pay_records', excludeId = null) {
     try {
         const uid = getQueryUserId();
         if (!uid || !jobNumber) return false;
 
-        // Check hire_to_pay_records
-        let hireQuery = supabaseClient
-            .from('hire_to_pay_records')
+        const table = targetTable || 'hire_to_pay_records';
+        let query = supabaseClient
+            .from(table)
             .select('id')
             .eq('user_id', uid)
             .eq('job_number', jobNumber);
-        if (excludeTable === 'hire_to_pay_records' && excludeId) {
-            hireQuery = hireQuery.neq('id', excludeId);
+
+        if (excludeId) {
+            query = query.neq('id', excludeId);
         }
 
-        // Check commitment_records
-        let commitQuery = supabaseClient
-            .from('commitment_records')
-            .select('id')
-            .eq('user_id', uid)
-            .eq('job_number', jobNumber);
-        if (excludeTable === 'commitment_records' && excludeId) {
-            commitQuery = commitQuery.neq('id', excludeId);
-        }
+        const { data, error } = await query;
+        if (error) throw error;
 
-        const [hireResult, commitResult] = await Promise.all([hireQuery, commitQuery]);
-
-        if (hireResult.data && hireResult.data.length > 0) return true;
-        if (commitResult.data && commitResult.data.length > 0) return true;
-
-        return false;
+        return data && data.length > 0;
     } catch (error) {
         console.error('Error checking duplicate job number:', error);
         return false; // Fail open to not block saves
