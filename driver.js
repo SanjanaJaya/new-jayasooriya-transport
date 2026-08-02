@@ -18,6 +18,22 @@ let isOnline = true;
 let distributorsList = [];
 let locationWatchId = null; // Geolocation watcher ID
 
+// ============ OPERATION LOGOS CONFIGURATION ============
+const OPERATION_CONFIG = {
+    kevilton: {
+        name: 'Kevilton',
+        logoUrl: 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png',
+        badgeClass: 'op-kevilton',
+        color: '#D1001F'
+    },
+    pelwatte: {
+        name: 'Pelwatte',
+        logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg',
+        badgeClass: 'op-pelwatte',
+        color: '#00B37E'
+    }
+};
+
 // ============ LANGUAGE / TRANSLATIONS ============
 const TRANSLATIONS = {
     en: {
@@ -192,9 +208,45 @@ function t(key) {
         || key;
 }
 
+// Safe localStorage wrapper for browsers with Tracking Prevention or storage restrictions
+const inMemoryStorage = {};
+
+function safeStorageGet(key) {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            return localStorage.getItem(key);
+        }
+    } catch (e) {
+        console.warn('localStorage getItem blocked by browser tracking prevention:', e.message);
+    }
+    return inMemoryStorage[key] || null;
+}
+
+function safeStorageSet(key, value) {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(key, value);
+        }
+    } catch (e) {
+        console.warn('localStorage setItem blocked by browser tracking prevention:', e.message);
+    }
+    inMemoryStorage[key] = value;
+}
+
+function safeStorageRemove(key) {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(key);
+        }
+    } catch (e) {
+        console.warn('localStorage removeItem blocked by browser tracking prevention:', e.message);
+    }
+    delete inMemoryStorage[key];
+}
+
 // Get saved language code (defaults to 'en')
 function getCurrentLang() {
-    return localStorage.getItem('jt_driver_lang') || 'en';
+    return safeStorageGet('jt_driver_lang') || 'en';
 }
 
 function calculateAge(dobStr) {
@@ -224,7 +276,7 @@ function formatDriverAge(ageVal) {
 
 // Apply language to all data-i18n elements in the DOM and update toggle buttons
 function setLanguage(lang) {
-    localStorage.setItem('jt_driver_lang', lang);
+    safeStorageSet('jt_driver_lang', lang);
     document.documentElement.lang = lang === 'si' ? 'si' : 'en';
 
     // Update textContent for all labelled elements
@@ -263,11 +315,11 @@ function toggleLanguage() {
 
 // ============ THEME / LIGHT-DARK MODE ============
 function getCurrentTheme() {
-    return localStorage.getItem('jt_driver_theme') || 'dark';
+    return safeStorageGet('jt_driver_theme') || 'dark';
 }
 
 function applyTheme(theme) {
-    localStorage.setItem('jt_driver_theme', theme);
+    safeStorageSet('jt_driver_theme', theme);
     const isDark = theme === 'dark';
     document.body.classList.toggle('light-mode', !isDark);
     document.body.classList.toggle('dark-mode', isDark);
@@ -298,7 +350,7 @@ function cleanDriverName(fullName) {
 // Local Storage Caching Helpers for Offline Support
 function getCachedData(key, defaultValue = null) {
     try {
-        const val = localStorage.getItem(key);
+        const val = safeStorageGet(key);
         return val ? JSON.parse(val) : defaultValue;
     } catch (e) {
         console.warn('Cache read error for key:', key, e);
@@ -310,27 +362,73 @@ function getCachedData(key, defaultValue = null) {
 function setCachedData(key, value) {
     try {
         if (value === null || value === undefined) {
-            localStorage.removeItem(key);
+            safeStorageRemove(key);
         } else {
-            localStorage.setItem(key, JSON.stringify(value));
+            safeStorageSet(key, JSON.stringify(value));
         }
     } catch (e) {
         console.warn('Cache write error for key:', key, e);
     }
 }
 
-// Default corporate colored truck/lorry vector SVG art
+// Default corporate colored truck/lorry vector SVG art (Ultra Modern Isuzu/Fuso Commercial Transport)
 const defaultLorrySVG = `
-<svg viewBox="0 0 100 50" class="vehicle-svg-art" xmlns="http://www.w3.org/2000/svg">
-  <rect x="15" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/>
-  <rect x="57" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/>
-  <path d="M5,12 h46 v24 h-46 z" fill="#1E212D" rx="2"/>
-  <path d="M51,18 h18 l10,8 v10 h-28 z" fill="#D1001F" rx="2"/>
-  <path d="M58,20 h8 l5,5 v4 h-13 z" fill="#0F1014" rx="1"/>
-  <circle cx="20" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/>
-  <circle cx="62" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/>
-  <circle cx="20" cy="38" r="2" fill="#FFF"/>
-  <circle cx="62" cy="38" r="2" fill="#FFF"/>
+<svg viewBox="0 0 120 60" class="vehicle-svg-art" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cabGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="chassisGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="windshieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="60" cy="53" rx="52" ry="4" fill="rgba(0,0,0,0.35)"/>
+
+  <!-- Main Container Box (Refrigerated / Delivery Body) -->
+  <rect x="8" y="10" width="62" height="34" rx="3" fill="url(#boxGrad)" stroke="#94A3B8" stroke-width="1.2"/>
+  <line x1="8" y1="27" x2="70" y2="27" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="4,2"/>
+  <!-- Cooling Unit on Top Front -->
+  <rect x="66" y="8" width="8" height="6" rx="1.5" fill="#64748B"/>
+
+  <!-- Truck Cab (Mitsubishi Fuso / Isuzu Style) -->
+  <path d="M 70,18 L 86,18 Q 98,18 103,26 L 108,36 Q 110,40 106,44 L 70,44 Z" fill="url(#cabGrad)" stroke="#94A3B8" stroke-width="1.2"/>
+
+  <!-- Windshield Glass -->
+  <path d="M 85,20 L 96,20 Q 100,20 103,26 L 104,32 L 85,32 Z" fill="url(#windshieldGrad)" opacity="0.9"/>
+  <!-- Side Door Window Frame -->
+  <rect x="74" y="22" width="9" height="10" rx="1" fill="url(#windshieldGrad)" opacity="0.8"/>
+
+  <!-- Front Bumper & Headlights -->
+  <rect x="104" y="38" width="6" height="5" rx="1" fill="#E2E8F0" stroke="#64748B" stroke-width="0.8"/>
+  <rect x="107" y="39" width="3" height="3" rx="0.5" fill="#FEF08A"/>
+
+  <!-- Chassis Lower Bar -->
+  <rect x="12" y="43" width="92" height="3" fill="url(#chassisGrad)"/>
+
+  <!-- Wheels (Front & Rear Dual Wheels) -->
+  <circle cx="24" cy="46" r="7.5" fill="#0F172A" stroke="#475569" stroke-width="1.5"/>
+  <circle cx="24" cy="46" r="3.5" fill="#94A3B8"/>
+  <circle cx="24" cy="46" r="1.5" fill="#0F172A"/>
+
+  <circle cx="42" cy="46" r="7.5" fill="#0F172A" stroke="#475569" stroke-width="1.5"/>
+  <circle cx="42" cy="46" r="3.5" fill="#94A3B8"/>
+  <circle cx="42" cy="46" r="1.5" fill="#0F172A"/>
+
+  <circle cx="92" cy="46" r="7.5" fill="#0F172A" stroke="#475569" stroke-width="1.5"/>
+  <circle cx="92" cy="46" r="3.5" fill="#94A3B8"/>
+  <circle cx="92" cy="46" r="1.5" fill="#0F172A"/>
 </svg>
 `;
 
@@ -458,7 +556,7 @@ function setDefaultMonth() {
 
 // Check if driver is already logged in
 async function checkExistingSession() {
-    const savedDriver = localStorage.getItem('jt_driver_session');
+    const savedDriver = safeStorageGet('jt_driver_session');
     if (savedDriver) {
         try {
             currentDriver = JSON.parse(savedDriver);
@@ -478,7 +576,7 @@ async function checkExistingSession() {
                 
             if (!error && data && !data.terminated) {
                 currentDriver = data;
-                localStorage.setItem('jt_driver_session', JSON.stringify(currentDriver));
+                safeStorageSet('jt_driver_session', JSON.stringify(currentDriver));
                 showDashboard();
             } else {
                 if (error && error.status !== 401 && error.status !== 403) {
@@ -528,7 +626,7 @@ function setupEventHandlers() {
             try {
                 const driver = await authenticateDriver(contact, license);
                 currentDriver = driver;
-                localStorage.setItem('jt_driver_session', JSON.stringify(currentDriver));
+                safeStorageSet('jt_driver_session', JSON.stringify(currentDriver));
                 showDashboard();
             } catch (err) {
                 errorEl.textContent = err.message || 'Authentication failed';
@@ -702,31 +800,77 @@ async function authenticateDriver(contact, password) {
     return matched;
 }
 
+// Show logout confirmation dialog / Instant logout handler
+function confirmLogout() {
+    logout();
+}
+window.confirmLogout = confirmLogout;
+
+// Unsubscribe realtime advance channel
+function unsubscribeWeeklyAdvance() {
+    if (weeklyAdvanceChannel && supabaseClient) {
+        try {
+            supabaseClient.removeChannel(weeklyAdvanceChannel);
+        } catch (e) {
+            console.warn('Realtime channel unsubscribe error:', e);
+        }
+        weeklyAdvanceChannel = null;
+    }
+}
+window.unsubscribeWeeklyAdvance = unsubscribeWeeklyAdvance;
+
 // Logout driver partner
 function logout() {
-    // Stop continuous location tracking
-    if (locationWatchId !== null) {
-        navigator.geolocation.clearWatch(locationWatchId);
-        locationWatchId = null;
-    }
-    if (userLocationMarker) {
+    try {
+        if (locationWatchId !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(locationWatchId);
+            locationWatchId = null;
+        }
         userLocationMarker = null;
+        unsubscribeWeeklyAdvance();
+    } catch (err) {
+        console.warn('Logout location cleanup warning:', err);
     }
 
-    // Unsubscribe weekly advance realtime channel
-    unsubscribeWeeklyAdvance();
+    try {
+        safeStorageRemove('jt_driver_session');
+        safeStorageRemove('jt_driver_race_standings');
+    } catch (err) {
+        console.warn('Logout storage cleanup warning:', err);
+    }
 
-    localStorage.removeItem('jt_driver_session');
     currentDriver = null;
     driverLorry = null;
     driverLorryId = null;
-    if (driverMap) {
-        driverMap.remove();
-        driverMap = null;
-    }
-    closeSalaryModal();
-    showView('loginView');
+
+    try {
+        if (driverMap) {
+            driverMap.remove();
+            driverMap = null;
+        }
+    } catch (err) {}
+
+    // Reset login inputs
+    try {
+        const contactEl = document.getElementById('loginContact');
+        const licenseEl = document.getElementById('loginLicense');
+        if (contactEl) contactEl.value = '';
+        if (licenseEl) licenseEl.value = '';
+    } catch (err) {}
+
+    try {
+        closeSalaryModal();
+    } catch (err) {}
+
+    try {
+        showView('loginView');
+    } catch (err) {}
+
+    try {
+        showDriverToast(t('logout.success') || 'Logged out successfully', 'info', 2500);
+    } catch (err) {}
 }
+window.logout = logout;
 
 // Load and show dashboard
 async function showDashboard() {
@@ -749,6 +893,33 @@ async function showDashboard() {
         document.getElementById('driverAvatar').src = currentDriver.photo_url;
     }
 
+    // Render Operation Badge & Coordinator Badge on Header
+    const opWrap = document.getElementById('driverOperationBadgeWrap');
+    if (opWrap) {
+        if (currentDriver.operation) {
+            const opKey = currentDriver.operation.toLowerCase();
+            const opConf = OPERATION_CONFIG[opKey];
+            if (opConf) {
+                let coordBadge = '';
+                if (currentDriver.is_coordinator) {
+                    coordBadge = `<span class="driver-coordinator-badge" title="Operation Coordinator">⭐ Coordinator</span>`;
+                }
+                opWrap.innerHTML = `
+                    <div class="driver-op-badge ${opConf.badgeClass}">
+                        <img src="${opConf.logoUrl}" class="driver-op-logo" alt="${opConf.name}">
+                        <span class="driver-op-name">${opConf.name}</span>
+                    </div>
+                    ${coordBadge}
+                `;
+                opWrap.style.display = 'flex';
+            } else {
+                opWrap.style.display = 'none';
+            }
+        } else {
+            opWrap.style.display = 'none';
+        }
+    }
+
     const isHelper = (currentDriver.role || '').toLowerCase() === 'helper';
     const isFixed = currentDriver.salary_type === 'fixed';
     const labelEl = document.querySelector('#kmSummaryCard .stat-label');
@@ -767,6 +938,20 @@ async function showDashboard() {
     // Populate profile details inside the modal
     if (document.getElementById('profileRole')) {
         document.getElementById('profileRole').textContent = currentDriver.role ? (currentDriver.role.charAt(0).toUpperCase() + currentDriver.role.slice(1)) : 'Driver';
+    }
+    if (document.getElementById('profileOperation')) {
+        if (currentDriver.operation) {
+            const opKey = currentDriver.operation.toLowerCase();
+            const opConf = OPERATION_CONFIG[opKey];
+            const coordText = currentDriver.is_coordinator ? ' ⭐ (Coordinator)' : '';
+            if (opConf) {
+                document.getElementById('profileOperation').innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><img src="${opConf.logoUrl}" style="width:16px;height:16px;object-fit:contain;border-radius:50%;"> <strong>${opConf.name}</strong>${coordText}</span>`;
+            } else {
+                document.getElementById('profileOperation').textContent = `${currentDriver.operation}${coordText}`;
+            }
+        } else {
+            document.getElementById('profileOperation').textContent = '-';
+        }
     }
     if (document.getElementById('profileContact')) {
         document.getElementById('profileContact').textContent = currentDriver.contact || '-';
@@ -825,6 +1010,11 @@ async function fetchLorryAssignment() {
     driverLorry = null;
     driverLorryId = null;
 
+    // Clear stale vehicle cache to force fresh DB lookup every time when online
+    if (navigator.onLine) {
+        try { safeStorageRemove('jt_driver_lorry_details'); } catch(e) {}
+    }
+
     // Retrieve from cache if offline
     if (!navigator.onLine) {
         const cached = getCachedData('jt_driver_lorry_details');
@@ -837,77 +1027,142 @@ async function fetchLorryAssignment() {
     }
 
     try {
-        const { data, error } = await supabaseClient
+        // Use limit(1) instead of maybeSingle() to prevent PGRST116 single-row constraint errors if duplicate assignment records exist
+        let query = supabaseClient
             .from('staff_lorry_assignments')
             .select('lorry_number')
-            .eq('driver_id', currentDriver.id)
-            .eq('user_id', currentDriver.user_id)
-            .maybeSingle();
-
-        if (error) throw error;
+            .eq('driver_id', currentDriver.id);
         
-        if (data) {
+        if (currentDriver.user_id) {
+            query = query.eq('user_id', currentDriver.user_id);
+        }
+
+        const { data: assignRows, error } = await query.order('id', { ascending: false }).limit(1);
+
+        if (error) {
+            console.warn('[Vehicle Debug] Assignment query error:', error.message);
+        }
+        
+        const data = (assignRows && assignRows.length > 0) ? assignRows[0] : null;
+        console.log('[Vehicle Debug] Assignment result:', data, '| driver_id:', currentDriver.id, '| user_id:', currentDriver.user_id);
+
+        if (data && data.lorry_number) {
             driverLorry = data.lorry_number;
             
-            // Now resolve the vehicle details in database
-            const baseLorryName = extractBaseVehicleName(driverLorry);
+            // Now resolve vehicle model/art details in database safely using normalized plate matching
             let vehicleDetails = null;
             
-            // Try fetching from hire_to_pay_vehicles
-            const { data: hireV } = await supabaseClient
-                .from('hire_to_pay_vehicles')
-                .select('id, vehicle_model, vector_art_url')
-                .eq('user_id', currentDriver.user_id)
-                .ilike('lorry_number', `%${baseLorryName}%`)
-                .maybeSingle();
+            try {
+                const targetClean = (driverLorry || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                console.log('[Vehicle Debug] Looking up vehicle art for:', driverLorry, '| normalized:', targetClean);
 
-            if (hireV) {
-                driverLorryId = hireV.id;
-                vehicleDetails = {
-                    id: hireV.id,
-                    lorry_number: driverLorry,
-                    vehicle_model: hireV.vehicle_model || 'Standard Truck',
-                    vector_art_url: hireV.vector_art_url
-                };
-            } else {
-                // Try from commitment_vehicles
-                const { data: commV } = await supabaseClient
-                    .from('commitment_vehicles')
-                    .select('id, vehicle_model, vector_art_url')
-                    .eq('user_id', currentDriver.user_id)
-                    .ilike('vehicle_number', `%${baseLorryName}%`)
-                    .maybeSingle();
+                // Fetch all vehicles from hire_to_pay_vehicles and commitment_vehicles without restricting by driver user_id
+                const [hireResult, commResult] = await Promise.all([
+                    supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, vector_art_url, photo_url'),
+                    supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, vector_art_url, photo_url')
+                ]);
 
-                if (commV) {
-                    driverLorryId = commV.id;
+                const hireVehicles = hireResult.data;
+                const commVehicles = commResult.data;
+
+                if (hireResult.error) console.warn('[Vehicle Debug] hire_to_pay_vehicles query error:', hireResult.error.message);
+                if (commResult.error) console.warn('[Vehicle Debug] commitment_vehicles query error:', commResult.error.message);
+
+                console.log('[Vehicle Debug] hire_to_pay_vehicles count:', hireVehicles?.length || 0, '| commitment_vehicles count:', commVehicles?.length || 0);
+
+                // Log all vehicle plates and their art URLs for debugging
+                hireVehicles?.forEach(v => {
+                    const clean = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    console.log('[Vehicle Debug] Hire vehicle:', v.lorry_number, '| clean:', clean, '| vector_art_url:', v.vector_art_url ? 'SET' : 'NULL', '| photo_url:', v.photo_url ? 'SET' : 'NULL');
+                });
+                commVehicles?.forEach(v => {
+                    const clean = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    console.log('[Vehicle Debug] Commitment vehicle:', v.vehicle_number, '| clean:', clean, '| vector_art_url:', v.vector_art_url ? 'SET' : 'NULL', '| photo_url:', v.photo_url ? 'SET' : 'NULL');
+                });
+
+                // Combine all candidates from hire_to_pay_vehicles and commitment_vehicles
+                const candidates = [];
+                hireVehicles?.forEach(v => {
+                    const clean = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    candidates.push({
+                        id: v.id,
+                        plate: v.lorry_number,
+                        clean: clean,
+                        model: v.vehicle_model,
+                        artUrl: v.vector_art_url || v.photo_url || null,
+                        source: 'hire'
+                    });
+                });
+                commVehicles?.forEach(v => {
+                    const clean = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    candidates.push({
+                        id: v.id,
+                        plate: v.vehicle_number,
+                        clean: clean,
+                        model: v.vehicle_model,
+                        artUrl: v.vector_art_url || v.photo_url || null,
+                        source: 'commitment'
+                    });
+                });
+
+                // Score candidates to prioritize exact match + having vector art/photo
+                const matchingCandidates = candidates.map(c => {
+                    let score = 0;
+                    const isExact = c.clean === targetClean;
+                    const isPartial = c.clean && (c.clean.includes(targetClean) || targetClean.includes(c.clean));
+                    const hasArt = Boolean(c.artUrl);
+
+                    if (isExact && hasArt) score = 4;
+                    else if (isPartial && hasArt) score = 3;
+                    else if (isExact) score = 2;
+                    else if (isPartial) score = 1;
+
+                    return { ...c, score };
+                }).filter(c => c.score > 0);
+
+                // Sort highest score first
+                matchingCandidates.sort((a, b) => b.score - a.score);
+
+                const bestMatch = matchingCandidates.length > 0 ? matchingCandidates[0] : null;
+
+                if (bestMatch) {
+                    console.log('[Vehicle Debug] MATCHED vehicle:', bestMatch.plate, '| score:', bestMatch.score, '| art:', bestMatch.artUrl || 'NONE');
+                    driverLorryId = bestMatch.id;
                     vehicleDetails = {
-                        id: commV.id,
+                        id: bestMatch.id,
                         lorry_number: driverLorry,
-                        vehicle_model: commV.vehicle_model || 'Standard Truck',
-                        vector_art_url: commV.vector_art_url
+                        vehicle_model: bestMatch.model || 'Standard Truck',
+                        vector_art_url: bestMatch.artUrl
                     };
+                } else {
+                    console.warn('[Vehicle Debug] NO MATCH found for:', driverLorry, '(cleaned:', targetClean, ')');
                 }
+            } catch (vErr) {
+                console.warn('[Vehicle Debug] Vehicle details lookup warning:', vErr.message);
             }
 
             if (!vehicleDetails) {
                 vehicleDetails = {
                     id: null,
                     lorry_number: driverLorry,
-                    vehicle_model: 'Unspecified Model',
+                    vehicle_model: 'Standard Truck',
                     vector_art_url: null
                 };
             }
+
+            console.log('[Vehicle Debug] Final vehicleDetails:', JSON.stringify(vehicleDetails));
 
             // Cache and update UI
             setCachedData('jt_driver_lorry_details', vehicleDetails);
             updateVehicleCardUI(vehicleDetails.lorry_number, vehicleDetails.vehicle_model, vehicleDetails.vector_art_url);
         } else {
             // No assignment found
+            console.log('[Vehicle Debug] No assignment found for driver:', currentDriver.id);
             updateVehicleCardUI('No Vehicle', 'Not Assigned', null);
             setCachedData('jt_driver_lorry_details', null);
         }
     } catch (err) {
-        console.error('Error fetching assignment:', err.message);
+        console.error('[Vehicle Debug] Error fetching assignment:', err.message);
         // Fall back to cache on failure
         const cached = getCachedData('jt_driver_lorry_details');
         if (cached) {
@@ -1391,7 +1646,7 @@ async function loadSalaryDetails() {
         document.getElementById('deductionsListContainer').innerHTML = '<div style="padding: 14px; text-align: center;"><div class="skeleton skeleton-desc" style="width: 100%;"></div></div>';
 
         // Always clear stale cached salary details to ensure fresh data
-        localStorage.removeItem(`jt_driver_salary_details_${activeMonth}`);
+        safeStorageRemove(`jt_driver_salary_details_${activeMonth}`);
 
         if (!navigator.onLine) {
             const cached = getCachedData(`jt_driver_salary_details_${activeMonth}`);
@@ -1900,10 +2155,10 @@ async function loadDriverRace() {
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        // 1. Fetch active drivers and helpers
+        // 1. Fetch active drivers and helpers with operation details
         const { data: drivers, error: driverError } = await supabaseClient
             .from('drivers')
-            .select('id, name, photo_url, role, created_at')
+            .select('id, name, photo_url, role, created_at, operation, is_coordinator')
             .eq('user_id', currentDriver.user_id)
             .neq('terminated', true);
 
@@ -2033,6 +2288,15 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
             const progressPercent = Math.min(100, (d.totalKm / maxKm) * 100);
             const isNew = isNewStaff(d.created_at);
 
+            let opBadgeHtml = '';
+            if (d.operation) {
+                const opKey = d.operation.toLowerCase();
+                const opConf = OPERATION_CONFIG[opKey];
+                if (opConf) {
+                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}"><img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">${opConf.name}</span>`;
+                }
+            }
+
             const card = document.createElement('div');
             card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
             card.innerHTML = `
@@ -2052,6 +2316,7 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                     </div>
                     <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
                         <span class="race-badge race-badge-driver">${t('race.driver')}</span>
+                        ${opBadgeHtml}
                         ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
                     </div>
                     <div class="race-progress-bg" style="margin-top: 6px;">
@@ -2090,6 +2355,15 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             const isNew = isNewStaff(d.created_at);
 
+            let opBadgeHtml = '';
+            if (d.operation) {
+                const opKey = d.operation.toLowerCase();
+                const opConf = OPERATION_CONFIG[opKey];
+                if (opConf) {
+                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}"><img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">${opConf.name}</span>`;
+                }
+            }
+
             const card = document.createElement('div');
             card.className = `race-item helper-item ${isCurrentUser ? 'current-user' : ''}`;
             card.innerHTML = `
@@ -2105,6 +2379,7 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                     </div>
                     <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
                         <span class="race-badge race-badge-helper">${t('race.helper')}</span>
+                        ${opBadgeHtml}
                         ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
                     </div>
                 </div>

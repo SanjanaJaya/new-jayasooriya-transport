@@ -1232,6 +1232,8 @@ document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverForm').reset();
     document.getElementById('driverId').value = '';
     document.getElementById('driverSalaryType').value = 'fixed';
+    if (document.getElementById('driverOperation')) document.getElementById('driverOperation').value = '';
+    if (document.getElementById('driverIsCoordinator')) document.getElementById('driverIsCoordinator').checked = false;
     
     // Clear Birthday and calculated age fields
     const dobInput = document.getElementById('driverDob');
@@ -1335,6 +1337,8 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         address: document.getElementById('driverAddress').value,
         photo_url: document.getElementById('driverPhoto').value || null,
         role: document.getElementById('driverRole').value || null,
+        operation: document.getElementById('driverOperation')?.value || null,
+        is_coordinator: document.getElementById('driverIsCoordinator') ? document.getElementById('driverIsCoordinator').checked : false,
         salary_type: salaryType,
         basic_salary: salaryType === 'fixed' ? (parseFloat(document.getElementById('driverBasicSalary').value) || null) : null,
         km_limit: (salaryType === 'fixed' && !isHelper) ? (parseFloat(document.getElementById('driverKmLimit').value) || null) : null,
@@ -1345,6 +1349,17 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
     };
 
     try {
+        // Enforce single coordinator rule per operation
+        if (data.is_coordinator && data.operation) {
+            let uncoordQuery = supabaseClient
+                .from('drivers')
+                .update({ is_coordinator: false })
+                .eq('operation', data.operation)
+                .eq('user_id', adminUserId);
+            if (id) uncoordQuery = uncoordQuery.neq('id', id);
+            await uncoordQuery;
+        }
+
         // Check for duplicate license number (only if license is provided)
         if (data.license_number) {
             let dupQuery = supabaseClient
@@ -1523,11 +1538,31 @@ async function loadDrivers() {
             const cleanedName = cleanDriverName(driver.name);
             const nickname = getNickname(driver.name);
 
+            let operationHTML = '<span style="color:#7F8C8D;font-size:12px;">-</span>';
+            if (driver.operation) {
+                const opLower = driver.operation.toLowerCase();
+                const logoUrl = opLower === 'kevilton'
+                    ? 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'
+                    : (opLower === 'pelwatte' ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg' : null);
+                
+                const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
+                const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
+                
+                const bgStyle = opLower === 'kevilton'
+                    ? 'background:rgba(209,0,31,0.18);color:#FF6B81;border:1px solid rgba(209,0,31,0.4);'
+                    : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);';
+                    
+                const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
+                
+                operationHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${opBadge}${coordTag}</div>`;
+            }
+
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${cleanedName}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}${lorryHtml}</td>
                 <td>${nickname || '-'}</td>
                 <td><span style="background:#3498db;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">${driver.role || 'Driver'}</span></td>
+                <td>${operationHTML}</td>
                 <td>${salaryTypeBadge}</td>
                 <td>${driver.contact}</td>
                 <td>${driver.license_number || '-'}</td>
@@ -1558,7 +1593,7 @@ async function loadDrivers() {
         normalActiveDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
 
         if (familyActiveDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 10 : 11;
+            const colSpan = userRole === 'viewer' ? 11 : 12;
             const familyHeaderRow = document.createElement('tr');
             familyHeaderRow.innerHTML = `
                 <td colspan="${colSpan}" style="background-color: var(--surface-hover); font-weight: bold; padding: 12px; color: var(--text-primary); text-align: left; border-bottom: 2px solid var(--brand-red);">
@@ -1570,7 +1605,7 @@ async function loadDrivers() {
         }
 
         if (terminatedDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 10 : 11;
+            const colSpan = userRole === 'viewer' ? 11 : 12;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.innerHTML = `
                 <td colspan="${colSpan}" onclick="toggleDriverArchive()">
@@ -1671,6 +1706,12 @@ async function editDriver(id) {
         document.getElementById('driverAddress').value = data.address;
         document.getElementById('driverPhoto').value = data.photo_url || '';
         document.getElementById('driverRole').value = data.role || '';
+        if (document.getElementById('driverOperation')) {
+            document.getElementById('driverOperation').value = data.operation || '';
+        }
+        if (document.getElementById('driverIsCoordinator')) {
+            document.getElementById('driverIsCoordinator').checked = data.is_coordinator || false;
+        }
         document.getElementById('driverSalaryType').value = data.salary_type || 'fixed';
         document.getElementById('driverBasicSalary').value = data.basic_salary || '';
         document.getElementById('driverKmLimit').value = data.km_limit || '';
@@ -2039,7 +2080,7 @@ async function loadHireRecords() {
             query = query.eq('vehicle_id', vehicleFilter);
         }
 
-        const { data, error } = await query.order('hire_date', { ascending: true });
+        const { data, error } = await query.order('hire_date', { ascending: true }).order('job_number', { ascending: true });
         if (error) throw error;
 
         const tbody = document.querySelector('#hireRecordsTable tbody');
@@ -2054,6 +2095,16 @@ async function loadHireRecords() {
             const fromLoc = (record.from_location || '').toLowerCase();
             const toLoc = (record.to_location || '').toLowerCase();
             return fromLoc.includes(lowercaseSearch) || toLoc.includes(lowercaseSearch);
+        });
+
+        // Natural alphanumeric sort by job_number (and hire_date)
+        filteredData.sort((a, b) => {
+            const dateA = a.hire_date || '';
+            const dateB = b.hire_date || '';
+            if (dateA !== dateB) return dateA.localeCompare(dateB);
+            const jobA = a.job_number || '';
+            const jobB = b.job_number || '';
+            return jobA.localeCompare(jobB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
         filteredData.forEach(record => {

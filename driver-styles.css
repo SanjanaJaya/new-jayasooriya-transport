@@ -426,7 +426,6 @@ input, button, textarea, select { font-family: inherit; }
     -webkit-backdrop-filter: blur(20px);
     gap: 8px;
     flex-wrap: nowrap;
-    overflow: hidden;
 }
 
 .driver-profile {
@@ -435,7 +434,6 @@ input, button, textarea, select { font-family: inherit; }
     gap: 10px;
     min-width: 0;
     flex: 1 1 0;
-    overflow: hidden;
 }
 
 .avatar-container {
@@ -496,13 +494,13 @@ input, button, textarea, select { font-family: inherit; }
 .header-right-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
 }
 
 .header-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: var(--bg-elevated);
     border: 1px solid var(--border-strong);
@@ -2247,5 +2245,96 @@ body.light-mode .avatar-img {
 
 body.light-mode .avatar-container::after {
     border-color: var(--bg-card);
+}
+
+/* ════════════════════════════════════════════════════
+   OPERATION LOGO & COORDINATOR BADGES STYLING
+═══════════════════════════════════════════════════ */
+.driver-op-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3px 5px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+.driver-op-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: var(--r-pill);
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.driver-op-badge.op-kevilton {
+    background: rgba(209, 0, 31, 0.18);
+    border: 1px solid rgba(209, 0, 31, 0.45);
+    color: #FF526C;
+}
+
+.driver-op-badge.op-pelwatte {
+    background: rgba(0, 179, 126, 0.18);
+    border: 1px solid rgba(0, 179, 126, 0.45);
+    color: #00E6A1;
+}
+
+.driver-op-logo {
+    width: 12px;
+    height: 12px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #fff;
+    padding: 1px;
+}
+
+.driver-coordinator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: var(--r-pill);
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #F39C12;
+    background: rgba(241, 196, 15, 0.14);
+    border: 1px solid rgba(241, 196, 15, 0.45);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Race Leaderboard mini operation badge */
+.race-badge-op {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.race-badge-op.op-kevilton {
+    background: linear-gradient(135deg, #D1001F, #8B0000);
+}
+
+.race-badge-op.op-pelwatte {
+    background: linear-gradient(135deg, #00B37E, #007A54);
+}
+
+.race-op-logo-mini {
+    width: 13px;
+    height: 13px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #fff;
 }
 

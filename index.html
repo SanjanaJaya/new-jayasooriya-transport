@@ -1105,6 +1105,22 @@
                                 </div>
                             </div>
                             <div class="form-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="driverOperation" style="font-size:12px;color:#666;font-weight:700;">🏢 Operation Assignment</label>
+                                    <select id="driverOperation">
+                                        <option value="">No Specific Operation</option>
+                                        <option value="Kevilton">Kevilton</option>
+                                        <option value="Pelwatte">Pelwatte</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex:1; display:flex; align-items:flex-end; padding-bottom:8px;">
+                                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                        <input type="checkbox" id="driverIsCoordinator">
+                                        <span style="font-weight:700; color:var(--brand-red, #D1001F); font-size:13px;">⭐ Operation Coordinator</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <input type="text" id="driverLicense" placeholder="License Number (Optional)">
                                 <div class="form-group" style="flex:1; position:relative;">
                                     <input type="text" id="driverPassword" placeholder="App Password (for Driver Login)" autocomplete="off" style="width:100%; padding-right:36px;">
@@ -1182,6 +1198,7 @@
                                     <th>Name</th>
                                     <th>Nickname</th>
                                     <th>Role</th>
+                                    <th>Operation</th>
                                     <th>Salary Type</th>
                                     <th>Contact</th>
                                     <th>License</th>

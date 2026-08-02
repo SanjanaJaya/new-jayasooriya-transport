@@ -90,6 +90,7 @@
                 <div class="driver-info">
                     <span class="welcome-text" data-i18n="dashboard.partner">Partner</span>
                     <span id="driverName" class="driver-name"><div class="skeleton skeleton-text"></div></span>
+                    <div id="driverOperationBadgeWrap" class="driver-op-wrap"></div>
                 </div>
             </div>
             
@@ -296,6 +297,10 @@
                                     <span data-i18n="salary.role">Role</span>
                                     <span id="profileRole">-</span>
                                 </div>
+                                <div class="breakdown-row" id="profileOperationRow">
+                                    <span>Operation</span>
+                                    <span id="profileOperation">-</span>
+                                </div>
                                 <div class="breakdown-row">
                                     <span data-i18n="salary.contact">Contact</span>
                                     <span id="profileContact">-</span>
@@ -318,7 +323,7 @@
                 </div>
                 
                 <div class="salary-modal-footer">
-                    <button class="btn btn-outline-danger btn-block" id="logoutBtn" data-i18n="salary.logout">Logout App</button>
+                    <button class="btn btn-outline-danger btn-block" id="logoutBtn" onclick="confirmLogout()" data-i18n="salary.logout">Logout App</button>
                 </div>
             </div>
         </div>
@@ -356,6 +361,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Driver App Logic Script -->
-    <script src="driver.js"></script>
+    <script src="driver.js?v=9"></script>
 </body>
 </html>
