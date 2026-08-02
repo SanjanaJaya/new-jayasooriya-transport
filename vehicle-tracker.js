@@ -27,6 +27,7 @@
     // Fuel consumption calculation cache & state
     let trackerVehicleFuelConsumption = {}; // { baseVehicleName: { kmpl: X, km: Y, L: Z } }
     let trackerVehicleVectorArts = {};      // { baseVehicleName: vectorArtUrl }
+    let trackerVehicleModels = {};          // { baseVehicleName: 'Isuzu ELF 300' }
     let lastFuelConsumptionCalcTime = 0;
     const FUEL_CALC_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
@@ -141,19 +142,23 @@
 
             var pDrivers = supabaseClient.from('drivers').select('*').eq('user_id', userId).neq('terminated', true);
             var pAssignments = supabaseClient.from('staff_lorry_assignments').select('*').eq('user_id', userId);
-            var pHire = supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url').eq('user_id', userId).neq('terminated', true);
-            var pCommit = supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url').eq('user_id', userId).neq('terminated', true);
+            var pHire = supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url, vehicle_model').eq('user_id', userId).neq('terminated', true);
+            var pCommit = supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url, vehicle_model').eq('user_id', userId).neq('terminated', true);
 
             var results = await Promise.all([pDrivers, pAssignments, pHire, pCommit]);
             trackerDrivers = results[0].data || [];
             trackerAssignments = results[1].data || [];
 
             trackerVehicleVectorArts = {};
+            trackerVehicleModels = {};
             (results[2].data || []).forEach(function (v) {
                 var base = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
                 if (v.vector_art_url) {
                     trackerVehicleVectorArts[base] = v.vector_art_url;
+                }
+                if (v.vehicle_model) {
+                    trackerVehicleModels[base] = v.vehicle_model;
                 }
             });
             (results[3].data || []).forEach(function (v) {
@@ -161,6 +166,9 @@
                     ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
                 if (v.vector_art_url) {
                     trackerVehicleVectorArts[base] = v.vector_art_url;
+                }
+                if (v.vehicle_model) {
+                    trackerVehicleModels[base] = v.vehicle_model;
                 }
             });
         } catch (e) {
@@ -296,24 +304,27 @@
                     var capturedUnit = unit;
                     var done = false;
                     var guard = setTimeout(function () {
-                        if (!done) { done = true; console.warn('[Fuel] Timeout for', capturedUnit.name); resolve(0); }
-                    }, 45000);
+                        if (!done) { done = true; console.warn('[Mileage] Timeout for', capturedUnit.name); resolve({ km: 0 }); }
+                    }, 90000);
 
                     // Step 2a: Load messages into the session
                     remote.remoteCall('messages/load_interval', {
                         itemId: capturedUnit.id,
                         timeFrom: timeFrom,
                         timeTo: timeTo,
-                        flags: 0,
-                        flagsMask: 0,
+                        flags: 0x0001,      // 0x0001 = position data messages only
+                        flagsMask: 0x0001,
                         loadCount: WIALON_MSG_LOAD_COUNT
                     }, function (loadCode, loadData) {
                         if (loadCode !== 0) {
-                            if (!done) { done = true; clearTimeout(guard); resolve(0); }
+                            if (!done) { done = true; clearTimeout(guard); resolve({ km: 0 }); }
                             return;
                         }
 
-                        // Step 2b: Get trips from loaded messages
+                        var msgCount = (loadData && loadData.count) ? loadData.count : 0;
+                        console.log('[Mileage] Loaded', msgCount, 'position messages for', capturedUnit.name);
+
+                        // Step 2b: Get trips (for mileage)
                         remote.remoteCall('unit/get_trips', {
                             itemId: capturedUnit.id,
                             msgsSource: 1,
@@ -321,25 +332,24 @@
                             timeTo: timeTo
                         }, function (tripsCode, trips) {
                             if (done) return;
-                            done = true;
-                            clearTimeout(guard);
 
                             var totalKm = 0;
                             if (tripsCode === 0 && Array.isArray(trips)) {
                                 trips.forEach(function (t) { totalKm += (t.m || 0); });
                             }
 
-                            // CRITICAL: Unload messages from Wialon session memory to prevent OOM
-                            // Wait for unload to complete before resolving so next vehicle starts clean
+                            done = true;
+                            clearTimeout(guard);
                             remote.remoteCall('messages/unload', {}, function () {
-                                resolve(totalKm / 1000);
+                                resolve({ km: totalKm / 1000 });
                             });
                         });
                     });
                 });
 
-                var kmpl = (km > 0 && litres > 0) ? (km / litres) : 0;
-                trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: km, L: litres };
+                var tripKm = km.km !== undefined ? km.km : km;
+                var kmpl = (tripKm > 0 && litres > 0) ? (tripKm / litres) : 0;
+                trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: tripKm, L: litres };
                 updateFuelConsumptionOnCards();
             }
 
@@ -988,14 +998,22 @@
             '<span class="detail-text">Driver</span>' +
             '<span class="detail-value" style="font-weight:700; color:var(--text-primary);"></span>' +
             '</div>' +
-            '<div class="tracker-detail-row tracker-position-row">' +
-            '<span class="detail-icon">\uD83D\uDCCD</span>' +
-            '<span class="detail-text">Position</span>' +
-            '<span class="detail-value"></span>' +
+            // Driver Phone Row
+            '<div class="tracker-detail-row tracker-phone-row">' +
+            '<span class="detail-icon">📞</span>' +
+            '<span class="detail-text">Phone</span>' +
+            '<a class="detail-value tracker-phone-val" href="#" style="font-weight:600; color:var(--blue, #3498DB); text-decoration:none;">—</a>' +
             '</div>' +
+            // Vehicle Model Row
+            '<div class="tracker-detail-row tracker-model-row">' +
+            '<span class="detail-icon">🚛</span>' +
+            '<span class="detail-text">Model</span>' +
+            '<span class="detail-value tracker-model-val" style="font-weight:600; color:var(--text-secondary);">—</span>' +
+            '</div>' +
+            // Fuel Consumption Row
             '<div class="tracker-detail-row tracker-fuel-row">' +
             '<span class="detail-icon">⛽</span>' +
-            '<span class="detail-text">Fuel Consumption</span>' +
+            '<span class="detail-text">Fuel Efficiency</span>' +
             '<span class="detail-value fuel-consumption-val" style="font-weight:700; color:var(--text-primary);">Calculating...</span>' +
             '</div>' +
             '</div>' +
@@ -1158,6 +1176,23 @@
             var driverVal = card.querySelector('.tracker-driver-row .detail-value');
             if (driverVal) driverVal.textContent = driverName;
 
+            // Driver Phone — tap-to-call
+            var phoneEl = card.querySelector('.tracker-phone-val');
+            if (phoneEl) {
+                var phone = driver && driver.contact ? driver.contact.trim() : '';
+                if (phone) {
+                    phoneEl.textContent = phone;
+                    phoneEl.href = 'tel:' + phone;
+                    phoneEl.style.color = 'var(--blue, #3498DB)';
+                    phoneEl.style.pointerEvents = 'auto';
+                } else {
+                    phoneEl.textContent = '—';
+                    phoneEl.removeAttribute('href');
+                    phoneEl.style.color = 'var(--text-muted, #9CA3AF)';
+                    phoneEl.style.pointerEvents = 'none';
+                }
+            }
+
             // Driver photo
             var imgContainer = card.querySelector('.tracker-driver-face-container');
             if (imgContainer) {
@@ -1183,11 +1218,11 @@
             }
         }
 
-        // Position
-        var posVal = card.querySelector('.tracker-position-row .detail-value');
-        if (posVal) {
-            var posText = unit.hasPosition ? unit.lat.toFixed(4) + ', ' + unit.lng.toFixed(4) : 'No data';
-            if (posVal.textContent !== posText) posVal.textContent = posText;
+        // Vehicle Model
+        var modelEl = card.querySelector('.tracker-model-val');
+        if (modelEl) {
+            var modelText = trackerVehicleModels[baseName] || '—';
+            if (modelEl.textContent !== modelText) modelEl.textContent = modelText;
         }
 
         // 9. Update Vector Art Background

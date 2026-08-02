@@ -1916,6 +1916,18 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
     if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('hireRecordId').value;
+
+    // --- DUPLICATE JOB NUMBER CHECK ---
+    const _jobNum = document.getElementById('jobNumber')?.value?.trim();
+    if (_jobNum && typeof isJobNumberDuplicate === 'function') {
+        const _isDup = await isJobNumberDuplicate(_jobNum, id ? 'hire_to_pay_records' : null, id ? parseInt(id) : null);
+        if (_isDup) {
+            showToast(`Job Number "${_jobNum}" already exists! Please use a unique Job Number.`, 'error', 5000);
+            const _jInput = document.getElementById('jobNumber');
+            if (_jInput) { _jInput.focus(); _jInput.style.borderColor = '#e74c3c'; _jInput.style.boxShadow = '0 0 0 3px rgba(231,76,60,0.2)'; setTimeout(() => { _jInput.style.borderColor = ''; _jInput.style.boxShadow = ''; }, 3000); }
+            return;
+        }
+    }
     const distance = parseFloat(document.getElementById('hireDistance').value);
     const vehicleId = parseInt(document.getElementById('hireToPayVehicle').value);
     const waitingHours = parseFloat(document.getElementById('hireWaitingHours').value) || 0;
@@ -1997,6 +2009,7 @@ document.getElementById('hireRecordForm')?.addEventListener('submit', async (e) 
             loadDashboard();
         }
         document.getElementById('hireRecordFormContainer').style.display = 'none';
+        if (typeof invalidateLocationCache === 'function') invalidateLocationCache();
     } catch (error) {
         showToast('Error saving hire record: ' + error.message, 'error');
     }
@@ -2358,6 +2371,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
             loadDashboard();
         }
         document.getElementById('otherOperationHireFormContainer').style.display = 'none';
+        if (typeof invalidateLocationCache === 'function') invalidateLocationCache();
     } catch (error) {
         showToast('Error saving record: ' + error.message, 'error');
     }
@@ -2869,6 +2883,19 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
     if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('commitmentRecordId').value;
+
+    // --- DUPLICATE JOB NUMBER CHECK ---
+    const _cJobNum = document.getElementById('commitmentJobNumber')?.value?.trim();
+    if (_cJobNum && typeof isJobNumberDuplicate === 'function') {
+        const _cIsDup = await isJobNumberDuplicate(_cJobNum, id ? 'commitment_records' : null, id ? parseInt(id) : null);
+        if (_cIsDup) {
+            showToast(`Job Number "${_cJobNum}" already exists! Please use a unique Job Number.`, 'error', 5000);
+            const _cjInput = document.getElementById('commitmentJobNumber');
+            if (_cjInput) { _cjInput.focus(); _cjInput.style.borderColor = '#e74c3c'; _cjInput.style.boxShadow = '0 0 0 3px rgba(231,76,60,0.2)'; setTimeout(() => { _cjInput.style.borderColor = ''; _cjInput.style.boxShadow = ''; }, 3000); }
+            return;
+        }
+    }
+
     const fuelLitres = parseFloat(document.getElementById('commitmentFuel').value);
     const fuelPrice = parseFloat(document.getElementById('commitmentFuelPrice').value);
     const fuelCost = fuelLitres * fuelPrice;
@@ -2911,6 +2938,7 @@ document.getElementById('commitmentRecordForm')?.addEventListener('submit', asyn
             loadDashboard();
         }
         document.getElementById('commitmentRecordFormContainer').style.display = 'none';
+        if (typeof invalidateLocationCache === 'function') invalidateLocationCache();
     } catch (error) {
         showToast('Error saving commitment record: ' + error.message, 'error');
     }
@@ -14105,6 +14133,7 @@ function closeRecordDetailModal() {
     }
 }
 
+
 // Wire up the close handlers for the Records modal
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('recordDetailModal')?.addEventListener('click', (e) => {
@@ -14120,4 +14149,403 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+// ============================================================
+//  AUTO-INCREMENT JOB NUMBER & LOCATION AUTOCOMPLETE SYSTEM
+// ============================================================
+
+// --- JOB NUMBER AUTO-INCREMENT ---
+
+/**
+ * Fetches the LAST ADDED record (ordered by primary key ID descending) for the active section & selected month,
+ * then returns the job_number incremented by 1.
+ * @param {string} section - 'hire' or 'commitment'
+ */
+async function getNextJobNumber(section = 'hire') {
+    try {
+        const uid = getQueryUserId();
+        if (!uid) { console.warn('getNextJobNumber: No user ID'); return ''; }
+
+        const tableName = section === 'commitment' ? 'commitment_records' : 'hire_to_pay_records';
+        const monthElId = section === 'commitment' ? 'commitmentRecordsMonth' : 'hireRecordsMonth';
+        const monthValue = document.getElementById(monthElId)?.value;
+
+        let query = supabaseClient
+            .from(tableName)
+            .select('job_number, id, hire_date')
+            .eq('user_id', uid);
+
+        // Filter by the selected month in that section if available
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
+            const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+            query = query.gte('hire_date', startDate).lte('hire_date', endDate);
+        }
+
+        // Fetch the LAST ADDED record (highest ID = newest inserted record)
+        const { data, error } = await query.order('id', { ascending: false }).limit(1);
+
+        let lastRecord = data && data.length > 0 ? data[0] : null;
+
+        // If no record found for the selected month, fetch the last added record overall for this section
+        if (!lastRecord && monthValue) {
+            const fallbackResult = await supabaseClient
+                .from(tableName)
+                .select('job_number, id')
+                .eq('user_id', uid)
+                .order('id', { ascending: false })
+                .limit(1);
+
+            if (fallbackResult.data && fallbackResult.data.length > 0) {
+                lastRecord = fallbackResult.data[0];
+            }
+        }
+
+        if (!lastRecord || !lastRecord.job_number) return '';
+
+        const jn = lastRecord.job_number.trim();
+        // Match PREFIX + SEPARATOR + NUMBER (e.g., JK0000107 -> prefix: JK, sep: "", digits: 0000107)
+        const match = jn.match(/^([A-Za-z]+)([-\s]?)(\d+)$/);
+        if (!match) return '';
+
+        const prefix = match[1];
+        const separator = match[2];
+        const numStr = match[3];
+        const nextNum = parseInt(numStr, 10) + 1;
+        const padLength = numStr.length;
+
+        const nextJobNumber = prefix + separator + String(nextNum).padStart(padLength, '0');
+        console.log(`getNextJobNumber (${section}): Last added record ID = ${lastRecord.id}, Job = ${jn} -> Next = ${nextJobNumber}`);
+        return nextJobNumber;
+    } catch (error) {
+        console.error('Error fetching next job number:', error);
+        return '';
+    }
+}
+
+/**
+ * Check if a job number already exists in hire_to_pay_records or commitment_records.
+ * Optionally exclude a specific record ID when editing.
+ */
+async function isJobNumberDuplicate(jobNumber, excludeTable = null, excludeId = null) {
+    try {
+        const uid = getQueryUserId();
+        if (!uid || !jobNumber) return false;
+
+        // Check hire_to_pay_records
+        let hireQuery = supabaseClient
+            .from('hire_to_pay_records')
+            .select('id')
+            .eq('user_id', uid)
+            .eq('job_number', jobNumber);
+        if (excludeTable === 'hire_to_pay_records' && excludeId) {
+            hireQuery = hireQuery.neq('id', excludeId);
+        }
+
+        // Check commitment_records
+        let commitQuery = supabaseClient
+            .from('commitment_records')
+            .select('id')
+            .eq('user_id', uid)
+            .eq('job_number', jobNumber);
+        if (excludeTable === 'commitment_records' && excludeId) {
+            commitQuery = commitQuery.neq('id', excludeId);
+        }
+
+        const [hireResult, commitResult] = await Promise.all([hireQuery, commitQuery]);
+
+        if (hireResult.data && hireResult.data.length > 0) return true;
+        if (commitResult.data && commitResult.data.length > 0) return true;
+
+        return false;
+    } catch (error) {
+        console.error('Error checking duplicate job number:', error);
+        return false; // Fail open to not block saves
+    }
+}
+
+
+
+// --- LOCATION AUTOCOMPLETE ---
+
+/**
+ * Cache of known locations, refreshed periodically.
+ */
+let _locationCacheData = null;
+let _locationCacheTimestamp = 0;
+const LOCATION_CACHE_TTL = 60000; // 1 minute
+
+async function fetchAllLocations() {
+    const now = Date.now();
+    if (_locationCacheData && (now - _locationCacheTimestamp) < LOCATION_CACHE_TTL) {
+        return _locationCacheData;
+    }
+
+    try {
+        const uid = getQueryUserId();
+        if (!uid) return [];
+
+        const [{ data: hireData }, { data: commitData }, { data: otherData }] = await Promise.all([
+            supabaseClient
+                .from('hire_to_pay_records')
+                .select('from_location, to_location')
+                .eq('user_id', uid),
+            supabaseClient
+                .from('commitment_records')
+                .select('from_location, to_location')
+                .eq('user_id', uid),
+            supabaseClient
+                .from('other_operation_hires')
+                .select('from_location, to_location')
+                .eq('user_id', uid)
+        ]);
+
+        const locationSet = new Set();
+
+        [hireData, commitData, otherData].forEach(dataset => {
+            if (dataset) {
+                dataset.forEach(r => {
+                    if (r.from_location && r.from_location.trim()) locationSet.add(r.from_location.trim());
+                    if (r.to_location && r.to_location.trim()) locationSet.add(r.to_location.trim());
+                });
+            }
+        });
+
+        _locationCacheData = Array.from(locationSet).sort((a, b) =>
+            a.toLowerCase().localeCompare(b.toLowerCase())
+        );
+        _locationCacheTimestamp = now;
+        return _locationCacheData;
+    } catch (error) {
+        console.error('Error fetching locations for autocomplete:', error);
+        return _locationCacheData || [];
+    }
+}
+
+/**
+ * Initialize autocomplete on a text input element.
+ * Creates a dropdown that shows matching locations as user types.
+ */
+function initLocationAutocomplete(inputElement) {
+    if (!inputElement || inputElement._acInitialized) return;
+    inputElement._acInitialized = true;
+
+    // Turn off browser autocomplete
+    inputElement.setAttribute('autocomplete', 'off');
+
+    // Wrap input in a relative container if not already wrapped
+    let wrapper = inputElement.closest('.location-autocomplete-wrapper');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'location-autocomplete-wrapper';
+        inputElement.parentNode.insertBefore(wrapper, inputElement);
+        wrapper.appendChild(inputElement);
+    }
+
+    // Create dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'location-autocomplete-dropdown';
+    wrapper.appendChild(dropdown);
+
+    let activeIndex = -1;
+    let currentMatches = [];
+
+    function highlightText(text, query) {
+        if (!query) return text;
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return text.replace(new RegExp(`(${escaped})`, 'gi'), '<span class="ac-match">$1</span>');
+    }
+
+    async function showSuggestions() {
+        const query = inputElement.value.trim();
+        if (query.length < 1) {
+            dropdown.classList.remove('active');
+            return;
+        }
+
+        const locations = await fetchAllLocations();
+        currentMatches = locations.filter(loc =>
+            loc.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 15); // Limit results
+
+        if (currentMatches.length === 0) {
+            dropdown.innerHTML = '<div class="ac-empty">No matching locations</div>';
+            dropdown.classList.add('active');
+            activeIndex = -1;
+            return;
+        }
+
+        dropdown.innerHTML = currentMatches.map((loc, i) =>
+            `<div class="ac-item" data-index="${i}">
+                <span class="ac-icon">📍</span>
+                <span>${highlightText(loc, query)}</span>
+            </div>`
+        ).join('');
+
+        dropdown.classList.add('active');
+        activeIndex = -1;
+
+        // Click handlers
+        dropdown.querySelectorAll('.ac-item').forEach(item => {
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Prevent blur
+                const idx = parseInt(item.dataset.index);
+                inputElement.value = currentMatches[idx];
+                dropdown.classList.remove('active');
+                inputElement.focus();
+            });
+        });
+    }
+
+    function updateActiveItem() {
+        dropdown.querySelectorAll('.ac-item').forEach((item, i) => {
+            item.classList.toggle('ac-active', i === activeIndex);
+        });
+
+        // Scroll active item into view
+        const activeEl = dropdown.querySelector('.ac-item.ac-active');
+        if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    inputElement.addEventListener('input', () => {
+        showSuggestions();
+    });
+
+    inputElement.addEventListener('focus', () => {
+        if (inputElement.value.trim().length >= 1) {
+            showSuggestions();
+        }
+    });
+
+    inputElement.addEventListener('blur', () => {
+        // Small delay to allow click events on dropdown items
+        setTimeout(() => {
+            dropdown.classList.remove('active');
+        }, 150);
+    });
+
+    inputElement.addEventListener('keydown', (e) => {
+        if (!dropdown.classList.contains('active')) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (currentMatches.length > 0) {
+                activeIndex = (activeIndex + 1) % currentMatches.length;
+                updateActiveItem();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (currentMatches.length > 0) {
+                activeIndex = activeIndex <= 0 ? currentMatches.length - 1 : activeIndex - 1;
+                updateActiveItem();
+            }
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && activeIndex < currentMatches.length) {
+                e.preventDefault();
+                inputElement.value = currentMatches[activeIndex];
+                dropdown.classList.remove('active');
+            }
+        } else if (e.key === 'Escape') {
+            dropdown.classList.remove('active');
+        }
+    });
+}
+
+// --- INVALIDATE LOCATION CACHE ON SAVE ---
+function invalidateLocationCache() {
+    _locationCacheData = null;
+    _locationCacheTimestamp = 0;
+}
+
+
+// ============================================================
+//  WIRE UP: PATCH EXISTING ADD BUTTONS & SAVE HANDLERS
+// ============================================================
+
+// --- HIRE-TO-PAY RECORDS: Auto-fill job number on add ---
+(function patchHireRecordAdd() {
+    const addBtn = document.getElementById('addHireRecordBtn');
+    if (!addBtn) return;
+
+    // We need to wrap the existing click handler
+    const origClick = addBtn.onclick;
+    addBtn.addEventListener('click', async () => {
+        // Wait a tick for the original handler to open the form
+        await new Promise(r => setTimeout(r, 50));
+
+        const formContainer = document.getElementById('hireRecordFormContainer');
+        if (formContainer && formContainer.style.display !== 'none') {
+            const recordId = document.getElementById('hireRecordId')?.value;
+            // Only auto-fill for new records, not edits
+            if (!recordId) {
+                const nextJob = await getNextJobNumber('hire');
+                const jobInput = document.getElementById('jobNumber');
+                if (jobInput && nextJob) {
+                    jobInput.value = nextJob;
+                }
+            }
+        }
+    });
+})();
+
+// --- COMMITMENT RECORDS: Auto-fill job number on add ---
+(function patchCommitmentRecordAdd() {
+    const addBtn = document.getElementById('addCommitmentRecordBtn');
+    if (!addBtn) return;
+
+    addBtn.addEventListener('click', async () => {
+        await new Promise(r => setTimeout(r, 50));
+
+        const formContainer = document.getElementById('commitmentRecordFormContainer');
+        if (formContainer && formContainer.style.display !== 'none') {
+            const recordId = document.getElementById('commitmentRecordId')?.value;
+            if (!recordId) {
+                const nextJob = await getNextJobNumber('commitment');
+                const jobInput = document.getElementById('commitmentJobNumber');
+                if (jobInput && nextJob) {
+                    jobInput.value = nextJob;
+                }
+            }
+        }
+    });
+})();
+
+
+// --- INITIALIZE LOCATION AUTOCOMPLETE ON ALL FROM/TO INPUTS ---
+(function initAllLocationAutocompletes() {
+    // Wait for DOM to be ready
+    const init = () => {
+        // Hire-to-Pay Records
+        initLocationAutocomplete(document.getElementById('hireFrom'));
+        initLocationAutocomplete(document.getElementById('hireTo'));
+
+        // Commitment Records
+        initLocationAutocomplete(document.getElementById('commitmentFrom'));
+        initLocationAutocomplete(document.getElementById('commitmentTo'));
+
+        // Other Operation Hires
+        initLocationAutocomplete(document.getElementById('otherOpFrom'));
+        initLocationAutocomplete(document.getElementById('otherOpTo'));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+
+// Close autocomplete dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.location-autocomplete-wrapper')) {
+        document.querySelectorAll('.location-autocomplete-dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
+    }
+});
 

@@ -10281,6 +10281,22 @@ body.dark-mode .terminated-badge {
     white-space: nowrap;
 }
 
+/* Phone tap-to-call link in tracker card */
+.tracker-phone-val {
+    font-weight: 600;
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+    transition: color 0.15s, opacity 0.15s;
+}
+.tracker-phone-val:hover {
+    opacity: 0.75;
+    text-decoration: underline !important;
+}
+
 /* Time ago badge */
 .tracker-time-ago {
     font-size: 11px;
@@ -11277,6 +11293,137 @@ body.dark-mode .btn-unpay {
 }
 
 
+/* =====================================================
+   LOCATION AUTOCOMPLETE DROPDOWN
+   ===================================================== */
+.location-autocomplete-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.location-autocomplete-wrapper input {
+    width: 100%;
+}
+
+.location-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: var(--surface-card, #ffffff);
+    border: 1.5px solid var(--surface-border, #e2e8f0);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    display: none;
+    animation: acDropIn 0.18s ease-out;
+}
+
+.location-autocomplete-dropdown.active {
+    display: block;
+}
+
+@keyframes acDropIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.location-autocomplete-dropdown .ac-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-primary, #1A1D24);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    border-bottom: 1px solid var(--surface-border, #f0f0f0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.location-autocomplete-dropdown .ac-item:last-child {
+    border-bottom: none;
+}
+
+.location-autocomplete-dropdown .ac-item:hover,
+.location-autocomplete-dropdown .ac-item.ac-active {
+    background: var(--brand-red-glow, rgba(209, 0, 31, 0.08));
+    color: var(--brand-red, #D1001F);
+}
+
+.location-autocomplete-dropdown .ac-item .ac-icon {
+    font-size: 14px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.location-autocomplete-dropdown .ac-item .ac-match {
+    font-weight: 700;
+    color: var(--brand-red, #D1001F);
+}
+
+.location-autocomplete-dropdown .ac-empty {
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text-muted, #999);
+    text-align: center;
+    font-style: italic;
+}
+
+/* Scrollbar styling for dropdown */
+.location-autocomplete-dropdown::-webkit-scrollbar {
+    width: 5px;
+}
+.location-autocomplete-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+.location-autocomplete-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
+/* Dark mode */
+body.dark-mode .location-autocomplete-dropdown {
+    background: var(--surface-card, #1E2028);
+    border-color: var(--surface-border, #2a2d36);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .location-autocomplete-dropdown .ac-item {
+    border-bottom-color: rgba(255,255,255,0.05);
+}
+
+body.dark-mode .location-autocomplete-dropdown .ac-item:hover,
+body.dark-mode .location-autocomplete-dropdown .ac-item.ac-active {
+    background: rgba(209, 0, 31, 0.12);
+}
+
+/* Job Number auto-generated badge */
+.job-number-auto-badge {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    color: #27AE60;
+    background: rgba(39, 174, 96, 0.1);
+    border: 1px solid rgba(39, 174, 96, 0.25);
+    padding: 2px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+body.dark-mode .job-number-auto-badge {
+    color: #2EEBA0;
+    background: rgba(39, 174, 96, 0.15);
+    border-color: rgba(39, 174, 96, 0.3);
+}
 
 
 
