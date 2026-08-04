@@ -258,7 +258,7 @@ function showConfirm(message, onYes, onNo = null, { title = 'Confirm Action', ic
         </div>`;
     document.body.appendChild(overlay);
     overlay.querySelector('.jtms-confirm-yes').addEventListener('click', () => { overlay.remove(); if (onYes) onYes(); });
-    overlay.querySelector('.jtms-confirm-no').addEventListener('click',  () => { overlay.remove(); if (onNo)  onNo(); });
+    overlay.querySelector('.jtms-confirm-no').addEventListener('click', () => { overlay.remove(); if (onNo) onNo(); });
     overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); if (onNo) onNo(); } });
 }
 
@@ -282,7 +282,7 @@ function showTableSkeleton(tbodyId, cols = 5, rows = 5) {
 const ADMIN_CACHE_PREFIX = 'jt_admin_';
 
 function setCachedAdminData(key, data) {
-    try { localStorage.setItem(ADMIN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+    try { localStorage.setItem(ADMIN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { }
 }
 
 function getCachedAdminData(key) {
@@ -291,7 +291,7 @@ function getCachedAdminData(key) {
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         return parsed?.data ?? null;
-    } catch(e) { return null; }
+    } catch (e) { return null; }
 }
 
 function showOfflineBanner(visible) {
@@ -299,7 +299,7 @@ function showOfflineBanner(visible) {
     if (banner) banner.classList.toggle('visible', visible);
 }
 
-window.addEventListener('online',  () => showOfflineBanner(false));
+window.addEventListener('online', () => showOfflineBanner(false));
 window.addEventListener('offline', () => showOfflineBanner(true));
 
 // --- PAGINATION HELPER (Fix 19) ---
@@ -337,30 +337,30 @@ function createPagination(containerId, data, renderRowFn, tableId, colCount, pag
         bar.style.display = 'flex';
         const tp = totalPages();
         const cp = currentPage;
-        let btns = `<button class="pagination-btn" id="${containerId}_prev" ${cp===1?'disabled':''}>‹</button>`;
+        let btns = `<button class="pagination-btn" id="${containerId}_prev" ${cp === 1 ? 'disabled' : ''}>‹</button>`;
         const range = [];
-        if (tp <= 7) { for(let i=1;i<=tp;i++) range.push(i); }
+        if (tp <= 7) { for (let i = 1; i <= tp; i++) range.push(i); }
         else {
             range.push(1);
             if (cp > 3) range.push('...');
-            for(let i=Math.max(2,cp-1);i<=Math.min(tp-1,cp+1);i++) range.push(i);
-            if (cp < tp-2) range.push('...');
+            for (let i = Math.max(2, cp - 1); i <= Math.min(tp - 1, cp + 1); i++) range.push(i);
+            if (cp < tp - 2) range.push('...');
             range.push(tp);
         }
         range.forEach(p => {
             if (p === '...') btns += `<span class="pagination-btn" style="cursor:default;border:none;">…</span>`;
-            else btns += `<button class="pagination-btn${p===cp?' active':''}" data-pg="${p}">${p}</button>`;
+            else btns += `<button class="pagination-btn${p === cp ? ' active' : ''}" data-pg="${p}">${p}</button>`;
         });
-        btns += `<button class="pagination-btn" id="${containerId}_next" ${cp===tp?'disabled':''}>›</button>`;
-        const start = (cp-1)*pageSize+1, end = Math.min(cp*pageSize, data.length);
+        btns += `<button class="pagination-btn" id="${containerId}_next" ${cp === tp ? 'disabled' : ''}>›</button>`;
+        const start = (cp - 1) * pageSize + 1, end = Math.min(cp * pageSize, data.length);
         bar.innerHTML = `<span class="pagination-info">Showing ${start}–${end} of ${data.length}</span><div class="pagination-btns">${btns}</div>`;
-        bar.querySelector(`#${containerId}_prev`)?.addEventListener('click', () => { if(currentPage>1){currentPage--;render();} });
-        bar.querySelector(`#${containerId}_next`)?.addEventListener('click', () => { if(currentPage<tp){currentPage++;render();} });
-        bar.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { currentPage=parseInt(b.dataset.pg); render(); }));
+        bar.querySelector(`#${containerId}_prev`)?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
+        bar.querySelector(`#${containerId}_next`)?.addEventListener('click', () => { if (currentPage < tp) { currentPage++; render(); } });
+        bar.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { currentPage = parseInt(b.dataset.pg); render(); }));
     }
 
     render();
-    return { refresh: render, goToPage: (p) => { currentPage = Math.min(Math.max(1,p), totalPages()); render(); } };
+    return { refresh: render, goToPage: (p) => { currentPage = Math.min(Math.max(1, p), totalPages()); render(); } };
 }
 
 
@@ -1219,7 +1219,7 @@ function formatDriverAge(ageVal) {
     return `${ageVal} years`;
 }
 
-window.updateCalculatedAge = function() {
+window.updateCalculatedAge = function () {
     const dobVal = document.getElementById('driverDob')?.value;
     const age = calculateAge(dobVal);
     const displayEl = document.getElementById('driverAgeDisplay');
@@ -1234,7 +1234,7 @@ document.getElementById('addDriverBtn')?.addEventListener('click', () => {
     document.getElementById('driverSalaryType').value = 'fixed';
     if (document.getElementById('driverOperation')) document.getElementById('driverOperation').value = '';
     if (document.getElementById('driverIsCoordinator')) document.getElementById('driverIsCoordinator').checked = false;
-    
+
     // Clear Birthday and calculated age fields
     const dobInput = document.getElementById('driverDob');
     if (dobInput) dobInput.value = '';
@@ -1275,7 +1275,7 @@ function toggleDriverSalaryTypeFields() {
     const role = (document.getElementById('driverRole')?.value || '').toLowerCase();
     const fixedFields = document.getElementById('fixedSalaryFields');
     const perTipFields = document.getElementById('perTipSalaryFields');
-    
+
     const kmLimitInput = document.getElementById('driverKmLimit');
     const extraKmInput = document.getElementById('driverExtraKmRate');
 
@@ -1285,7 +1285,7 @@ function toggleDriverSalaryTypeFields() {
     } else {
         if (fixedFields) fixedFields.style.display = 'block';
         if (perTipFields) perTipFields.style.display = 'none';
-        
+
         // Hide KM fields for fixed-salary helper
         if (role === 'helper') {
             if (kmLimitInput) kmLimitInput.style.display = 'none';
@@ -1317,7 +1317,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
 
     const id = document.getElementById('driverId').value;
     const salaryType = document.getElementById('driverSalaryType').value || 'fixed';
-    
+
     const nameInput = document.getElementById('driverName').value.trim();
     const nicknameInput = document.getElementById('driverNickname').value.trim();
     const combinedName = nicknameInput ? `${nameInput} (${nicknameInput})` : nameInput;
@@ -1534,7 +1534,7 @@ async function loadDrivers() {
 
             const row = document.createElement('tr');
             if (driver.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
-            
+
             const cleanedName = cleanDriverName(driver.name);
             const nickname = getNickname(driver.name);
 
@@ -1544,16 +1544,16 @@ async function loadDrivers() {
                 const logoUrl = opLower === 'kevilton'
                     ? 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'
                     : (opLower === 'pelwatte' ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg' : null);
-                
+
                 const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
                 const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
-                
+
                 const bgStyle = opLower === 'kevilton'
                     ? 'background:rgba(209,0,31,0.18);color:#FF6B81;border:1px solid rgba(209,0,31,0.4);'
                     : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);';
-                    
+
                 const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
-                
+
                 operationHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${opBadge}${coordTag}</div>`;
             }
 
@@ -1568,10 +1568,10 @@ async function loadDrivers() {
                 <td>${driver.license_number || '-'}</td>
                 <td>
                     ${driver.password
-                        ? `<span style="font-family:monospace;font-size:12px;letter-spacing:1px;background:rgba(0,0,0,0.06);padding:2px 7px;border-radius:6px;">${driver.password}</span>
+                    ? `<span style="font-family:monospace;font-size:12px;letter-spacing:1px;background:rgba(0,0,0,0.06);padding:2px 7px;border-radius:6px;">${driver.password}</span>
                            <button onclick="navigator.clipboard.writeText('${driver.password}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1200)})" style="border:none;background:none;cursor:pointer;font-size:13px;vertical-align:middle;" title="Copy password">📋</button>`
-                        : '<span style="color:#bbb;font-size:12px;">Not set</span>'
-                    }
+                    : '<span style="color:#bbb;font-size:12px;">Not set</span>'
+                }
                 </td>
                 <td>${formatDriverAge(driver.age)}</td>
                 <td>${driver.address}</td>
@@ -2239,15 +2239,13 @@ document.getElementById('addOtherOperationHireBtn')?.addEventListener('click', (
     if (!checkAdminAccess('add')) return;
     document.getElementById('otherOperationHireForm').reset();
     document.getElementById('otherOperationHireId').value = '';
-    
+
     // Reset form dynamics
     const rateFieldsRow = document.getElementById('otherOpRateFieldsRow');
     const exactAmountRow = document.getElementById('otherOpExactAmountRow');
-    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
     if (rateFieldsRow) rateFieldsRow.style.display = '';
     if (exactAmountRow) exactAmountRow.style.display = 'none';
-    if (cocaRow) cocaRow.style.display = 'none';
-    
+
     const first100Input = document.getElementById('otherOpFirst100Rate');
     const restKmInput = document.getElementById('otherOpRestKmRate');
     const exactAmountInput = document.getElementById('otherOpExactAmount');
@@ -2255,7 +2253,7 @@ document.getElementById('addOtherOperationHireBtn')?.addEventListener('click', (
     if (restKmInput) restKmInput.required = true;
     if (exactAmountInput) exactAmountInput.required = false;
 
-    // Reset Operation Select & Custom Custom field
+    // Reset Operation Select & Custom field
     const nameSelect = document.getElementById('otherOpOperationNameSelect');
     const customNameInput = document.getElementById('otherOpOperationNameCustom');
     if (nameSelect) nameSelect.value = '';
@@ -2305,19 +2303,8 @@ document.getElementById('otherOpOperationNameSelect')?.addEventListener('change'
     const value = e.target.value;
     const customInput = document.getElementById('otherOpOperationNameCustom');
     const realInput = document.getElementById('otherOpOperationName');
-    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
 
-    if (value === 'COCACOLA') {
-        if (customInput) {
-            customInput.style.display = 'none';
-            customInput.required = false;
-            customInput.value = '';
-        }
-        if (realInput) {
-            realInput.value = 'COCACOLA';
-        }
-        if (cocaRow) cocaRow.style.display = '';
-    } else if (value === 'other') {
+    if (value === 'other') {
         if (customInput) {
             customInput.style.display = '';
             customInput.required = true;
@@ -2325,8 +2312,6 @@ document.getElementById('otherOpOperationNameSelect')?.addEventListener('change'
         if (realInput) {
             realInput.value = customInput ? customInput.value : '';
         }
-        const isCocaCola = (customInput ? customInput.value : '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
-        if (cocaRow) cocaRow.style.display = isCocaCola ? '' : 'none';
     } else {
         if (customInput) {
             customInput.style.display = 'none';
@@ -2334,9 +2319,8 @@ document.getElementById('otherOpOperationNameSelect')?.addEventListener('change'
             customInput.value = '';
         }
         if (realInput) {
-            realInput.value = '';
+            realInput.value = value;
         }
-        if (cocaRow) cocaRow.style.display = 'none';
     }
 });
 
@@ -2345,11 +2329,6 @@ document.getElementById('otherOpOperationNameCustom')?.addEventListener('input',
     const realInput = document.getElementById('otherOpOperationName');
     if (realInput) {
         realInput.value = name;
-    }
-    const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
-    const isCocaCola = name.toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
-    if (cocaRow) {
-        cocaRow.style.display = isCocaCola ? '' : 'none';
     }
 });
 
@@ -2361,7 +2340,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
     const id = document.getElementById('otherOperationHireId').value;
     const distance = parseFloat(document.getElementById('otherOpDistance').value) || 0;
     const hireType = document.getElementById('otherOpHireType').value || 'km_rate';
-    
+
     let hireAmount = 0;
     let first100Rate = 0;
     let restRate = 0;
@@ -2383,10 +2362,7 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
     const fuelLitres = parseFloat(document.getElementById('otherOpFuel').value) || 0;
     const fuelPrice = parseFloat(document.getElementById('otherOpFuelPrice').value) || 0;
     const fuelCost = fuelLitres * fuelPrice;
-
     const opName = document.getElementById('otherOpOperationName').value;
-    const isCocaCola = opName.toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
-    const cocacolaPaid80 = isCocaCola ? document.getElementById('otherOpCocaColaPaid').checked : false;
 
     const recordData = {
         base_lorry_number: document.getElementById('otherOpBaseVehicle').value,
@@ -2403,7 +2379,6 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
         hire_amount: hireAmount,
         hire_type: hireType,
         exact_amount: exactAmountVal,
-        cocacola_paid_80: cocacolaPaid80,
         user_id: adminUserId
     };
 
@@ -2454,31 +2429,6 @@ async function loadOtherOperationHires() {
         if (error) {
             console.warn('Error loading other operation hires (table might not exist yet):', error.message);
         } else if (data) {
-            // Update Coca-Cola Summary Widget for the month
-            const ccRecords = data.filter(r => (r.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola'));
-            const widget = document.getElementById('cocacolaSummaryWidget');
-            if (ccRecords.length > 0) {
-                if (widget) widget.style.display = 'block';
-                const totalInvoice = ccRecords.reduce((sum, r) => sum + (r.hire_amount || 0), 0);
-                const totalPaid = ccRecords.reduce((sum, r) => sum + (r.cocacola_paid_80 ? 0.8 * (r.hire_amount || 0) : 0), 0);
-                const totalRemaining = ccRecords.reduce((sum, r) => sum + (r.cocacola_paid_80 ? 0.2 * (r.hire_amount || 0) : (r.hire_amount || 0)), 0);
-                const paidCount = ccRecords.filter(r => r.cocacola_paid_80).length;
-
-                const totalHiresCountEl = document.getElementById('ccTotalHiresCount');
-                const totalInvoiceEl = document.getElementById('ccTotalInvoiceValue');
-                const moneyPaidEl = document.getElementById('ccMoneyPaid');
-                const paidHiresInfoEl = document.getElementById('ccPaidHiresInfo');
-                const moneyRemainingEl = document.getElementById('ccMoneyRemaining');
-
-                if (totalHiresCountEl) totalHiresCountEl.textContent = ccRecords.length;
-                if (totalInvoiceEl) totalInvoiceEl.textContent = `LKR ${totalInvoice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                if (moneyPaidEl) moneyPaidEl.textContent = `LKR ${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                if (paidHiresInfoEl) paidHiresInfoEl.textContent = `${paidCount} of ${ccRecords.length} hires marked 80% paid`;
-                if (moneyRemainingEl) moneyRemainingEl.textContent = `LKR ${totalRemaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            } else {
-                if (widget) widget.style.display = 'none';
-            }
-
             const tbody = document.querySelector('#otherOperationHiresTable tbody');
             if (tbody) {
                 tbody.innerHTML = '';
@@ -2503,23 +2453,6 @@ async function loadOtherOperationHires() {
                         </td>
                     `;
 
-                    const isCocaCola = (record.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
-                    let operationCellHTML = record.operation_name;
-                    if (isCocaCola) {
-                        operationCellHTML = `
-                            <div class="cocacola-operation-cell" style="display: flex; align-items: center; gap: 8px; justify-content: flex-start;">
-                                <label class="switch-sm" title="Toggle 80% Payment Status">
-                                    <input type="checkbox" ${record.cocacola_paid_80 ? 'checked' : ''} onchange="toggleCocaColaPaid(${record.id}, this.checked)">
-                                    <span class="slider-sm"></span>
-                                </label>
-                                <span style="font-weight: 500;">${record.operation_name}</span>
-                                <span class="${record.cocacola_paid_80 ? 'cocacola-badge-paid' : 'cocacola-badge-pending'}">
-                                    ${record.cocacola_paid_80 ? '80% Paid' : 'Pending'}
-                                </span>
-                            </div>
-                        `;
-                    }
-
                     let breakdownHTML = '';
                     if (record.hire_type === 'exact_amount') {
                         breakdownHTML = `<small>Type: Exact Amount<br><strong>Total Hire: LKR ${record.hire_amount.toFixed(2)}</strong></small>`;
@@ -2530,7 +2463,7 @@ async function loadOtherOperationHires() {
                     row.innerHTML = `
                         <td>${record.hire_date}</td>
                         <td>${record.base_lorry_number}</td>
-                        <td>${operationCellHTML}</td>
+                        <td><strong>${record.operation_name || '-'}</strong></td>
                         <td>${record.from_location} - ${record.to_location}</td>
                         <td>${record.distance} km</td>
                         <td><small>Litres: ${record.fuel_litres}<br>Rate: LKR ${record.fuel_price_per_litre}<br><strong>Cost: LKR ${record.fuel_cost.toFixed(2)}</strong></small></td>
@@ -2547,24 +2480,6 @@ async function loadOtherOperationHires() {
     // Always update vehicle filter regardless of table existence
     updateOtherOperationHireVehicleFilter();
 }
-
-window.toggleCocaColaPaid = async function(id, checked) {
-    if (!checkAdminAccess('save')) return;
-    try {
-        const { error } = await supabaseClient
-            .from('other_operation_hires')
-            .update({ cocacola_paid_80: checked })
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        showToast('Coca-Cola payment status updated successfully!', 'success');
-        loadOtherOperationHires();
-    } catch (error) {
-        showToast('Error updating status: ' + error.message, 'error');
-        loadOtherOperationHires();
-    }
-};
 
 async function updateOtherOperationHireVehicleFilter() {
     try {
@@ -2641,15 +2556,22 @@ async function editOtherOperationHire(id) {
 
         document.getElementById('otherOperationHireId').value = data.id;
         document.getElementById('otherOpBaseVehicle').value = data.base_lorry_number;
-        
+
         const opName = data.operation_name || '';
         document.getElementById('otherOpOperationName').value = opName;
-        
+
         const nameSelect = document.getElementById('otherOpOperationNameSelect');
         const customInput = document.getElementById('otherOpOperationNameCustom');
 
-        if (opName === 'COCACOLA') {
-            if (nameSelect) nameSelect.value = 'COCACOLA';
+        if (opName === 'Pelwatte Operation') {
+            if (nameSelect) nameSelect.value = 'Pelwatte Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opName === 'Keells Operation') {
+            if (nameSelect) nameSelect.value = 'Keells Operation';
             if (customInput) {
                 customInput.style.display = 'none';
                 customInput.required = false;
@@ -2705,14 +2627,6 @@ async function editOtherOperationHire(id) {
             if (restKmInput) restKmInput.required = true;
             if (exactAmountInput) exactAmountInput.required = false;
         }
-
-        // Toggle UI states for Coca-Cola
-        const isCocaCola = (data.operation_name || '').toLowerCase().replace(/[\s-]/g, '').includes('cocacola');
-        const cocaRow = document.getElementById('otherOpCocaColaPaidRow');
-        if (cocaRow) {
-            cocaRow.style.display = isCocaCola ? '' : 'none';
-        }
-        document.getElementById('otherOpCocaColaPaid').checked = data.cocacola_paid_80 || false;
 
         document.getElementById('otherOperationHireFormContainer').style.display = 'block';
         document.getElementById('otherOperationHireFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3508,20 +3422,103 @@ async function loadDashboardData(monthValue, cachedData = null) {
             ? (cachedData.excessingLitres?.reduce((sum, r) => sum + (r.fuel_amount_l || 0), 0) || 0)
             : 0;
 
-        setText('totalRevenue', `LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
-        setText('fuelCost', `LKR ${totalFuelCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
-        setText('fuelAllowance', `LKR ${fuelAllowance.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('totalRevenue', `LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        setText('fuelCost', `LKR ${totalFuelCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        setText('fuelAllowance', `LKR ${fuelAllowance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         setText('totalHires', totalHires.toLocaleString('en-US'));
 
         // NEW UI UPDATES
         setText('activeLorries', activeVehiclesSet.size);
         setText('totalDistance', `${totalDistance.toLocaleString('en-US')} km`);
         setText('totalDieselLitres', `${Math.round(totalFuelLitres).toLocaleString('en-US')} L`);
-        setText('dashboardExcessingLitres', `${elTotalLitres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})} L`);
-        setText('dashboardExcessingCost', `LKR ${elActualCostForMonth.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('dashboardExcessingLitres', `${elTotalLitres.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`);
+        setText('dashboardExcessingCost', `LKR ${elActualCostForMonth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
         // Profit (Revenue - Fuel Cost + Fuel Allowance)
-        setText('netProfit', `LKR ${netProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('netProfit', `LKR ${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+
+        // --- OPERATION-WISE REVENUE BREAKDOWN WIDGET ---
+        const hireToPayRev = hireRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
+        const commitmentNetRev = commitmentPayment - dayOffDeductions + extraKmCharges;
+
+        let keviltonOtherRev = 0;
+        let keviltonOtherCount = 0;
+        let pelwatteRev = 0;
+        let pelwatteCount = 0;
+        let keellsRev = 0;
+        let keellsCount = 0;
+
+        const customOpsMap = {};
+
+        otherOpHires?.forEach(r => {
+            const opName = (r.operation_name || '').trim();
+            const lower = opName.toLowerCase().replace(/[\s-]/g, '');
+            const amount = r.hire_amount || 0;
+
+            if (lower.includes('kevilton')) {
+                keviltonOtherRev += amount;
+                keviltonOtherCount++;
+            } else if (lower.includes('pelwatte')) {
+                pelwatteRev += amount;
+                pelwatteCount++;
+            } else if (lower.includes('keells')) {
+                keellsRev += amount;
+                keellsCount++;
+            } else {
+                const displayName = opName || 'Other Operation';
+                if (!customOpsMap[displayName]) {
+                    customOpsMap[displayName] = { amount: 0, count: 0 };
+                }
+                customOpsMap[displayName].amount += amount;
+                customOpsMap[displayName].count++;
+            }
+        });
+
+        const keviltonTotalRev = hireToPayRev + commitmentNetRev + keviltonOtherRev;
+        const keviltonTotalCount = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + keviltonOtherCount;
+
+        const opsData = [
+            {
+                name: 'Kevilton Operation',
+                logoUrl: 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png',
+                icon: '🏢',
+                accent: 'kevilton',
+                amount: keviltonTotalRev,
+                count: keviltonTotalCount,
+                subtitle: 'Hire-to-Pay + Commitment'
+            },
+            {
+                name: 'Pelwatte Operation',
+                logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg',
+                icon: '🌾',
+                accent: 'pelwatte',
+                amount: pelwatteRev,
+                count: pelwatteCount,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'Keells Operation',
+                logoUrl: 'https://i.postimg.cc/x8KcWWty/images.jpg',
+                icon: '🛒',
+                accent: 'keells',
+                amount: keellsRev,
+                count: keellsCount,
+                subtitle: 'Other Operations'
+            }
+        ];
+
+        Object.keys(customOpsMap).forEach(opName => {
+            opsData.push({
+                name: opName,
+                icon: '📦',
+                accent: 'other',
+                amount: customOpsMap[opName].amount,
+                count: customOpsMap[opName].count,
+                subtitle: 'Custom Operation'
+            });
+        });
+
+        renderOperationRevenueWidget(opsData, totalRevenue);
 
         // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
@@ -3530,6 +3527,45 @@ async function loadDashboardData(monthValue, cachedData = null) {
     } catch (error) {
         console.error('Error loading dashboard:', error.message);
     }
+}
+
+function renderOperationRevenueWidget(opsData, grandTotalRevenue) {
+    const container = document.getElementById('operationRevenueWidget');
+    if (!container) return;
+
+    if (!opsData || opsData.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No operation revenue recorded for this month.</div>';
+        return;
+    }
+
+    let html = '<div class="op-revenue-grid">';
+    opsData.forEach(op => {
+        const pct = grandTotalRevenue > 0 ? ((op.amount / grandTotalRevenue) * 100).toFixed(1) : '0.0';
+        const formattedAmount = op.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const logoHTML = op.logoUrl
+            ? `<img src="${op.logoUrl}" class="op-revenue-logo" alt="${op.name}">`
+            : `<span class="op-revenue-icon">${op.icon || '📦'}</span>`;
+
+        html += `
+            <div class="op-revenue-card" data-accent="${op.accent}">
+                <div class="op-revenue-card-header">
+                    <div class="op-revenue-card-title">${logoHTML} ${op.name}</div>
+                    <span class="op-revenue-card-badge">${pct}% Share</span>
+                </div>
+                <div class="op-revenue-amount">LKR ${formattedAmount}</div>
+                <div class="op-revenue-meta">
+                    <span>${op.count} Hires / Jobs</span>
+                    <span>${op.subtitle || ''}</span>
+                </div>
+                <div class="op-revenue-progress-track">
+                    <div class="op-revenue-progress-bar" style="width: ${Math.min(100, Math.max(0, pct))}%;"></div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // ============ VEHICLE PERFORMANCE ============
@@ -3807,11 +3843,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                         </tr>
                     `;
@@ -3829,11 +3865,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -3889,11 +3925,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                         </tr>
                     `;
@@ -3910,11 +3946,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -3966,11 +4002,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                     ${vehicle.recordsCount}
                                 </span>
                             </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
                             <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                         </tr>
                     `;
@@ -3987,11 +4023,11 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                                                 ${totalHires}
                                             </span>
                                         </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
                                         <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -4164,8 +4200,8 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
                     }
                 }
 
-                const efficiencyText = vehicle.totalFuelLitres > 0 
-                    ? `${vehicle.efficiency.toFixed(2)} Km/L` 
+                const efficiencyText = vehicle.totalFuelLitres > 0
+                    ? `${vehicle.efficiency.toFixed(2)} Km/L`
                     : 'N/A';
 
                 let typeBadgeStyle = '';
@@ -4465,8 +4501,8 @@ async function loadDashboardCharts(cachedData = null) {
         const avgProfit = totalProfit6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
 
-        document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
 
@@ -4746,9 +4782,9 @@ async function loadAllTimeStatistics() {
 
         const totalProfit = totalRevenue - totalFuelCost;
 
-        document.getElementById('allTimeRevenue').textContent = `LKR ${totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-        document.getElementById('allTimeProfit').textContent = `LKR ${totalProfit.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-        document.getElementById('allTimeFuelCost').textContent = `LKR ${totalFuelCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('allTimeRevenue').textContent = `LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('allTimeProfit').textContent = `LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('allTimeFuelCost').textContent = `LKR ${totalFuelCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('allTimeHires').textContent = totalHires;
     } catch (error) {
         console.error('Error loading all-time statistics:', error.message);
@@ -5470,7 +5506,7 @@ async function loadWeeklyAdvanceSummary() {
         return `${y}-${m}-${dd}`;
     };
     const weekStart = fmt(monday);
-    const weekEnd   = fmt(sunday);
+    const weekEnd = fmt(sunday);
 
     // Update week label
     const monLabel = monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -5942,13 +5978,13 @@ async function loadAdvancedDashboardStats(monthValue, cachedData = null) {
 
         const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-        setText('profitPerKm', `LKR ${profitPerKm.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('profitPerKm', `LKR ${profitPerKm.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         setText('utilizationRate', `${utilizationRate.toFixed(1)}%`);
-        setText('revPerVehicleDay', `LKR ${revPerVehDay.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('revPerVehicleDay', `LKR ${revPerVehDay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         setText('avgFuelEfficiency', `${avgEfficiency.toFixed(2)} Km/L`);
 
         setText('avgTripDistance', `${avgTripDist.toFixed(1)} km`);
-        setText('waitingRevenue', `LKR ${totalWaitingRev.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`);
+        setText('waitingRevenue', `LKR ${totalWaitingRev.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         setText('jobsPerVehicle', jobsPerVeh.toFixed(1));
         setText('distPerVehicle', `${Math.round(distPerVeh).toLocaleString('en-US')} km`);
 
@@ -7378,17 +7414,17 @@ async function loadWeeklyVehicleKmChart(monthValue, cachedData = null) {
         const monthPadded = String(month).padStart(2, '0');
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
         const startDate = `${year}-${monthPadded}-01`;
-        const endDate   = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+        const endDate = `${year}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
         const currentQueryUserId = getQueryUserId();
 
         // ── Fetch records ──────────────────────────────────────────────────────
         let hireRecords, commitRecords, otherOpRecords, hireVehicles, commitVehicles;
 
         if (cachedData) {
-            hireRecords    = cachedData.hireRecords;
-            commitRecords  = cachedData.commitmentRecords;
+            hireRecords = cachedData.hireRecords;
+            commitRecords = cachedData.commitmentRecords;
             otherOpRecords = cachedData.otherOpHires;
-            hireVehicles   = cachedData.hireVehicles;
+            hireVehicles = cachedData.hireVehicles;
             commitVehicles = cachedData.commitmentVehicles;
         } else {
             const [
@@ -7404,25 +7440,25 @@ async function loadWeeklyVehicleKmChart(monthValue, cachedData = null) {
                 supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', currentQueryUserId),
                 supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', currentQueryUserId)
             ]);
-            hireRecords    = rHire;
-            commitRecords  = rCommit;
+            hireRecords = rHire;
+            commitRecords = rCommit;
             otherOpRecords = rOther;
-            hireVehicles   = rHireV;
+            hireVehicles = rHireV;
             commitVehicles = rCommitV;
         }
 
         // ── Build vehicle label maps ───────────────────────────────────────────
-        const hireVehicleMap    = {};  // id → base label
-        const commitVehicleMap  = {};
-        (hireVehicles  || []).forEach(v => { hireVehicleMap[v.id]   = extractBaseVehicleName(v.lorry_number);  });
-        (commitVehicles|| []).forEach(v => { commitVehicleMap[v.id] = extractBaseVehicleName(v.vehicle_number); });
+        const hireVehicleMap = {};  // id → base label
+        const commitVehicleMap = {};
+        (hireVehicles || []).forEach(v => { hireVehicleMap[v.id] = extractBaseVehicleName(v.lorry_number); });
+        (commitVehicles || []).forEach(v => { commitVehicleMap[v.id] = extractBaseVehicleName(v.vehicle_number); });
 
         // ── Define 4 calendar weeks inside the month ──────────────────────────
         // Week 1: days 1–7 | Week 2: 8–14 | Week 3: 15–21 | Week 4: 22–lastDay
         const weekBounds = [
-            { label: 'Week 1 (Days 1–7)',         start: 1,  end: 7          },
-            { label: 'Week 2 (Days 8–14)',         start: 8,  end: 14         },
-            { label: 'Week 3 (Days 15–21)',        start: 15, end: 21         },
+            { label: 'Week 1 (Days 1–7)', start: 1, end: 7 },
+            { label: 'Week 2 (Days 8–14)', start: 8, end: 14 },
+            { label: 'Week 3 (Days 15–21)', start: 15, end: 21 },
             { label: 'Week 4 (Days 22–' + lastDay + ')', start: 22, end: lastDay }
         ];
 
@@ -7446,8 +7482,8 @@ async function loadWeeklyVehicleKmChart(monthValue, cachedData = null) {
             if (wIdx >= 0) vehicleData[vehicleLabel][wIdx] += (km || 0);
         }
 
-        (hireRecords    || []).forEach(r => addKm(hireVehicleMap[r.vehicle_id],   r.hire_date, r.distance));
-        (commitRecords  || []).forEach(r => addKm(commitVehicleMap[r.vehicle_id], r.hire_date, r.distance));
+        (hireRecords || []).forEach(r => addKm(hireVehicleMap[r.vehicle_id], r.hire_date, r.distance));
+        (commitRecords || []).forEach(r => addKm(commitVehicleMap[r.vehicle_id], r.hire_date, r.distance));
         (otherOpRecords || []).forEach(r => addKm(extractBaseVehicleName(r.base_lorry_number), r.hire_date, r.distance));
 
         const vehicleLabels = Object.keys(vehicleData).sort();
@@ -7462,9 +7498,9 @@ async function loadWeeklyVehicleKmChart(monthValue, cachedData = null) {
 
         // ── Palette for weeks ─────────────────────────────────────────────────
         const weekColors = [
-            { bg: 'rgba(52, 152, 219, 0.78)',  border: '#2980b9' },   // Week 1 – blue
-            { bg: 'rgba(46, 213, 115, 0.78)',  border: '#20bf6b' },   // Week 2 – green
-            { bg: 'rgba(255, 165, 2,  0.78)',  border: '#f9a602' },   // Week 3 – amber
+            { bg: 'rgba(52, 152, 219, 0.78)', border: '#2980b9' },   // Week 1 – blue
+            { bg: 'rgba(46, 213, 115, 0.78)', border: '#20bf6b' },   // Week 2 – green
+            { bg: 'rgba(255, 165, 2,  0.78)', border: '#f9a602' },   // Week 3 – amber
             { bg: 'rgba(209, 0,   31,  0.72)', border: '#c0392b' }    // Week 4 – red
         ];
 
@@ -7472,7 +7508,7 @@ async function loadWeeklyVehicleKmChart(monthValue, cachedData = null) {
             label: wb.label,
             data: vehicleLabels.map(v => parseFloat(vehicleData[v][wIdx].toFixed(2))),
             backgroundColor: weekColors[wIdx].bg,
-            borderColor:     weekColors[wIdx].border,
+            borderColor: weekColors[wIdx].border,
             borderWidth: 1,
             borderRadius: 4
         }));
@@ -8322,17 +8358,17 @@ function _lddReposition(triggerId, dropdownEl) {
     const spaceAbove = rect.top;
     const dropH = Math.min(dropdownEl.scrollHeight, 380);
 
-    dropdownEl.style.left  = rect.left + 'px';
+    dropdownEl.style.left = rect.left + 'px';
     dropdownEl.style.width = rect.width + 'px';
 
     if (spaceBelow >= dropH || spaceBelow >= spaceAbove) {
         // Open downward
-        dropdownEl.style.top    = (rect.bottom + 6) + 'px';
+        dropdownEl.style.top = (rect.bottom + 6) + 'px';
         dropdownEl.style.bottom = 'auto';
     } else {
         // Flip upward
         dropdownEl.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
-        dropdownEl.style.top    = 'auto';
+        dropdownEl.style.top = 'auto';
     }
 }
 
@@ -8383,9 +8419,9 @@ function buildLogoDropdown(containerId, hiddenId, items, placeholder, onChange) 
     document.body.appendChild(dropdown);
 
     const trigger = document.getElementById(`${containerId}_trigger`);
-    const selEl   = document.getElementById(`${containerId}_sel`);
-    const list     = document.getElementById(`${containerId}_list`);
-    const search   = document.getElementById(`${containerId}_srch`);
+    const selEl = document.getElementById(`${containerId}_sel`);
+    const list = document.getElementById(`${containerId}_list`);
+    const search = document.getElementById(`${containerId}_srch`);
 
     // Open / close
     trigger.addEventListener('click', e => {
@@ -8435,8 +8471,8 @@ function _lddSelect(containerId, value, silent) {
     const reg = _lddRegistry[containerId];
     if (!reg) return;
     const hidden = document.getElementById(reg.hiddenId);
-    const selEl  = document.getElementById(`${containerId}_sel`);
-    const list   = document.getElementById(`${containerId}_list`);
+    const selEl = document.getElementById(`${containerId}_sel`);
+    const list = document.getElementById(`${containerId}_list`);
     if (!hidden || !selEl || !list) return;
 
     hidden.value = value;
@@ -8447,7 +8483,7 @@ function _lddSelect(containerId, value, silent) {
     } else {
         const item = list.querySelector(`.ldd-item[data-value="${value}"]`);
         if (item) {
-            const logo  = item.dataset.logo;
+            const logo = item.dataset.logo;
             const emoji = item.dataset.emoji;
             const label = item.dataset.label;
             const iconHtml = logo
@@ -9148,11 +9184,11 @@ async function fetchChequeAlerts(userId) {
                     const refDate = new Date(refDateStr);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    
+
                     const refMidnight = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
                     const diffTime = today - refMidnight;
                     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    
+
                     if (diffDays > 7) {
                         return; // Only show returned cheques for 1 week after returned/maturity
                     }
@@ -9356,14 +9392,14 @@ function getDaysUntilBirthday(birthMonth, birthDay) {
     const today = new Date();
     const currentYear = today.getFullYear();
     let nextBirthday = new Date(currentYear, birthMonth - 1, birthDay);
-    
-    today.setHours(0,0,0,0);
-    nextBirthday.setHours(0,0,0,0);
-    
+
+    today.setHours(0, 0, 0, 0);
+    nextBirthday.setHours(0, 0, 0, 0);
+
     if (nextBirthday < today) {
         nextBirthday.setFullYear(currentYear + 1);
     }
-    
+
     const diffTime = nextBirthday - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -11232,7 +11268,7 @@ function setLeaseFormFreq(freq) {
         const type = document.getElementById('leaseEntryType').value;
         totalLabel.textContent = freq === 'weekly' ? '📆 Total Weeks' :
             freq === 'fortnightly' ? '📆 Total Fortnights' :
-            (type === 'leasing' ? '📆 Total Months' : '📆 Total Months');
+                (type === 'leasing' ? '📆 Total Months' : '📆 Total Months');
     }
 }
 
@@ -11486,7 +11522,7 @@ function renderLeasingWidgets(entries, paidMap) {
         const keys = leasingBuildPaymentKeys(v);
         const paid = paidMap[v.id] || new Set();
         const postponed = new Set(v.postponed_dates || []);
-        
+
         const activeKeys = keys.filter(k => !postponed.has(k));
         const paidCount = activeKeys.filter(k => paid.has(k)).length;
         const total = activeKeys.length;
@@ -11504,9 +11540,9 @@ function renderLeasingWidgets(entries, paidMap) {
         let freqBadge = '';
         if (isLoan) {
             const freqLabel = v.payment_freq === 'weekly' ? '📆 Weekly' :
-                             v.payment_freq === 'fortnightly' ? '🔁 Every 2 Weeks' : '📅 Monthly';
+                v.payment_freq === 'fortnightly' ? '🔁 Every 2 Weeks' : '📅 Monthly';
             const freqClass = v.payment_freq === 'weekly' ? 'badge-weekly' :
-                             v.payment_freq === 'fortnightly' ? 'badge-fortnightly' : 'badge-monthly';
+                v.payment_freq === 'fortnightly' ? 'badge-fortnightly' : 'badge-monthly';
             freqBadge = `<span class="lease-freq-badge ${freqClass}">${freqLabel}</span>`;
         }
 
@@ -11576,7 +11612,7 @@ function renderLeasingVehicleRows(entries, paidMap) {
         const keys = leasingBuildPaymentKeys(v);
         const paid = paidMap[v.id] || new Set();
         const postponed = new Set(v.postponed_dates || []);
-        
+
         const activeKeys = keys.filter(k => !postponed.has(k));
         const paidCount = activeKeys.filter(k => paid.has(k)).length;
         const total = activeKeys.length;
@@ -11594,7 +11630,7 @@ function renderLeasingVehicleRows(entries, paidMap) {
                 meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months`;
             }
         } else {
-            meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2,'0')}`)}`;
+            meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2, '0')}`)}`;
         }
         if (v.settled) meta += ' · <span style="color:var(--green);font-weight:700;">🏁 Settled</span>';
         if (v.settled_notes) meta += ` · ${v.settled_notes}`;
@@ -11712,8 +11748,8 @@ function renderLeasingMonthGrid(vehicle, paid) {
             statusLabel = '✅ Paid';
         } else if (isCurrent) {
             statusClass = 'lease-tile-current';
-            statusLabel = vehicle.payment_freq === 'weekly' ? '📌 This Week' : 
-                          vehicle.payment_freq === 'fortnightly' ? '📌 This Fortnight' : '📌 This Month';
+            statusLabel = vehicle.payment_freq === 'weekly' ? '📌 This Week' :
+                vehicle.payment_freq === 'fortnightly' ? '📌 This Fortnight' : '📌 This Month';
         } else if (isOverdue) {
             statusClass = 'lease-tile-overdue';
             statusLabel = '🔴 Overdue';
@@ -11854,14 +11890,14 @@ window.editLeaseVehicle = async function (vehicleId) {
             document.getElementById('leaseStartDate').value = data.start_date || '';
         } else {
             document.getElementById('leaseStartMonth').value = data.start_year && data.start_month
-                ? `${data.start_year}-${String(data.start_month).padStart(2,'0')}` : '';
+                ? `${data.start_year}-${String(data.start_month).padStart(2, '0')}` : '';
             document.getElementById('loanInstallmentDay').value = data.installment_day || '';
         }
     } else {
         document.getElementById('leaseVehicleNumber').value = data.vehicle_number || '';
         document.getElementById('leaseInstallmentDay').value = data.installment_day || '';
         document.getElementById('leaseStartMonth').value = data.start_year && data.start_month
-            ? `${data.start_year}-${String(data.start_month).padStart(2,'0')}` : '';
+            ? `${data.start_year}-${String(data.start_month).padStart(2, '0')}` : '';
     }
 
     if (data.settled) {
@@ -11973,9 +12009,9 @@ async function loadExcessingLitres() {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px;">No records found. Click "+ Add Record" to get started.</td></tr>`;
         } else {
             records.forEach(r => {
-                totalLitres    += r.fuel_amount_l  || 0;
-                totalCost      += r.cost           || 0;
-                totalActualCost += r.actual_cost   || 0;
+                totalLitres += r.fuel_amount_l || 0;
+                totalCost += r.cost || 0;
+                totalActualCost += r.actual_cost || 0;
 
                 const tr = document.createElement('tr');
                 const actionBtns = userRole === 'viewer' ? '' : `
@@ -12006,9 +12042,9 @@ async function loadExcessingLitres() {
         ` : '';
 
         // Summary strip
-        setText('elTotalRecords',    records?.length || 0);
-        setText('elTotalLitres',     `${totalLitres.toFixed(2)} L`);
-        setText('elTotalCost',       `LKR ${totalCost.toFixed(2)}`);
+        setText('elTotalRecords', records?.length || 0);
+        setText('elTotalLitres', `${totalLitres.toFixed(2)} L`);
+        setText('elTotalCost', `LKR ${totalCost.toFixed(2)}`);
         setText('elTotalActualCost', `LKR ${totalActualCost.toFixed(2)}`);
 
     } catch (err) {
@@ -12033,7 +12069,7 @@ document.getElementById('cancelElBtn')?.addEventListener('click', () => {
 
 // ── Live preview ───────────────────────────────────────────
 function elUpdatePreview() {
-    const price  = parseFloat(document.getElementById('elFuelPrice')?.value) || 0;
+    const price = parseFloat(document.getElementById('elFuelPrice')?.value) || 0;
     const amount = parseFloat(document.getElementById('elFuelAmount')?.value) || 0;
     const preview = document.getElementById('elCostPreview');
     if (!preview) return;
@@ -12041,7 +12077,7 @@ function elUpdatePreview() {
         preview.style.display = 'flex';
         const costEl = document.getElementById('elPreviewCost');
         const actualEl = document.getElementById('elPreviewActualCost');
-        if (costEl)   costEl.textContent   = `LKR ${elCalcCost(price, amount).toFixed(2)}`;
+        if (costEl) costEl.textContent = `LKR ${elCalcCost(price, amount).toFixed(2)}`;
         if (actualEl) actualEl.textContent = `LKR ${elCalcActualCost(price, amount).toFixed(2)}`;
     } else {
         preview.style.display = 'none';
@@ -12057,17 +12093,17 @@ document.getElementById('elForm')?.addEventListener('submit', async (e) => {
     if (!checkAdminAccess('save')) return;
     if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
-    const id         = document.getElementById('elRecordId').value;
-    const date       = document.getElementById('elDate').value;
-    const fuelPrice  = parseFloat(document.getElementById('elFuelPrice').value);
+    const id = document.getElementById('elRecordId').value;
+    const date = document.getElementById('elDate').value;
+    const fuelPrice = parseFloat(document.getElementById('elFuelPrice').value);
     const fuelAmount = parseFloat(document.getElementById('elFuelAmount').value);
-    const cost       = elCalcCost(fuelPrice, fuelAmount);
+    const cost = elCalcCost(fuelPrice, fuelAmount);
     const actualCost = elCalcActualCost(fuelPrice, fuelAmount);
 
     const payload = {
         date,
         fuel_price_per_l: fuelPrice,
-        fuel_amount_l:    fuelAmount,
+        fuel_amount_l: fuelAmount,
         cost,
         actual_cost: actualCost,
         user_id: adminUserId
@@ -12107,10 +12143,10 @@ async function elEdit(id) {
             .single();
         if (error) throw error;
 
-        document.getElementById('elRecordId').value    = data.id;
-        document.getElementById('elDate').value        = data.date;
-        document.getElementById('elFuelPrice').value   = data.fuel_price_per_l;
-        document.getElementById('elFuelAmount').value  = data.fuel_amount_l;
+        document.getElementById('elRecordId').value = data.id;
+        document.getElementById('elDate').value = data.date;
+        document.getElementById('elFuelPrice').value = data.fuel_price_per_l;
+        document.getElementById('elFuelAmount').value = data.fuel_amount_l;
         elUpdatePreview();
         document.getElementById('elFormContainer').style.display = 'block';
         document.getElementById('elFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -12193,7 +12229,7 @@ function kdCreateMarkerIcon(isHighlighted = false) {
     return L.divIcon({
         html,
         className: '',
-        iconSize:   [size, size],
+        iconSize: [size, size],
         iconAnchor: [size / 2, size],
         popupAnchor: [0, -(size + 4)],
     });
@@ -12220,7 +12256,7 @@ function kdCreateStartMarkerIcon() {
     return L.divIcon({
         html,
         className: '',
-        iconSize:   [size, size],
+        iconSize: [size, size],
         iconAnchor: [size / 2, size],
         popupAnchor: [0, -(size + 4)],
     });
@@ -12315,7 +12351,7 @@ function kdPlaceMarkers(records) {
 
         marker.bindPopup(popupHtml, { maxWidth: 260, className: 'kd-leaflet-popup' });
         marker.on('mouseover', function () { this.setIcon(kdCreateMarkerIcon(true)); });
-        marker.on('mouseout',  function () { this.setIcon(kdCreateMarkerIcon(false)); });
+        marker.on('mouseout', function () { this.setIcon(kdCreateMarkerIcon(false)); });
         marker.addTo(_kdMap);
         _kdMarkers.push(marker);
     });
@@ -12326,7 +12362,7 @@ function kdPlaceMarkers(records) {
 }
 
 // ── Copy link helper ──────────────────────────────────────────
-window.kdCopyLink = function(recordId, encodedLink) {
+window.kdCopyLink = function (recordId, encodedLink) {
     const link = decodeURIComponent(encodedLink);
     const btn = document.getElementById(`kdCopyBtn_${recordId}`);
     const doFeedback = () => {
@@ -12381,7 +12417,7 @@ async function loadKeviltonDistributors() {
 
 // ── Render distributor list ───────────────────────────────────
 function renderKdList(records) {
-    const listBody  = document.getElementById('kdListBody');
+    const listBody = document.getElementById('kdListBody');
     const listCount = document.getElementById('kdListCount');
     if (!listBody) return;
 
@@ -12425,7 +12461,7 @@ function renderKdList(records) {
 }
 
 // ── Fly to marker on map ──────────────────────────────────────
-window.kdFlyToMarker = function(lat, lng) {
+window.kdFlyToMarker = function (lat, lng) {
     if (!_kdMap) return;
     _kdMap.flyTo([lat, lng], 13, { duration: 1.2 });
     // Open the marker popup
@@ -12438,7 +12474,7 @@ window.kdFlyToMarker = function(lat, lng) {
 };
 
 // ── Search filter ─────────────────────────────────────────────
-document.getElementById('kdSearchInput')?.addEventListener('input', function() {
+document.getElementById('kdSearchInput')?.addEventListener('input', function () {
     const q = this.value.trim().toLowerCase();
     const clearBtn = document.getElementById('kdSearchClear');
     if (clearBtn) clearBtn.style.display = q ? 'flex' : 'none';
@@ -12453,7 +12489,7 @@ document.getElementById('kdSearchInput')?.addEventListener('input', function() {
     kdPlaceMarkers(filtered);
 });
 
-document.getElementById('kdSearchClear')?.addEventListener('click', function() {
+document.getElementById('kdSearchClear')?.addEventListener('click', function () {
     const input = document.getElementById('kdSearchInput');
     if (input) input.value = '';
     this.style.display = 'none';
@@ -12494,11 +12530,11 @@ document.getElementById('kdForm')?.addEventListener('submit', async (e) => {
     const saveBtn = document.getElementById('kdSaveBtn');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving...'; }
 
-    const recordId        = document.getElementById('kdRecordId').value;
+    const recordId = document.getElementById('kdRecordId').value;
     const distributorName = document.getElementById('kdDistributorName').value.trim();
-    const townName        = document.getElementById('kdTownName').value.trim();
-    const latVal          = parseFloat(document.getElementById('kdLat').value);
-    const lngVal          = parseFloat(document.getElementById('kdLng').value);
+    const townName = document.getElementById('kdTownName').value.trim();
+    const latVal = parseFloat(document.getElementById('kdLat').value);
+    const lngVal = parseFloat(document.getElementById('kdLng').value);
 
     const payload = {
         user_id: adminUserId,
@@ -12535,7 +12571,7 @@ document.getElementById('kdForm')?.addEventListener('submit', async (e) => {
 });
 
 // ── Edit ──────────────────────────────────────────────────────
-window.kdEditRecord = async function(recordId) {
+window.kdEditRecord = async function (recordId) {
     if (!checkAdminAccess('edit')) return;
     try {
         const { data, error } = await supabaseClient
@@ -12543,11 +12579,11 @@ window.kdEditRecord = async function(recordId) {
         if (error) throw error;
 
         kdResetForm();
-        document.getElementById('kdRecordId').value       = data.id;
+        document.getElementById('kdRecordId').value = data.id;
         document.getElementById('kdDistributorName').value = data.distributor_name;
-        document.getElementById('kdTownName').value        = data.town_name;
-        document.getElementById('kdLat').value             = data.lat;
-        document.getElementById('kdLng').value             = data.lng;
+        document.getElementById('kdTownName').value = data.town_name;
+        document.getElementById('kdLat').value = data.lat;
+        document.getElementById('kdLng').value = data.lng;
         document.getElementById('kdFormTitle').textContent = '✏️ Edit Distributor';
         document.getElementById('kdFormContainer').style.display = 'block';
         document.getElementById('kdFormContainer').scrollIntoView({ behavior: 'smooth' });
@@ -12557,7 +12593,7 @@ window.kdEditRecord = async function(recordId) {
 };
 
 // ── Delete ────────────────────────────────────────────────────
-window.kdDeleteRecord = async function(recordId) {
+window.kdDeleteRecord = async function (recordId) {
     if (!checkAdminAccess('delete')) return;
     if (!await showConfirmAsync('Delete this distributor location?')) return;
     try {
@@ -12673,12 +12709,12 @@ function kdRoutePlannerInit() {
         }
 
         _kdRouteStops.push(record);
-        
+
         // Clear search inputs
         const input = document.getElementById('kdRouteStopSearchInput');
         if (input) input.value = '';
         sel.value = '';
-        
+
         kdRouteRenderStopList();
     });
 
@@ -12722,7 +12758,7 @@ function kdRouteRenderSearchResults(queryText) {
     if (!searchResults) return;
 
     const query = (queryText || '').toLowerCase().trim();
-    
+
     // Get all valid distributor stops with coordinates, sorted alphabetically
     const allStops = _kdAllData
         .filter(r => r.lat && r.lng)
@@ -12730,8 +12766,8 @@ function kdRouteRenderSearchResults(queryText) {
 
     // Filter by query if query exists
     if (query) {
-        _kdRouteSearchResultsList = allStops.filter(r => 
-            r.distributor_name.toLowerCase().includes(query) || 
+        _kdRouteSearchResultsList = allStops.filter(r =>
+            r.distributor_name.toLowerCase().includes(query) ||
             r.town_name.toLowerCase().includes(query)
         );
     } else {
@@ -12838,7 +12874,7 @@ function kdRouteRenderStopList() {
 }
 
 // ── Move stop up/down ─────────────────────────────────────────
-window.kdRouteMoveStop = function(idx, dir) {
+window.kdRouteMoveStop = function (idx, dir) {
     const target = idx + dir;
     if (target < 0 || target >= _kdRouteStops.length) return;
     [_kdRouteStops[idx], _kdRouteStops[target]] = [_kdRouteStops[target], _kdRouteStops[idx]];
@@ -12846,7 +12882,7 @@ window.kdRouteMoveStop = function(idx, dir) {
 };
 
 // ── Remove stop ───────────────────────────────────────────────
-window.kdRouteRemoveStop = function(idx) {
+window.kdRouteRemoveStop = function (idx) {
     _kdRouteStops.splice(idx, 1);
     kdRouteRenderStopList();
 };
@@ -13106,8 +13142,8 @@ function renderVehicleExpiryGrid(records) {
         const insExpiry = rec.insurance_expiry ? new Date(rec.insurance_expiry) : null;
         const revExpiry = rec.revenue_license_expiry ? new Date(rec.revenue_license_expiry) : null;
 
-        if (insExpiry) insExpiry.setHours(0,0,0,0);
-        if (revExpiry) revExpiry.setHours(0,0,0,0);
+        if (insExpiry) insExpiry.setHours(0, 0, 0, 0);
+        if (revExpiry) revExpiry.setHours(0, 0, 0, 0);
 
         const getStatus = (date) => {
             if (!date) return { label: 'Not Set', class: 'status-muted', days: null };
@@ -13134,7 +13170,7 @@ function renderVehicleExpiryGrid(records) {
 
         const card = document.createElement('div');
         card.className = `expiry-card ${cardClass}`;
-        
+
         const actionButtons = userRole === 'viewer' ? '' : `
             <div class="expiry-card-actions">
                 <button class="btn btn-edit btn-sm" onclick="editExpiryRecord(${rec.id})">Edit</button>
@@ -13246,7 +13282,7 @@ async function editExpiryRecord(id) {
 
 async function deleteExpiryRecord(id) {
     if (!checkAdminAccess('delete')) return;
-    if (!await showConfirmAsync('Are you sure you want to stop tracking this vehicle\'s insurance and license?', {icon:'🗑️',yesLabel:'Delete',noLabel:'Cancel'})) return;
+    if (!await showConfirmAsync('Are you sure you want to stop tracking this vehicle\'s insurance and license?', { icon: '🗑️', yesLabel: 'Delete', noLabel: 'Cancel' })) return;
 
     try {
         const { error } = await supabaseClient.from('vehicle_expiry').delete().eq('id', id);
@@ -13353,7 +13389,7 @@ function renderDashboardInsuranceWidget(records) {
     }
 
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
 
     let expiredCount = 0;
     let dueCount = 0;
@@ -13364,8 +13400,8 @@ function renderDashboardInsuranceWidget(records) {
         const insExpiry = rec.insurance_expiry ? new Date(rec.insurance_expiry) : null;
         const revExpiry = rec.revenue_license_expiry ? new Date(rec.revenue_license_expiry) : null;
 
-        if (insExpiry) insExpiry.setHours(0,0,0,0);
-        if (revExpiry) revExpiry.setHours(0,0,0,0);
+        if (insExpiry) insExpiry.setHours(0, 0, 0, 0);
+        if (revExpiry) revExpiry.setHours(0, 0, 0, 0);
 
         const getStatusDetails = (date, dateStr, name) => {
             if (!date) return { type: 'not-set', label: 'Not Set', badgeClass: 'status-muted', text: `${name}: Not set`, dateStr: '-' };
@@ -13432,7 +13468,7 @@ function renderDashboardInsuranceWidget(records) {
     } else {
         const typeOrder = { 'expired': 1, 'due': 2, 'ok': 3 };
         vehicleListItems.sort((a, b) => typeOrder[a.overallType] - typeOrder[b.overallType]);
-        
+
         vehicleListItems.forEach(item => {
             const row = document.createElement('div');
             row.className = `insurance-alert-item ${item.overallType}`;
@@ -13441,7 +13477,7 @@ function renderDashboardInsuranceWidget(records) {
             row.style.gap = '8px';
             row.style.alignItems = 'stretch';
             row.style.padding = '14px 16px';
-            
+
             row.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--surface-border); padding-bottom: 6px; margin-bottom: 2px;">
                     <span class="plate" style="font-size:15px; font-weight:800;">🚛 ${item.plate}</span>
@@ -13657,7 +13693,7 @@ async function loadRecordsHallOfFame(monthValue) {
             }))
             .filter(item => item.driver)
             .sort((a, b) => b.value - a.value);
-        
+
         const topAllTimeKmDriverId = sortedAllTimeKmDrivers[0]?.id;
 
         if (topAllTimeKmDriverId && driverMap[topAllTimeKmDriverId]) {
@@ -14061,12 +14097,12 @@ function showHofDetails(accent, label, subtitle, type) {
         let itemHTML = '';
         if (type === 'allTimeKmDrivers' || type === 'monthKmDrivers' || type === 'activeDrivers') {
             const d = item.driver;
-            const photo = d.photo_url 
+            const photo = d.photo_url
                 ? `<img class="hof-modal-photo" src="${d.photo_url}" alt="${d.name}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>👤</div>';">`
                 : '<div class="hof-modal-photo-placeholder">👤</div>';
-            
+
             const terminatedLabel = d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '';
-            
+
             let valDisplay = '';
             if (type === 'activeDrivers') {
                 valDisplay = `<strong>${item.months}</strong> <span style="font-size:11px;color:var(--text-muted)">months</span> (${item.totalKm.toLocaleString(undefined, { maximumFractionDigits: 0 })} km)`;
@@ -14087,10 +14123,10 @@ function showHofDetails(accent, label, subtitle, type) {
             `;
         } else if (type === 'driverPeakMonths') {
             const d = item.driver;
-            const photo = d.photo_url 
+            const photo = d.photo_url
                 ? `<img class="hof-modal-photo" src="${d.photo_url}" alt="${d.name}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>👤</div>';">`
                 : '<div class="hof-modal-photo-placeholder">👤</div>';
-            
+
             const terminatedLabel = d.terminated ? ' <span class="terminated-badge">Terminated</span>' : '';
             const [yr, mn] = item.month.split('-');
             const monthName = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
@@ -14110,7 +14146,7 @@ function showHofDetails(accent, label, subtitle, type) {
             `;
         } else if (type === 'allTimeKmVehicles' || type === 'monthKmVehicles') {
             const v = item.vehicle;
-            const photo = v.photo_url 
+            const photo = v.photo_url
                 ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
                 : '<div class="hof-modal-photo-placeholder">🚚</div>';
 
@@ -14129,10 +14165,10 @@ function showHofDetails(accent, label, subtitle, type) {
             `;
         } else if (type === 'vehiclePeakMonths') {
             const v = item.vehicle;
-            const photo = v.photo_url 
+            const photo = v.photo_url
                 ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
                 : '<div class="hof-modal-photo-placeholder">🚚</div>';
-            
+
             const [yr, mn] = item.month.split('-');
             const monthName = new Date(parseInt(yr), parseInt(mn) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
 
@@ -14151,7 +14187,7 @@ function showHofDetails(accent, label, subtitle, type) {
             `;
         } else if (type === 'bestVehicles') {
             const v = item.vehicle;
-            const photo = v.photo_url 
+            const photo = v.photo_url
                 ? `<img class="hof-modal-photo" src="${v.photo_url}" alt="${v.number}" onerror="this.onerror=null; this.className='hof-modal-photo-placeholder'; this.outerHTML='<div class=\\'hof-modal-photo-placeholder\\'>🚚</div>';">`
                 : '<div class="hof-modal-photo-placeholder">🚚</div>';
 
