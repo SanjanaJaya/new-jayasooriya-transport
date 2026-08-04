@@ -1543,14 +1543,22 @@ async function loadDrivers() {
                 const opLower = driver.operation.toLowerCase();
                 const logoUrl = opLower === 'kevilton'
                     ? 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'
-                    : (opLower === 'pelwatte' ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg' : null);
+                    : (opLower === 'pelwatte'
+                        ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg'
+                        : (opLower.includes('space')
+                            ? 'https://i.postimg.cc/65VKKKR2/images-(1).jpg'
+                            : (opLower.includes('keells') ? 'https://i.postimg.cc/x8KcWWty/images.jpg' : null)));
 
                 const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
                 const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
 
                 const bgStyle = opLower === 'kevilton'
                     ? 'background:rgba(209,0,31,0.18);color:#FF6B81;border:1px solid rgba(209,0,31,0.4);'
-                    : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);';
+                    : (opLower === 'pelwatte'
+                        ? 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'
+                        : (opLower.includes('space')
+                            ? 'background:rgba(0,26,63,0.18);color:#4A90E2;border:1px solid rgba(0,26,63,0.4);'
+                            : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'));
 
                 const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
 
@@ -2577,6 +2585,13 @@ async function editOtherOperationHire(id) {
                 customInput.required = false;
                 customInput.value = '';
             }
+        } else if (opName === 'Space Logistics') {
+            if (nameSelect) nameSelect.value = 'Space Logistics';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
         } else if (opName !== '') {
             if (nameSelect) nameSelect.value = 'other';
             if (customInput) {
@@ -3447,6 +3462,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
         let pelwatteCount = 0;
         let keellsRev = 0;
         let keellsCount = 0;
+        let spaceLogisticsRev = 0;
+        let spaceLogisticsCount = 0;
 
         const customOpsMap = {};
 
@@ -3464,6 +3481,9 @@ async function loadDashboardData(monthValue, cachedData = null) {
             } else if (lower.includes('keells')) {
                 keellsRev += amount;
                 keellsCount++;
+            } else if (lower.includes('space') || lower.includes('spacelogistics')) {
+                spaceLogisticsRev += amount;
+                spaceLogisticsCount++;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
@@ -3503,6 +3523,15 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'keells',
                 amount: keellsRev,
                 count: keellsCount,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'Space Logistics',
+                logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg',
+                icon: '🚀',
+                accent: 'space-logistics',
+                amount: spaceLogisticsRev,
+                count: spaceLogisticsCount,
                 subtitle: 'Other Operations'
             }
         ];

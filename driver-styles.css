@@ -2284,6 +2284,12 @@ body.light-mode .avatar-container::after {
     color: #00E6A1;
 }
 
+.driver-op-badge.op-space-logistics {
+    background: rgba(0, 26, 63, 0.18);
+    border: 1px solid rgba(0, 26, 63, 0.45);
+    color: #4A90E2;
+}
+
 .driver-op-logo {
     width: 12px;
     height: 12px;
@@ -2328,6 +2334,10 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-pelwatte {
     background: linear-gradient(135deg, #00B37E, #007A54);
+}
+
+.race-badge-op.op-space-logistics {
+    background: linear-gradient(135deg, #001a3f, #4A90E2);
 }
 
 .race-op-logo-mini {

@@ -9559,6 +9559,7 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="kevilton"] { border-left: 5px solid #DC143C; }
 .op-revenue-card[data-accent="pelwatte"] { border-left: 5px solid #1E88E5; }
 .op-revenue-card[data-accent="keells"] { border-left: 5px solid #27AE60; }
+.op-revenue-card[data-accent="space-logistics"] { border-left: 5px solid #001a3f; }
 .op-revenue-card[data-accent="other"] { border-left: 5px solid #8E44AD; }
 
 .op-revenue-card-header {
@@ -9613,11 +9614,13 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="kevilton"] .op-revenue-amount { color: #DC143C; }
 .op-revenue-card[data-accent="pelwatte"] .op-revenue-amount { color: #1E88E5; }
 .op-revenue-card[data-accent="keells"] .op-revenue-amount { color: #27AE60; }
+.op-revenue-card[data-accent="space-logistics"] .op-revenue-amount { color: #001a3f; }
 .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #8E44AD; }
 
 body.dark-mode .op-revenue-card[data-accent="kevilton"] .op-revenue-amount { color: #FF6B81; }
 body.dark-mode .op-revenue-card[data-accent="pelwatte"] .op-revenue-amount { color: #42A5F5; }
 body.dark-mode .op-revenue-card[data-accent="keells"] .op-revenue-amount { color: #2ECC71; }
+body.dark-mode .op-revenue-card[data-accent="space-logistics"] .op-revenue-amount { color: #4A90E2; }
 body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #AB47BC; }
 
 .op-revenue-meta {
@@ -9643,6 +9646,7 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
 .op-revenue-card[data-accent="kevilton"] .op-revenue-progress-bar { background: linear-gradient(90deg, #DC143C, #FF4D6A); }
 .op-revenue-card[data-accent="pelwatte"] .op-revenue-progress-bar { background: linear-gradient(90deg, #1E88E5, #42A5F5); }
 .op-revenue-card[data-accent="keells"] .op-revenue-progress-bar { background: linear-gradient(90deg, #27AE60, #2ECC71); }
+.op-revenue-card[data-accent="space-logistics"] .op-revenue-progress-bar { background: linear-gradient(90deg, #001a3f, #4A90E2); }
 .op-revenue-card[data-accent="other"] .op-revenue-progress-bar { background: linear-gradient(90deg, #8E44AD, #AB47BC); }
 
 /* ====== RECORDS DETAILS MODAL STYLING ====== */

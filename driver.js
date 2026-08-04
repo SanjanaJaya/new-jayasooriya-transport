@@ -31,6 +31,12 @@ const OPERATION_CONFIG = {
         logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg',
         badgeClass: 'op-pelwatte',
         color: '#00B37E'
+    },
+    spacelogistics: {
+        name: 'Space Logistics',
+        logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg',
+        badgeClass: 'op-space-logistics',
+        color: '#001a3f'
     }
 };
 
