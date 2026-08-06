@@ -2180,6 +2180,57 @@ async function loadDriverRace() {
 
         if (kmError) throw kmError;
 
+        // 3. Fetch all vehicle assignments for this user's drivers
+        const { data: allAssignments } = await supabaseClient
+            .from('staff_lorry_assignments')
+            .select('driver_id, lorry_number')
+            .eq('user_id', currentDriver.user_id)
+            .order('id', { ascending: false });
+
+        // Build map: driver_id -> lorry_number (latest assignment per driver)
+        const lorryByDriver = {};
+        (allAssignments || []).forEach(a => {
+            if (!lorryByDriver[a.driver_id]) {
+                lorryByDriver[a.driver_id] = a.lorry_number;
+            }
+        });
+
+        // 4. Fetch vehicle model + art info from both vehicle tables
+        const [hireVehiclesResult, commVehiclesResult] = await Promise.all([
+            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, vehicle_model, vector_art_url, photo_url'),
+            supabaseClient.from('commitment_vehicles').select('vehicle_number, vehicle_model, vector_art_url, photo_url')
+        ]);
+
+        // Build normalized plate -> {model, artUrl} maps
+        const modelByPlateNorm = {};
+        const artByPlateNorm = {};
+        (hireVehiclesResult.data || []).forEach(v => {
+            const key = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (key) {
+                modelByPlateNorm[key] = v.vehicle_model;
+                artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
+            }
+        });
+        (commVehiclesResult.data || []).forEach(v => {
+            const key = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (key) {
+                if (!modelByPlateNorm[key]) modelByPlateNorm[key] = v.vehicle_model;
+                if (!artByPlateNorm[key]) artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
+            }
+        });
+
+        // Helpers: get model / art URL from plate
+        function getModelForPlate(plate) {
+            if (!plate) return null;
+            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            return modelByPlateNorm[key] || null;
+        }
+        function getArtForPlate(plate) {
+            if (!plate) return null;
+            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            return artByPlateNorm[key] || null;
+        }
+
         // Sum up km per driver
         const kmByDriver = {};
         kmRecords?.forEach(r => {
@@ -2195,9 +2246,13 @@ async function loadDriverRace() {
                 return true;
             })
             .map(d => {
+                const lorryNum = lorryByDriver[d.id] || null;
                 return {
                     ...d,
-                    totalKm: kmByDriver[d.id] || 0
+                    totalKm: kmByDriver[d.id] || 0,
+                    vehiclePlate: lorryNum,
+                    vehicleModel: getModelForPlate(lorryNum),
+                    vehicleArtUrl: getArtForPlate(lorryNum)
                 };
             });
 
@@ -2208,6 +2263,15 @@ async function loadDriverRace() {
                 const nameClean = cleanDriverName(d.name).toLowerCase();
                 if (nameClean === 'jaap jayasooriya' || nameClean === 'jauk jayasooriya') return false;
                 return true;
+            })
+            .map(d => {
+                const lorryNum = lorryByDriver[d.id] || null;
+                return {
+                    ...d,
+                    vehiclePlate: lorryNum,
+                    vehicleModel: getModelForPlate(lorryNum),
+                    vehicleArtUrl: getArtForPlate(lorryNum)
+                };
             });
 
         if (rankedDrivers.length === 0 && helpers.length === 0) {
@@ -2303,32 +2367,98 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                 }
             }
 
+            // Vehicle right-panel HTML (shown in right column)
+            const truckSVG = `<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="race-truck-svg">
+  <defs>
+    <linearGradient id="raceBoxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a3045"/>
+      <stop offset="100%" stop-color="#1a2035"/>
+    </linearGradient>
+    <linearGradient id="raceCabGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a4560"/>
+      <stop offset="100%" stop-color="#252d45"/>
+    </linearGradient>
+    <linearGradient id="raceGlassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <!-- Shadow -->
+  <ellipse cx="40" cy="37" rx="34" ry="2.5" fill="rgba(0,0,0,0.4)"/>
+  <!-- Cargo Box -->
+  <rect x="5" y="8" width="40" height="22" rx="2" fill="url(#raceBoxGrad)" stroke="rgba(255,179,0,0.3)" stroke-width="0.8"/>
+  <!-- Box stripe -->
+  <rect x="5" y="16" width="40" height="1.5" fill="rgba(255,179,0,0.2)"/>
+  <!-- Cab -->
+  <path d="M 45,14 L 58,14 Q 68,14 72,20 L 75,28 Q 76,31 73,33 L 45,33 Z" fill="url(#raceCabGrad)" stroke="rgba(255,179,0,0.25)" stroke-width="0.8"/>
+  <!-- Windshield -->
+  <path d="M 58,15.5 L 66,15.5 Q 70,15.5 72,20 L 73,25 L 58,25 Z" fill="url(#raceGlassGrad)" opacity="0.85"/>
+  <!-- Side window -->
+  <rect x="48" y="17" width="8" height="7" rx="1" fill="url(#raceGlassGrad)" opacity="0.7"/>
+  <!-- Headlight -->
+  <rect x="73" y="27" width="4" height="4" rx="0.8" fill="#FEF9C3"/>
+  <rect x="74" y="28" width="2.5" height="2.5" rx="0.4" fill="#FBBF24"/>
+  <!-- Chassis -->
+  <rect x="8" y="32" width="62" height="2" fill="#1a1a2e"/>
+  <!-- Wheels -->
+  <circle cx="18" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="18" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="18" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="32" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="32" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="32" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="62" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="62" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
+</svg>`;
+
+            // Build vehicle art element: real image if we have a URL, SVG fallback otherwise
+            function buildVehicleArt(artUrl, isSVGFallback) {
+                if (artUrl) {
+                    return `<img src="${artUrl}" class="race-truck-img" alt="vehicle" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
+                            <div style="display:none;" class="race-truck-svg-wrap">${isSVGFallback}</div>`;
+                }
+                return `<div class="race-truck-svg-wrap">${isSVGFallback}</div>`;
+            }
+
+            const vehiclePanelHtml = d.vehiclePlate
+                ? `<div class="race-vehicle-panel">
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, truckSVG)}</div>
+                       <div class="race-vehicle-info">
+                           <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
+                           ${d.vehicleModel ? `<span class="race-vehicle-model-text" title="${d.vehicleModel}">${d.vehicleModel}</span>` : ''}
+                       </div>
+                   </div>`
+                : `<div class="race-vehicle-panel race-vehicle-panel--empty">
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, truckSVG)}</div>
+                   </div>`;
+
             const card = document.createElement('div');
             card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
             card.innerHTML = `
-                <div class="race-rank-container">
-                    ${rankHtml}
-                </div>
-                <div class="race-avatar-container">
-                    ${avatarHtml}
-                </div>
-                <div class="race-details">
-                    <div class="race-name-row">
-                        <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
-                        <div class="race-value-container">
+                <div class="race-left">
+                    <div class="race-rank-container">${rankHtml}</div>
+                    <div class="race-avatar-container">${avatarHtml}</div>
+                    <div class="race-details">
+                        <div class="race-name-line">
+                            <span class="race-name">${cleanedName}</span>
+                            ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}
+                        </div>
+                        <div class="race-km-line">
                             <span class="race-value">${d.totalKm.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                             <span class="race-value-unit">KM</span>
                         </div>
-                    </div>
-                    <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
-                        <span class="race-badge race-badge-driver">${t('race.driver')}</span>
-                        ${opBadgeHtml}
-                        ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
-                    </div>
-                    <div class="race-progress-bg" style="margin-top: 6px;">
-                        <div class="race-progress-bar" style="width: 0%;"></div>
+                        <div class="race-meta-row">
+                            <span class="race-badge race-badge-driver">${t('race.driver')}</span>
+                            ${opBadgeHtml}
+                            ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
+                        </div>
+                        <div class="race-progress-bg">
+                            <div class="race-progress-bar" style="width: 0%;"></div>
+                        </div>
                     </div>
                 </div>
+                ${vehiclePanelHtml}
             `;
 
             listContainer.appendChild(card);
@@ -2370,25 +2500,73 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                 }
             }
 
+            // Vehicle right-panel for helper
+            const helperTruckSVG = `<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="race-truck-svg">
+  <defs>
+    <linearGradient id="raceBoxGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2a45"/>
+      <stop offset="100%" stop-color="#1a1a35"/>
+    </linearGradient>
+    <linearGradient id="raceCabGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a3560"/>
+      <stop offset="100%" stop-color="#252545"/>
+    </linearGradient>
+    <linearGradient id="raceGlassGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="40" cy="37" rx="34" ry="2.5" fill="rgba(0,0,0,0.4)"/>
+  <rect x="5" y="8" width="40" height="22" rx="2" fill="url(#raceBoxGrad2)" stroke="rgba(168,85,247,0.3)" stroke-width="0.8"/>
+  <rect x="5" y="16" width="40" height="1.5" fill="rgba(168,85,247,0.2)"/>
+  <path d="M 45,14 L 58,14 Q 68,14 72,20 L 75,28 Q 76,31 73,33 L 45,33 Z" fill="url(#raceCabGrad2)" stroke="rgba(168,85,247,0.25)" stroke-width="0.8"/>
+  <path d="M 58,15.5 L 66,15.5 Q 70,15.5 72,20 L 73,25 L 58,25 Z" fill="url(#raceGlassGrad2)" opacity="0.85"/>
+  <rect x="48" y="17" width="8" height="7" rx="1" fill="url(#raceGlassGrad2)" opacity="0.7"/>
+  <rect x="73" y="27" width="4" height="4" rx="0.8" fill="#FEF9C3"/>
+  <rect x="74" y="28" width="2.5" height="2.5" rx="0.4" fill="#FBBF24"/>
+  <rect x="8" y="32" width="62" height="2" fill="#1a1a2e"/>
+  <circle cx="18" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
+  <circle cx="18" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="18" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="32" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
+  <circle cx="32" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="32" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="62" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
+  <circle cx="62" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
+</svg>`;
+
+            const helperVehiclePanelHtml = d.vehiclePlate
+                ? `<div class="race-vehicle-panel race-vehicle-panel--helper">
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, helperTruckSVG)}</div>
+                       <div class="race-vehicle-info">
+                           <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
+                           ${d.vehicleModel ? `<span class="race-vehicle-model-text" title="${d.vehicleModel}">${d.vehicleModel}</span>` : ''}
+                       </div>
+                   </div>`
+                : `<div class="race-vehicle-panel race-vehicle-panel--empty race-vehicle-panel--helper">
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, helperTruckSVG)}</div>
+                   </div>`;
+
             const card = document.createElement('div');
             card.className = `race-item helper-item ${isCurrentUser ? 'current-user' : ''}`;
             card.innerHTML = `
-                <div class="race-rank-container">
-                    <span class="race-rank-number">🤝</span>
-                </div>
-                <div class="race-avatar-container">
-                    ${avatarHtml}
-                </div>
-                <div class="race-details">
-                    <div class="race-name-row">
-                        <span class="race-name">${cleanedName} ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}</span>
+                <div class="race-left">
+                    <div class="race-rank-container"><span class="race-rank-number">🤝</span></div>
+                    <div class="race-avatar-container">${avatarHtml}</div>
+                    <div class="race-details">
+                        <div class="race-name-line">
+                            <span class="race-name">${cleanedName}</span>
+                            ${isCurrentUser ? `<span class="race-badge-you">${t('race.you')}</span>` : ''}
+                        </div>
+                        <div class="race-meta-row">
+                            <span class="race-badge race-badge-helper">${t('race.helper')}</span>
+                            ${opBadgeHtml}
+                            ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
+                        </div>
                     </div>
-                    <div class="race-meta-row" style="display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap;">
-                        <span class="race-badge race-badge-helper">${t('race.helper')}</span>
-                        ${opBadgeHtml}
-                        ${isNew ? `<span class="race-badge race-badge-new">${t('race.new')}</span>` : ''}
-                    </div>
                 </div>
+                ${helperVehiclePanelHtml}
             `;
 
             listContainer.appendChild(card);

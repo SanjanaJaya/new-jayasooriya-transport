@@ -1623,16 +1623,24 @@ body.light-mode .kd-popup-copy-btn:hover {
 
 .race-item {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
-    padding: 12px 16px;
-    gap: 12px;
-    position: relative;
     overflow: hidden;
     transition: all 0.2s;
     animation: fadeUp 0.4s var(--ease-out) both;
+    gap: 0;
+}
+
+/* Left section: rank + avatar + details */
+.race-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+    padding: 11px 8px 11px 12px;
 }
 
 .race-item.current-user {
@@ -1642,19 +1650,19 @@ body.light-mode .kd-popup-copy-btn:hover {
 }
 
 .race-rank-container {
-    width: 30px; height: 30px;
+    width: 28px; height: 28px;
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-display);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     flex-shrink: 0;
 }
 
-.race-rank-medal { font-size: 22px; }
-.race-rank-number { color: var(--text-2); }
+.race-rank-medal { font-size: 20px; }
+.race-rank-number { color: var(--text-2); font-size: 12px; }
 
 .race-avatar-container {
-    width: 40px; height: 40px;
+    width: 38px; height: 38px;
     border-radius: 50%;
     background: var(--bg-elevated);
     border: 2px solid var(--border-strong);
@@ -1667,43 +1675,53 @@ body.light-mode .kd-popup-copy-btn:hover {
 
 .race-avatar-fallback {
     font-family: var(--font-display);
-    font-size: 15px; font-weight: 700;
+    font-size: 14px; font-weight: 700;
     color: var(--text-2);
     text-transform: uppercase;
 }
 
 .race-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 
-.race-details { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.race-details { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 3px; }
 
-.race-name-row {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
+/* Name + "You" badge on one line */
+.race-name-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.race-name { font-size: 14px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* KM value line */
+.race-km-line {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.race-name { font-size: 13px; font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .race-item.current-user .race-name { color: #F1C40F; }
 
 .race-badge-you {
     background: #F1C40F;
     color: #0A0C12;
-    font-size: 9px; font-weight: 800;
-    padding: 2px 6px;
+    font-size: 8px; font-weight: 800;
+    padding: 1px 5px;
     border-radius: var(--r-sm);
-    margin-left: 8px;
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
 
-.race-value-container { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; }
-.race-value { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-1); }
-.race-value-unit { font-size: 10px; color: var(--text-3); font-weight: 600; letter-spacing: 1px; }
+.race-value { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--text-1); }
+.race-value-unit { font-size: 9px; color: var(--brand); font-weight: 700; letter-spacing: 1px; }
+
+.race-meta-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
 
 .race-progress-bg {
     width: 100%; height: 3px;
     background: var(--bg-elevated);
     border-radius: var(--r-pill);
     overflow: hidden;
+    margin-top: 2px;
 }
 
 .race-progress-bar {
@@ -1716,6 +1734,137 @@ body.light-mode .kd-popup-copy-btn:hover {
 
 .race-item.current-user .race-progress-bar { background: #F1C40F; }
 .race-item.rank-1 .race-progress-bar { background: linear-gradient(90deg, var(--brand), #F1C40F); }
+
+/* ─── Vehicle Panel (right column) ─────────────────── */
+.race-vehicle-panel {
+    flex-shrink: 0;
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 6px;
+    background: rgba(255,179,0,0.055);
+    border-left: 1px solid rgba(255,179,0,0.18);
+    position: relative;
+    overflow: hidden;
+}
+
+.race-vehicle-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,179,0,0.5), transparent);
+}
+
+.race-vehicle-panel--helper {
+    background: rgba(168,85,247,0.055);
+    border-left-color: rgba(168,85,247,0.18);
+}
+.race-vehicle-panel--helper::before {
+    background: linear-gradient(90deg, transparent, rgba(168,85,247,0.5), transparent);
+}
+
+.race-vehicle-panel--empty { opacity: 0.28; }
+
+.race-truck-svg {
+    width: 76px;
+    height: 38px;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    flex-shrink: 0;
+}
+
+/* Wrapper used when real vehicle art image is present */
+.race-truck-wrap {
+    width: 76px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Real vehicle art image */
+.race-truck-img {
+    width: 76px;
+    height: 38px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.55));
+}
+
+/* SVG fallback inside wrap */
+.race-truck-svg-wrap {
+    width: 76px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.race-truck-svg-wrap svg {
+    width: 76px;
+    height: 38px;
+}
+
+.race-vehicle-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+}
+
+.race-vehicle-plate-badge {
+    font-family: var(--font-display);
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--amber);
+    background: rgba(255,179,0,0.12);
+    border: 1px solid rgba(255,179,0,0.3);
+    border-radius: 4px;
+    padding: 2px 5px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.race-vehicle-model-text {
+    font-size: 8.5px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-align: center;
+    letter-spacing: 0.1px;
+    line-height: 1.15;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    width: 100%;
+    word-break: break-word;
+}
+
+.race-vehicle-panel--helper .race-vehicle-plate-badge {
+    color: #C084FC;
+    background: rgba(168,85,247,0.12);
+    border-color: rgba(168,85,247,0.3);
+}
+
+@media (max-width: 360px) {
+    .race-vehicle-panel { width: 78px; padding: 8px 4px 6px; }
+    .race-truck-svg { width: 64px; height: 32px; }
+    .race-vehicle-plate-badge { font-size: 8px; padding: 1px 3px; }
+    .race-vehicle-model-text { font-size: 7.5px; line-height: 1.1; }
+    .race-left { padding: 8px 6px 8px 10px; gap: 7px; }
+    .race-rank-container { width: 22px; height: 22px; font-size: 14px; }
+    .race-avatar-container { width: 32px; height: 32px; }
+    .race-name { font-size: 12px; }
+    .race-value { font-size: 13px; }
+}
+
 
 .race-section-header {
     font-family: var(--font-display);
