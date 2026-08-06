@@ -11243,6 +11243,15 @@ function initLeasingPage() {
         document.getElementById('leasingCalendarPanel').style.display = 'none';
         _currentLeasingVehicle = null;
     });
+
+    // Settlement modal radio listener & form submit
+    document.querySelectorAll('input[name="lsmSettlementType"]').forEach(r => {
+        r.addEventListener('change', (e) => {
+            const soldFields = document.getElementById('lsmSoldFields');
+            if (soldFields) soldFields.style.display = e.target.value === 'sold' ? 'block' : 'none';
+        });
+    });
+    document.getElementById('leaseSettleForm')?.addEventListener('submit', handleSettleLeaseSubmit);
 }
 
 // ── Form Helpers ──────────────────────────────────────────────
@@ -11469,6 +11478,7 @@ async function refreshLeasingData() {
 
         // Filter by current tab for both widget strip and list
         const filtered = allEntries.filter(v => (v.entry_type || 'leasing') === _currentLeasingTab);
+        renderLeasingAssetOverview(allEntries, paidMap);
         renderLeasingWidgets(filtered, paidMap);
         renderLeasingVehicleRows(filtered, paidMap);
         renderLeasingSummaryStrip(filtered, paidMap);
@@ -11482,6 +11492,91 @@ async function refreshLeasingData() {
         console.error('Error loading leasing/loan data:', err);
         widgetStrip.innerHTML = '<div class="leasing-empty-state" style="color:var(--brand-red);">⚠️ Error loading data. Make sure Supabase tables are set up.</div>';
         listEl.innerHTML = '';
+    }
+}
+
+function leasingFmtMn(n) {
+    const mn = (n || 0) / 1000000;
+    return mn.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Mn LKR';
+}
+
+// ── Company Asset & Debt Portfolio Overview ───────────────────
+function renderLeasingAssetOverview(allEntries, paidMap) {
+    let totalDebtToPay = 0;      // Sum of unpaid amounts for all non-settled entries (leasing + loans)
+    let totalDebtPaid = 0;       // Sum of paid amounts + early settlement amounts for ALL entries
+    let totalPortfolioVal = 0;   // Total contract portfolio value across all entries
+
+    let totalLeaseAssetVal = 0;  // Total contract value of retained vehicle leasings
+    let leaseEquityPaidVal = 0;  // Equity paid on retained vehicle leasings
+    let retainedVehicleCount = 0;
+
+    (allEntries || []).forEach(v => {
+        const keys = leasingBuildPaymentKeys(v);
+        const paid = paidMap[v.id] || new Set();
+        const postponed = new Set(v.postponed_dates || []);
+        const isLease = (v.entry_type || 'leasing') === 'leasing';
+        const isSold = v.settled && (v.settlement_type === 'sold' || (v.settled_notes && v.settled_notes.includes('[SOLD]')));
+        const isRetainedSettled = isLease && v.settled && !isSold;
+
+        if (isRetainedSettled) {
+            retainedVehicleCount++;
+        }
+
+        // Add early settlement amount to debt paid if paid off early
+        if (v.settled && parseFloat(v.early_settlement_amount) > 0) {
+            totalDebtPaid += parseFloat(v.early_settlement_amount);
+        }
+
+        keys.forEach((k, idx) => {
+            const amt = leasingGetInstallmentAmount(v, idx, keys.length);
+            totalPortfolioVal += amt;
+
+            if (paid.has(k)) {
+                totalDebtPaid += amt;
+                if (isLease && !isSold) {
+                    leaseEquityPaidVal += amt;
+                }
+            } else if (!v.settled && !postponed.has(k)) {
+                totalDebtToPay += amt;
+            }
+        });
+
+        if (isRetainedSettled) {
+            // For fully paid off retained vehicles, full contract value counts as equity/asset
+            const entryTotal = keys.reduce((sum, k, i) => sum + leasingGetInstallmentAmount(v, i, keys.length), 0);
+            totalLeaseAssetVal += entryTotal;
+            leaseEquityPaidVal += (entryTotal - keys.filter(k => paid.has(k)).reduce((sum, k, i) => sum + leasingGetInstallmentAmount(v, i, keys.length), 0));
+        } else if (isLease && !isSold) {
+            const entryTotal = keys.reduce((sum, k, i) => sum + leasingGetInstallmentAmount(v, i, keys.length), 0);
+            totalLeaseAssetVal += entryTotal;
+        }
+    });
+
+    const paidPct = totalPortfolioVal > 0 ? Math.round((totalDebtPaid / totalPortfolioVal) * 100) : 0;
+    const equityPct = totalLeaseAssetVal > 0 ? Math.round((leaseEquityPaidVal / totalLeaseAssetVal) * 100) : 0;
+
+    const debtEl = document.getElementById('laoTotalDebt');
+    const paidEl = document.getElementById('laoTotalPaid');
+    const equityEl = document.getElementById('laoAssetEquity');
+    const subEl = document.getElementById('laoAssetSub');
+
+    if (debtEl) {
+        debtEl.textContent = leasingFmtLKR(totalDebtToPay);
+        const parentCard = debtEl.closest('.lao-info');
+        const sub = parentCard ? parentCard.querySelector('.lao-sub') : null;
+        if (sub) sub.textContent = `${leasingFmtMn(totalDebtToPay)} · Remaining liability`;
+    }
+    if (paidEl) {
+        paidEl.textContent = leasingFmtLKR(totalDebtPaid);
+        const parentCard = paidEl.closest('.lao-info');
+        const sub = parentCard ? parentCard.querySelector('.lao-sub') : null;
+        if (sub) sub.textContent = `${paidPct}% Paid Off · ${leasingFmtMn(totalDebtPaid)}`;
+    }
+    if (equityEl) {
+        equityEl.textContent = leasingFmtLKR(leaseEquityPaidVal);
+    }
+    if (subEl) {
+        subEl.textContent = `${retainedVehicleCount} Fully Owned Vehicle${retainedVehicleCount === 1 ? '' : 's'} · ${equityPct}% Equity (${leasingFmtMn(leaseEquityPaidVal)})`;
     }
 }
 
@@ -11620,6 +11715,16 @@ function renderLeasingWidgets(entries, paidMap) {
             bulkBadge = `<span class="lease-type-badge badge-loan" style="background:rgba(159,90,253,0.12);color:#9F5AFD;border:1px solid rgba(159,90,253,0.25);">🎈 Final: ${leasingFmtLKR(v.final_installment_amount)}</span>`;
         }
 
+        let settledBadge = '';
+        if (v.settled) {
+            const isSold = v.settlement_type === 'sold' || (v.settled_notes && v.settled_notes.includes('[SOLD]'));
+            if (isSold) {
+                settledBadge = '<span class="lease-settled-badge" style="background:rgba(255,163,0,0.15);color:var(--amber);border-color:rgba(255,163,0,0.30);">🏷️ Sold</span>';
+            } else {
+                settledBadge = '<span class="lease-settled-badge">🏆 Fully Owned</span>';
+            }
+        }
+
         const card = document.createElement('div');
         card.className = 'leasing-widget-card' + (v.settled ? ' lease-widget-settled' : '');
         card.innerHTML = `
@@ -11630,7 +11735,7 @@ function renderLeasingWidgets(entries, paidMap) {
                         <span class="lease-type-badge ${isLoan ? 'badge-loan' : 'badge-lease'}">${isLoan ? '💰 Loan' : '🚗 Lease'}</span>
                         ${freqBadge}
                         ${bulkBadge}
-                        ${v.settled ? '<span class="lease-settled-badge">🏁 Settled</span>' : ''}
+                        ${settledBadge}
                     </div>
                 </div>
                 ${overdueCount > 0 ? `<span class="lease-overdue-badge">${overdueCount} Overdue</span>` : ''}
@@ -11711,7 +11816,17 @@ function renderLeasingVehicleRows(entries, paidMap) {
         } else {
             meta = `Day ${v.installment_day || 1} monthly · ${regCount} x ${leasingFmtLKR(v.installment_amount)}/mo${bulkText} · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2, '0')}`)}`;
         }
-        if (v.settled) meta += ' · <span style="color:var(--green);font-weight:700;">🏁 Settled</span>';
+
+        if (v.settled) {
+            const isSold = v.settlement_type === 'sold' || (v.settled_notes && v.settled_notes.includes('[SOLD]'));
+            if (isSold) {
+                meta += ' · <span style="color:var(--amber);font-weight:700;">🏷️ Vehicle Sold</span>';
+                if (v.sale_amount > 0) meta += ` (Cash Sale: ${leasingFmtLKR(v.sale_amount)})`;
+                if (v.early_settlement_amount > 0) meta += ` (Bank Payoff: ${leasingFmtLKR(v.early_settlement_amount)})`;
+            } else {
+                meta += ' · <span style="color:var(--green);font-weight:700;">🏆 Fully Owned Asset</span>';
+            }
+        }
         if (v.settled_notes) meta += ` · ${v.settled_notes}`;
 
         const row = document.createElement('div');
@@ -11944,22 +12059,88 @@ window.toggleLeaseMonthPostponed = async function (vehicleId, dateStr, isCurrent
     }
 };
 
-// ── Settle Entry ──────────────────────────────────────────────
-window.settleLeaseEntry = async function (vehicleId) {
+// ── Settle Entry Modal ─────────────────────────────────────────
+window.settleLeaseEntry = function (vehicleId) {
     if (!checkAdminAccess('settle')) return;
-    const notes = prompt('Settlement notes (optional):', 'Fully settled');
-    if (notes === null) return; // cancelled
+    openLeaseSettleModal(vehicleId);
+};
+
+window.openLeaseSettleModal = async function (vehicleId) {
     try {
-        const { error } = await supabaseClient.from('leasing_vehicles')
-            .update({ settled: true, settled_at: new Date().toISOString(), settled_notes: notes })
-            .eq('id', vehicleId);
-        if (error) throw error;
-        await refreshLeasingData();
-    } catch (err) {
-        console.error('Error settling entry:', err);
-        showToast('Failed to settle: ' + (err.message || 'Please try again.'), 'error');
+        const { data: v, error } = await supabaseClient.from('leasing_vehicles').select('*').eq('id', vehicleId).single();
+        if (error || !v) { showToast('Could not load vehicle details.', 'error'); return; }
+
+        document.getElementById('lsmVehicleId').value = v.id;
+        document.getElementById('lsmVehicleName').textContent = leasingEntryLabel(v);
+        document.getElementById('lsmNotes').value = v.settled_notes || '';
+        document.getElementById('lsmSaleAmount').value = v.sale_amount || '';
+        document.getElementById('lsmEarlyPayoff').value = v.early_settlement_amount || '';
+
+        const type = v.settlement_type || 'completed';
+        const radios = document.getElementsByName('lsmSettlementType');
+        radios.forEach(r => r.checked = (r.value === type));
+
+        const soldFields = document.getElementById('lsmSoldFields');
+        if (soldFields) soldFields.style.display = type === 'sold' ? 'block' : 'none';
+
+        document.getElementById('leaseSettleModal').style.display = 'flex';
+    } catch (e) {
+        console.error('Error opening settle modal:', e);
     }
 };
+
+window.closeLeaseSettleModal = function () {
+    const modal = document.getElementById('leaseSettleModal');
+    if (modal) modal.style.display = 'none';
+};
+
+async function handleSettleLeaseSubmit(e) {
+    e.preventDefault();
+    if (!checkAdminAccess('settle')) return;
+
+    const id = document.getElementById('lsmVehicleId').value;
+    const notes = document.getElementById('lsmNotes').value.trim();
+    const typeRadios = document.getElementsByName('lsmSettlementType');
+    let stType = 'completed';
+    typeRadios.forEach(r => { if (r.checked) stType = r.value; });
+
+    const saleAmt = stType === 'sold' ? (parseFloat(document.getElementById('lsmSaleAmount').value) || null) : null;
+    const earlyPayoff = stType === 'sold' ? (parseFloat(document.getElementById('lsmEarlyPayoff').value) || null) : null;
+
+    let payload = {
+        settled: true,
+        settled_at: new Date().toISOString(),
+        settled_notes: notes || (stType === 'sold' ? 'Vehicle Sold' : 'Fully Settled'),
+        settlement_type: stType,
+        sale_amount: saleAmt,
+        early_settlement_amount: earlyPayoff
+    };
+
+    const submitBtn = document.querySelector('#leaseSettleForm button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; }
+
+    try {
+        let { error } = await supabaseClient.from('leasing_vehicles').update(payload).eq('id', id);
+        if (error && error.message && (error.message.includes('column') || error.code === 'PGRST204')) {
+            // Fallback if Supabase schema lacks settlement_type, sale_amount or early_settlement_amount
+            const fallback = {
+                settled: true,
+                settled_at: payload.settled_at,
+                settled_notes: stType === 'sold' ? `[SOLD] ${notes || 'Vehicle Sold'}` : (notes || 'Fully Settled')
+            };
+            ({ error } = await supabaseClient.from('leasing_vehicles').update(fallback).eq('id', id));
+        }
+        if (error) throw error;
+
+        closeLeaseSettleModal();
+        await refreshLeasingData();
+    } catch (err) {
+        console.error('Error settling lease:', err);
+        showToast('Failed to settle lease: ' + (err.message || 'Please try again.'), 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🏁 Confirm Settlement'; }
+    }
+}
 
 // ── Edit ──────────────────────────────────────────────────────
 window.editLeaseVehicle = async function (vehicleId) {

@@ -2397,6 +2397,34 @@
                 ═══════════════════════════════════════════════ -->
                 <div id="leasing" class="page">
 
+                    <!-- ── COMPANY ASSET & DEBT PORTFOLIO HERO ── -->
+                    <div class="leasing-asset-hero" id="leasingAssetOverviewWidget">
+                        <div class="lao-card lao-debt">
+                            <span class="lao-icon">📉</span>
+                            <div class="lao-info">
+                                <div class="lao-label">Total Outstanding Debt</div>
+                                <div class="lao-value" id="laoTotalDebt">LKR 0.00</div>
+                                <div class="lao-sub">Remaining unpaid liability</div>
+                            </div>
+                        </div>
+                        <div class="lao-card lao-paid">
+                            <span class="lao-icon">📈</span>
+                            <div class="lao-info">
+                                <div class="lao-label">Total Debt Paid</div>
+                                <div class="lao-value" id="laoTotalPaid">LKR 0.00</div>
+                                <div class="lao-sub">Total debt cleared to date</div>
+                            </div>
+                        </div>
+                        <div class="lao-card lao-assets">
+                            <span class="lao-icon">🏆</span>
+                            <div class="lao-info">
+                                <div class="lao-label">Company Vehicle Assets &amp; Equity</div>
+                                <div class="lao-value" id="laoAssetEquity">LKR 0.00</div>
+                                <div class="lao-sub" id="laoAssetSub">0 Settled Vehicles · 0% Equity</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ── TAB BAR ── -->
                     <div class="leasing-tabs">
                         <button class="leasing-tab active" id="leasingTabLeasing" data-tab="leasing">
@@ -3191,6 +3219,66 @@
         </main>
     </div>
 
+
+    <!-- ── LEASE SETTLEMENT MODAL ── -->
+    <div id="leaseSettleModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:520px;border-radius:12px;padding:24px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--surface-border);padding-bottom:12px;">
+                <h3 style="margin:0;font-size:18px;font-weight:700;">🏁 Settle Lease / Asset — <span id="lsmVehicleName">—</span></h3>
+                <button type="button" class="btn-close" onclick="closeLeaseSettleModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✖</button>
+            </div>
+            <form id="leaseSettleForm">
+                <input type="hidden" id="lsmVehicleId">
+
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px;color:#666;font-weight:600;display:block;margin-bottom:8px;">📋 Settlement Classification</label>
+                    <div class="lease-type-selector" style="flex-direction:column;gap:8px;">
+                        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid var(--surface-border);border-radius:8px;cursor:pointer;background:var(--surface-raised);" id="lsmOptionCompletedLabel">
+                            <input type="radio" name="lsmSettlementType" value="completed" checked style="width:16px;height:16px;">
+                            <div>
+                                <div style="font-weight:700;font-size:13px;color:var(--text-primary);">🏆 Fully Paid Off &amp; Retained Asset</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Lease completed; vehicle is 100% owned as a company asset.</div>
+                            </div>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid var(--surface-border);border-radius:8px;cursor:pointer;background:var(--surface-raised);" id="lsmOptionSoldLabel">
+                            <input type="radio" name="lsmSettlementType" value="sold" style="width:16px;height:16px;">
+                            <div>
+                                <div style="font-weight:700;font-size:13px;color:var(--amber);">🏷️ Vehicle Sold / Early Settled</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Vehicle was sold for cash; remove from company vehicle assets.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sold Vehicle Fields -->
+                <div id="lsmSoldFields" style="display:none;background:rgba(255,163,0,0.06);border:1px solid rgba(255,163,0,0.25);border-radius:8px;padding:14px;margin-bottom:16px;">
+                    <div class="form-row" style="margin-bottom:10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label for="lsmSaleAmount" style="font-size:12px;color:#666;">💵 Cash Received from Sale (LKR)</label>
+                            <input type="number" id="lsmSaleAmount" placeholder="e.g. 8500000" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;">
+                            <label for="lsmEarlyPayoff" style="font-size:12px;color:#666;">🏦 Early Payoff to Bank (LKR)</label>
+                            <input type="number" id="lsmEarlyPayoff" placeholder="e.g. 2000000" min="0" step="0.01">
+                            <small style="color:var(--text-muted);font-size:10px;">Amount paid to close remaining lease balance.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label for="lsmNotes" style="font-size:12px;color:#666;font-weight:600;">📝 Settlement Notes</label>
+                    <input type="text" id="lsmNotes" placeholder="e.g. Sold to Mr. Silva / Fully paid off on 06 Aug 2026">
+                </div>
+
+                <div class="form-actions" style="display:flex;justify-content:flex-end;gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeLeaseSettleModal()">✖ Cancel</button>
+                    <button type="submit" class="btn btn-success">🏁 Confirm Settlement</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="loginModal" class="modal">
         <div class="modal-content login-modal">

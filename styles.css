@@ -6337,6 +6337,93 @@ body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
     flex: 1;
 }
 
+/* ── Company Asset & Debt Portfolio Hero Widget ── */
+.leasing-asset-hero {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.lao-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--ease-base), box-shadow var(--ease-base), border-color var(--ease-base);
+}
+
+.lao-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.lao-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.lao-debt::before   { background: linear-gradient(90deg, #E53E3E, #FF6B6B); }
+.lao-paid::before   { background: linear-gradient(90deg, #00B37E, #38EF7D); }
+.lao-assets::before { background: linear-gradient(90deg, #9F5AFD, #0072CE); }
+
+.lao-icon {
+    font-size: 30px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.lao-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lao-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+}
+
+.lao-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
+}
+
+.lao-debt .lao-value   { color: #E53E3E; }
+.lao-paid .lao-value   { color: #00B37E; }
+.lao-assets .lao-value { color: #9F5AFD; }
+
+body.dark-mode .lao-assets .lao-value { color: #B785FF; }
+
+.lao-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+@media (max-width: 900px) {
+    .leasing-asset-hero {
+        grid-template-columns: repeat(1, 1fr);
+        gap: 12px;
+    }
+}
+
 /* ── Summary Strip (above widgets) ── */
 .leasing-summary-strip {
     display: grid;
