@@ -32,6 +32,12 @@ const OPERATION_CONFIG = {
         badgeClass: 'op-pelwatte',
         color: '#00B37E'
     },
+    keells: {
+        name: 'Keells',
+        logoUrl: 'https://i.postimg.cc/x8KcWWty/images.jpg',
+        badgeClass: 'op-keells',
+        color: '#0F9D58'
+    },
     spacelogistics: {
         name: 'Space Logistics',
         logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg',
@@ -39,6 +45,31 @@ const OPERATION_CONFIG = {
         color: '#001a3f'
     }
 };
+
+// Helper to safely retrieve operation config for any string format or custom operation
+function getOperationConfig(opName) {
+    if (!opName || typeof opName !== 'string') return null;
+    const cleanOp = opName.trim();
+    if (!cleanOp) return null;
+    const lower = cleanOp.toLowerCase();
+
+    // Direct key match
+    if (OPERATION_CONFIG[lower]) return OPERATION_CONFIG[lower];
+
+    // Substring matches
+    if (lower.includes('kevilton')) return OPERATION_CONFIG.kevilton;
+    if (lower.includes('pelwatte')) return OPERATION_CONFIG.pelwatte;
+    if (lower.includes('keells')) return OPERATION_CONFIG.keells;
+    if (lower.includes('space')) return OPERATION_CONFIG.spacelogistics;
+
+    // Fallback for any other custom operation
+    return {
+        name: cleanOp,
+        logoUrl: null,
+        badgeClass: 'op-generic',
+        color: '#7F8C8D'
+    };
+}
 
 // ============ LANGUAGE / TRANSLATIONS ============
 const TRANSLATIONS = {
@@ -903,16 +934,18 @@ async function showDashboard() {
     const opWrap = document.getElementById('driverOperationBadgeWrap');
     if (opWrap) {
         if (currentDriver.operation) {
-            const opKey = currentDriver.operation.toLowerCase();
-            const opConf = OPERATION_CONFIG[opKey];
+            const opConf = getOperationConfig(currentDriver.operation);
             if (opConf) {
                 let coordBadge = '';
                 if (currentDriver.is_coordinator) {
                     coordBadge = `<span class="driver-coordinator-badge" title="Operation Coordinator">⭐ Coordinator</span>`;
                 }
+                const logoHtml = opConf.logoUrl
+                    ? `<img src="${opConf.logoUrl}" class="driver-op-logo" alt="${opConf.name}">`
+                    : '';
                 opWrap.innerHTML = `
                     <div class="driver-op-badge ${opConf.badgeClass}">
-                        <img src="${opConf.logoUrl}" class="driver-op-logo" alt="${opConf.name}">
+                        ${logoHtml}
                         <span class="driver-op-name">${opConf.name}</span>
                     </div>
                     ${coordBadge}
@@ -947,11 +980,13 @@ async function showDashboard() {
     }
     if (document.getElementById('profileOperation')) {
         if (currentDriver.operation) {
-            const opKey = currentDriver.operation.toLowerCase();
-            const opConf = OPERATION_CONFIG[opKey];
+            const opConf = getOperationConfig(currentDriver.operation);
             const coordText = currentDriver.is_coordinator ? ' ⭐ (Coordinator)' : '';
             if (opConf) {
-                document.getElementById('profileOperation').innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><img src="${opConf.logoUrl}" style="width:16px;height:16px;object-fit:contain;border-radius:50%;"> <strong>${opConf.name}</strong>${coordText}</span>`;
+                const logoHtml = opConf.logoUrl
+                    ? `<img src="${opConf.logoUrl}" style="width:16px;height:16px;object-fit:contain;border-radius:50%;">`
+                    : '🏢';
+                document.getElementById('profileOperation').innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;">${logoHtml} <strong>${opConf.name}</strong>${coordText}</span>`;
             } else {
                 document.getElementById('profileOperation').textContent = `${currentDriver.operation}${coordText}`;
             }
@@ -2360,10 +2395,10 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             let opBadgeHtml = '';
             if (d.operation) {
-                const opKey = d.operation.toLowerCase();
-                const opConf = OPERATION_CONFIG[opKey];
+                const opConf = getOperationConfig(d.operation);
                 if (opConf) {
-                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}"><img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">${opConf.name}</span>`;
+                    const logoTag = opConf.logoUrl ? `<img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">` : '';
+                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}">${logoTag}${opConf.name}</span>`;
                 }
             }
 
@@ -2493,10 +2528,10 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             let opBadgeHtml = '';
             if (d.operation) {
-                const opKey = d.operation.toLowerCase();
-                const opConf = OPERATION_CONFIG[opKey];
+                const opConf = getOperationConfig(d.operation);
                 if (opConf) {
-                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}"><img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">${opConf.name}</span>`;
+                    const logoTag = opConf.logoUrl ? `<img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">` : '';
+                    opBadgeHtml = `<span class="race-badge race-badge-op ${opConf.badgeClass}">${logoTag}${opConf.name}</span>`;
                 }
             }
 

@@ -2439,6 +2439,18 @@ body.light-mode .avatar-container::after {
     color: #4A90E2;
 }
 
+.driver-op-badge.op-keells {
+    background: rgba(15, 157, 88, 0.18);
+    border: 1px solid rgba(15, 157, 88, 0.45);
+    color: #2ECC71;
+}
+
+.driver-op-badge.op-generic {
+    background: rgba(127, 140, 141, 0.18);
+    border: 1px solid rgba(127, 140, 141, 0.45);
+    color: #BDC3C7;
+}
+
 .driver-op-logo {
     width: 12px;
     height: 12px;
@@ -2487,6 +2499,14 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-space-logistics {
     background: linear-gradient(135deg, #001a3f, #4A90E2);
+}
+
+.race-badge-op.op-keells {
+    background: linear-gradient(135deg, #0F9D58, #0B6B3A);
+}
+
+.race-badge-op.op-generic {
+    background: linear-gradient(135deg, #7F8C8D, #34495E);
 }
 
 .race-op-logo-mini {
