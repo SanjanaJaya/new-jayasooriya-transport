@@ -23,6 +23,7 @@
     let trackerDistributorMarkers = [];  // Distributor map markers
     let trackerDistributors = [];        // Cache of distributors
     let trackerFocusedUnitId = null;     // Current inspected vehicle ID
+    let trackerTVMode = localStorage.getItem('tracker_tv_mode') === 'true'; // 4K TV Grid Layout mode toggle state
 
     // Fuel consumption calculation cache & state
     let trackerVehicleFuelConsumption = {}; // { baseVehicleName: { kmpl: X, km: Y, L: Z } }
@@ -1312,6 +1313,25 @@
             return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         });
 
+        // Cap at 20 lorries max in TV mode as requested
+        if (trackerTVMode && filtered.length > 20) {
+            filtered = filtered.slice(0, 20);
+        }
+
+        // Apply dynamic density class on vehicle-tracker element based on filtered unit count (for 4K TV scaling)
+        var trackerPage = document.getElementById('vehicle-tracker');
+        if (trackerPage) {
+            trackerPage.classList.remove('tv-count-10', 'tv-count-15', 'tv-count-20');
+            var count = filtered.length;
+            if (count <= 10) {
+                trackerPage.classList.add('tv-count-10');
+            } else if (count <= 15) {
+                trackerPage.classList.add('tv-count-15');
+            } else {
+                trackerPage.classList.add('tv-count-20');
+            }
+        }
+
         // Hide emptyState initially
         if (emptyState) emptyState.style.display = 'none';
 
@@ -1505,8 +1525,53 @@
         }, 300);
     });
 
+    // ── 4K TV Mode Toggle Management ──
+    function updateTVModeUI() {
+        var el = document.getElementById('vehicle-tracker');
+        var tvBtns = document.querySelectorAll('.tracker-tv-btn');
+        if (!el) return;
+
+        if (trackerTVMode) {
+            el.classList.add('tv-4k-active');
+            tvBtns.forEach(function (btn) {
+                btn.classList.add('active');
+                if (btn.id === 'trackerFSHeaderTVBtn') btn.textContent = '📺 Normal Grid';
+                else btn.textContent = '📺 Standard View';
+            });
+        } else {
+            el.classList.remove('tv-4k-active');
+            tvBtns.forEach(function (btn) {
+                btn.classList.remove('active');
+                if (btn.id === 'trackerFSHeaderTVBtn') btn.textContent = '📺 4K Grid';
+                else btn.textContent = '📺 4K TV View';
+            });
+        }
+
+        setTimeout(function () {
+            if (trackerMap) trackerMap.invalidateSize();
+        }, 200);
+    }
+
+    function toggleTrackerTVMode(forceState) {
+        if (typeof forceState === 'boolean') {
+            trackerTVMode = forceState;
+        } else {
+            trackerTVMode = !trackerTVMode;
+        }
+        localStorage.setItem('tracker_tv_mode', trackerTVMode ? 'true' : 'false');
+        updateTVModeUI();
+    }
+
     // ── Wire Up Events ──
     function wireTrackerEvents() {
+        // 4K TV View buttons toggle
+        var tvBtns = document.querySelectorAll('.tracker-tv-btn');
+        tvBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                toggleTrackerTVMode();
+            });
+        });
+
         // Settings toggle
         var settingsToggle = document.getElementById('trackerSettingsToggle');
         if (settingsToggle) {
@@ -1693,6 +1758,9 @@
             wireTrackerEvents();
             trackerInitialized = true;
         }
+
+        // Apply saved 4K TV mode UI layout state
+        updateTVModeUI();
 
         // Load saved config into UI
         var config = getTrackerConfig();

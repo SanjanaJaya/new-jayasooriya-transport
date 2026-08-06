@@ -3082,6 +3082,7 @@
                         <div class="tracker-conn-right">
                             <span class="tracker-last-update" id="trackerLastUpdate">Last update: —</span>
                             <button class="btn btn-sm tracker-kd-toggle-btn" id="trackerKDToggleBtn" style="background:var(--purple, #9B59B6);color:#fff;border:none;margin-right:5px;">🗺️ Show Distributors</button>
+                            <button class="btn btn-sm tracker-tv-btn" id="trackerTVModeBtn" style="background:#e67e22;color:#fff;border:none;margin-right:5px;" title="Toggle 4K TV Grid Layout">📺 4K TV View</button>
                             <button class="btn btn-sm tracker-fullscreen-btn" id="trackerFullscreenBtn" style="background:var(--blue);color:#fff;border:none;margin-right:5px;">🖥️ Fullscreen</button>
                             <button class="btn btn-sm tracker-reconnect-btn" id="trackerReconnectBtn" title="Reconnect">🔄 Reconnect</button>
                             <button class="btn btn-sm tracker-settings-btn" id="trackerSettingsToggle" title="Settings">⚙️</button>
@@ -3189,7 +3190,10 @@
                             <div class="tracker-vehicles-header">
                                 <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
                                     <h3 style="margin:0;">🚛 Fleet Status</h3>
-                                    <button class="btn btn-sm" id="trackerExitFSBtn" style="display:none;background:var(--brand-red);color:#fff;border:none;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;">✖ Exit Fullscreen</button>
+                                    <div style="display:flex;align-items:center;gap:6px;">
+                                        <button class="btn btn-sm tracker-tv-btn" id="trackerFSHeaderTVBtn" style="background:#e67e22;color:#fff;border:none;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;" title="Toggle 4K TV Grid Layout">📺 4K Grid</button>
+                                        <button class="btn btn-sm" id="trackerExitFSBtn" style="display:none;background:var(--brand-red);color:#fff;border:none;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;">✖ Exit Fullscreen</button>
+                                    </div>
                                 </div>
                                 <div class="tracker-filter-group">
                                     <input type="text" id="trackerSearchInput" placeholder="🔍 Search vehicle..." class="tracker-search-input">
