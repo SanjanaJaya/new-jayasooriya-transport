@@ -10836,6 +10836,64 @@ body.dark-mode .terminated-badge {
     box-shadow: var(--shadow-md);
 }
 
+/* Lorry Size Badge (e.g. 14ft) */
+.tracker-size-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 7px;
+    background: rgba(52, 152, 219, 0.18);
+    color: #3498DB;
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    line-height: 1;
+    letter-spacing: 0.3px;
+}
+
+/* Operation Badge with Brand Logo Image (Kevilton, Keells, Pelwatte, Space Logistics) */
+.tracker-op-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.tracker-op-logo-img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #ffffff;
+    padding: 1px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Compact overrides for 4K TV mode */
+#vehicle-tracker.tv-4k-active .tracker-size-badge {
+    padding: 1px 5px !important;
+    font-size: 9.5px !important;
+}
+
+#vehicle-tracker.tv-4k-active .tracker-op-badge {
+    padding: 1px 6px !important;
+    font-size: 9.5px !important;
+    gap: 4px !important;
+}
+
+#vehicle-tracker.tv-4k-active .tracker-op-logo-img {
+    width: 12px !important;
+    height: 12px !important;
+}
+
+
 /* Reverse Geocoding Address display - styled as a readable dark translucent tag */
 .tracker-card-address {
     margin-top: 10px;
@@ -11155,100 +11213,126 @@ body.dark-mode .terminated-badge {
     font-weight: bold;
 }
 
-/* Strict Zero Scroll Enforcement for TV View */
+/* Strict Zero Scroll Enforcement for Fullscreen TV View & Responsive Regular Grid */
 #vehicle-tracker.tv-4k-active .tracker-vehicle-grid {
-    overflow-y: hidden !important;
-    overflow-x: hidden !important;
     display: grid !important;
-    align-content: stretch !important;
+    grid-auto-rows: minmax(min-content, max-content) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     margin-top: 8px !important;
-    padding-right: 0 !important;
+    padding-right: 4px !important;
 }
 
-/* 1 - 10 Vehicles: 2 Columns × 5 Rows */
+/* Fullscreen Dynamic Row Templates based on visible vehicle count */
+#vehicle-tracker.fullscreen-active.tv-4k-active.tv-rows-1 .tracker-vehicle-grid,
+#vehicle-tracker:fullscreen.tv-4k-active.tv-rows-1 .tracker-vehicle-grid { grid-template-rows: repeat(1, 1fr) !important; flex: 1 !important; min-height: 0 !important; overflow-y: hidden !important; }
+
+#vehicle-tracker.fullscreen-active.tv-4k-active.tv-rows-2 .tracker-vehicle-grid,
+#vehicle-tracker:fullscreen.tv-4k-active.tv-rows-2 .tracker-vehicle-grid { grid-template-rows: repeat(2, 1fr) !important; flex: 1 !important; min-height: 0 !important; overflow-y: hidden !important; }
+
+#vehicle-tracker.fullscreen-active.tv-4k-active.tv-rows-3 .tracker-vehicle-grid,
+#vehicle-tracker:fullscreen.tv-4k-active.tv-rows-3 .tracker-vehicle-grid { grid-template-rows: repeat(3, 1fr) !important; flex: 1 !important; min-height: 0 !important; overflow-y: hidden !important; }
+
+#vehicle-tracker.fullscreen-active.tv-4k-active.tv-rows-4 .tracker-vehicle-grid,
+#vehicle-tracker:fullscreen.tv-4k-active.tv-rows-4 .tracker-vehicle-grid { grid-template-rows: repeat(4, 1fr) !important; flex: 1 !important; min-height: 0 !important; overflow-y: hidden !important; }
+
+#vehicle-tracker.fullscreen-active.tv-4k-active.tv-rows-5 .tracker-vehicle-grid,
+#vehicle-tracker:fullscreen.tv-4k-active.tv-rows-5 .tracker-vehicle-grid { grid-template-rows: repeat(5, 1fr) !important; flex: 1 !important; min-height: 0 !important; overflow-y: hidden !important; }
+
+/* 1 - 10 Vehicles: 2 Columns × Dynamic Rows */
 #vehicle-tracker.tv-4k-active.tv-count-10 .tracker-vehicles-section,
 #vehicle-tracker.tv-4k-active .tracker-vehicles-section {
     width: 58vw !important;
     max-width: 1300px !important;
-    padding: 12px 14px !important;
+    padding: 10px 12px !important;
 }
 
 #vehicle-tracker.tv-4k-active.tv-count-10 .tracker-vehicle-grid,
 #vehicle-tracker.tv-4k-active .tracker-vehicle-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px 10px !important;
+    gap: 6px 8px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-vehicle-card {
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
     margin: 0 !important;
     box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    min-height: 0 !important;
-    height: 100% !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
+    min-height: max-content !important;
+    height: auto !important;
     border-radius: 10px !important;
     background: var(--surface-card, #1e212b) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    overflow: hidden !important;
+}
+
+#vehicle-tracker.fullscreen-active.tv-4k-active .tracker-vehicle-card,
+#vehicle-tracker:fullscreen.tv-4k-active .tracker-vehicle-card,
+#vehicle-tracker:-webkit-full-screen.tv-4k-active .tracker-vehicle-card {
+    height: 100% !important;
+    min-height: 0 !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-card-name {
-    font-size: 14px !important;
+    font-size: 13.5px !important;
     font-weight: 800 !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-card-speed-wrapper {
-    margin-bottom: 4px !important;
-    gap: 8px !important;
+    margin-bottom: 2px !important;
+    gap: 6px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-speed-value {
-    font-size: 26px !important;
+    font-size: 22px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-driver-face-container {
-    width: 32px !important;
-    height: 32px !important;
+    width: 28px !important;
+    height: 28px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-card-address {
-    margin-top: 4px !important;
-    padding: 4px 8px !important;
-    font-size: 10.5px !important;
-    border-radius: 6px !important;
+    margin-top: 2px !important;
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+    border-radius: 5px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-card-details {
-    gap: 3px !important;
-    margin-top: 4px !important;
+    gap: 2px !important;
+    margin-top: 2px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-detail-row {
-    font-size: 11px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-detail-row .detail-text {
-    font-size: 10.5px !important;
+    font-size: 9.5px !important;
     opacity: 0.8;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-detail-row .detail-value {
-    font-size: 11px !important;
+    font-size: 10px !important;
     max-width: 62% !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-time-ago {
-    margin-top: 3px !important;
-    font-size: 10px !important;
+    margin-top: 2px !important;
+    font-size: 9.5px !important;
 }
 
 #vehicle-tracker.tv-4k-active .tracker-card-vector-bg {
-    width: 110px !important;
-    height: 75px !important;
-    right: -10px !important;
-    bottom: -10px !important;
-    opacity: 0.08 !important;
+    width: 95px !important;
+    height: 65px !important;
+    right: -8px !important;
+    bottom: -8px !important;
+    opacity: 0.07 !important;
 }
 
 /* 11 - 15 Vehicles: 3 Columns × 5 Rows (Compact Cards) */

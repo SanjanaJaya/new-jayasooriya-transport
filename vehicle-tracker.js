@@ -29,8 +29,31 @@
     let trackerVehicleFuelConsumption = {}; // { baseVehicleName: { kmpl: X, km: Y, L: Z } }
     let trackerVehicleVectorArts = {};      // { baseVehicleName: vectorArtUrl }
     let trackerVehicleModels = {};          // { baseVehicleName: 'Isuzu ELF 300' }
+    let trackerVehicleLengths = {};         // { baseVehicleName: '14ft' }
     let lastFuelConsumptionCalcTime = 0;
     const FUEL_CALC_INTERVAL = 10 * 60 * 1000; // 10 minutes
+
+    const TRACKER_OPERATION_CONFIG = {
+        kevilton: { name: 'Kevilton', logoUrl: 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png', color: '#FF6B81', bg: 'rgba(209,0,31,0.18)' },
+        pelwatte: { name: 'Pelwatte', logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg', color: '#2ECC71', bg: 'rgba(0,179,126,0.18)' },
+        keells: { name: 'Keells', logoUrl: 'https://i.postimg.cc/x8KcWWty/images.jpg', color: '#2ECC71', bg: 'rgba(0,179,126,0.18)' },
+        spacelogistics: { name: 'Space Logistics', logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg', color: '#4A90E2', bg: 'rgba(0,26,63,0.18)' }
+    };
+
+    function getTrackerOperationConfig(opName) {
+        if (!opName || typeof opName !== 'string') return null;
+        var cleanOp = opName.trim();
+        if (!cleanOp) return null;
+        var lower = cleanOp.toLowerCase();
+
+        if (TRACKER_OPERATION_CONFIG[lower]) return TRACKER_OPERATION_CONFIG[lower];
+        if (lower.indexOf('kevilton') !== -1) return TRACKER_OPERATION_CONFIG.kevilton;
+        if (lower.indexOf('pelwatte') !== -1) return TRACKER_OPERATION_CONFIG.pelwatte;
+        if (lower.indexOf('keells') !== -1) return TRACKER_OPERATION_CONFIG.keells;
+        if (lower.indexOf('space') !== -1) return TRACKER_OPERATION_CONFIG.spacelogistics;
+
+        return { name: cleanOp, logoUrl: null, color: '#7F8C8D', bg: 'rgba(127,140,141,0.18)' };
+    }
 
     // Memory management constants
     const MAX_GEOCODE_QUEUE_SIZE = 30;     // Cap geocode queue to prevent unbounded growth
@@ -143,8 +166,8 @@
 
             var pDrivers = supabaseClient.from('drivers').select('*').eq('user_id', userId).neq('terminated', true);
             var pAssignments = supabaseClient.from('staff_lorry_assignments').select('*').eq('user_id', userId);
-            var pHire = supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url, vehicle_model').eq('user_id', userId).neq('terminated', true);
-            var pCommit = supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url, vehicle_model').eq('user_id', userId).neq('terminated', true);
+            var pHire = supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vector_art_url, vehicle_model, length').eq('user_id', userId).neq('terminated', true);
+            var pCommit = supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vector_art_url, vehicle_model, length').eq('user_id', userId).neq('terminated', true);
 
             var results = await Promise.all([pDrivers, pAssignments, pHire, pCommit]);
             trackerDrivers = results[0].data || [];
@@ -152,6 +175,7 @@
 
             trackerVehicleVectorArts = {};
             trackerVehicleModels = {};
+            trackerVehicleLengths = {};
             (results[2].data || []).forEach(function (v) {
                 var base = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
@@ -160,6 +184,9 @@
                 }
                 if (v.vehicle_model) {
                     trackerVehicleModels[base] = v.vehicle_model;
+                }
+                if (v.length) {
+                    trackerVehicleLengths[base] = v.length;
                 }
             });
             (results[3].data || []).forEach(function (v) {
@@ -170,6 +197,9 @@
                 }
                 if (v.vehicle_model) {
                     trackerVehicleModels[base] = v.vehicle_model;
+                }
+                if (v.length && !trackerVehicleLengths[base]) {
+                    trackerVehicleLengths[base] = v.length;
                 }
             });
         } catch (e) {
@@ -970,7 +1000,10 @@
 
         // Build card skeleton with placeholders to be updated by patchCard
         card.innerHTML = '<div class="tracker-card-header" style="z-index: 1; position: relative;">' +
+            '<div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">' +
             '<span class="tracker-card-name">🚛 ' + unit.name + '</span>' +
+            '<span class="tracker-size-badge" style="display:none;"></span>' +
+            '</div>' +
             '<span class="tracker-status-badge"></span>' +
             '</div>' +
             '<div class="tracker-card-speed-wrapper" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; width:100%; z-index: 1; position: relative;">' +
@@ -1004,6 +1037,12 @@
             '<span class="detail-icon">📞</span>' +
             '<span class="detail-text">Phone</span>' +
             '<a class="detail-value tracker-phone-val" href="#" style="font-weight:600; color:var(--blue, #3498DB); text-decoration:none;">—</a>' +
+            '</div>' +
+            // Operation Detail Row
+            '<div class="tracker-detail-row tracker-op-row" style="display:none;">' +
+            '<span class="detail-icon">🏢</span>' +
+            '<span class="detail-text">Operation</span>' +
+            '<span class="detail-value tracker-op-val"></span>' +
             '</div>' +
             // Vehicle Model Row
             '<div class="tracker-detail-row tracker-model-row">' +
@@ -1158,78 +1197,113 @@
         }
 
         // 6. Update Driver assigned
-        var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
-        var assignment = trackerAssignments.find(function (a) {
-            var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : a.lorry_number.trim().toUpperCase();
-            return aLorry === baseName;
-        });
-        var driver = assignment ? trackerDrivers.find(function (d) { return d.id === assignment.driver_id; }) : null;
+        try {
+            var baseName = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : (unit.name || '').trim().toUpperCase();
 
-        var targetDriverId = driver ? String(driver.id) : '';
-        if (card.dataset.driverId !== targetDriverId) {
-            card.dataset.driverId = targetDriverId;
-
-            var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
-            var driverName = driver
-                ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
-                : 'Not Assigned';
-
-            var driverVal = card.querySelector('.tracker-driver-row .detail-value');
-            if (driverVal) driverVal.textContent = driverName;
-
-            // Driver Phone — tap-to-call
-            var phoneEl = card.querySelector('.tracker-phone-val');
-            if (phoneEl) {
-                var phone = driver && driver.contact ? driver.contact.trim() : '';
-                if (phone) {
-                    phoneEl.textContent = phone;
-                    phoneEl.href = 'tel:' + phone;
-                    phoneEl.style.color = 'var(--blue, #3498DB)';
-                    phoneEl.style.pointerEvents = 'auto';
+            // Update Lorry Size Badge (e.g. 14ft)
+            var sizeBadge = card.querySelector('.tracker-size-badge');
+            if (sizeBadge) {
+                var rawLen = trackerVehicleLengths ? trackerVehicleLengths[baseName] : null;
+                if (rawLen) {
+                    var lenText = String(rawLen).indexOf('ft') !== -1 ? rawLen : rawLen + 'ft';
+                    if (sizeBadge.textContent !== lenText) sizeBadge.textContent = lenText;
+                    sizeBadge.style.display = 'inline-flex';
                 } else {
-                    phoneEl.textContent = '—';
-                    phoneEl.removeAttribute('href');
-                    phoneEl.style.color = 'var(--text-muted, #9CA3AF)';
-                    phoneEl.style.pointerEvents = 'none';
+                    sizeBadge.style.display = 'none';
                 }
             }
 
-            // Driver photo
-            var imgContainer = card.querySelector('.tracker-driver-face-container');
-            if (imgContainer) {
-                if (driver && driver.photo_url) {
-                    var currentImg = imgContainer.querySelector('img');
-                    if (!currentImg) {
-                        currentImg = document.createElement('img');
-                        currentImg.className = 'tracker-driver-photo';
-                        currentImg.onerror = function () { this.style.display = 'none'; };
-                        imgContainer.innerHTML = '';
-                        imgContainer.appendChild(currentImg);
+            var assignment = (trackerAssignments || []).find(function (a) {
+                if (!a || !a.lorry_number) return false;
+                var aLorry = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(a.lorry_number) : (a.lorry_number || '').trim().toUpperCase();
+                return aLorry === baseName;
+            });
+            var driver = (assignment && trackerDrivers) ? trackerDrivers.find(function (d) { return d && String(d.id) === String(assignment.driver_id); }) : null;
+
+            var targetDriverId = driver ? String(driver.id) : '';
+            if (card.dataset.driverId !== targetDriverId) {
+                card.dataset.driverId = targetDriverId;
+
+                var nickname = driver ? (typeof getNickname === 'function' ? getNickname(driver.name) : '') : '';
+                var driverName = driver
+                    ? (typeof cleanDriverName === 'function' ? cleanDriverName(driver.name) : driver.name) + (nickname ? ' (' + nickname + ')' : '')
+                    : 'Not Assigned';
+
+                var driverVal = card.querySelector('.tracker-driver-row .detail-value');
+                if (driverVal) driverVal.textContent = driverName;
+
+                // Driver Phone — tap-to-call
+                var phoneEl = card.querySelector('.tracker-phone-val');
+                if (phoneEl) {
+                    var phone = driver && driver.contact ? driver.contact.trim() : '';
+                    if (phone) {
+                        phoneEl.textContent = phone;
+                        phoneEl.href = 'tel:' + phone;
+                        phoneEl.style.color = 'var(--blue, #3498DB)';
+                        phoneEl.style.pointerEvents = 'auto';
+                    } else {
+                        phoneEl.textContent = '—';
+                        phoneEl.removeAttribute('href');
+                        phoneEl.style.color = 'var(--text-muted, #9CA3AF)';
+                        phoneEl.style.pointerEvents = 'none';
                     }
-                    currentImg.src = driver.photo_url;
-                    currentImg.style.display = '';
+                }
 
-                    imgContainer.style.border = '1.5px solid var(--surface-border, #eee)';
-                    imgContainer.style.background = '#f0f2f5';
+                // Driver Operation Badge
+                var opRow = card.querySelector('.tracker-op-row');
+                var opVal = card.querySelector('.tracker-op-val');
+                var opName = driver && driver.operation ? driver.operation : '';
+                if (opName) {
+                    var opConf = typeof getTrackerOperationConfig === 'function' ? getTrackerOperationConfig(opName) : null;
+                    var logoHtml = opConf && opConf.logoUrl ? '<img src="' + opConf.logoUrl + '" class="tracker-op-logo-img" alt="' + opConf.name + '"/>' : '';
+                    var badgeHtml = '<span class="tracker-op-badge" style="background:' + (opConf ? opConf.bg : 'rgba(127,140,141,0.18)') + '; color:' + (opConf ? opConf.color : '#7F8C8D') + ';">' + logoHtml + (opConf ? opConf.name : opName) + '</span>';
+                    if (opVal && opVal.innerHTML !== badgeHtml) {
+                        opVal.innerHTML = badgeHtml;
+                    }
+                    if (opRow) opRow.style.display = 'flex';
                 } else {
-                    imgContainer.innerHTML = '👤';
-                    imgContainer.style.border = 'none';
-                    imgContainer.style.background = 'transparent';
+                    if (opRow) opRow.style.display = 'none';
+                }
+
+                // Driver photo
+                var imgContainer = card.querySelector('.tracker-driver-face-container');
+                if (imgContainer) {
+                    if (driver && driver.photo_url) {
+                        var currentImg = imgContainer.querySelector('img');
+                        if (!currentImg) {
+                            currentImg = document.createElement('img');
+                            currentImg.className = 'tracker-driver-photo';
+                            currentImg.onerror = function () { this.style.display = 'none'; };
+                            imgContainer.innerHTML = '';
+                            imgContainer.appendChild(currentImg);
+                        }
+                        currentImg.src = driver.photo_url;
+                        currentImg.style.display = '';
+
+                        imgContainer.style.border = '1.5px solid var(--surface-border, #eee)';
+                        imgContainer.style.background = '#f0f2f5';
+                    } else {
+                        imgContainer.innerHTML = '👤';
+                        imgContainer.style.border = 'none';
+                        imgContainer.style.background = 'transparent';
+                    }
                 }
             }
+        } catch (err) {
+            console.error('Error patching driver/size details on card:', err);
         }
 
         // Vehicle Model
         var modelEl = card.querySelector('.tracker-model-val');
         if (modelEl) {
-            var modelText = trackerVehicleModels[baseName] || '—';
+            var modelText = (trackerVehicleModels && baseName) ? (trackerVehicleModels[baseName] || '—') : '—';
             if (modelEl.textContent !== modelText) modelEl.textContent = modelText;
         }
 
         // 9. Update Vector Art Background
         var bgEl = card.querySelector('.tracker-card-vector-bg');
         if (bgEl) {
-            var vectorArtUrl = trackerVehicleVectorArts[baseName] || '';
+            var vectorArtUrl = (trackerVehicleVectorArts && baseName) ? (trackerVehicleVectorArts[baseName] || '') : '';
             var targetBg = '';
             var defaultLorrySVG = '<svg viewBox="0 0 100 50" class="vehicle-svg-art" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/><rect x="57" y="38" width="10" height="2" fill="rgba(0,0,0,0.5)" rx="1"/><path d="M5,12 h46 v24 h-46 z" fill="#1E212D" rx="2"/><path d="M51,18 h18 l10,8 v10 h-28 z" fill="#D1001F" rx="2"/><path d="M58,20 h8 l5,5 v4 h-13 z" fill="#0F1014" rx="1"/><circle cx="20" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/><circle cx="62" cy="38" r="6" fill="#121212" stroke="#FFF" stroke-width="1"/><circle cx="20" cy="38" r="2" fill="#FFF"/><circle cx="62" cy="38" r="2" fill="#FFF"/></svg>';
             if (vectorArtUrl) {
@@ -1255,15 +1329,15 @@
 
         var timeText = card.querySelector('.time-ago-text');
         if (timeText) {
-            var targetTime = timeAgo(unit.lastTime);
+            var targetTime = typeof timeAgo === 'function' ? timeAgo(unit.lastTime) : '';
             if (timeText.textContent !== targetTime) timeText.textContent = targetTime;
         }
 
         // 8. Update Fuel Consumption
         var fuelVal = card.querySelector('.fuel-consumption-val');
         if (fuelVal) {
-            var baseName2 = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
-            var fuelData = trackerVehicleFuelConsumption[baseName2];
+            var baseName2 = typeof extractBaseVehicleName === 'function' ? extractBaseVehicleName(unit.name) : (unit.name || '').trim().toUpperCase();
+            var fuelData = trackerVehicleFuelConsumption ? trackerVehicleFuelConsumption[baseName2] : undefined;
             if (fuelData !== undefined) {
                 if (fuelData.L === 0) {
                     fuelVal.textContent = 'No fuel record';
@@ -1277,7 +1351,6 @@
                 }
                 fuelVal.title = 'GPS km: ' + Math.round(fuelData.km) + ' km | Fuel: ' + fuelData.L.toFixed(1) + ' L';
             }
-            // else: still shows "Calculating..." from the card template
         }
     }
 
@@ -1321,8 +1394,11 @@
         // Apply dynamic density class on vehicle-tracker element based on filtered unit count (for 4K TV scaling)
         var trackerPage = document.getElementById('vehicle-tracker');
         if (trackerPage) {
-            trackerPage.classList.remove('tv-count-10', 'tv-count-15', 'tv-count-20');
+            trackerPage.classList.remove('tv-count-10', 'tv-count-15', 'tv-count-20', 'tv-rows-1', 'tv-rows-2', 'tv-rows-3', 'tv-rows-4', 'tv-rows-5');
             var count = filtered.length;
+            var numCols = count <= 10 ? 2 : count <= 15 ? 3 : 4;
+            var numRows = Math.max(1, Math.min(5, Math.ceil(count / numCols)));
+
             if (count <= 10) {
                 trackerPage.classList.add('tv-count-10');
             } else if (count <= 15) {
@@ -1330,6 +1406,7 @@
             } else {
                 trackerPage.classList.add('tv-count-20');
             }
+            trackerPage.classList.add('tv-rows-' + numRows);
         }
 
         // Hide emptyState initially
@@ -1358,17 +1435,21 @@
 
         // In-place DOM updates & sorting
         filtered.forEach(function (unit, i) {
-            var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
-            if (card) {
-                patchCard(card, unit, i);
-            } else {
-                card = createCardElement(unit, i);
-            }
+            try {
+                var card = grid.querySelector('.tracker-vehicle-card[data-unit-id="' + unit.id + '"]');
+                if (card) {
+                    patchCard(card, unit, i);
+                } else {
+                    card = createCardElement(unit, i);
+                }
 
-            // Only move/insert element in the DOM if it's not already in the correct position.
-            // This prevents re-triggering of animations or layout recalculations.
-            if (grid.children[i] !== card) {
-                grid.insertBefore(card, grid.children[i] || null);
+                // Only move/insert element in the DOM if it's not already in the correct position.
+                // This prevents re-triggering of animations or layout recalculations.
+                if (grid.children[i] !== card) {
+                    grid.insertBefore(card, grid.children[i] || null);
+                }
+            } catch (cardErr) {
+                console.error('Error rendering vehicle card for:', unit ? unit.name : i, cardErr);
             }
         });
 
