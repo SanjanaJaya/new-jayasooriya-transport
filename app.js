@@ -11099,6 +11099,16 @@ function leasingFortnightLabel(dateStr, fortnightNum) {
     return `Fortnight ${fortnightNum} (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
 }
 
+// Get installment amount for a specific index (0-based).
+// Returns final_installment_amount for the last installment if set, otherwise installment_amount.
+function leasingGetInstallmentAmount(entry, index, total) {
+    const finalAmt = parseFloat(entry.final_installment_amount);
+    if (!isNaN(finalAmt) && finalAmt > 0 && total > 0 && index === total - 1) {
+        return finalAmt;
+    }
+    return parseFloat(entry.installment_amount || 0);
+}
+
 // Build payment keys for any entry (monthly, weekly, or fortnightly)
 function leasingBuildPaymentKeys(entry) {
     const freq = entry.payment_freq || 'monthly';
@@ -11242,6 +11252,8 @@ function resetLeaseForm() {
     document.getElementById('leaseEntryType').value = 'leasing';
     document.getElementById('leasePaymentFreq').value = 'monthly';
     document.getElementById('leaseSettledNotesWrap').style.display = 'none';
+    const finalInstEl = document.getElementById('leaseFinalInstallmentAmount');
+    if (finalInstEl) finalInstEl.value = '';
     const now = new Date();
     const monthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const dateVal = now.toISOString().split('T')[0];
@@ -11270,7 +11282,7 @@ function setLeaseFormType(type) {
     // Reset freq to monthly when switching to leasing
     if (type === 'leasing') setLeaseFormFreq('monthly');
     const totalLabel = document.getElementById('leaseTotalInstLabel');
-    if (totalLabel) totalLabel.textContent = type === 'leasing' ? '📆 Total Months' : '📆 Total Installments';
+    if (totalLabel) totalLabel.textContent = '📆 Same / Regular Installments Count';
 }
 
 function setLeaseFormFreq(freq) {
@@ -11294,10 +11306,7 @@ function setLeaseFormFreq(freq) {
     // Update label
     const totalLabel = document.getElementById('leaseTotalInstLabel');
     if (totalLabel) {
-        const type = document.getElementById('leaseEntryType').value;
-        totalLabel.textContent = freq === 'weekly' ? '📆 Total Weeks' :
-            freq === 'fortnightly' ? '📆 Total Fortnights' :
-                (type === 'leasing' ? '📆 Total Months' : '📆 Total Months');
+        totalLabel.textContent = '📆 Same / Regular Installments Count';
     }
 }
 
@@ -11318,11 +11327,19 @@ async function handleAddLeaseVehicle(e) {
     const totalInst = parseInt(document.getElementById('leaseTotalInstallments').value);
     if (!amount || !totalInst) { showToast('Please fill in amount and total installments.', 'warning'); return; }
 
+    const finalAmountVal = parseFloat(document.getElementById('leaseFinalInstallmentAmount')?.value);
+    const hasFinalAmount = !isNaN(finalAmountVal) && finalAmountVal > 0;
+    const finalInstallmentAmount = hasFinalAmount ? finalAmountVal : null;
+    const regularInstallmentsCount = totalInst;
+    const computedTotalInst = hasFinalAmount ? regularInstallmentsCount + 1 : regularInstallmentsCount;
+
     let payload = {
         user_id: getQueryUserId(),
         entry_type: entryType,
         payment_freq: paymentFreq,
         installment_amount: amount,
+        final_installment_amount: finalInstallmentAmount,
+        regular_installments_count: regularInstallmentsCount,
         settled: isSettled,
         settled_notes: isSettled ? (document.getElementById('leaseSettledNotes')?.value || '') : null,
         settled_at: isSettled ? new Date().toISOString() : null,
@@ -11338,7 +11355,7 @@ async function handleAddLeaseVehicle(e) {
             const startDate = document.getElementById('leaseStartDate').value;
             if (!startDate) { showToast('Please select the first payment date.', 'warning'); return; }
             payload.start_date = startDate;
-            payload.total_installments = totalInst;
+            payload.total_installments = computedTotalInst;
             payload.total_months = null;
             payload.start_year = null;
             payload.start_month = null;
@@ -11349,8 +11366,8 @@ async function handleAddLeaseVehicle(e) {
             const [sy, sm] = startMonthVal.split('-').map(Number);
             payload.start_year = sy;
             payload.start_month = sm;
-            payload.total_months = totalInst;
-            payload.total_installments = totalInst;
+            payload.total_months = computedTotalInst;
+            payload.total_installments = computedTotalInst;
             payload.installment_day = parseInt(document.getElementById('loanInstallmentDay').value) || 1;
             payload.start_date = null;
         }
@@ -11364,8 +11381,8 @@ async function handleAddLeaseVehicle(e) {
         payload.vehicle_number = vehicleNumber;
         payload.lender_name = null;
         payload.installment_day = parseInt(document.getElementById('leaseInstallmentDay').value) || 1;
-        payload.total_months = totalInst;
-        payload.total_installments = totalInst;
+        payload.total_months = computedTotalInst;
+        payload.total_installments = computedTotalInst;
         payload.start_year = sy;
         payload.start_month = sm;
         payload.start_date = null;
@@ -11378,8 +11395,22 @@ async function handleAddLeaseVehicle(e) {
         let err;
         if (id) {
             ({ error: err } = await supabaseClient.from('leasing_vehicles').update(payload).eq('id', id));
+            if (err && err.message && (err.message.includes('column') || err.code === 'PGRST204')) {
+                showToast('⚠️ Missing columns in Supabase. Please run the SQL command in Supabase to enable bulk final payments.', 'warning', 8000);
+                const fallback = { ...payload };
+                delete fallback.final_installment_amount;
+                delete fallback.regular_installments_count;
+                ({ error: err } = await supabaseClient.from('leasing_vehicles').update(fallback).eq('id', id));
+            }
         } else {
             ({ error: err } = await supabaseClient.from('leasing_vehicles').insert([payload]));
+            if (err && err.message && (err.message.includes('column') || err.code === 'PGRST204')) {
+                showToast('⚠️ Missing columns in Supabase. Please run the SQL command in Supabase to enable bulk final payments.', 'warning', 8000);
+                const fallback = { ...payload };
+                delete fallback.final_installment_amount;
+                delete fallback.regular_installments_count;
+                ({ error: err } = await supabaseClient.from('leasing_vehicles').insert([fallback]));
+            }
         }
         if (err) throw err;
 
@@ -11488,31 +11519,29 @@ function renderLeasingSummaryStrip(entries, paidMap) {
 
         if (!isWeeklyOrFortnightly) {
             // Monthly entries
-            // Monthly commitment = installment amount per month
             monthlyCommitment += (v.installment_amount || 0);
 
             // Previous month: if key exists and not paid
             if (keys.includes(prevMonthKey) && !postponed.has(prevMonthKey) && !paid.has(prevMonthKey)) {
-                prevDueTotal += (v.installment_amount || 0);
+                const idx = keys.indexOf(prevMonthKey);
+                prevDueTotal += leasingGetInstallmentAmount(v, idx, keys.length);
             }
 
             // Current month: if key exists and not paid
             if (keys.includes(currMonthKey) && !postponed.has(currMonthKey) && !paid.has(currMonthKey)) {
-                currDueTotal += (v.installment_amount || 0);
+                const idx = keys.indexOf(currMonthKey);
+                currDueTotal += leasingGetInstallmentAmount(v, idx, keys.length);
             }
         } else {
-            // Weekly/fortnightly entries: look for keys that fall in the current/prev calendar month
-            const stepDays = v.payment_freq === 'fortnightly' ? 14 : 7;
-
-            // For monthly commitment, approximate: installment_amount * periods per month
             const periodsPerMonth = v.payment_freq === 'weekly' ? 4.33 : 2.17;
             monthlyCommitment += (v.installment_amount || 0) * periodsPerMonth;
 
-            keys.forEach(key => {
+            keys.forEach((key, idx) => {
                 if (postponed.has(key) || paid.has(key)) return;
                 const keyMonth = key.substring(0, 7); // YYYY-MM
-                if (keyMonth === prevMonthKey) prevDueTotal += (v.installment_amount || 0);
-                if (keyMonth === currMonthKey) currDueTotal += (v.installment_amount || 0);
+                const amt = leasingGetInstallmentAmount(v, idx, keys.length);
+                if (keyMonth === prevMonthKey) prevDueTotal += amt;
+                if (keyMonth === currMonthKey) currDueTotal += amt;
             });
         }
     });
@@ -11557,8 +11586,19 @@ function renderLeasingWidgets(entries, paidMap) {
         const total = activeKeys.length;
         const remaining = total - paidCount;
         const pct = total > 0 ? Math.round((paidCount / total) * 100) : 0;
-        const amtPaid = paidCount * v.installment_amount;
-        const amtRemaining = remaining * v.installment_amount;
+
+        let amtPaid = 0;
+        let amtRemaining = 0;
+        keys.forEach((k, i) => {
+            if (postponed.has(k)) return;
+            const itemAmt = leasingGetInstallmentAmount(v, i, keys.length);
+            if (paid.has(k)) {
+                amtPaid += itemAmt;
+            } else {
+                amtRemaining += itemAmt;
+            }
+        });
+
         const overdueCount = v.settled ? 0 : activeKeys.filter(k => k < todayKey && !paid.has(k)).length;
         const isLoan = v.entry_type === 'loan';
 
@@ -11575,6 +11615,11 @@ function renderLeasingWidgets(entries, paidMap) {
             freqBadge = `<span class="lease-freq-badge ${freqClass}">${freqLabel}</span>`;
         }
 
+        let bulkBadge = '';
+        if (parseFloat(v.final_installment_amount) > 0) {
+            bulkBadge = `<span class="lease-type-badge badge-loan" style="background:rgba(159,90,253,0.12);color:#9F5AFD;border:1px solid rgba(159,90,253,0.25);">🎈 Final: ${leasingFmtLKR(v.final_installment_amount)}</span>`;
+        }
+
         const card = document.createElement('div');
         card.className = 'leasing-widget-card' + (v.settled ? ' lease-widget-settled' : '');
         card.innerHTML = `
@@ -11584,6 +11629,7 @@ function renderLeasingWidgets(entries, paidMap) {
                     <div style="display:flex;gap:5px;flex-wrap:wrap;">
                         <span class="lease-type-badge ${isLoan ? 'badge-loan' : 'badge-lease'}">${isLoan ? '💰 Loan' : '🚗 Lease'}</span>
                         ${freqBadge}
+                        ${bulkBadge}
                         ${v.settled ? '<span class="lease-settled-badge">🏁 Settled</span>' : ''}
                     </div>
                 </div>
@@ -11650,16 +11696,20 @@ function renderLeasingVehicleRows(entries, paidMap) {
 
         // Meta info string
         let meta = '';
+        const hasBulk = parseFloat(v.final_installment_amount) > 0;
+        const bulkText = hasBulk ? ` (+ Final Bulk: ${leasingFmtLKR(v.final_installment_amount)})` : '';
+        const regCount = v.regular_installments_count || (hasBulk ? total - 1 : total);
+
         if (isLoan) {
             if (v.payment_freq === 'weekly') {
-                meta = `Weekly · ${leasingFmtLKR(v.installment_amount)}/wk · ${total} weeks`;
+                meta = `Weekly · ${leasingFmtLKR(v.installment_amount)}/wk · ${total} weeks${bulkText}`;
             } else if (v.payment_freq === 'fortnightly') {
-                meta = `Fortnightly · ${leasingFmtLKR(v.installment_amount)}/2wks · ${total} fortnights`;
+                meta = `Fortnightly · ${leasingFmtLKR(v.installment_amount)}/2wks · ${total} fortnights${bulkText}`;
             } else {
-                meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months`;
+                meta = `Day ${v.installment_day || 1} monthly · ${regCount} x ${leasingFmtLKR(v.installment_amount)}/mo${bulkText}`;
             }
         } else {
-            meta = `Day ${v.installment_day || 1} monthly · ${leasingFmtLKR(v.installment_amount)}/mo · ${total} months · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2, '0')}`)}`;
+            meta = `Day ${v.installment_day || 1} monthly · ${regCount} x ${leasingFmtLKR(v.installment_amount)}/mo${bulkText} · Starts ${leasingMonthLabel(`${v.start_year}-${String(v.start_month || 1).padStart(2, '0')}`)}`;
         }
         if (v.settled) meta += ' · <span style="color:var(--green);font-weight:700;">🏁 Settled</span>';
         if (v.settled_notes) meta += ` · ${v.settled_notes}`;
@@ -11752,12 +11802,23 @@ function renderLeasingMonthGrid(vehicle, paid) {
         else upcomingCount++;
     });
 
-    const amt = vehicle.installment_amount;
+    let paidAmt = 0;
+    let dueAmt = 0;
+    keys.forEach((k, idx) => {
+        if (postponed.has(k)) return;
+        const itemAmt = leasingGetInstallmentAmount(vehicle, idx, keys.length);
+        if (paid.has(k)) {
+            paidAmt += itemAmt;
+        } else {
+            dueAmt += itemAmt;
+        }
+    });
+
     document.getElementById('lcsStatPaid').textContent = paidCount;
     document.getElementById('lcsStatRemaining').textContent = upcomingCount;
     document.getElementById('lcsStatOverdue').textContent = overdueCount;
-    document.getElementById('lcsStatAmountPaid').textContent = leasingFmtLKR(paidCount * amt);
-    document.getElementById('lcsStatAmountDue').textContent = leasingFmtLKR((overdueCount + upcomingCount) * amt);
+    document.getElementById('lcsStatAmountPaid').textContent = leasingFmtLKR(paidAmt);
+    document.getElementById('lcsStatAmountDue').textContent = leasingFmtLKR(dueAmt);
 
     grid.innerHTML = '';
     keys.forEach((key, idx) => {
@@ -11766,6 +11827,11 @@ function renderLeasingMonthGrid(vehicle, paid) {
         const isOverdue = !isPaid && !isPostponed && key < todayKey;
         const isCurrent = !isWeeklyOrFortnightly ? key === todayKey : (key <= todayKey && (idx === keys.length - 1 || keys[idx + 1] > todayKey));
         const isSettled = !!vehicle.settled;
+
+        const amt = leasingGetInstallmentAmount(vehicle, idx, keys.length);
+        const isFinalBulk = parseFloat(vehicle.final_installment_amount) > 0 && idx === keys.length - 1;
+        const balloonClass = isFinalBulk ? 'lease-tile-balloon' : '';
+        const balloonBadge = isFinalBulk ? '<div class="lmt-balloon-badge">🎈 Final Bulk Payment</div>' : '';
 
         let statusClass = 'lease-tile-upcoming';
         let statusLabel = '⏳ Upcoming';
@@ -11815,13 +11881,14 @@ function renderLeasingMonthGrid(vehicle, paid) {
         }
 
         const tile = document.createElement('div');
-        tile.className = `lease-month-tile ${statusClass}`;
+        tile.className = `lease-month-tile ${statusClass} ${balloonClass}`.trim();
         tile.innerHTML = `
             <div class="lmt-number">#${idx + 1}</div>
             <div class="lmt-month">${leasingPaymentLabel(key, vehicle, idx)}</div>
             <div class="lmt-amount">${leasingFmtLKR(amt)}</div>
             ${dayInfo}
             <div class="lmt-status">${statusLabel}</div>
+            ${balloonBadge}
             ${actionBtn}
         `;
         grid.appendChild(tile);
@@ -11911,7 +11978,11 @@ window.editLeaseVehicle = async function (vehicleId) {
     setLeaseFormFreq(data.payment_freq || 'monthly');
 
     document.getElementById('leaseInstallmentAmount').value = data.installment_amount;
-    document.getElementById('leaseTotalInstallments').value = data.total_installments || data.total_months;
+    const hasBulk = parseFloat(data.final_installment_amount) > 0;
+    const regCount = data.regular_installments_count || (hasBulk ? (data.total_installments || data.total_months || 1) - 1 : (data.total_installments || data.total_months));
+    document.getElementById('leaseTotalInstallments').value = regCount;
+    const finalInstEl = document.getElementById('leaseFinalInstallmentAmount');
+    if (finalInstEl) finalInstEl.value = data.final_installment_amount || '';
 
     if (data.entry_type === 'loan') {
         document.getElementById('loanLenderName').value = data.lender_name || '';

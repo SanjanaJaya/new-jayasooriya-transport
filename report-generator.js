@@ -486,7 +486,7 @@ async function fetchReportData(startDate, endDate) {
     // 8. Fetch leasing vehicles (active leases only)
     const { data: leasingVehicles, error: lvErr } = await supabaseClient
         .from('leasing_vehicles')
-        .select('vehicle_number, installment_amount, entry_type, settled')
+        .select('vehicle_number, installment_amount, final_installment_amount, total_months, total_installments, start_year, start_month, entry_type, settled')
         .eq('user_id', userId)
         .eq('entry_type', 'leasing')
         .neq('settled', true);
@@ -694,7 +694,19 @@ async function fetchReportData(startDate, endDate) {
     const leasingMap = new Map();
     (leasingVehicles || []).forEach(lv => {
         if (lv.vehicle_number) {
-            leasingMap.set(normaliseVehicleKey(lv.vehicle_number), lv.installment_amount || 0);
+            let monthAmt = lv.installment_amount || 0;
+            const finalAmt = parseFloat(lv.final_installment_amount);
+            if (!isNaN(finalAmt) && finalAmt > 0 && lv.start_year && lv.start_month) {
+                const totalMonths = lv.total_months || lv.total_installments || 0;
+                const startYr = parseInt(lv.start_year);
+                const startMo = parseInt(lv.start_month) - 1;
+                const [rYr, rMo] = startMonth.split('-').map(Number);
+                const monthDiff = (rYr - startYr) * 12 + ((rMo - 1) - startMo);
+                if (monthDiff === totalMonths - 1) {
+                    monthAmt = finalAmt;
+                }
+            }
+            leasingMap.set(normaliseVehicleKey(lv.vehicle_number), monthAmt);
         }
     });
 

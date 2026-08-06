@@ -2499,16 +2499,23 @@
                                     </div>
                                 </div>
 
-                                <!-- AMOUNT + TOTAL INSTALLMENTS (shared) -->
+                                <!-- AMOUNT + TOTAL INSTALLMENTS + FINAL BULK INSTALLMENT -->
                                 <div class="form-row">
                                     <div class="form-group" style="flex:1;">
-                                        <label for="leaseInstallmentAmount" style="font-size:12px;color:#666;">💰 Installment Amount (LKR)</label>
+                                        <label for="leaseInstallmentAmount" style="font-size:12px;color:#666;">💰 Regular Installment Amount (LKR)</label>
                                         <input type="number" id="leaseInstallmentAmount" placeholder="e.g. 45000" min="1" step="0.01" required>
                                     </div>
                                     <div class="form-group" style="flex:1;">
-                                        <label for="leaseTotalInstallments" style="font-size:12px;color:#666;" id="leaseTotalInstLabel">📆 Total Months</label>
-                                        <input type="number" id="leaseTotalInstallments" placeholder="e.g. 36" min="1" max="1000" required>
+                                        <label for="leaseTotalInstallments" style="font-size:12px;color:#666;" id="leaseTotalInstLabel">📆 Same / Regular Installments Count</label>
+                                        <input type="number" id="leaseTotalInstallments" placeholder="e.g. 59 or 60" min="1" max="1000" required>
                                     </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label for="leaseFinalInstallmentAmount" style="font-size:12px;color:#666;">🎈 Final / Bulk Installment (LKR) <small style="color:#888;">(Optional)</small></label>
+                                        <input type="number" id="leaseFinalInstallmentAmount" placeholder="e.g. 2000000" min="0" step="0.01">
+                                    </div>
+                                </div>
+                                <div class="form-row full" style="margin-top:-8px;margin-bottom:8px;">
+                                    <small style="color:var(--text-muted);font-size:11px;">💡 For standard leasings, leave Final Bulk empty. If entered (e.g. 59 regular installments + LKR 2,000,000 bulk), it creates a 60th bulk payment.</small>
                                 </div>
 
                                 <!-- START: Monthly uses month picker, Weekly uses date picker -->
