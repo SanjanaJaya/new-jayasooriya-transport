@@ -352,6 +352,99 @@
             </div>
         </div>
 
+        <!-- ==================== DRIVER PROFILE CARD SHEET (MODAL) ==================== -->
+        <div id="driverProfileModal" class="salary-modal">
+            <div class="salary-modal-backdrop" id="closeDriverProfileModalBackdrop"></div>
+            <div class="salary-modal-content driver-profile-modal-content">
+                <div class="salary-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <h3 style="color: #F8FAFC; font-family: var(--font-display); font-size: 18px; font-weight: 700;" data-i18n="profile.title">👤 Driver Profile</h3>
+                        <button class="close-modal-btn" id="closeDriverProfileModalBtn">&times;</button>
+                    </div>
+                </div>
+                
+                <div class="salary-modal-body" style="padding-top: 10px;">
+                    <div id="driverProfileLoading" class="loading-spinner" data-i18n="profile.loading">Loading profile...</div>
+                    <div id="driverProfileCard" class="driver-profile-card hidden">
+                        <!-- Dynamic Hero Header -->
+                        <div class="profile-hero-section">
+                            <div class="profile-avatar-wrap">
+                                <img id="dpAvatarImg" class="profile-avatar-img" src="" alt="Driver" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div id="dpAvatarFallback" class="profile-avatar-fallback" style="display:none;">?</div>
+                                <div id="dpRankBadge" class="profile-rank-badge">🥇 #1</div>
+                            </div>
+                            <div class="profile-hero-info">
+                                <h2 id="dpDriverName" class="profile-driver-name">Driver Name</h2>
+                                <div class="profile-badges-row" id="dpBadgesRow">
+                                    <span id="dpRoleBadge" class="race-badge race-badge-driver">Driver</span>
+                                    <span id="dpOpBadge" class="race-badge race-badge-op">Operation</span>
+                                    <span id="dpCoordBadge" class="race-badge race-badge-coord" style="display:none;">👑 Coordinator</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance & Achievements Badges Strip -->
+                        <div class="profile-achievements-strip" id="dpAchievementsStrip">
+                            <!-- Dynamic badges: Monthly Champion, KM Club, Tenure, etc. -->
+                        </div>
+
+                        <!-- Lorry Showcase Box -->
+                        <div class="profile-lorry-showcase">
+                            <div class="lorry-showcase-art" id="dpLorryArtWrap">
+                                <!-- Vehicle Art Image or SVG -->
+                            </div>
+                            <div class="lorry-showcase-details">
+                                <span class="lorry-showcase-label" data-i18n="profile.assignedLorry">ASSIGNED LORRY</span>
+                                <span id="dpLorryPlate" class="lorry-showcase-plate">NA-XXXX</span>
+                                <span id="dpLorryModel" class="lorry-showcase-model">Isuzu NKR</span>
+                            </div>
+                        </div>
+
+                        <!-- Stat Grid (4 key cards) -->
+                        <div class="profile-stats-grid">
+                            <!-- Months run with us -->
+                            <div class="pstat-card pstat-tenure">
+                                <div class="pstat-header">
+                                    <span class="pstat-icon">📅</span>
+                                    <span class="pstat-val" id="dpStatTenure">0</span>
+                                </div>
+                                <span class="pstat-lbl" data-i18n="profile.monthsWithUs">Months With Us</span>
+                            </div>
+
+                            <!-- Total KM Run -->
+                            <div class="pstat-card pstat-km">
+                                <div class="pstat-header">
+                                    <span class="pstat-icon">🛣️</span>
+                                    <span class="pstat-val" id="dpStatTotalKm">0 KM</span>
+                                </div>
+                                <span class="pstat-lbl" data-i18n="profile.totalKmRun">Total KM Run</span>
+                            </div>
+
+                            <!-- Champion Driver Months -->
+                            <div class="pstat-card pstat-champion">
+                                <div class="pstat-header">
+                                    <span class="pstat-icon">🏆</span>
+                                    <span class="pstat-val" id="dpStatChampion">0</span>
+                                </div>
+                                <span class="pstat-lbl" data-i18n="profile.championMonths">Champion Months</span>
+                                <div class="pstat-tooltip" data-i18n="profile.championDesc">Most KM runner in a completed month</div>
+                            </div>
+
+                            <!-- Total Hires Run -->
+                            <div class="pstat-card pstat-hires">
+                                <div class="pstat-header">
+                                    <span class="pstat-icon">🚚</span>
+                                    <span class="pstat-val" id="dpStatTotalHires">0</span>
+                                </div>
+                                <span class="pstat-lbl" data-i18n="profile.totalHires">Total Hires</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Leaflet JS Map -->

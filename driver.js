@@ -153,6 +153,15 @@ const TRANSLATIONS = {
         'race.driver': 'Driver',
         'race.helper': 'Helper',
         'race.new': 'NEW',
+        'profile.title': 'Driver Profile',
+        'profile.loading': 'Loading profile...',
+        'profile.monthsWithUs': 'Months With Us',
+        'profile.totalKmRun': 'Total KM Run',
+        'profile.championMonths': 'Champion Months',
+        'profile.totalHires': 'Total Hires',
+        'profile.assignedLorry': 'ASSIGNED LORRY',
+        'profile.championDesc': 'Most KM runner in a completed month',
+        'profile.coordinator': '👑 Operation Coordinator',
     },
     si: {
         'offline.banner': '⚠️ ඔබ අසබැඳිව සිටී. සුරැකි තොරතුරු පෙන්වමින් ඇත.',
@@ -234,6 +243,15 @@ const TRANSLATIONS = {
         'race.driver': 'රියදුරු',
         'race.helper': 'රිය සහය',
         'race.new': 'නව',
+        'profile.title': 'රියදුරු පැතිකඩ',
+        'profile.loading': 'පැතිකඩ පූරණය වෙමින්...',
+        'profile.monthsWithUs': 'අප සමග මාස ගණන',
+        'profile.totalKmRun': 'ධාවනය කළ මුළු කි.මී.',
+        'profile.championMonths': 'ශූර රියදුරු වූ මාස',
+        'profile.totalHires': 'ධාවනය කළ මුළු හයර්',
+        'profile.assignedLorry': 'පවරන ලද ලොරිය',
+        'profile.championDesc': 'සම්පූර්ණ වූ මාසයක වැඩිම කි.මී. ධාවනය කළ රියදුරු',
+        'profile.coordinator': '👑 මෙහෙයුම් සම්බන්ධීකාරක',
     }
 };
 
@@ -753,6 +771,21 @@ function setupEventHandlers() {
     document.getElementById('raceModalBtn')?.addEventListener('click', openRaceModal);
     document.getElementById('closeRaceModalBtn')?.addEventListener('click', closeRaceModal);
     document.getElementById('closeRaceModalBackdrop')?.addEventListener('click', closeRaceModal);
+
+    // Driver Profile Modal Events
+    document.getElementById('closeDriverProfileModalBtn')?.addEventListener('click', closeDriverProfileModal);
+    document.getElementById('closeDriverProfileModalBackdrop')?.addEventListener('click', closeDriverProfileModal);
+
+    const headerProfile = document.querySelector('.driver-profile');
+    if (headerProfile) {
+        headerProfile.style.cursor = 'pointer';
+        headerProfile.title = 'Click to view your profile';
+        headerProfile.addEventListener('click', () => {
+            if (currentDriver && currentDriver.id) {
+                openDriverProfileModal(currentDriver.id);
+            }
+        });
+    }
 
     // Drawer handle tap toggle
     const handleBar = document.getElementById('distributorDrawerHandle');
@@ -2470,6 +2503,9 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             const card = document.createElement('div');
             card.className = `race-item rank-${rank} ${isCurrentUser ? 'current-user' : ''}`;
+            card.style.cursor = 'pointer';
+            card.title = 'Click to view full driver profile';
+            card.onclick = () => openDriverProfileModal(d.id);
             card.innerHTML = `
                 <div class="race-left">
                     <div class="race-rank-container">${rankHtml}</div>
@@ -2585,6 +2621,9 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             const card = document.createElement('div');
             card.className = `race-item helper-item ${isCurrentUser ? 'current-user' : ''}`;
+            card.style.cursor = 'pointer';
+            card.title = 'Click to view full driver profile';
+            card.onclick = () => openDriverProfileModal(d.id);
             card.innerHTML = `
                 <div class="race-left">
                     <div class="race-rank-container"><span class="race-rank-number">🤝</span></div>
@@ -2606,6 +2645,314 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
 
             listContainer.appendChild(card);
         });
+    }
+}
+
+// ==================== DRIVER PROFILE MODAL ====================
+
+function closeDriverProfileModal() {
+    const modal = document.getElementById('driverProfileModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function openDriverProfileModal(driverId) {
+    const modal = document.getElementById('driverProfileModal');
+    const loadingEl = document.getElementById('driverProfileLoading');
+    const cardEl = document.getElementById('driverProfileCard');
+    
+    if (!modal) return;
+    modal.classList.add('active');
+    
+    if (loadingEl) loadingEl.classList.remove('hidden');
+    if (cardEl) cardEl.classList.add('hidden');
+
+    try {
+        const uid = currentDriver?.user_id;
+
+        // 1. Fetch target driver details
+        let driverData = null;
+        if (currentDriver && currentDriver.id === driverId) {
+            driverData = currentDriver;
+        } else {
+            const { data, error } = await supabaseClient
+                .from('drivers')
+                .select('*')
+                .eq('id', driverId)
+                .single();
+            if (error) throw error;
+            driverData = data;
+        }
+
+        if (!driverData) throw new Error('Driver not found');
+
+        // 2. Fetch assigned vehicle plate
+        const { data: assignments } = await supabaseClient
+            .from('staff_lorry_assignments')
+            .select('lorry_number')
+            .eq('driver_id', driverId)
+            .order('id', { ascending: false })
+            .limit(1);
+
+        const vehiclePlate = assignments && assignments.length > 0 ? assignments[0].lorry_number : null;
+
+        // 3. Fetch vehicle model & vector art URL if plate exists
+        let vehicleModel = null;
+        let vehicleArtUrl = null;
+        let vehicleId = null;
+
+        if (vehiclePlate) {
+            const normPlate = vehiclePlate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const [hireV, commV] = await Promise.all([
+                supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, vector_art_url, photo_url'),
+                supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, vector_art_url, photo_url')
+            ]);
+            (hireV.data || []).forEach(v => {
+                const k = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                if (k === normPlate) {
+                    vehicleId = v.id;
+                    vehicleModel = v.vehicle_model;
+                    vehicleArtUrl = v.vector_art_url || v.photo_url || null;
+                }
+            });
+            (commV.data || []).forEach(v => {
+                const k = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                if (k === normPlate) {
+                    if (!vehicleId) vehicleId = v.id;
+                    if (!vehicleModel) vehicleModel = v.vehicle_model;
+                    if (!vehicleArtUrl) vehicleArtUrl = v.vector_art_url || v.photo_url || null;
+                }
+            });
+        }
+
+        // 4. Fetch lifetime KM records for this driver & all driver KM records for champion calculation
+        const [{ data: driverKmRecords }, { data: allKmRecords }] = await Promise.all([
+            supabaseClient.from('driver_km_records').select('km_amount, record_date').eq('driver_id', driverId),
+            supabaseClient.from('driver_km_records').select('driver_id, record_date, km_amount').eq('user_id', uid)
+        ]);
+
+        // Calculate Total Lifetime KM for this driver
+        const totalKmRun = (driverKmRecords || []).reduce((sum, r) => sum + parseFloat(r.km_amount || 0), 0);
+
+        // Calculate Champion Driver Months (Strictly completed past months only, current unfinished month excluded)
+        const now = new Date();
+        const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const monthlyKmMap = {}; // "YYYY-MM" -> { driverId: sumKm }
+        (allKmRecords || []).forEach(r => {
+            if (!r.record_date || !r.driver_id) return;
+            const monthKey = r.record_date.substring(0, 7);
+            if (!monthlyKmMap[monthKey]) monthlyKmMap[monthKey] = {};
+            monthlyKmMap[monthKey][r.driver_id] = (monthlyKmMap[monthKey][r.driver_id] || 0) + parseFloat(r.km_amount || 0);
+        });
+
+        let championMonthsCount = 0;
+        Object.keys(monthlyKmMap).forEach(mKey => {
+            // Strictly skip current unfinished calendar month
+            if (mKey === currentYearMonth) return;
+
+            const driversInMonth = monthlyKmMap[mKey];
+            let maxKm = 0;
+            Object.values(driversInMonth).forEach(km => {
+                if (km > maxKm) maxKm = km;
+            });
+            if (maxKm > 0) {
+                const champions = Object.keys(driversInMonth).filter(id => driversInMonth[id] === maxKm);
+                if (champions.includes(String(driverId))) {
+                    championMonthsCount++;
+                }
+            }
+        });
+
+        // 5. Calculate Total Hires Run (Strictly fetched from driver's KM log records count for this driver)
+        const totalHiresRun = (driverKmRecords || []).length;
+
+        // 6. Calculate Months Run With Us (Tenure)
+        let earliestDateStr = driverData.created_at;
+        if (!earliestDateStr && driverKmRecords && driverKmRecords.length > 0) {
+            const sortedDates = driverKmRecords.map(r => r.record_date).filter(Boolean).sort();
+            if (sortedDates.length > 0) earliestDateStr = sortedDates[0];
+        }
+
+        const joinDate = earliestDateStr ? new Date(earliestDateStr) : now;
+        let monthsWithUs = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
+        if (monthsWithUs < 1) monthsWithUs = 1;
+
+        let tenureDisplay = '';
+        if (monthsWithUs >= 12) {
+            const yrs = Math.floor(monthsWithUs / 12);
+            const rem = monthsWithUs % 12;
+            tenureDisplay = `${yrs} Yr${yrs > 1 ? 's' : ''} ${rem > 0 ? `${rem} Mos` : ''}`;
+        } else {
+            tenureDisplay = `${monthsWithUs} Month${monthsWithUs > 1 ? 's' : ''}`;
+        }
+
+        // 7. Check current month race rank
+        const cachedStandings = getCachedData('jt_driver_race_standings');
+        let currentRank = 0;
+        if (cachedStandings && cachedStandings.rankedDrivers) {
+            const idx = cachedStandings.rankedDrivers.findIndex(d => d.id === driverId);
+            if (idx !== -1) currentRank = idx + 1;
+        }
+
+        // 8. Render Modal UI
+        const cleanedName = cleanDriverName(driverData.name);
+        const initials = cleanedName ? cleanedName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+
+        // Avatar
+        const avatarImg = document.getElementById('dpAvatarImg');
+        const avatarFallback = document.getElementById('dpAvatarFallback');
+        if (driverData.photo_url) {
+            avatarImg.src = driverData.photo_url;
+            avatarImg.style.display = 'block';
+            avatarFallback.style.display = 'none';
+        } else {
+            avatarImg.style.display = 'none';
+            avatarFallback.textContent = initials;
+            avatarFallback.style.display = 'flex';
+        }
+
+        // Rank Badge
+        const rankBadge = document.getElementById('dpRankBadge');
+        if (rankBadge) {
+            if (currentRank === 1) rankBadge.innerHTML = '🥇 #1';
+            else if (currentRank === 2) rankBadge.innerHTML = '🥈 #2';
+            else if (currentRank === 3) rankBadge.innerHTML = '🥉 #3';
+            else if (currentRank > 3) rankBadge.innerHTML = `#${currentRank}`;
+            else rankBadge.style.display = 'none';
+            if (currentRank > 0) rankBadge.style.display = 'block';
+        }
+
+        // Driver Name
+        document.getElementById('dpDriverName').textContent = cleanedName;
+
+        // Role & Operation Badges
+        const roleBadge = document.getElementById('dpRoleBadge');
+        if (roleBadge) {
+            const roleLower = (driverData.role || 'driver').toLowerCase();
+            roleBadge.textContent = roleLower === 'helper' ? t('race.helper') : t('race.driver');
+            roleBadge.className = `race-badge ${roleLower === 'helper' ? 'race-badge-helper' : 'race-badge-driver'}`;
+        }
+
+        const opBadge = document.getElementById('dpOpBadge');
+        if (opBadge) {
+            if (driverData.operation) {
+                const opConf = getOperationConfig(driverData.operation);
+                if (opConf) {
+                    const logoTag = opConf.logoUrl ? `<img src="${opConf.logoUrl}" class="race-op-logo-mini" alt="${opConf.name}">` : '';
+                    opBadge.innerHTML = `${logoTag}${opConf.name}`;
+                    opBadge.className = `race-badge race-badge-op ${opConf.badgeClass}`;
+                    opBadge.style.display = 'inline-flex';
+                } else {
+                    opBadge.textContent = driverData.operation;
+                    opBadge.className = 'race-badge race-badge-op op-generic';
+                    opBadge.style.display = 'inline-flex';
+                }
+            } else {
+                opBadge.style.display = 'none';
+            }
+        }
+
+        // Coordinator Badge
+        const coordBadge = document.getElementById('dpCoordBadge');
+        if (coordBadge) {
+            if (driverData.is_coordinator) {
+                coordBadge.textContent = t('profile.coordinator');
+                coordBadge.style.display = 'inline-flex';
+            } else {
+                coordBadge.style.display = 'none';
+            }
+        }
+
+        // Achievements / Performance Badges Strip
+        const achievementsStrip = document.getElementById('dpAchievementsStrip');
+        if (achievementsStrip) {
+            const badges = [];
+            if (championMonthsCount > 0) {
+                badges.push(`<span class="pbadge pbadge-gold">🏆 ${championMonthsCount}x Monthly Champion</span>`);
+            }
+            if (driverData.is_coordinator) {
+                badges.push(`<span class="pbadge pbadge-gold">${t('profile.coordinator')}</span>`);
+            }
+            if (totalKmRun >= 100000) badges.push(`<span class="pbadge pbadge-purple">⚡ 100K+ KM Club</span>`);
+            else if (totalKmRun >= 50000) badges.push(`<span class="pbadge pbadge-purple">⚡ 50K+ KM Club</span>`);
+            else if (totalKmRun >= 25000) badges.push(`<span class="pbadge pbadge-blue">⚡ 25K+ KM Club</span>`);
+            else if (totalKmRun >= 10000) badges.push(`<span class="pbadge pbadge-blue">⚡ 10K+ KM Club</span>`);
+            else if (totalKmRun >= 5000) badges.push(`<span class="pbadge pbadge-emerald">⚡ 5K+ KM Road Warrior</span>`);
+
+            if (monthsWithUs >= 12) badges.push(`<span class="pbadge pbadge-emerald">🌟 Veteran Partner</span>`);
+            else if (monthsWithUs >= 6) badges.push(`<span class="pbadge pbadge-blue">🌟 Pro Partner</span>`);
+            else if (monthsWithUs <= 1) badges.push(`<span class="pbadge pbadge-red">✨ ${t('race.new')} Partner</span>`);
+
+            if (totalHiresRun >= 100) badges.push(`<span class="pbadge pbadge-purple">🎯 100+ Hires</span>`);
+            else if (totalHiresRun >= 50) badges.push(`<span class="pbadge pbadge-blue">🎯 50+ Hires</span>`);
+
+            achievementsStrip.innerHTML = badges.join('');
+        }
+
+        // Lorry Showcase Art & Plate
+        const truckSVG = `<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="race-truck-svg">
+  <defs>
+    <linearGradient id="dpBoxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a3045"/>
+      <stop offset="100%" stop-color="#1a2035"/>
+    </linearGradient>
+    <linearGradient id="dpCabGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a4560"/>
+      <stop offset="100%" stop-color="#252d45"/>
+    </linearGradient>
+    <linearGradient id="dpGlassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="40" cy="37" rx="34" ry="2.5" fill="rgba(0,0,0,0.4)"/>
+  <rect x="5" y="8" width="40" height="22" rx="2" fill="url(#dpBoxGrad)" stroke="rgba(255,179,0,0.3)" stroke-width="0.8"/>
+  <rect x="5" y="16" width="40" height="1.5" fill="rgba(255,179,0,0.2)"/>
+  <path d="M 45,14 L 58,14 Q 68,14 72,20 L 75,28 Q 76,31 73,33 L 45,33 Z" fill="url(#dpCabGrad)" stroke="rgba(255,179,0,0.25)" stroke-width="0.8"/>
+  <path d="M 58,15.5 L 66,15.5 Q 70,15.5 72,20 L 73,25 L 58,25 Z" fill="url(#dpGlassGrad)" opacity="0.85"/>
+  <rect x="48" y="17" width="8" height="7" rx="1" fill="url(#dpGlassGrad)" opacity="0.7"/>
+  <rect x="73" y="27" width="4" height="4" rx="0.8" fill="#FEF9C3"/>
+  <rect x="74" y="28" width="2.5" height="2.5" rx="0.4" fill="#FBBF24"/>
+  <rect x="8" y="32" width="62" height="2" fill="#1a1a2e"/>
+  <circle cx="18" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="18" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="18" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="32" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="32" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="32" cy="34" r="0.9" fill="#0f172a"/>
+  <circle cx="62" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
+  <circle cx="62" cy="34" r="2.2" fill="#334155"/>
+  <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
+</svg>`;
+
+        const artWrap = document.getElementById('dpLorryArtWrap');
+        if (artWrap) {
+            if (vehicleArtUrl) {
+                artWrap.innerHTML = `<img src="${vehicleArtUrl}" class="race-truck-img" alt="lorry" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
+                                     <div style="display:none;" class="race-truck-svg-wrap">${truckSVG}</div>`;
+            } else {
+                artWrap.innerHTML = `<div class="race-truck-svg-wrap">${truckSVG}</div>`;
+            }
+        }
+
+        document.getElementById('dpLorryPlate').textContent = vehiclePlate || 'Not Assigned';
+        document.getElementById('dpLorryModel').textContent = vehicleModel || '';
+
+        // Stat Grid Values
+        document.getElementById('dpStatTenure').textContent = tenureDisplay;
+        document.getElementById('dpStatTotalKm').textContent = `${totalKmRun.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} KM`;
+        document.getElementById('dpStatChampion').textContent = `${championMonthsCount} Month${championMonthsCount === 1 ? '' : 's'}`;
+        document.getElementById('dpStatTotalHires').textContent = `${totalHiresRun.toLocaleString('en-US')} Hires`;
+
+        // Reveal card
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (cardEl) cardEl.classList.remove('hidden');
+
+    } catch (err) {
+        console.error('Error opening driver profile modal:', err.message);
+        if (loadingEl) loadingEl.classList.add('hidden');
+        showDriverToast('Failed to load driver profile: ' + err.message, 'error');
+        closeDriverProfileModal();
     }
 }
 

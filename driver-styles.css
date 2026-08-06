@@ -2517,3 +2517,344 @@ body.light-mode .avatar-container::after {
     background: #fff;
 }
 
+/* ==================== DRIVER PROFILE MODAL & CARDS ==================== */
+.driver-profile-modal-content {
+    border-top: 3px solid var(--brand);
+    box-shadow: var(--shadow-lg), 0 0 35px rgba(232, 0, 29, 0.25);
+}
+
+.driver-profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: profileCardFadeUp 0.4s var(--ease-out) both;
+}
+
+@keyframes profileCardFadeUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Hero Section */
+.profile-hero-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(24, 30, 42, 0.95) 0%, rgba(15, 20, 30, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--r-lg);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.profile-hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, var(--brand-dim) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-dim), 0 6px 18px rgba(0,0,0,0.5);
+}
+
+.profile-avatar-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), #8B0000);
+    color: #fff;
+    font-weight: 800;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-dim);
+}
+
+.profile-rank-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #F1C40F, #F39C12);
+    color: #000;
+    font-size: 10.5px;
+    font-weight: 900;
+    padding: 3px 8px;
+    border-radius: var(--r-pill);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border: 1.5px solid var(--bg-card);
+    letter-spacing: 0.3px;
+}
+
+.profile-hero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.profile-driver-name {
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -0.4px;
+    line-height: 1.25;
+}
+
+.profile-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.race-badge-coord {
+    background: linear-gradient(135deg, #FFB300, #F57C00) !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 10.5px !important;
+    padding: 3px 10px !important;
+    border-radius: var(--r-pill) !important;
+    letter-spacing: 0.3px !important;
+    box-shadow: 0 2px 10px rgba(255, 179, 0, 0.35) !important;
+    text-transform: uppercase !important;
+}
+
+/* Achievements Strip */
+.profile-achievements-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    font-weight: 700;
+    font-family: var(--font-ui);
+    letter-spacing: 0.2px;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s var(--ease-spring), box-shadow 0.2s;
+}
+
+.pbadge:hover {
+    transform: translateY(-1px) scale(1.03);
+}
+
+.pbadge-gold {
+    background: rgba(241, 196, 15, 0.15);
+    border: 1px solid rgba(241, 196, 15, 0.45);
+    color: #FFD700;
+    box-shadow: 0 2px 10px rgba(241, 196, 15, 0.15);
+}
+
+.pbadge-emerald {
+    background: rgba(0, 214, 143, 0.15);
+    border: 1px solid rgba(0, 214, 143, 0.45);
+    color: #00E699;
+    box-shadow: 0 2px 10px rgba(0, 214, 143, 0.15);
+}
+
+.pbadge-purple {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    color: #C084FC;
+    box-shadow: 0 2px 10px rgba(168, 85, 247, 0.15);
+}
+
+.pbadge-blue {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    color: #60A5FA;
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.15);
+}
+
+.pbadge-red {
+    background: rgba(232, 0, 29, 0.15);
+    border: 1px solid rgba(232, 0, 29, 0.45);
+    color: #FF4D63;
+    box-shadow: 0 2px 10px rgba(232, 0, 29, 0.15);
+}
+
+/* Lorry Showcase */
+.profile-lorry-showcase {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(19, 23, 32, 0.95), rgba(24, 30, 42, 0.95));
+    border: 1px solid rgba(255, 179, 0, 0.25);
+    border-left: 4px solid var(--amber);
+    border-radius: var(--r-md);
+    padding: 14px 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.lorry-showcase-art {
+    width: 100px;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+}
+
+.lorry-showcase-art img,
+.lorry-showcase-art svg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.lorry-showcase-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.lorry-showcase-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #94A3B8;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.lorry-showcase-plate {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    color: #F8FAFC;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+.lorry-showcase-model {
+    font-size: 12px;
+    color: #FFC107;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+/* Stats Grid */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pstat-card {
+    background: rgba(19, 23, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s var(--ease-smooth);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.pstat-card:hover {
+    background: rgba(24, 30, 42, 0.95);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
+}
+
+.pstat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.pstat-icon {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+.pstat-val {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pstat-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94A3B8; /* Muted slate contrast for labels */
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* Stat card specific accent borders & values */
+.pstat-tenure {
+    border-left: 3.5px solid #3B82F6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(19, 23, 32, 0.9) 100%);
+}
+.pstat-tenure .pstat-val { color: #60A5FA; }
+
+.pstat-km {
+    border-left: 3.5px solid #00D68F;
+    background: linear-gradient(135deg, rgba(0, 214, 143, 0.08) 0%, rgba(19, 23, 32, 0.9) 100%);
+}
+.pstat-km .pstat-val { color: #00E699; }
+
+.pstat-champion {
+    border-left: 3.5px solid #F1C40F;
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.08) 0%, rgba(19, 23, 32, 0.9) 100%);
+}
+.pstat-champion .pstat-val { color: #FFD700; }
+
+.pstat-hires {
+    border-left: 3.5px solid #A855F7;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(19, 23, 32, 0.9) 100%);
+}
+.pstat-hires .pstat-val { color: #C084FC; }
+
+.pstat-tooltip {
+    font-size: 9.5px;
+    color: #CBD5E1; /* High contrast legible text for subtext */
+    font-style: italic;
+    line-height: 1.35;
+    margin-top: 2px;
+    opacity: 0.9;
+}
+
+
