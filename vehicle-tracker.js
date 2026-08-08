@@ -37,7 +37,8 @@
         kevilton: { name: 'Kevilton', logoUrl: 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png', color: '#FF6B81', bg: 'rgba(209,0,31,0.18)' },
         pelwatte: { name: 'Pelwatte', logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg', color: '#2ECC71', bg: 'rgba(0,179,126,0.18)' },
         keells: { name: 'Keells', logoUrl: 'https://i.postimg.cc/x8KcWWty/images.jpg', color: '#2ECC71', bg: 'rgba(0,179,126,0.18)' },
-        spacelogistics: { name: 'Space Logistics', logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg', color: '#4A90E2', bg: 'rgba(0,26,63,0.18)' }
+        spacelogistics: { name: 'Space Logistics', logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg', color: '#4A90E2', bg: 'rgba(0,26,63,0.18)' },
+        icl: { name: 'ICL', logoUrl: 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg', color: '#8E44AD', bg: 'rgba(142,68,173,0.18)' }
     };
 
     function getTrackerOperationConfig(opName) {
@@ -51,6 +52,7 @@
         if (lower.indexOf('pelwatte') !== -1) return TRACKER_OPERATION_CONFIG.pelwatte;
         if (lower.indexOf('keells') !== -1) return TRACKER_OPERATION_CONFIG.keells;
         if (lower.indexOf('space') !== -1) return TRACKER_OPERATION_CONFIG.spacelogistics;
+        if (lower.indexOf('icl') !== -1) return TRACKER_OPERATION_CONFIG.icl;
 
         return { name: cleanOp, logoUrl: null, color: '#7F8C8D', bg: 'rgba(127,140,141,0.18)' };
     }

@@ -1547,7 +1547,9 @@ async function loadDrivers() {
                         ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg'
                         : (opLower.includes('space')
                             ? 'https://i.postimg.cc/65VKKKR2/images-(1).jpg'
-                            : (opLower.includes('keells') ? 'https://i.postimg.cc/x8KcWWty/images.jpg' : null)));
+                            : (opLower.includes('icl')
+                                ? 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg'
+                                : (opLower.includes('keells') ? 'https://i.postimg.cc/x8KcWWty/images.jpg' : null))));
 
                 const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
                 const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
@@ -1558,7 +1560,9 @@ async function loadDrivers() {
                         ? 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'
                         : (opLower.includes('space')
                             ? 'background:rgba(0,26,63,0.18);color:#4A90E2;border:1px solid rgba(0,26,63,0.4);'
-                            : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'));
+                            : (opLower.includes('icl')
+                                ? 'background:rgba(142,68,173,0.18);color:#AB47BC;border:1px solid rgba(142,68,173,0.4);'
+                                : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);')));
 
                 const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
 
@@ -2370,7 +2374,18 @@ document.getElementById('otherOperationHireForm')?.addEventListener('submit', as
     const fuelLitres = parseFloat(document.getElementById('otherOpFuel').value) || 0;
     const fuelPrice = parseFloat(document.getElementById('otherOpFuelPrice').value) || 0;
     const fuelCost = fuelLitres * fuelPrice;
-    const opName = document.getElementById('otherOpOperationName').value;
+    
+    const nameSelect = document.getElementById('otherOpOperationNameSelect');
+    const customNameInput = document.getElementById('otherOpOperationNameCustom');
+    const realInput = document.getElementById('otherOpOperationName');
+
+    let opName = (realInput ? realInput.value : '');
+    if (nameSelect && nameSelect.value === 'other') {
+        opName = customNameInput ? customNameInput.value.trim() : '';
+    } else if (nameSelect && nameSelect.value) {
+        opName = nameSelect.value;
+    }
+    if (realInput) realInput.value = opName;
 
     const recordData = {
         base_lorry_number: document.getElementById('otherOpBaseVehicle').value,
@@ -2571,22 +2586,30 @@ async function editOtherOperationHire(id) {
         const nameSelect = document.getElementById('otherOpOperationNameSelect');
         const customInput = document.getElementById('otherOpOperationNameCustom');
 
-        if (opName === 'Pelwatte Operation') {
+        const opLower = opName.toLowerCase();
+        if (opLower.includes('pelwatte')) {
             if (nameSelect) nameSelect.value = 'Pelwatte Operation';
             if (customInput) {
                 customInput.style.display = 'none';
                 customInput.required = false;
                 customInput.value = '';
             }
-        } else if (opName === 'Keells Operation') {
+        } else if (opLower.includes('keells')) {
             if (nameSelect) nameSelect.value = 'Keells Operation';
             if (customInput) {
                 customInput.style.display = 'none';
                 customInput.required = false;
                 customInput.value = '';
             }
-        } else if (opName === 'Space Logistics') {
+        } else if (opLower.includes('space')) {
             if (nameSelect) nameSelect.value = 'Space Logistics';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opLower.includes('icl')) {
+            if (nameSelect) nameSelect.value = 'ICL Operation';
             if (customInput) {
                 customInput.style.display = 'none';
                 customInput.required = false;
@@ -3470,6 +3493,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
         let keellsCount = 0;
         let spaceLogisticsRev = 0;
         let spaceLogisticsCount = 0;
+        let iclRev = 0;
+        let iclCount = 0;
 
         const customOpsMap = {};
 
@@ -3490,6 +3515,9 @@ async function loadDashboardData(monthValue, cachedData = null) {
             } else if (lower.includes('space') || lower.includes('spacelogistics')) {
                 spaceLogisticsRev += amount;
                 spaceLogisticsCount++;
+            } else if (lower.includes('icl')) {
+                iclRev += amount;
+                iclCount++;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
@@ -3538,6 +3566,15 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'space-logistics',
                 amount: spaceLogisticsRev,
                 count: spaceLogisticsCount,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'ICL Operation',
+                logoUrl: 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg',
+                icon: '💄',
+                accent: 'icl',
+                amount: iclRev,
+                count: iclCount,
                 subtitle: 'Other Operations'
             }
         ];

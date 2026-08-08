@@ -9683,7 +9683,8 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="pelwatte"] { border-left: 5px solid #1E88E5; }
 .op-revenue-card[data-accent="keells"] { border-left: 5px solid #27AE60; }
 .op-revenue-card[data-accent="space-logistics"] { border-left: 5px solid #001a3f; }
-.op-revenue-card[data-accent="other"] { border-left: 5px solid #8E44AD; }
+.op-revenue-card[data-accent="icl"] { border-left: 5px solid #8E44AD; }
+.op-revenue-card[data-accent="other"] { border-left: 5px solid #E67E22; }
 
 .op-revenue-card-header {
     display: flex;
@@ -9738,13 +9739,15 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="pelwatte"] .op-revenue-amount { color: #1E88E5; }
 .op-revenue-card[data-accent="keells"] .op-revenue-amount { color: #27AE60; }
 .op-revenue-card[data-accent="space-logistics"] .op-revenue-amount { color: #001a3f; }
-.op-revenue-card[data-accent="other"] .op-revenue-amount { color: #8E44AD; }
+.op-revenue-card[data-accent="icl"] .op-revenue-amount { color: #8E44AD; }
+.op-revenue-card[data-accent="other"] .op-revenue-amount { color: #E67E22; }
 
 body.dark-mode .op-revenue-card[data-accent="kevilton"] .op-revenue-amount { color: #FF6B81; }
 body.dark-mode .op-revenue-card[data-accent="pelwatte"] .op-revenue-amount { color: #42A5F5; }
 body.dark-mode .op-revenue-card[data-accent="keells"] .op-revenue-amount { color: #2ECC71; }
 body.dark-mode .op-revenue-card[data-accent="space-logistics"] .op-revenue-amount { color: #4A90E2; }
-body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #AB47BC; }
+body.dark-mode .op-revenue-card[data-accent="icl"] .op-revenue-amount { color: #AB47BC; }
+body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #F39C12; }
 
 .op-revenue-meta {
     font-size: 12px;
@@ -9770,7 +9773,8 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
 .op-revenue-card[data-accent="pelwatte"] .op-revenue-progress-bar { background: linear-gradient(90deg, #1E88E5, #42A5F5); }
 .op-revenue-card[data-accent="keells"] .op-revenue-progress-bar { background: linear-gradient(90deg, #27AE60, #2ECC71); }
 .op-revenue-card[data-accent="space-logistics"] .op-revenue-progress-bar { background: linear-gradient(90deg, #001a3f, #4A90E2); }
-.op-revenue-card[data-accent="other"] .op-revenue-progress-bar { background: linear-gradient(90deg, #8E44AD, #AB47BC); }
+.op-revenue-card[data-accent="icl"] .op-revenue-progress-bar { background: linear-gradient(90deg, #8E44AD, #AB47BC); }
+.op-revenue-card[data-accent="other"] .op-revenue-progress-bar { background: linear-gradient(90deg, #E67E22, #F39C12); }
 
 /* ====== RECORDS DETAILS MODAL STYLING ====== */
 .records-hof-card {

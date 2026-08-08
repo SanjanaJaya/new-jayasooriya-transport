@@ -2445,6 +2445,12 @@ body.light-mode .avatar-container::after {
     color: #2ECC71;
 }
 
+.driver-op-badge.op-icl {
+    background: rgba(142, 68, 173, 0.18);
+    border: 1px solid rgba(142, 68, 173, 0.45);
+    color: #AB47BC;
+}
+
 .driver-op-badge.op-generic {
     background: rgba(127, 140, 141, 0.18);
     border: 1px solid rgba(127, 140, 141, 0.45);
@@ -2503,6 +2509,10 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-keells {
     background: linear-gradient(135deg, #0F9D58, #0B6B3A);
+}
+
+.race-badge-op.op-icl {
+    background: linear-gradient(135deg, #8E44AD, #6C3483);
 }
 
 .race-badge-op.op-generic {

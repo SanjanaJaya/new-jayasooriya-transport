@@ -43,6 +43,12 @@ const OPERATION_CONFIG = {
         logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg',
         badgeClass: 'op-space-logistics',
         color: '#001a3f'
+    },
+    icl: {
+        name: 'ICL',
+        logoUrl: 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg',
+        badgeClass: 'op-icl',
+        color: '#8E44AD'
     }
 };
 
@@ -61,6 +67,7 @@ function getOperationConfig(opName) {
     if (lower.includes('pelwatte')) return OPERATION_CONFIG.pelwatte;
     if (lower.includes('keells')) return OPERATION_CONFIG.keells;
     if (lower.includes('space')) return OPERATION_CONFIG.spacelogistics;
+    if (lower.includes('icl')) return OPERATION_CONFIG.icl;
 
     // Fallback for any other custom operation
     return {
