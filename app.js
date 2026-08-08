@@ -2685,9 +2685,11 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
     if (!adminUserId) { showToast('Session not ready. Please wait a moment and try again.', 'warning'); return; }
 
     const id = document.getElementById('commitmentVehicleId').value;
+    const lengthVal = parseFloat(document.getElementById('commitmentVehicleLength').value);
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
         vehicle_model: document.getElementById('commitmentVehicleModel').value,
+        length: isNaN(lengthVal) ? null : lengthVal,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
         photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
         vector_art_url: document.getElementById('commitmentVehicleVectorArt').value || null,
@@ -2733,6 +2735,7 @@ function buildCommitmentVehicleRow(vehicle) {
         <td>${photoHTML}</td>
         <td>${vehicle.vehicle_number}<br>${statusBadge}</td>
         <td>${vehicle.vehicle_model || '-'}</td>
+        <td>${vehicle.length ? vehicle.length : '-'}</td>
         <td>LKR ${vehicle.fixed_monthly_payment}</td>
         <td>${vehicle.km_limit_per_month} km</td>
         <td>LKR ${vehicle.extra_km_charge}/km</td>
@@ -2758,7 +2761,7 @@ async function loadCommitmentVehicles() {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
         }
 
@@ -2768,7 +2771,7 @@ async function loadCommitmentVehicles() {
         activeVehicles.forEach(vehicle => tbody.appendChild(buildCommitmentVehicleRow(vehicle)));
 
         if (terminatedVehicles.length > 0) {
-            const colSpan = userRole === 'viewer' ? 8 : 9;
+            const colSpan = userRole === 'viewer' ? 9 : 10;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.id = 'commitmentArchiveToggleRow';
             archiveToggleRow.innerHTML = `
@@ -2811,6 +2814,9 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentVehicleNumber').value = data.vehicle_number;
         document.getElementById('commitmentVehicleModel').value = data.vehicle_model || '';
         document.getElementById('fixedPayment').value = data.fixed_monthly_payment;
+        if (document.getElementById('commitmentVehicleLength')) {
+            document.getElementById('commitmentVehicleLength').value = data.length || '';
+        }
         document.getElementById('commitmentVehiclePhoto').value = data.photo_url || '';
         document.getElementById('commitmentVehicleVectorArt').value = data.vector_art_url || '';
         document.getElementById('kmLimit').value = data.km_limit_per_month;
