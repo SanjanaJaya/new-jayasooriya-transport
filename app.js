@@ -5160,6 +5160,202 @@ async function loadTopPerformingVehicles() {
     }
 }
 
+// ============ TEXT.LK SMS GATEWAY INTEGRATION ============
+
+const TEXT_LK_CONFIG = {
+    apiToken: '4486|HMhhtp9k41SXVgBfyvQxvNeNi4dCFJNuXL5FFiOvf42605e7',
+    senderId: 'Jayasooriya',
+    endpointV3: 'https://app.text.lk/api/v3/sms/send',
+    endpointHttp: 'https://app.text.lk/api/http/sms/send'
+};
+
+function formatPhoneForTextLk(phone) {
+    if (!phone) return null;
+    let digits = String(phone).replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.startsWith('94')) return digits;
+    if (digits.startsWith('0')) return '94' + digits.substring(1);
+    if (digits.length === 9) return '94' + digits;
+    return digits;
+}
+
+async function sendTextLkSms(recipient, message) {
+    const formattedPhone = formatPhoneForTextLk(recipient);
+    if (!formattedPhone) {
+        return { success: false, message: 'Invalid or missing phone number.' };
+    }
+
+    try {
+        // Method 1: Primary RESTful API v3
+        const response = await fetch(TEXT_LK_CONFIG.endpointV3, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${TEXT_LK_CONFIG.apiToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                recipient: formattedPhone,
+                sender_id: TEXT_LK_CONFIG.senderId,
+                type: 'plain',
+                message: message
+            })
+        });
+
+        const data = await response.json();
+        if (response.ok && (data.status === 'success' || data.status === 200 || data.code === 200)) {
+            return { success: true, data };
+        }
+
+        console.warn('Text.lk v3 SMS response:', data, 'Attempting HTTP POST fallback...');
+
+        // Method 2: HTTP API POST Endpoint
+        const httpResponse = await fetch(TEXT_LK_CONFIG.endpointHttp, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                api_token: TEXT_LK_CONFIG.apiToken,
+                recipient: formattedPhone,
+                sender_id: TEXT_LK_CONFIG.senderId,
+                type: 'plain',
+                message: message
+            })
+        });
+
+        const httpData = await httpResponse.json();
+        if (httpResponse.ok && (httpData.status === 'success' || httpData.status === 200)) {
+            return { success: true, data: httpData };
+        }
+
+        console.warn('Text.lk HTTP POST response:', httpData, 'Attempting HTTP GET fallback...');
+
+        // Method 3: HTTP API GET Endpoint (url parameters)
+        const getUrl = `${TEXT_LK_CONFIG.endpointHttp}?api_token=${encodeURIComponent(TEXT_LK_CONFIG.apiToken)}&recipient=${encodeURIComponent(formattedPhone)}&sender_id=${encodeURIComponent(TEXT_LK_CONFIG.senderId)}&message=${encodeURIComponent(message)}&type=plain`;
+        const getResponse = await fetch(getUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+        const getData = await getResponse.json();
+        if (getResponse.ok && (getData.status === 'success' || getData.status === 200)) {
+            return { success: true, data: getData };
+        }
+
+        return {
+            success: false,
+            message: data.message || httpData.message || getData.message || 'Text.lk SMS gateway error.'
+        };
+    } catch (err) {
+        console.error('Error sending Text.lk SMS:', err);
+        return { success: false, message: err.message || 'Network error while sending SMS.' };
+    }
+}
+
+async function sendAdvanceSmsDirect(advanceId) {
+    try {
+        const { data: advance, error } = await supabaseClient
+            .from('driver_advances')
+            .select('*, drivers(name, contact)')
+            .eq('id', advanceId)
+            .single();
+
+        if (error || !advance) {
+            showToast('Error loading advance details', 'error');
+            return;
+        }
+
+        const phone = advance.drivers?.contact;
+        const driverName = advance.drivers?.name || 'Staff';
+        if (!phone) {
+            showToast(`No contact phone number recorded for ${driverName}.`, 'warning');
+            return;
+        }
+
+        const advanceMonth = advance.advance_date ? advance.advance_date.substring(0, 7) : new Date().toISOString().substring(0, 7);
+        const [yr, mo] = advanceMonth.split('-');
+        const startDate = `${yr}-${mo}-01`;
+        const lastDay = new Date(yr, mo, 0).getDate();
+        const endDate = `${yr}-${mo}-${lastDay}`;
+
+        const { data: monthAdvances } = await supabaseClient
+            .from('driver_advances')
+            .select('amount')
+            .eq('driver_id', advance.driver_id)
+            .gte('advance_date', startDate)
+            .lte('advance_date', endDate);
+
+        const totalMonthAdvances = (monthAdvances || []).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+        const monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        const message = `Jayasooriya Transport\nDear ${driverName},\n\nYour advance of LKR ${parseFloat(advance.amount).toFixed(2)} has been granted to your account.\nYour total advances for ${monthLabel}: LKR ${totalMonthAdvances.toFixed(2)}.\n\nJayasooriya Transport`;
+
+        showToast(`Sending SMS to ${driverName}...`, 'info');
+        const res = await sendTextLkSms(phone, message);
+        if (res.success) {
+            showToast(`✅ SMS sent successfully to ${driverName} (${phone}) via Text.lk!`, 'success');
+        } else {
+            showToast(`❌ Failed to send SMS: ${res.message}`, 'error');
+        }
+    } catch (err) {
+        showToast('Error sending SMS: ' + err.message, 'error');
+    }
+}
+
+async function sendAdvanceSummarySmsDirect(driverId, driverName, totalAmount, monthLabel, records, btn) {
+    try {
+        const { data: driver, error } = await supabaseClient
+            .from('drivers')
+            .select('contact')
+            .eq('id', driverId)
+            .single();
+
+        if (error || !driver) {
+            showToast('Error loading driver contact details', 'error');
+            return;
+        }
+
+        const phone = driver.contact;
+        if (!phone) {
+            showToast(`No contact phone number recorded for ${driverName}.`, 'warning');
+            return;
+        }
+
+        const message = buildAdvanceSmsMessage(driverName, monthLabel, records);
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sending…';
+        }
+
+        const res = await sendTextLkSms(phone, message);
+
+        if (res.success) {
+            showToast(`✅ SMS summary sent to ${driverName} (${phone}) via Text.lk!`, 'success');
+            if (btn) {
+                btn.innerHTML = '✅ Sent!';
+                setTimeout(() => {
+                    btn.innerHTML = '📱 Send SMS';
+                    btn.disabled = false;
+                }, 3000);
+            }
+        } else {
+            showToast(`❌ Failed to send SMS: ${res.message}`, 'error');
+            if (btn) {
+                btn.innerHTML = '📱 Send SMS';
+                btn.disabled = false;
+            }
+        }
+    } catch (err) {
+        showToast('Error sending summary SMS: ' + err.message, 'error');
+        if (btn) {
+            btn.innerHTML = '📱 Send SMS';
+            btn.disabled = false;
+        }
+    }
+}
+
 // ============ DRIVER ADVANCES WITH RECEIPT UPLOAD ============
 
 let currentReceiptFile = null;
@@ -5169,6 +5365,8 @@ document.getElementById('addAdvanceBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('advanceForm').reset();
     document.getElementById('advanceId').value = '';
+    const smsCheck = document.getElementById('advanceSendSms');
+    if (smsCheck) smsCheck.checked = true;
     currentReceiptFile = null;
     existingReceiptUrl = null;
     document.getElementById('currentReceipt').style.display = 'none';
@@ -5294,6 +5492,7 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
     const advanceDate = document.getElementById('advanceDate').value;
     const amount = parseFloat(document.getElementById('advanceAmount').value);
     const notes = document.getElementById('advanceNotes').value || null;
+    const shouldSendSms = document.getElementById('advanceSendSms')?.checked;
 
     try {
         let receiptUrl = existingReceiptUrl;
@@ -5346,6 +5545,10 @@ document.getElementById('advanceForm')?.addEventListener('submit', async (e) => 
         document.getElementById('advanceFormContainer').style.display = 'none';
         currentReceiptFile = null;
         existingReceiptUrl = null;
+
+        if (shouldSendSms && savedAdvanceId) {
+            sendAdvanceSmsDirect(savedAdvanceId);
+        }
     } catch (error) {
         console.error('Error saving advance:', error);
         showToast('Error saving advance: ' + error.message, 'error');
@@ -5396,6 +5599,7 @@ async function loadDriverAdvances() {
 
             const actionButtons = userRole === 'viewer' ? '' : `
                 <td class="action-buttons">
+                    <button class="btn btn-sm btn-info" onclick="sendAdvanceSmsDirect(${advance.id})" title="Send SMS via Text.lk">📱 SMS</button>
                     <button class="btn btn-edit" onclick="editAdvance(${advance.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteAdvance(${advance.id})">Delete</button>
                 </td>
@@ -5533,12 +5737,20 @@ async function loadAdvanceSummary() {
                         <div class="advance-card-amount">LKR ${driver.total.toFixed(2)}</div>
                         <div class="advance-card-label">Total Advances (${monthLabel})</div>
                     </div>
-                    <button class="btn-copy-sms" title="Copy SMS message to clipboard">
-                        📋 Copy SMS
-                    </button>
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-left:auto;">
+                        <button class="btn-send-summary-sms btn-copy-sms" style="background:#27ae60;" title="Send SMS via Text.lk">
+                            📱 Send SMS
+                        </button>
+                        <button class="btn-copy-sms" title="Copy SMS message to clipboard">
+                            📋 Copy SMS
+                        </button>
+                    </div>
                 `;
                 card.querySelector('.btn-copy-sms').addEventListener('click', function () {
                     copyAdvanceSms(this, smsMessage);
+                });
+                card.querySelector('.btn-send-summary-sms').addEventListener('click', function () {
+                    sendAdvanceSummarySmsDirect(driver.id, driver.name, driver.total, monthLabel, driver.records, this);
                 });
                 summaryEl.appendChild(card);
             });
@@ -5796,6 +6008,8 @@ async function editAdvance(id) {
         document.getElementById('advanceDate').value = data.advance_date;
         document.getElementById('advanceAmount').value = data.amount;
         document.getElementById('advanceNotes').value = data.notes || '';
+        const smsCheck = document.getElementById('advanceSendSms');
+        if (smsCheck) smsCheck.checked = false;
 
         existingReceiptUrl = data.receipt_url;
         currentReceiptFile = null;
