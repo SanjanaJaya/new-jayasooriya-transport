@@ -5171,12 +5171,158 @@ const TEXT_LK_CONFIG = {
 
 function formatPhoneForTextLk(phone) {
     if (!phone) return null;
-    let digits = String(phone).replace(/\D/g, '');
-    if (!digits) return null;
-    if (digits.startsWith('94')) return digits;
-    if (digits.startsWith('0')) return '94' + digits.substring(1);
-    if (digits.length === 9) return '94' + digits;
-    return digits;
+    const parts = String(phone).split(/[,;\n\s]+/);
+    const formattedList = [];
+    parts.forEach(p => {
+        let digits = String(p).replace(/\D/g, '');
+        if (!digits) return;
+        if (digits.startsWith('94')) formattedList.push(digits);
+        else if (digits.startsWith('0')) formattedList.push('94' + digits.substring(1));
+        else if (digits.length === 9) formattedList.push('94' + digits);
+        else formattedList.push(digits);
+    });
+    return formattedList.length > 0 ? formattedList.join(',') : null;
+}
+
+// ══════════════════════════════════════════════════════════
+//  OWNER SMS SETTINGS & AUTOMATED DISPATCHER
+// ══════════════════════════════════════════════════════════
+
+function getOwnerSmsSettings() {
+    try {
+        const raw = localStorage.getItem('jtms_owner_sms_config');
+        if (raw) return JSON.parse(raw);
+    } catch (e) { }
+    return {
+        phones: '',
+        alertExpiry: true,
+        alertService: true,
+        alertCheque: true,
+        alertAdvance: true
+    };
+}
+
+function saveOwnerSmsSettings(settings) {
+    localStorage.setItem('jtms_owner_sms_config', JSON.stringify(settings));
+}
+
+function openOwnerSmsModal() {
+    const modal = document.getElementById('ownerSmsModal');
+    if (!modal) return;
+    const config = getOwnerSmsSettings();
+
+    const phonesEl = document.getElementById('ownerSmsPhones');
+    if (phonesEl) phonesEl.value = config.phones || '';
+
+    const expEl = document.getElementById('smsAlertExpiry');
+    if (expEl) expEl.checked = config.alertExpiry !== false;
+
+    const servEl = document.getElementById('smsAlertService');
+    if (servEl) servEl.checked = config.alertService !== false;
+
+    const chqEl = document.getElementById('smsAlertCheque');
+    if (chqEl) chqEl.checked = config.alertCheque !== false;
+
+    const advEl = document.getElementById('smsAlertAdvance');
+    if (advEl) advEl.checked = config.alertAdvance !== false;
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+}
+
+function closeOwnerSmsModal() {
+    const modal = document.getElementById('ownerSmsModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btnSaveOwnerSms')?.addEventListener('click', () => {
+        const phones = document.getElementById('ownerSmsPhones')?.value?.trim() || '';
+        const alertExpiry = document.getElementById('smsAlertExpiry')?.checked ?? true;
+        const alertService = document.getElementById('smsAlertService')?.checked ?? true;
+        const alertCheque = document.getElementById('smsAlertCheque')?.checked ?? true;
+        const alertAdvance = document.getElementById('smsAlertAdvance')?.checked ?? true;
+
+        saveOwnerSmsSettings({
+            phones,
+            alertExpiry,
+            alertService,
+            alertCheque,
+            alertAdvance
+        });
+
+        showToast('✅ Owner SMS settings saved successfully!', 'success');
+        closeOwnerSmsModal();
+    });
+
+    document.getElementById('btnTestOwnerSms')?.addEventListener('click', async () => {
+        const phonesInput = document.getElementById('ownerSmsPhones')?.value?.trim();
+        if (!phonesInput) {
+            showToast('Please enter at least one owner phone number.', 'warning');
+            return;
+        }
+
+        const formatted = formatPhoneForTextLk(phonesInput);
+        if (!formatted) {
+            showToast('Invalid phone number format. Use local (0712345678) or international (94712345678).', 'warning');
+            return;
+        }
+
+        const testMsg = `Jayasooriya Transport Alert System:\nThis is a test notification sent to registered owner contacts (${formatted}). SMS Gateway is active.\n\nJayasooriya Transport`;
+        showToast('Sending test SMS to owners via Text.lk...', 'info');
+
+        const res = await sendTextLkSms(phonesInput, testMsg);
+        if (res.success) {
+            showToast(`✅ Test SMS sent successfully to owners (${formatted})!`, 'success');
+        } else {
+            showToast(`❌ Test SMS failed: ${res.message}`, 'error');
+        }
+    });
+});
+
+async function dispatchOwnerSmsAlerts(allAlerts) {
+    const config = getOwnerSmsSettings();
+    if (!config.phones || !config.phones.trim()) return;
+
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const sentLog = JSON.parse(localStorage.getItem('jtms_sent_sms_log') || '{}');
+    if (!sentLog[todayStr]) sentLog[todayStr] = [];
+
+    const eligibleAlerts = [];
+
+    allAlerts.forEach(alert => {
+        if (sentLog[todayStr].includes(alert.id)) return;
+
+        if (alert.type === 'expiry' && config.alertExpiry) {
+            eligibleAlerts.push(alert);
+        } else if (alert.type === 'service' && config.alertService) {
+            eligibleAlerts.push(alert);
+        } else if (alert.type === 'cheque' && config.alertCheque) {
+            eligibleAlerts.push(alert);
+        } else if (alert.type === 'advance' && config.alertAdvance) {
+            eligibleAlerts.push(alert);
+        }
+    });
+
+    if (eligibleAlerts.length === 0) return;
+
+    const alertLines = eligibleAlerts.slice(0, 4).map((a, i) => `${i + 1}. ${a.title}: ${a.desc}`);
+    let extraCountNotice = eligibleAlerts.length > 4 ? `\n(+${eligibleAlerts.length - 4} more alerts in dashboard)` : '';
+
+    const smsMessage = `Jayasooriya Transport System Alert:\n${alertLines.join('\n')}${extraCountNotice}\n\nJayasooriya Transport`;
+
+    console.log('Dispatching owner SMS alerts for:', eligibleAlerts.map(a => a.id));
+    const res = await sendTextLkSms(config.phones, smsMessage);
+
+    if (res.success) {
+        eligibleAlerts.forEach(a => sentLog[todayStr].push(a.id));
+        localStorage.setItem('jtms_sent_sms_log', JSON.stringify(sentLog));
+        console.log(`✅ Owner SMS alert digest sent to ${config.phones}`);
+    } else {
+        console.warn(`Failed to dispatch owner SMS alert digest:`, res.message);
+    }
 }
 
 async function sendTextLkSms(recipient, message) {
@@ -9338,6 +9484,7 @@ async function loadNotifications() {
         if (activeAlerts.length > 0) {
             badge.textContent = activeAlerts.length;
             badge.style.display = 'flex';
+            dispatchOwnerSmsAlerts(activeAlerts);
         } else {
             badge.style.display = 'none';
         }
