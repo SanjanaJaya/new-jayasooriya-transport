@@ -5286,40 +5286,72 @@ async function dispatchOwnerSmsAlerts(allAlerts) {
     const config = getOwnerSmsSettings();
     if (!config.phones || !config.phones.trim()) return;
 
-    const todayStr = new Date().toISOString().substring(0, 10);
-    const sentLog = JSON.parse(localStorage.getItem('jtms_sent_sms_log') || '{}');
-    if (!sentLog[todayStr]) sentLog[todayStr] = [];
+    // Daily 8:00 AM Schedule check: Only dispatch automatic morning SMS at or after 08:00 local time
+    const now = new Date();
+    if (now.getHours() < 8) {
+        return; // Wait until 8:00 AM
+    }
 
+    const yr = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const da = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${yr}-${mo}-${da}`;
+
+    const sentLog = JSON.parse(localStorage.getItem('jtms_sent_sms_log') || '{}');
+    if (sentLog[todayStr] && sentLog[todayStr].digestSent) {
+        return; // Daily morning SMS digest already sent for today
+    }
+
+    // Filter alerts specifically for 1-DAY PRIOR NOTICE (items due/expiring tomorrow or in 1 day)
     const eligibleAlerts = [];
 
     allAlerts.forEach(alert => {
-        if (sentLog[todayStr].includes(alert.id)) return;
-
         if (alert.type === 'expiry' && config.alertExpiry) {
-            eligibleAlerts.push(alert);
+            if (alert.daysLeft === 1 || alert.daysLeft === 0) {
+                eligibleAlerts.push(alert);
+            }
         } else if (alert.type === 'service' && config.alertService) {
             eligibleAlerts.push(alert);
         } else if (alert.type === 'cheque' && config.alertCheque) {
-            eligibleAlerts.push(alert);
+            if (alert.id?.startsWith('cheque_returned_') || alert.daysLeft === 1 || alert.daysLeft === 0) {
+                eligibleAlerts.push(alert);
+            }
+        } else if (alert.type === 'credit-card' && config.alertCheque) {
+            if (alert.daysLeft === 1 || alert.daysLeft === 0) {
+                eligibleAlerts.push(alert);
+            }
         } else if (alert.type === 'advance' && config.alertAdvance) {
             eligibleAlerts.push(alert);
+        } else if (alert.type === 'birthday') {
+            if (alert.daysLeft === 1 || alert.daysLeft === 0) {
+                eligibleAlerts.push(alert);
+            }
         }
     });
 
-    if (eligibleAlerts.length === 0) return;
+    if (eligibleAlerts.length === 0) {
+        sentLog[todayStr] = { digestSent: true, timestamp: now.toISOString(), count: 0, alerts: [] };
+        localStorage.setItem('jtms_sent_sms_log', JSON.stringify(sentLog));
+        return;
+    }
 
     const alertLines = eligibleAlerts.slice(0, 4).map((a, i) => `${i + 1}. ${a.title}: ${a.desc}`);
     let extraCountNotice = eligibleAlerts.length > 4 ? `\n(+${eligibleAlerts.length - 4} more alerts in dashboard)` : '';
 
-    const smsMessage = `Jayasooriya Transport System Alert:\n${alertLines.join('\n')}${extraCountNotice}\n\nJayasooriya Transport`;
+    const smsMessage = `Jayasooriya Transport Daily Alert (1-Day Prior Notice):\n${alertLines.join('\n')}${extraCountNotice}\n\nJayasooriya Transport`;
 
-    console.log('Dispatching owner SMS alerts for:', eligibleAlerts.map(a => a.id));
+    console.log('Dispatching 8:00 AM owner SMS alerts for 1-day notice:', eligibleAlerts.map(a => a.id));
     const res = await sendTextLkSms(config.phones, smsMessage);
 
     if (res.success) {
-        eligibleAlerts.forEach(a => sentLog[todayStr].push(a.id));
+        sentLog[todayStr] = {
+            digestSent: true,
+            timestamp: now.toISOString(),
+            count: eligibleAlerts.length,
+            alerts: eligibleAlerts.map(a => a.id)
+        };
         localStorage.setItem('jtms_sent_sms_log', JSON.stringify(sentLog));
-        console.log(`✅ Owner SMS alert digest sent to ${config.phones}`);
+        console.log(`✅ Owner 8:00 AM SMS alert digest sent to ${config.phones}`);
     } else {
         console.warn(`Failed to dispatch owner SMS alert digest:`, res.message);
     }
@@ -9444,6 +9476,11 @@ function initNotificationCenter() {
 
     // Initial load of alerts count
     loadNotifications();
+
+    // Check periodically every 60s for 8:00 AM daily owner SMS dispatch
+    setInterval(() => {
+        if (typeof loadNotifications === 'function') loadNotifications();
+    }, 60000);
 }
 
 async function loadNotifications() {
@@ -9660,7 +9697,8 @@ async function fetchChequeAlerts(userId) {
                         icon: `📅`,
                         type: 'cheque',
                         bookId: leaf.book_id,
-                        date: leaf.cheque_date
+                        date: leaf.cheque_date,
+                        daysLeft: diffDays
                     });
                 }
             }
@@ -9873,7 +9911,8 @@ async function fetchBirthdayAlerts(userId) {
                         icon: `🎂`,
                         type: 'birthday',
                         driverId: d.id,
-                        date: birthdayString
+                        date: birthdayString,
+                        daysLeft: daysLeft
                     });
                 }
             }
@@ -14011,7 +14050,8 @@ async function fetchExpiryAlerts(userId) {
                         desc: descText,
                         icon: iconText,
                         type: 'expiry',
-                        date: expiryDateStr
+                        date: expiryDateStr,
+                        daysLeft: diffDays
                     });
                 }
             };
