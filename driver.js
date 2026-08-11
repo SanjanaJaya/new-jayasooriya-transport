@@ -2199,6 +2199,14 @@ function closeRaceModal() {
     }
 }
 
+// Format lorry length helper (e.g. 14 -> 14ft, 14.5ft -> 14.5ft)
+function formatLorryLength(rawLen) {
+    if (rawLen === null || rawLen === undefined || rawLen === '') return null;
+    const str = String(rawLen).trim();
+    if (!str) return null;
+    return /ft$/i.test(str) ? str : `${str}ft`;
+}
+
 // Load race rankings with caching support
 async function loadDriverRace() {
     const listContainer = document.getElementById('raceList');
@@ -2270,20 +2278,22 @@ async function loadDriverRace() {
             }
         });
 
-        // 4. Fetch vehicle model + art info from both vehicle tables
+        // 4. Fetch vehicle model + art info + length from both vehicle tables
         const [hireVehiclesResult, commVehiclesResult] = await Promise.all([
-            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, vehicle_model, vector_art_url, photo_url'),
-            supabaseClient.from('commitment_vehicles').select('vehicle_number, vehicle_model, vector_art_url, photo_url')
+            supabaseClient.from('hire_to_pay_vehicles').select('lorry_number, vehicle_model, vector_art_url, photo_url, length'),
+            supabaseClient.from('commitment_vehicles').select('vehicle_number, vehicle_model, vector_art_url, photo_url, length')
         ]);
 
-        // Build normalized plate -> {model, artUrl} maps
+        // Build normalized plate -> {model, artUrl, length} maps
         const modelByPlateNorm = {};
         const artByPlateNorm = {};
+        const lengthByPlateNorm = {};
         (hireVehiclesResult.data || []).forEach(v => {
             const key = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             if (key) {
                 modelByPlateNorm[key] = v.vehicle_model;
                 artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
+                lengthByPlateNorm[key] = v.length || null;
             }
         });
         (commVehiclesResult.data || []).forEach(v => {
@@ -2291,10 +2301,11 @@ async function loadDriverRace() {
             if (key) {
                 if (!modelByPlateNorm[key]) modelByPlateNorm[key] = v.vehicle_model;
                 if (!artByPlateNorm[key]) artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
+                if (!lengthByPlateNorm[key]) lengthByPlateNorm[key] = v.length || null;
             }
         });
 
-        // Helpers: get model / art URL from plate
+        // Helpers: get model / art URL / length from plate
         function getModelForPlate(plate) {
             if (!plate) return null;
             const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -2304,6 +2315,11 @@ async function loadDriverRace() {
             if (!plate) return null;
             const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             return artByPlateNorm[key] || null;
+        }
+        function getLengthForPlate(plate) {
+            if (!plate) return null;
+            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            return lengthByPlateNorm[key] || null;
         }
 
         // Sum up km per driver
@@ -2327,7 +2343,8 @@ async function loadDriverRace() {
                     totalKm: kmByDriver[d.id] || 0,
                     vehiclePlate: lorryNum,
                     vehicleModel: getModelForPlate(lorryNum),
-                    vehicleArtUrl: getArtForPlate(lorryNum)
+                    vehicleArtUrl: getArtForPlate(lorryNum),
+                    vehicleLength: getLengthForPlate(lorryNum)
                 };
             });
 
@@ -2345,7 +2362,8 @@ async function loadDriverRace() {
                     ...d,
                     vehiclePlate: lorryNum,
                     vehicleModel: getModelForPlate(lorryNum),
-                    vehicleArtUrl: getArtForPlate(lorryNum)
+                    vehicleArtUrl: getArtForPlate(lorryNum),
+                    vehicleLength: getLengthForPlate(lorryNum)
                 };
             });
 
@@ -2496,11 +2514,15 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                 return `<div class="race-truck-svg-wrap">${isSVGFallback}</div>`;
             }
 
+            const formattedLength = formatLorryLength(d.vehicleLength);
+            const lengthBadgeHtml = formattedLength ? `<span class="race-vehicle-length-badge">${formattedLength}</span>` : '';
+
             const vehiclePanelHtml = d.vehiclePlate
                 ? `<div class="race-vehicle-panel">
                        <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, truckSVG)}</div>
                        <div class="race-vehicle-info">
                            <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
+                           ${lengthBadgeHtml}
                            ${d.vehicleModel ? `<span class="race-vehicle-model-text" title="${d.vehicleModel}">${d.vehicleModel}</span>` : ''}
                        </div>
                    </div>`
@@ -2614,11 +2636,15 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
   <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
 </svg>`;
 
+            const helperFormattedLength = formatLorryLength(d.vehicleLength);
+            const helperLengthBadgeHtml = helperFormattedLength ? `<span class="race-vehicle-length-badge">${helperFormattedLength}</span>` : '';
+
             const helperVehiclePanelHtml = d.vehiclePlate
                 ? `<div class="race-vehicle-panel race-vehicle-panel--helper">
                        <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, helperTruckSVG)}</div>
                        <div class="race-vehicle-info">
                            <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
+                           ${helperLengthBadgeHtml}
                            ${d.vehicleModel ? `<span class="race-vehicle-model-text" title="${d.vehicleModel}">${d.vehicleModel}</span>` : ''}
                        </div>
                    </div>`
@@ -2706,12 +2732,13 @@ async function openDriverProfileModal(driverId) {
         let vehicleModel = null;
         let vehicleArtUrl = null;
         let vehicleId = null;
+        let vehicleLength = null;
 
         if (vehiclePlate) {
             const normPlate = vehiclePlate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             const [hireV, commV] = await Promise.all([
-                supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, vector_art_url, photo_url'),
-                supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, vector_art_url, photo_url')
+                supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, vector_art_url, photo_url, length'),
+                supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, vector_art_url, photo_url, length')
             ]);
             (hireV.data || []).forEach(v => {
                 const k = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -2719,6 +2746,7 @@ async function openDriverProfileModal(driverId) {
                     vehicleId = v.id;
                     vehicleModel = v.vehicle_model;
                     vehicleArtUrl = v.vector_art_url || v.photo_url || null;
+                    vehicleLength = v.length || null;
                 }
             });
             (commV.data || []).forEach(v => {
@@ -2727,6 +2755,7 @@ async function openDriverProfileModal(driverId) {
                     if (!vehicleId) vehicleId = v.id;
                     if (!vehicleModel) vehicleModel = v.vehicle_model;
                     if (!vehicleArtUrl) vehicleArtUrl = v.vector_art_url || v.photo_url || null;
+                    if (!vehicleLength) vehicleLength = v.length || null;
                 }
             });
         }
@@ -2942,8 +2971,11 @@ async function openDriverProfileModal(driverId) {
             }
         }
 
+        const formattedLength = formatLorryLength(vehicleLength);
+        const modelAndLength = [formattedLength, vehicleModel].filter(Boolean).join(' • ');
+
         document.getElementById('dpLorryPlate').textContent = vehiclePlate || 'Not Assigned';
-        document.getElementById('dpLorryModel').textContent = vehicleModel || '';
+        document.getElementById('dpLorryModel').textContent = modelAndLength || '';
 
         // Stat Grid Values
         document.getElementById('dpStatTenure').textContent = tenureDisplay;

@@ -1832,6 +1832,22 @@ body.light-mode .kd-popup-copy-btn:hover {
     text-overflow: ellipsis;
 }
 
+.race-vehicle-length-badge {
+    font-family: var(--font-display);
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #60A5FA;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+    padding: 1px 4px;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.1;
+    display: inline-block;
+}
+
 .race-vehicle-model-text {
     font-size: 8.5px;
     font-weight: 500;
@@ -1853,10 +1869,17 @@ body.light-mode .kd-popup-copy-btn:hover {
     border-color: rgba(168,85,247,0.3);
 }
 
+.race-vehicle-panel--helper .race-vehicle-length-badge {
+    color: #C084FC;
+    background: rgba(168,85,247,0.12);
+    border-color: rgba(168,85,247,0.3);
+}
+
 @media (max-width: 360px) {
     .race-vehicle-panel { width: 78px; padding: 8px 4px 6px; }
     .race-truck-svg { width: 64px; height: 32px; }
     .race-vehicle-plate-badge { font-size: 8px; padding: 1px 3px; }
+    .race-vehicle-length-badge { font-size: 7.5px; padding: 1px 3px; }
     .race-vehicle-model-text { font-size: 7.5px; line-height: 1.1; }
     .race-left { padding: 8px 6px 8px 10px; gap: 7px; }
     .race-rank-container { width: 22px; height: 22px; font-size: 14px; }
