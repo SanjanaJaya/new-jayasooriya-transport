@@ -5329,51 +5329,6 @@ body.dark-mode .driver-perf-card-header {
     transition: all var(--ease-base);
 }
 
-/* ── Owner SMS Button ── */
-.owner-sms-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 38px;
-    padding: 0 14px;
-    background: var(--surface-raised);
-    border: 1.5px solid var(--surface-border);
-    border-radius: var(--radius-pill);
-    color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.25s var(--ease-spring-soft);
-    white-space: nowrap;
-    box-sizing: border-box;
-}
-
-.owner-sms-btn:hover {
-    background: var(--surface-hover);
-    border-color: var(--brand-red);
-    color: var(--brand-red);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
-}
-
-.owner-sms-btn:active {
-    transform: translateY(0);
-}
-
-body.dark-mode .owner-sms-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.16);
-    color: #f1f5f9;
-}
-
-body.dark-mode .owner-sms-btn:hover {
-    background: rgba(209, 0, 31, 0.20);
-    border-color: var(--brand-red);
-    color: #ff6b81;
-}
-
 /* ── GLOBAL SEARCH MODAL ── */
 .global-search-modal {
     position: fixed;
