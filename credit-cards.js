@@ -616,8 +616,7 @@ async function fetchCreditCardAlerts(userId) {
                             icon: `⚠️`,
                             type: 'credit-card',
                             cardId: card.id,
-                            date: mKey,
-                            daysLeft: diffDays
+                            date: mKey
                         });
                     } else if (diffDays <= 7 && isCurrentMonthCycle) {
                         // DUE SOON WARNING (only alert for current month's due cycle)
@@ -633,8 +632,7 @@ async function fetchCreditCardAlerts(userId) {
                             icon: `💳`,
                             type: 'credit-card',
                             cardId: card.id,
-                            date: mKey,
-                            daysLeft: diffDays
+                            date: mKey
                         });
                     }
                 }
