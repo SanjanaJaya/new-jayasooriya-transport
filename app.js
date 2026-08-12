@@ -5700,7 +5700,7 @@ async function loadAdvanceSummary() {
                 <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;font-weight:700;">🏆 Highest This Period</div>
                 ${topRanked.map((s, i) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;background:rgba(255,255,255,0.13);border-radius:8px;padding:5px 10px;">
                     <span>${medals[i]} ${s.name}</span>
-                    <span style="font-weight:800;font-family:'Barlow Condensed',sans-serif;font-size:14px;">LKR ${s.total.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
+                    <span style="font-weight:800;font-family:var(--font-display);font-size:14px;">LKR ${s.total.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
                 </div>`).join('')}
             </div>` : '';
         const topWidget = document.createElement('div');
@@ -5708,8 +5708,8 @@ async function loadAdvanceSummary() {
         topWidget.innerHTML = `<div class="summary-banner" style="background:linear-gradient(135deg,#D1001F 0%,#8B0012 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(209,0,31,.30);color:#fff;flex-wrap:wrap;">
             <div style="font-size:44px;flex-shrink:0;">💳</div>
             <div style="flex:1;min-width:180px;">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Staff Advances — ${monthLabel}</div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandTotal.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style="font-family:var(--font-display);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Staff Advances — ${monthLabel}</div>
+                <div style="font-family:var(--font-display);font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandTotal.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 <div style="font-size:12px;opacity:.75;margin-top:5px;">${advCount} advance transaction${advCount !== 1 ? 's' : ''} recorded</div>
             </div>
             ${topHtml}
@@ -8105,8 +8105,8 @@ async function renderDayOffWidgets(dayOffData) {
     topWidget.innerHTML = `<div class="summary-banner" style="background:linear-gradient(135deg,#c0392b 0%,#7b241c 100%);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:22px;box-shadow:0 6px 24px rgba(192,57,43,.30);color:#fff;flex-wrap:wrap;">
         <div style="font-size:44px;flex-shrink:0;">⛔</div>
         <div style="flex:1;min-width:180px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Day Off Deductions — ${monthLabel}</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandDeduction.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style="font-family:var(--font-display);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.80;margin-bottom:3px;">Total Day Off Deductions — ${monthLabel}</div>
+            <div style="font-family:var(--font-display);font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.05;">LKR ${grandDeduction.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div style="font-size:12px;opacity:.75;margin-top:5px;">${totalDayOffs} day off record${totalDayOffs !== 1 ? 's' : ''} across ${driverCount} staff member${driverCount !== 1 ? 's' : ''}</div>
         </div>
     </div>`;
@@ -10203,7 +10203,7 @@ async function updateKmSalaryWidget() {
 
             let html = `
                 <div style="width: 100%;">
-                    <h4 style="margin-bottom: 15px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.25rem;">📊 Driver Mileage Summary for ${monthVal}</h4>
+                    <h4 style="margin-bottom: 15px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.25rem;">📊 Driver Mileage Summary for ${monthVal}</h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
             `;
 
@@ -10610,13 +10610,13 @@ async function loadDriverPerformance(monthValue) {
         if (driversOnly.length > 0) {
             tableRows += `
                 <tr style="background: var(--surface-hover); font-weight: bold; border-bottom: 2px solid var(--surface-border);">
-                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
                         🚗 Drivers
                     </td>
                 </tr>
             `;
             mobileCards += `
-                <div style="font-weight: 700; margin: 10px 0; color: var(--brand-red); font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="font-weight: 700; margin: 10px 0; color: var(--brand-red); font-family: var(--font-display); font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
                     🚗 Drivers
                 </div>
             `;
@@ -10631,13 +10631,13 @@ async function loadDriverPerformance(monthValue) {
         if (helpersOnly.length > 0) {
             tableRows += `
                 <tr style="background: var(--surface-hover); font-weight: bold; border-top: 2px solid var(--surface-border); border-bottom: 2px solid var(--surface-border);">
-                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                    <td colspan="8" style="padding: 10px 12px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.5px; text-transform: uppercase;">
                         👥 Helpers
                     </td>
                 </tr>
             `;
             mobileCards += `
-                <div style="font-weight: 700; margin: 20px 0 10px 0; color: var(--brand-red); font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="font-weight: 700; margin: 20px 0 10px 0; color: var(--brand-red); font-family: var(--font-display); font-size: 1.2rem; letter-spacing: 0.5px; text-transform: uppercase;">
                     👥 Helpers
                 </div>
             `;

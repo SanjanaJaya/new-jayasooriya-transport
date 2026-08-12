@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jt-driver-cache-v9';
+const CACHE_NAME = 'jt-driver-cache-v10';
 const STATIC_ASSETS = [
     '/driver.html',
     '/driver-styles.css',
@@ -10,7 +10,7 @@ const STATIC_ASSETS = [
     'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
     'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-    'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap'
+    'https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap'
 ];
 
 // Install Service Worker and cache core static assets

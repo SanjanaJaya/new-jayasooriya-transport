@@ -144,8 +144,8 @@
             if (!d.lat || !d.lng) return;
 
             var markerIcon = createDistributorMarkerIcon();
-            var popupContent = '<div class="tracker-map-popup" style="font-family:\'DM Sans\', sans-serif; min-width:180px;">' +
-                '<div class="popup-name" style="font-family:\'Barlow Condensed\', sans-serif; font-size:16px; font-weight:700; color:#1A1D24; margin-bottom:6px; display:flex; align-items:center; gap:6px;">👤 ' + d.distributor_name + '</div>' +
+            var popupContent = '<div class="tracker-map-popup" style="font-family:var(--font-sans, sans-serif); min-width:180px;">' +
+                '<div class="popup-name" style="font-family:var(--font-display, sans-serif); font-size:16px; font-weight:700; color:#1A1D24; margin-bottom:6px; display:flex; align-items:center; gap:6px;">👤 ' + d.distributor_name + '</div>' +
                 '<div class="popup-detail" style="font-size:12px; color:#6B7280; line-height:1.6;">' +
                 '📍 <strong>' + d.town_name + '</strong><br>' +
                 '🌐 Coordinates: ' + d.lat.toFixed(5) + ', ' + d.lng.toFixed(5) +
@@ -419,8 +419,8 @@
             ? '<img src="' + driver.photo_url + '" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid #eee; flex-shrink:0;">'
             : '<div style="width:30px; height:30px; border-radius:50%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; color:#95a5a6; border: 1.5px dashed #ccc;">👤</div>';
 
-        return '<div class="tracker-map-popup" style="font-family:\'DM Sans\', sans-serif; min-width:180px;">' +
-            '<div class="popup-name" style="font-family:\'Barlow Condensed\', sans-serif; font-size:16px; font-weight:700; color:#1A1D24; margin-bottom:6px; display:flex; align-items:center; gap:6px;">🚛 ' + unit.name + '</div>' +
+        return '<div class="tracker-map-popup" style="font-family:var(--font-sans, sans-serif); min-width:180px;">' +
+            '<div class="popup-name" style="font-family:var(--font-display, sans-serif); font-size:16px; font-weight:700; color:#1A1D24; margin-bottom:6px; display:flex; align-items:center; gap:6px;">🚛 ' + unit.name + '</div>' +
             '<div class="popup-speed" style="font-size:22px; font-weight:800; margin-bottom:4px; color:' + speedColor + '">' + Math.round(unit.speed) + ' km/h</div>' +
             '<div class="popup-detail" style="font-size:12px; color:#6B7280; line-height:1.6;">' +
             '📍 <strong>' + (unit.address || 'Loading location...') + '</strong><br>' +
@@ -1013,7 +1013,7 @@
             '<div class="tracker-card-speed" style="display:flex; flex-direction:column; flex:1; min-width:0;">' +
             '<div style="display:flex; align-items:center; justify-content:space-between; width:100%;">' +
             '<div style="display:flex; align-items:baseline; gap:6px;">' +
-            '<span class="tracker-speed-value" style="font-family:\'Barlow Condensed\', sans-serif; font-size:32px; font-weight:900; line-height:1;"></span>' +
+            '<span class="tracker-speed-value" style="font-family:var(--font-display, sans-serif); font-size:32px; font-weight:900; line-height:1;"></span>' +
             '<span class="tracker-speed-unit" style="font-size:12px; font-weight:600; color:var(--text-muted);">km/h</span>' +
             '</div>' +
             '<span class="tracker-engine-status"></span>' +

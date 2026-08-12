@@ -1,16 +1,21 @@
 /* =====================================================
    JAYASOORIYA TRANSPORT — REDESIGNED UI
    Theme: Industrial Precision × Sri Lankan Pride
-   Font: Barlow Condensed (headers) + DM Sans (body)
+   Font: Outfit (headers) + Plus Jakarta Sans (body)
    Brand: Crimson Red #D1001F × Jet Black × Pure White
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 /* =====================================================
    CSS CUSTOM PROPERTIES
    ===================================================== */
 :root {
+    /* Typography */
+    --font-sans:       'Plus Jakarta Sans', 'Noto Sans Sinhala', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display:    'Outfit', 'Plus Jakarta Sans', 'Noto Sans Sinhala', -apple-system, sans-serif;
+    --font-mono:       'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
     /* Brand Colors */
     --brand-red:       #D1001F;
     --brand-red-dark:  #A8001A;
@@ -116,7 +121,7 @@ html {
 }
 
 body {
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     background-color: var(--surface-bg);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
@@ -242,7 +247,7 @@ img {
 }
 
 .brand-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 15px;
     font-weight: 800;
     line-height: 1.25;
@@ -277,7 +282,7 @@ img {
     border: 1px solid rgba(255,255,255,0.10);
     color: rgba(255,255,255,0.70);
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
@@ -369,7 +374,7 @@ img {
     border: none;
     color: rgba(255,255,255,0.80);
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 500;
     border-radius: var(--radius-md);
@@ -485,7 +490,7 @@ img {
     color: rgba(255,255,255,0.90);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 600;
     font-size: 14px;
     display: flex;
@@ -646,7 +651,7 @@ body.dark-mode .dark-mode-toggle .dark-icon  { display: block; }
 
 .top-header h2,
 #pageTitle {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 26px;
     font-weight: 700;
     color: var(--brand-red);
@@ -835,7 +840,7 @@ body.dark-mode .dark-mode-toggle .dark-icon  { display: block; }
     border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     background: var(--surface-bg);
     color: var(--text-primary);
     transition: all var(--ease-base);
@@ -977,7 +982,7 @@ body.dark-mode .dark-mode-toggle .dark-icon  { display: block; }
 }
 
 .metric-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
     line-height: 1.1;
@@ -1034,7 +1039,7 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
 }
 
 .performance-section h3 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     color: var(--text-primary);
     margin-bottom: 22px;
     font-size: 19px;
@@ -1163,7 +1168,7 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     letter-spacing: 0.8px;
     line-height: 40px;
     color: #1a4a6b;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     white-space: nowrap;
 }
 
@@ -1179,7 +1184,7 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     border-radius: 6px;
     cursor: pointer;
     padding: 3px 8px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 600;
     transition: all var(--ease-base);
     white-space: nowrap;
@@ -1198,7 +1203,7 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     border: 1.5px solid var(--surface-border);
     border-radius: 8px;
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 500;
     background: var(--surface-bg);
     color: var(--text-primary);
@@ -1313,7 +1318,7 @@ body.dark-mode .lorry-assign-select {
 }
 
 .detail-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
     color: var(--brand-red);
@@ -1338,7 +1343,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
 }
 
 .page-header h3 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     color: var(--text-primary);
     font-size: 24px;
     font-weight: 700;
@@ -1353,7 +1358,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
     padding: 11px 22px;
     border: none;
     border-radius: var(--radius-md);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
@@ -1435,7 +1440,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
     color: #fff;
     padding: 11px 20px;
     border-radius: var(--radius-md);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     border: none;
@@ -1509,7 +1514,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
     border: 1.5px solid var(--surface-border);
     border-radius: var(--radius-sm);
     font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     background: var(--surface-bg);
     color: var(--text-primary);
     font-weight: 500;
@@ -1573,7 +1578,7 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
 .form-section h4 {
     color: var(--brand-red);
     margin-bottom: 14px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -1639,7 +1644,7 @@ thead {
 th {
     padding: 14px 16px;
     text-align: left;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1690,7 +1695,7 @@ tbody tr:last-child td { border-bottom: none; }
     border-radius: var(--radius-sm);
     border: none;
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 600;
     transition: all var(--ease-fast);
 }
@@ -1760,7 +1765,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 .login-header h1 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     color: var(--brand-red);
     font-size: 26px;
     font-weight: 800;
@@ -1787,7 +1792,7 @@ tbody tr:last-child td { border-bottom: none; }
     border: 1.5px solid var(--surface-border);
     border-radius: var(--radius-md);
     font-size: 15px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 500;
     background: var(--surface-bg);
     color: var(--text-primary);
@@ -1805,7 +1810,7 @@ tbody tr:last-child td { border-bottom: none; }
     padding: 15px;
     margin-top: 8px;
     font-size: 15px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     letter-spacing: 1px;
     font-weight: 700;
 }
@@ -1820,7 +1825,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* Export Modal */
 #exportModal .login-header { padding: 24px 28px 12px; }
 #exportModal .login-header h2 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     color: var(--brand-red);
     font-size: 22px;
     font-weight: 700;
@@ -2028,7 +2033,7 @@ input[type="file"]::-webkit-file-upload-button {
     font-weight: 600;
     font-size: 13px;
     transition: all var(--ease-base);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 input[type="file"]::-webkit-file-upload-button:hover {
@@ -2145,7 +2150,7 @@ body.dark-mode .premium-vehicle-card {
 
 .vehicle-info-block h4 {
     margin: 0 0 5px 0;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     color: var(--text-primary);
     font-weight: 700;
@@ -2220,7 +2225,7 @@ body.dark-mode .premium-vehicle-card {
 }
 
 .premium-vehicle-card .metric-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
@@ -2258,7 +2263,7 @@ body.dark-mode .premium-vehicle-card {
 }
 
 .efficiency-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
     color: var(--green-dark);
@@ -2316,7 +2321,7 @@ body.dark-mode .premium-vehicle-card {
 }
 
 .advance-card-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 17px;
     font-weight: 700;
     margin-bottom: 3px;
@@ -2325,7 +2330,7 @@ body.dark-mode .premium-vehicle-card {
 }
 
 .advance-card-amount {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 24px;
     font-weight: 800;
     color: #fff;
@@ -2403,7 +2408,7 @@ body.dark-mode .premium-vehicle-card {
 
 .summary-value {
     color: var(--brand-red);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-weight: 800;
     font-size: 17px;
     transition: color var(--ease-base);
@@ -2439,7 +2444,7 @@ body.dark-mode .premium-vehicle-card {
 }
 
 .empty-state-text {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     margin-bottom: 8px;
@@ -3174,7 +3179,7 @@ body.dark-mode .dark-mode-toggle button {
 }
 
 .stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 800;
     color: var(--text-primary);
@@ -3216,7 +3221,7 @@ tr.archive-toggle-row td,
     border-bottom: 1px solid rgba(209, 0, 31, 0.12) !important;
     padding: 14px 18px !important;
     color: var(--text-secondary) !important;
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: var(--font-sans) !important;
     font-size: 13px !important;
     font-weight: 600 !important;
     letter-spacing: 0.3px;
@@ -3665,7 +3670,7 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
 }
 
 .cheque-strip-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
     color: var(--text-primary);
@@ -3714,7 +3719,7 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
 }
 
 .cheque-panel-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -3876,7 +3881,7 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
     border: none;
     border-radius: var(--radius-md);
     padding: 10px 16px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -3951,7 +3956,7 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
 
 /* ── Leaf Number in table ── */
 .cheque-leaf-num {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: var(--brand-red);
@@ -3976,7 +3981,7 @@ body.dark-mode .tracked-vehicle-card .detail-metric.danger .detail-value {
 }
 
 .cheque-edit-banner-num {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
     color: var(--brand-red);
@@ -4127,7 +4132,7 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
 }
 
 .bank-stat-item .bank-stat-val {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 800;
     line-height: 1;
@@ -4164,7 +4169,7 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
 
 .bank-bal-val {
     font-weight: 700;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
 }
 
@@ -4232,7 +4237,7 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
 }
 
 .salary-at-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 24px;
     font-weight: 800;
     color: var(--text-primary);
@@ -4279,7 +4284,7 @@ body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
 .ldd-container {
     position: relative;
     width: 100%;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     z-index: 10;
 }
 
@@ -4638,7 +4643,7 @@ body.dark-mode .ldd-search {
 }
 
 .cheque-amount-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 24px;
     font-weight: 800;
     color: var(--text-primary);
@@ -4745,7 +4750,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     font-size: 13px;
     font-weight: 700;
     color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     text-transform: none;
     letter-spacing: normal;
 }
@@ -4758,7 +4763,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     cursor: pointer;
     font-weight: 600;
     transition: color var(--ease-base);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     padding: 2px 6px;
 }
 
@@ -4777,7 +4782,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     text-align: center;
     color: var(--text-muted);
     font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .notification-item {
@@ -4816,7 +4821,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     color: var(--text-primary);
     margin-bottom: 3px;
     line-height: 1.35;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .notification-item-desc {
@@ -4824,7 +4829,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     color: var(--text-secondary);
     line-height: 1.4;
     word-break: break-word;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .notification-item-time {
@@ -4832,7 +4837,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
     color: var(--text-muted);
     margin-top: 4px;
     display: block;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 /* Scrollbar for notification list */
@@ -4894,7 +4899,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
 }
 
 .vehicle-group-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     display: flex;
@@ -4905,7 +4910,7 @@ body.dark-mode .cheque-amount-card.card-returned .cheque-amount-icon {
 }
 
 .vehicle-group-badge {
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 700;
     padding: 5px 12px;
@@ -5260,7 +5265,7 @@ body.dark-mode .group-other-operations table thead {
 }
 
 .km-widget-driver-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
     color: var(--text-primary);
@@ -5412,7 +5417,7 @@ body.dark-mode .group-other-operations table thead {
 }
 
 .driver-perf-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
@@ -5453,7 +5458,7 @@ body.dark-mode .group-other-operations table thead {
 }
 
 .driver-perf-stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
     color: var(--text-primary);
@@ -5480,7 +5485,7 @@ body.dark-mode .group-other-operations table thead {
 }
 
 .driver-perf-net-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 17px;
     font-weight: 800;
     color: #fff !important;
@@ -5588,7 +5593,7 @@ body.dark-mode .driver-perf-card-header {
     outline: none;
     font-size: 16px;
     color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     -webkit-user-select: text;
     user-select: text;
 }
@@ -5671,7 +5676,7 @@ body.dark-mode .driver-perf-card-header {
 .today-kpi-icon { font-size: 28px; line-height: 1; }
 .today-kpi-content { display: flex; flex-direction: column; gap: 2px; }
 .today-kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.8; }
-.today-kpi-value { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; }
+.today-kpi-value { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
 
 .today-kpi-vehicles { background: linear-gradient(135deg, #0072CE 0%, #0055a5 100%); color: #fff; }
 .today-kpi-hires    { background: linear-gradient(135deg, #9B59B6 0%, #7B35C4 100%); color: #fff; }
@@ -5822,7 +5827,7 @@ body.dark-mode .today-kpi-card { border-color: rgba(255,255,255,0.08); }
 .rss-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .rss-icon { font-size: 22px; }
 .rss-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
-.rss-value { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.rss-value { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text-primary); }
 .rss-green { color: var(--green) !important; }
 .rss-red { color: var(--brand-red) !important; }
 
@@ -5848,7 +5853,7 @@ body.dark-mode .today-kpi-card { border-color: rgba(255,255,255,0.08); }
 .staff-bw-icon { font-size: 26px; }
 .staff-bw-content { display: flex; flex-direction: column; gap: 2px; }
 .staff-bw-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; opacity: 0.85; }
-.staff-bw-value { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; }
+.staff-bw-value { font-family: var(--font-display); font-size: 28px; font-weight: 900; }
 
 .staff-bw-driver     { background: linear-gradient(135deg, #0072CE 0%, #0055a5 100%); color: #fff; }
 .staff-bw-helper     { background: linear-gradient(135deg, #00B37E 0%, #007A54 100%); color: #fff; }
@@ -5927,7 +5932,7 @@ body.dark-mode .today-kpi-card { border-color: rgba(255,255,255,0.08); }
     animation: fadeSlideUp 0.4s var(--ease-base) both;
 }
 .ytd-summary-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: var(--brand-red);
@@ -6541,7 +6546,7 @@ body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
 }
 
 .leasing-panel-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -6608,7 +6613,7 @@ body.dark-mode .dayoff-calendar-wrap { border-color: var(--surface-border); }
 }
 
 .lao-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
     line-height: 1.1;
@@ -6696,7 +6701,7 @@ body.dark-mode .lao-assets .lao-value { color: #B785FF; }
 }
 
 .lss-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 800;
     color: var(--text-primary);
@@ -6772,7 +6777,7 @@ body.dark-mode .lao-assets .lao-value { color: #B785FF; }
 }
 
 .leasing-widget-vehicle {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 800;
     color: var(--text-primary);
@@ -6864,7 +6869,7 @@ body.dark-mode .lao-assets .lao-value { color: #B785FF; }
 }
 
 .lvr-vehicle {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 800;
     color: var(--text-primary);
@@ -6965,7 +6970,7 @@ body.dark-mode .lao-assets .lao-value { color: #B785FF; }
 }
 
 .lease-stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 800;
     color: var(--text-primary);
@@ -7094,7 +7099,7 @@ body.dark-mode .lmt-balloon-badge {
 }
 
 .lmt-month {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 800;
     color: var(--text-primary);
@@ -7133,7 +7138,7 @@ body.dark-mode .lmt-balloon-badge {
     font-weight: 700;
     cursor: pointer;
     transition: all var(--ease-fast);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .lease-tile-paid .lmt-btn {
@@ -7279,7 +7284,7 @@ body.dark-mode .lease-tile-current {
     border: none;
     background: transparent;
     color: var(--text-muted);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -7330,7 +7335,7 @@ body.dark-mode .lease-tile-current {
     border: 2px solid var(--surface-border);
     background: var(--surface-raised);
     color: var(--text-secondary);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 600;
     border-radius: var(--radius-sm);
@@ -7579,7 +7584,7 @@ body.dark-mode .leasing-tab.active {
 }
 
 .el-summary-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
     color: var(--text-primary);
@@ -7616,7 +7621,7 @@ body.dark-mode .leasing-tab.active {
 }
 
 .el-preview-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 800;
     color: var(--text-primary);
@@ -7700,7 +7705,7 @@ body.dark-mode #elTable tfoot tr td {
 }
 
 .kd-hero-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
     color: #fff;
@@ -7753,7 +7758,7 @@ body.dark-mode #elTable tfoot tr td {
 }
 
 .kd-form-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     color: var(--brand-red);
@@ -7834,7 +7839,7 @@ body.dark-mode #elTable tfoot tr td {
 }
 
 .kd-map-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
@@ -7905,7 +7910,7 @@ body.dark-mode #elTable tfoot tr td {
 }
 
 .kd-list-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 17px;
     font-weight: 700;
     color: var(--text-primary);
@@ -7942,7 +7947,7 @@ body.dark-mode #elTable tfoot tr td {
     padding: 8px 12px;
     font-size: 13px;
     color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     outline: none;
     transition: all var(--ease-fast);
     -webkit-user-select: text !important;
@@ -8077,7 +8082,7 @@ body.dark-mode #elTable tfoot tr td {
     transition: all var(--ease-fast);
     border: none;
     text-decoration: none;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     white-space: nowrap;
 }
 
@@ -8151,14 +8156,14 @@ body.dark-mode #elTable tfoot tr td {
     font-weight: 800;
     color: #1a1d24;
     margin-bottom: 4px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .kd-popup-town {
     font-size: 12px;
     color: #4b5260;
     margin-bottom: 12px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .kd-popup-actions {
@@ -8181,7 +8186,7 @@ body.dark-mode #elTable tfoot tr td {
     font-weight: 700;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     width: 100%;
 }
 
@@ -8204,7 +8209,7 @@ body.dark-mode #elTable tfoot tr td {
     font-weight: 700;
     text-decoration: none;
     transition: all 0.2s;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .kd-popup-open-btn:hover {
@@ -8254,7 +8259,7 @@ body.dark-mode .kd-popup-open-btn {
     font-size: 12px;
     font-weight: 500;
     line-height: 1.4;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     animation: fadeIn 0.2s ease;
 }
 
@@ -8345,7 +8350,7 @@ body.dark-mode .kd-coord-loading {
 }
 
 .kd-route-header-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
     color: #fff;
@@ -8376,7 +8381,7 @@ body.dark-mode .kd-coord-loading {
     cursor: pointer;
     transition: all 0.2s;
     border: none;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     white-space: nowrap;
 }
 
@@ -8478,7 +8483,7 @@ body.dark-mode .kd-coord-loading {
     background: var(--surface-card);
     color: var(--text-primary);
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     outline: none;
     transition: border-color 0.2s;
     cursor: pointer;
@@ -8530,7 +8535,7 @@ body.dark-mode .kd-coord-loading {
 .kd-route-stop-num {
     font-size: 22px;
     font-weight: 800;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     color: var(--brand-red);
     min-width: 32px;
     text-align: center;
@@ -8760,7 +8765,7 @@ body.dark-mode .kd-route-search-item.highlighted {
     gap: 10px;
     padding: 14px 18px;
     border-radius: 14px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     color: #fff;
@@ -8840,7 +8845,7 @@ body.dark-mode .kd-route-search-item.highlighted {
 }
 
 .jtms-confirm-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -8871,7 +8876,7 @@ body.dark-mode .kd-route-search-item.highlighted {
     font-weight: 700;
     cursor: pointer;
     transition: all var(--ease-fast);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 .jtms-confirm-yes:hover { background: var(--brand-red-dark); transform: translateY(-1px); }
 
@@ -8885,7 +8890,7 @@ body.dark-mode .kd-route-search-item.highlighted {
     font-weight: 600;
     cursor: pointer;
     transition: all var(--ease-fast);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
 }
 .jtms-confirm-no:hover { background: var(--surface-border); }
 
@@ -8941,7 +8946,7 @@ body.dark-mode .kd-route-search-item.highlighted {
     padding: 8px 20px;
     font-size: 13px;
     font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     flex-shrink: 0;
     gap: 8px;
     align-items: center;
@@ -8997,7 +9002,7 @@ body.dark-mode .admin-offline-banner {
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     transition: all var(--ease-fast);
     display: flex;
     align-items: center;
@@ -9170,7 +9175,7 @@ body.dark-mode .admin-offline-banner {
 }
 
 .expiry-card-header h4 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 19px;
     font-weight: 800;
     letter-spacing: 0.5px;
@@ -9284,7 +9289,7 @@ body.dark-mode .admin-offline-banner {
     padding: 18px;
     border-radius: var(--radius-md);
     text-align: center;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     transition: all var(--ease-base);
     border: 1px solid var(--surface-border);
 }
@@ -9376,7 +9381,7 @@ body.dark-mode .admin-offline-banner {
 }
 
 .insurance-alert-item .plate {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
     color: var(--text-primary);
@@ -9637,7 +9642,7 @@ body.dark-mode .admin-offline-banner {
 
 /* ── Stat Value (big number) ── */
 .hof-stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
     letter-spacing: -0.5px;
@@ -9904,7 +9909,7 @@ body.dark-mode .slider-sm {
     margin-bottom: 10px;
 }
 .op-revenue-card-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
@@ -9939,7 +9944,7 @@ body.dark-mode .slider-sm {
     border: 1px solid var(--surface-border);
 }
 .op-revenue-amount {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 26px;
     font-weight: 800;
     color: var(--text-primary);
@@ -10101,7 +10106,7 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
 }
 
 .hof-modal-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
@@ -10243,7 +10248,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-settings-inner h4 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
     color: var(--brand-red);
@@ -10274,7 +10279,7 @@ body.dark-mode .terminated-badge {
     background: var(--surface-bg);
     color: var(--text-primary);
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     transition: border-color var(--ease-fast);
 }
 
@@ -10396,7 +10401,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 26px;
     font-weight: 800;
     color: var(--text-primary);
@@ -10426,12 +10431,12 @@ body.dark-mode .terminated-badge {
 
 /* Custom map popup */
 .tracker-map-popup {
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     min-width: 180px;
 }
 
 .tracker-map-popup .popup-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     color: #1A1D24;
@@ -10475,7 +10480,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-vehicles-header h3 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -10495,7 +10500,7 @@ body.dark-mode .terminated-badge {
     background: var(--surface-card);
     color: var(--text-primary);
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     width: 200px;
     transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
 }
@@ -10513,7 +10518,7 @@ body.dark-mode .terminated-badge {
     background: var(--surface-card);
     color: var(--text-primary);
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     cursor: pointer;
 }
 
@@ -10591,7 +10596,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-card-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
@@ -10630,7 +10635,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-speed-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 36px;
     font-weight: 900;
     line-height: 1;
@@ -10681,7 +10686,7 @@ body.dark-mode .terminated-badge {
 .tracker-detail-row .detail-value {
     font-weight: 600;
     color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: 11px;
     text-align: right;
     word-break: break-word;
@@ -10748,7 +10753,7 @@ body.dark-mode .terminated-badge {
 }
 
 .tracker-empty-state h3 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
@@ -10799,7 +10804,7 @@ body.dark-mode .terminated-badge {
     padding: 2px 7px;
     border-radius: 20px;
     font-size: 10px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-weight: 700;
     letter-spacing: 0.5px;
     white-space: nowrap;
@@ -11796,7 +11801,7 @@ body.dark-mode .terminated-badge {
 }
 
 .card-type-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 18px;
     font-weight: 800;
     letter-spacing: 1px;
@@ -11807,7 +11812,7 @@ body.dark-mode .terminated-badge {
 
 /* Card Details */
 .card-bank-display {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -11855,7 +11860,7 @@ body.dark-mode .terminated-badge {
 }
 
 .card-val {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.5px;
