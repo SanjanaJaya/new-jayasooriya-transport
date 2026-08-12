@@ -50,6 +50,7 @@ function initSalarySection() {
         if (typeof adminUserId !== 'undefined' && adminUserId) {
             loadSalaryDrivers();
             loadSalaryHistory();
+            loadAllTimeSalaryWidget();
         } else {
             setTimeout(waitForAdminAndLoad, 150);
         }
@@ -923,8 +924,9 @@ async function generateSalarySlip() {
         // Show success message
         showToast(isEditMode ? 'Salary slip updated successfully!' : 'Salary slip generated successfully!', 'success');
 
-        // Reload salary history
+        // Reload salary history & all-time widget
         loadSalaryHistory();
+        loadAllTimeSalaryWidget();
 
         // Reset form
         cancelSalaryForm();
@@ -1140,6 +1142,54 @@ async function loadSalaryHistory() {
     }
 }
 
+// Load All-Time Staff Salary Widget Metrics
+async function loadAllTimeSalaryWidget() {
+    try {
+        const userId = getQueryUserId();
+        if (!userId) return;
+
+        const { data: salaryRecords, error } = await supabaseClient
+            .from('driver_salary')
+            .select('net_salary, gross_salary, total_advances, other_deductions, salary_data')
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        const records = salaryRecords || [];
+        const totalSlips = records.length;
+
+        const totalNetPaid = records.reduce((sum, r) => sum + (parseFloat(r.net_salary) || 0), 0);
+        const totalGrossPaid = records.reduce((sum, r) => sum + (parseFloat(r.gross_salary) || 0), 0);
+        const totalAdvances = records.reduce((sum, r) => sum + (parseFloat(r.total_advances) || 0), 0);
+        const totalDeductions = records.reduce((sum, r) => {
+            const other = parseFloat(r.other_deductions) || 0;
+            const dayOff = (r.salary_data && parseFloat(r.salary_data.dayOffDeductions)) ? parseFloat(r.salary_data.dayOffDeductions) : 0;
+            return sum + other + dayOff;
+        }, 0);
+
+        const avgNetSalary = totalSlips > 0 ? (totalNetPaid / totalSlips) : 0;
+
+        const formatLKR = val => 'LKR ' + val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const atTotalNetPaidEl = document.getElementById('atTotalNetPaid');
+        const atTotalGrossPaidEl = document.getElementById('atTotalGrossPaid');
+        const atTotalSlipsCountEl = document.getElementById('atTotalSlipsCount');
+        const atTotalAdvancesEl = document.getElementById('atTotalAdvances');
+        const atTotalDeductionsEl = document.getElementById('atTotalDeductions');
+        const atAvgNetSalaryEl = document.getElementById('atAvgNetSalary');
+
+        if (atTotalNetPaidEl) atTotalNetPaidEl.textContent = formatLKR(totalNetPaid);
+        if (atTotalGrossPaidEl) atTotalGrossPaidEl.textContent = formatLKR(totalGrossPaid);
+        if (atTotalSlipsCountEl) atTotalSlipsCountEl.textContent = totalSlips;
+        if (atTotalAdvancesEl) atTotalAdvancesEl.textContent = formatLKR(totalAdvances);
+        if (atTotalDeductionsEl) atTotalDeductionsEl.textContent = formatLKR(totalDeductions);
+        if (atAvgNetSalaryEl) atAvgNetSalaryEl.textContent = formatLKR(avgNetSalary);
+
+    } catch (error) {
+        console.error('Error loading All-Time Salary Widget:', error.message);
+    }
+}
+
 // Edit salary record (Updated to handle receipts & per-tip)
 async function editSalaryRecord(salaryId) {
     try {
@@ -1275,8 +1325,9 @@ async function deleteSalaryRecord(salaryId) {
         // Show success message
         showToast('Salary record deleted successfully!', 'success');
 
-        // Reload salary history
+        // Reload salary history & all-time widget
         loadSalaryHistory();
+        loadAllTimeSalaryWidget();
 
         // If the deleted record was being edited, reset the form
         const currentId = document.getElementById('salaryId').value;

@@ -683,6 +683,7 @@ function switchPage(page) {
     if (page === 'driver-salary') {
         if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
         if (typeof loadSalaryHistory === 'function') loadSalaryHistory();
+        if (typeof loadAllTimeSalaryWidget === 'function') loadAllTimeSalaryWidget();
     }
 
     if (page === 'hire-vehicles') loadHireVehicles();
@@ -9037,8 +9038,156 @@ async function updateChequeSummaryStrip(uid) {
         const amtNeedToPayAllTimeEl = document.getElementById('amtNeedToPayAllTime');
         if (amtNeedToPayMonthEl) amtNeedToPayMonthEl.textContent = formatLKR(needToPayMonthAmt);
         if (amtNeedToPayAllTimeEl) amtNeedToPayAllTimeEl.textContent = formatLKR(needToPayAllTimeAmt);
+
+        // Update Bank-by-Bank widgets
+        await renderBankByBankChequeWidgets(uid);
     } catch (err) {
         console.error('Error updating cheque summary strip:', err);
+    }
+}
+
+// ---- Bank-by-Bank Breakdown Widgets ----
+async function renderBankByBankChequeWidgets(uid) {
+    const grid = document.getElementById('bankByBankChequeGrid');
+    if (!grid) return;
+
+    try {
+        // Fetch books with leaves
+        const { data: books, error } = await supabaseClient
+            .from('cheque_books')
+            .select('*, cheque_leaves(*)')
+            .eq('user_id', uid);
+
+        if (error) throw error;
+
+        if (!books || books.length === 0) {
+            grid.innerHTML = '<div class="cheque-no-books" style="grid-column: 1 / -1;">No bank records available to display.</div>';
+            return;
+        }
+
+        // Group by bank_name
+        const bankMap = {};
+        books.forEach(book => {
+            const bank = book.bank_name || 'Other Bank';
+            if (!bankMap[bank]) {
+                bankMap[bank] = {
+                    bankName: bank,
+                    bookCount: 0,
+                    totalLeaves: 0,
+                    notIssued: 0,
+                    issued: 0,
+                    paid: 0,
+                    stopped: 0,
+                    returned: 0,
+                    paidAmount: 0,
+                    issuedAmount: 0,
+                    returnedAmount: 0,
+                };
+            }
+            bankMap[bank].bookCount++;
+            const leaves = book.cheque_leaves || [];
+            leaves.forEach(leaf => {
+                bankMap[bank].totalLeaves++;
+                const status = leaf.status || 'not_issued';
+                const amt = parseFloat(leaf.amount) || 0;
+
+                if (status === 'paid') {
+                    bankMap[bank].paid++;
+                    bankMap[bank].paidAmount += amt;
+                } else if (status === 'issued') {
+                    bankMap[bank].issued++;
+                    bankMap[bank].issuedAmount += amt;
+                } else if (status === 'stopped') {
+                    bankMap[bank].stopped++;
+                } else if (status === 'returned') {
+                    bankMap[bank].returned++;
+                    bankMap[bank].returnedAmount += amt;
+                } else {
+                    bankMap[bank].notIssued++;
+                }
+            });
+        });
+
+        const bankList = Object.values(bankMap);
+        grid.innerHTML = '';
+
+        const formatLKR = val => 'LKR ' + val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        bankList.forEach(b => {
+            const logoUrl = BANK_LOGO_MAP[b.bankName] || null;
+            const emoji = BANK_EMOJI_MAP[b.bankName] || '🏦';
+
+            const iconHtml = logoUrl
+                ? `<div class="bank-cheque-logo-wrap"><img src="${logoUrl}" alt="${b.bankName} logo" class="bank-cheque-logo-img"></div>`
+                : `<div class="bank-cheque-logo-wrap" style="font-size:24px;">${emoji}</div>`;
+
+            // Progress bar percentages
+            const tot = b.totalLeaves || 1;
+            const pctPaid = Math.round((b.paid / tot) * 100);
+            const pctIssued = Math.round((b.issued / tot) * 100);
+            const pctReturned = Math.round(((b.returned + b.stopped) / tot) * 100);
+            const pctNotIssued = Math.max(0, 100 - pctPaid - pctIssued - pctReturned);
+
+            const card = document.createElement('div');
+            card.className = 'bank-cheque-card';
+            card.innerHTML = `
+                <div class="bank-cheque-card-header">
+                    ${iconHtml}
+                    <div>
+                        <div class="bank-cheque-name">${b.bankName}</div>
+                        <div class="bank-cheque-sub">${b.bookCount} Book${b.bookCount > 1 ? 's' : ''} &nbsp;·&nbsp; ${b.totalLeaves} Total Leaves</div>
+                    </div>
+                </div>
+
+                <div class="bank-cheque-stats-row">
+                    <div class="bank-stat-item">
+                        <div class="bank-stat-val" style="color:var(--text-muted);">${b.notIssued}</div>
+                        <div class="bank-stat-lbl">Remaining</div>
+                    </div>
+                    <div class="bank-stat-item">
+                        <div class="bank-stat-val" style="color:var(--amber);">${b.issued}</div>
+                        <div class="bank-stat-lbl">Issued</div>
+                    </div>
+                    <div class="bank-stat-item">
+                        <div class="bank-stat-val" style="color:var(--green);">${b.paid}</div>
+                        <div class="bank-stat-lbl">Paid</div>
+                    </div>
+                    <div class="bank-stat-item">
+                        <div class="bank-stat-val" style="color:var(--brand-red);">${b.returned + b.stopped}</div>
+                        <div class="bank-stat-lbl">Returned</div>
+                    </div>
+                </div>
+
+                <div class="bank-cheque-balances">
+                    <div class="bank-bal-row">
+                        <span class="bank-bal-lbl">🟢 Paid Balance:</span>
+                        <span class="bank-bal-val val-paid">${formatLKR(b.paidAmount)}</span>
+                    </div>
+                    <div class="bank-bal-row">
+                        <span class="bank-bal-lbl">⏳ Remaining (Need to Pay):</span>
+                        <span class="bank-bal-val val-issued">${formatLKR(b.issuedAmount)}</span>
+                    </div>
+                    ${b.returnedAmount > 0 ? `
+                    <div class="bank-bal-row">
+                        <span class="bank-bal-lbl">🔴 Returned Balance:</span>
+                        <span class="bank-bal-val val-returned">${formatLKR(b.returnedAmount)}</span>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div class="bank-cheque-bar" title="Paid: ${pctPaid}%, Issued: ${pctIssued}%, Remaining: ${pctNotIssued}%, Returned: ${pctReturned}%">
+                    <div class="bank-bar-seg bank-bar-paid" style="width:${pctPaid}%;"></div>
+                    <div class="bank-bar-seg bank-bar-issued" style="width:${pctIssued}%;"></div>
+                    <div class="bank-bar-seg bank-bar-notissued" style="width:${pctNotIssued}%;"></div>
+                    <div class="bank-bar-seg bank-bar-returned" style="width:${pctReturned}%;"></div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error('Error rendering bank-by-bank cheque widgets:', err);
+        grid.innerHTML = '<div class="cheque-no-books" style="color:var(--brand-red);grid-column:1/-1;">Error loading bank breakdown.</div>';
     }
 }
 

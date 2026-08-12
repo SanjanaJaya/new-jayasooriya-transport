@@ -4046,6 +4046,217 @@ body.dark-mode .cheque-edit-banner {
 body.dark-mode .cheque-strip-paid .cheque-strip-value   { color: #2ecc71; }
 body.dark-mode .cheque-strip-stopped .cheque-strip-value { color: #5dade2; }
 
+/* ── Bank-by-Bank Cheque Widgets ── */
+.bank-cheque-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+    margin-top: 6px;
+}
+
+.bank-cheque-card {
+    background: var(--surface-raised);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: transform 0.3s var(--ease-spring-soft), box-shadow var(--ease-base), border-color var(--ease-base);
+    animation: cardPop 0.65s var(--ease-spring-soft) both;
+    position: relative;
+    overflow: hidden;
+}
+
+.bank-cheque-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--brand-red-light);
+}
+
+.bank-cheque-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--surface-border);
+    padding-bottom: 12px;
+}
+
+.bank-cheque-logo-wrap {
+    width: 48px;
+    height: 48px;
+    background: #ffffff;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.bank-cheque-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.bank-cheque-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.bank-cheque-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.bank-cheque-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    text-align: center;
+    background: var(--surface-bg);
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.bank-stat-item .bank-stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.bank-stat-item .bank-stat-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 3px;
+}
+
+.bank-cheque-balances {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bank-bal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.bank-bal-lbl {
+    color: var(--text-muted);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bank-bal-val {
+    font-weight: 700;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+}
+
+.bank-bal-val.val-paid { color: var(--green); }
+.bank-bal-val.val-issued { color: var(--amber); }
+.bank-bal-val.val-returned { color: var(--brand-red); }
+
+.bank-cheque-bar {
+    height: 8px;
+    width: 100%;
+    background: var(--surface-border);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+}
+
+.bank-bar-seg {
+    height: 100%;
+    transition: width 0.6s ease;
+}
+
+.bank-bar-paid { background: var(--green); }
+.bank-bar-issued { background: var(--amber); }
+.bank-bar-notissued { background: var(--text-muted); }
+.bank-bar-returned { background: var(--brand-red); }
+
+/* ── All-Time Staff Salary Widget ── */
+.salary-alltime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.salary-at-card {
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s var(--ease-spring-soft), box-shadow var(--ease-base), border-color var(--ease-base);
+    animation: cardPop 0.75s var(--ease-spring-soft) both;
+}
+
+.salary-at-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-md);
+}
+
+.salary-at-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.salary-at-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.salary-at-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.salary-at-card.card-net-paid { border-color: rgba(39, 174, 96, 0.35); }
+.salary-at-card.card-net-paid .salary-at-value { color: #27AE60; }
+
+.salary-at-card.card-gross-paid { border-color: rgba(0, 114, 206, 0.35); }
+.salary-at-card.card-gross-paid .salary-at-value { color: var(--blue); }
+
+.salary-at-card.card-slips-count { border-color: rgba(123, 53, 196, 0.35); }
+.salary-at-card.card-slips-count .salary-at-value { color: var(--purple); }
+
+.salary-at-card.card-advances-paid { border-color: rgba(224, 123, 0, 0.35); }
+.salary-at-card.card-advances-paid .salary-at-value { color: var(--amber); }
+
+.salary-at-card.card-deductions-paid { border-color: rgba(209, 0, 31, 0.35); }
+.salary-at-card.card-deductions-paid .salary-at-value { color: var(--brand-red); }
+
+.salary-at-card.card-avg-salary { border-color: rgba(240, 165, 0, 0.35); }
+.salary-at-card.card-avg-salary .salary-at-value { color: var(--brand-gold); }
+
 /* ── Responsive (mobile) ── */
 @media (max-width: 640px) {
     .cheque-panel {

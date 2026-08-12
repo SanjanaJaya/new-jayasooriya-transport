@@ -898,6 +898,20 @@
                         </div>
                     </div>
 
+                    <!-- ── BANK BY BANK BREAKDOWN SECTION ── -->
+                    <div class="cheque-panel" id="bankByBankChequeSection" style="margin-top: 24px;">
+                        <div class="cheque-panel-header">
+                            <span class="cheque-panel-icon">🏦</span>
+                            <h3 class="cheque-panel-title">Bank-by-Bank Cheque Status & Balances</h3>
+                            <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Live Bank Breakdown</span>
+                        </div>
+                        <div id="bankByBankChequeGrid" class="bank-cheque-grid">
+                            <div style="text-align: center; color: var(--text-muted); padding: 20px; grid-column: 1 / -1;">
+                                Loading bank-by-bank status...
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ── ADD CHEQUE BOOK ── -->
                     <div class="cheque-panel">
                         <div class="cheque-panel-header">
@@ -1510,6 +1524,60 @@
                 <div id="driver-salary" class="page">
                     <div class="page-header">
                         <h3>💼 Staff Salary Calculator & Salary Slips</h3>
+                    </div>
+
+                    <!-- ── ALL TIME SALARIES PAID WIDGET ── -->
+                    <div class="performance-section" id="allTimeSalaryWidgetSection" style="margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                            <h3 style="margin: 0; font-size: 18px; font-weight: 700;">💼 All-Time Salaries Overview</h3>
+                            <span style="font-size: 12px; background: rgba(39, 174, 96, 0.12); color: #27AE60; padding: 4px 12px; border-radius: 20px; font-weight: 700;">
+                                📊 Cumulative Salary Stats
+                            </span>
+                        </div>
+                        <div class="salary-alltime-grid">
+                            <div class="salary-at-card card-net-paid">
+                                <div class="salary-at-icon">💰</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Total Net Salaries Paid (All Time)</div>
+                                    <div class="salary-at-value" id="atTotalNetPaid">LKR 0.00</div>
+                                </div>
+                            </div>
+                            <div class="salary-at-card card-gross-paid">
+                                <div class="salary-at-icon">📈</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Total Gross Salaries (All Time)</div>
+                                    <div class="salary-at-value" id="atTotalGrossPaid">LKR 0.00</div>
+                                </div>
+                            </div>
+                            <div class="salary-at-card card-slips-count">
+                                <div class="salary-at-icon">🧾</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Total Slips Issued</div>
+                                    <div class="salary-at-value" id="atTotalSlipsCount">0</div>
+                                </div>
+                            </div>
+                            <div class="salary-at-card card-advances-paid">
+                                <div class="salary-at-icon">💵</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Total Advances Processed</div>
+                                    <div class="salary-at-value" id="atTotalAdvances">LKR 0.00</div>
+                                </div>
+                            </div>
+                            <div class="salary-at-card card-deductions-paid">
+                                <div class="salary-at-icon">⛔</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Total Deductions Processed</div>
+                                    <div class="salary-at-value" id="atTotalDeductions">LKR 0.00</div>
+                                </div>
+                            </div>
+                            <div class="salary-at-card card-avg-salary">
+                                <div class="salary-at-icon">📊</div>
+                                <div class="salary-at-content">
+                                    <div class="salary-at-label">Avg Net Salary per Slip</div>
+                                    <div class="salary-at-value" id="atAvgNetSalary">LKR 0.00</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="dashboard-controls">
