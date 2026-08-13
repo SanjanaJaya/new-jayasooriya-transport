@@ -49,6 +49,30 @@ const OPERATION_CONFIG = {
         logoUrl: 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg',
         badgeClass: 'op-icl',
         color: '#8E44AD'
+    },
+    kti: {
+        name: 'KTI',
+        logoUrl: 'https://i.postimg.cc/BbrpFYdb/kti.jpg',
+        badgeClass: 'op-kti',
+        color: '#0072CE'
+    },
+    maggi: {
+        name: 'Maggi',
+        logoUrl: 'https://i.postimg.cc/kX83pkM8/maggi.png',
+        badgeClass: 'op-maggi',
+        color: '#E30613'
+    },
+    spectra: {
+        name: 'Spectra',
+        logoUrl: 'https://i.postimg.cc/mgsff8hn/spectra.jpg',
+        badgeClass: 'op-spectra',
+        color: '#00796B'
+    },
+    ansell: {
+        name: 'Ansell',
+        logoUrl: 'https://i.postimg.cc/SKgw94Vb/ansell.png',
+        badgeClass: 'op-ansell',
+        color: '#F57C00'
     }
 };
 
@@ -68,6 +92,10 @@ function getOperationConfig(opName) {
     if (lower.includes('keells')) return OPERATION_CONFIG.keells;
     if (lower.includes('space')) return OPERATION_CONFIG.spacelogistics;
     if (lower.includes('icl')) return OPERATION_CONFIG.icl;
+    if (lower.includes('kti')) return OPERATION_CONFIG.kti;
+    if (lower.includes('maggi')) return OPERATION_CONFIG.maggi;
+    if (lower.includes('spectra')) return OPERATION_CONFIG.spectra;
+    if (lower.includes('ansell')) return OPERATION_CONFIG.ansell;
 
     // Fallback for any other custom operation
     return {

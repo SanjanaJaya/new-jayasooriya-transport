@@ -2616,6 +2616,34 @@ async function editOtherOperationHire(id) {
                 customInput.required = false;
                 customInput.value = '';
             }
+        } else if (opLower.includes('kti')) {
+            if (nameSelect) nameSelect.value = 'KTI Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opLower.includes('maggi')) {
+            if (nameSelect) nameSelect.value = 'Maggi Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opLower.includes('spectra')) {
+            if (nameSelect) nameSelect.value = 'Spectra Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opLower.includes('ansell')) {
+            if (nameSelect) nameSelect.value = 'Ansell Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
         } else if (opName !== '') {
             if (nameSelect) nameSelect.value = 'other';
             if (customInput) {
@@ -3488,14 +3516,31 @@ async function loadDashboardData(monthValue, cachedData = null) {
 
         let keviltonOtherRev = 0;
         let keviltonOtherCount = 0;
+        let keviltonOtherKm = 0;
         let pelwatteRev = 0;
         let pelwatteCount = 0;
+        let pelwatteKm = 0;
         let keellsRev = 0;
         let keellsCount = 0;
+        let keellsKm = 0;
         let spaceLogisticsRev = 0;
         let spaceLogisticsCount = 0;
+        let spaceLogisticsKm = 0;
         let iclRev = 0;
         let iclCount = 0;
+        let iclKm = 0;
+        let ktiRev = 0;
+        let ktiCount = 0;
+        let ktiKm = 0;
+        let maggiRev = 0;
+        let maggiCount = 0;
+        let maggiKm = 0;
+        let spectraRev = 0;
+        let spectraCount = 0;
+        let spectraKm = 0;
+        let ansellRev = 0;
+        let ansellCount = 0;
+        let ansellKm = 0;
 
         const customOpsMap = {};
 
@@ -3503,34 +3548,62 @@ async function loadDashboardData(monthValue, cachedData = null) {
             const opName = (r.operation_name || '').trim();
             const lower = opName.toLowerCase().replace(/[\s-]/g, '');
             const amount = r.hire_amount || 0;
+            const dist = r.distance || 0;
 
             if (lower.includes('kevilton')) {
                 keviltonOtherRev += amount;
                 keviltonOtherCount++;
+                keviltonOtherKm += dist;
             } else if (lower.includes('pelwatte')) {
                 pelwatteRev += amount;
                 pelwatteCount++;
+                pelwatteKm += dist;
             } else if (lower.includes('keells')) {
                 keellsRev += amount;
                 keellsCount++;
+                keellsKm += dist;
             } else if (lower.includes('space') || lower.includes('spacelogistics')) {
                 spaceLogisticsRev += amount;
                 spaceLogisticsCount++;
+                spaceLogisticsKm += dist;
             } else if (lower.includes('icl')) {
                 iclRev += amount;
                 iclCount++;
+                iclKm += dist;
+            } else if (lower.includes('kti')) {
+                ktiRev += amount;
+                ktiCount++;
+                ktiKm += dist;
+            } else if (lower.includes('maggi')) {
+                maggiRev += amount;
+                maggiCount++;
+                maggiKm += dist;
+            } else if (lower.includes('spectra')) {
+                spectraRev += amount;
+                spectraCount++;
+                spectraKm += dist;
+            } else if (lower.includes('ansell')) {
+                ansellRev += amount;
+                ansellCount++;
+                ansellKm += dist;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
-                    customOpsMap[displayName] = { amount: 0, count: 0 };
+                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0 };
                 }
                 customOpsMap[displayName].amount += amount;
                 customOpsMap[displayName].count++;
+                customOpsMap[displayName].km += dist;
             }
         });
 
         const keviltonTotalRev = hireToPayRev + commitmentNetRev + keviltonOtherRev;
         const keviltonTotalCount = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + keviltonOtherCount;
+
+        // Calculate KM for kevilton from hire-to-pay + commitment + other ops
+        const keviltonHireKm = hireRecords?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
+        const keviltonCommitKm = commitmentRecords?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
+        const keviltonTotalKm = keviltonHireKm + keviltonCommitKm + keviltonOtherKm;
 
         const opsData = [
             {
@@ -3540,6 +3613,7 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'kevilton',
                 amount: keviltonTotalRev,
                 count: keviltonTotalCount,
+                km: keviltonTotalKm,
                 subtitle: 'Hire-to-Pay + Commitment'
             },
             {
@@ -3549,6 +3623,7 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'pelwatte',
                 amount: pelwatteRev,
                 count: pelwatteCount,
+                km: pelwatteKm,
                 subtitle: 'Other Operations'
             },
             {
@@ -3558,6 +3633,7 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'keells',
                 amount: keellsRev,
                 count: keellsCount,
+                km: keellsKm,
                 subtitle: 'Other Operations'
             },
             {
@@ -3567,6 +3643,7 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'space-logistics',
                 amount: spaceLogisticsRev,
                 count: spaceLogisticsCount,
+                km: spaceLogisticsKm,
                 subtitle: 'Other Operations'
             },
             {
@@ -3576,6 +3653,47 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'icl',
                 amount: iclRev,
                 count: iclCount,
+                km: iclKm,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'KTI Operation',
+                logoUrl: 'https://i.postimg.cc/BbrpFYdb/kti.jpg',
+                icon: '🏭',
+                accent: 'kti',
+                amount: ktiRev,
+                count: ktiCount,
+                km: ktiKm,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'Maggi Operation',
+                logoUrl: 'https://i.postimg.cc/kX83pkM8/maggi.png',
+                icon: '🍜',
+                accent: 'maggi',
+                amount: maggiRev,
+                count: maggiCount,
+                km: maggiKm,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'Spectra Operation',
+                logoUrl: 'https://i.postimg.cc/mgsff8hn/spectra.jpg',
+                icon: '🔬',
+                accent: 'spectra',
+                amount: spectraRev,
+                count: spectraCount,
+                km: spectraKm,
+                subtitle: 'Other Operations'
+            },
+            {
+                name: 'Ansell Operation',
+                logoUrl: 'https://i.postimg.cc/SKgw94Vb/ansell.png',
+                icon: '🧤',
+                accent: 'ansell',
+                amount: ansellRev,
+                count: ansellCount,
+                km: ansellKm,
                 subtitle: 'Other Operations'
             }
         ];
@@ -3587,9 +3705,13 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 accent: 'other',
                 amount: customOpsMap[opName].amount,
                 count: customOpsMap[opName].count,
+                km: customOpsMap[opName].km,
                 subtitle: 'Custom Operation'
             });
         });
+
+        // Sort operations by revenue (descending)
+        opsData.sort((a, b) => b.amount - a.amount);
 
         renderOperationRevenueWidget(opsData, totalRevenue);
 
@@ -3615,6 +3737,7 @@ function renderOperationRevenueWidget(opsData, grandTotalRevenue) {
     opsData.forEach(op => {
         const pct = grandTotalRevenue > 0 ? ((op.amount / grandTotalRevenue) * 100).toFixed(1) : '0.0';
         const formattedAmount = op.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedKm = Math.round(op.km || 0).toLocaleString('en-US');
 
         const logoHTML = op.logoUrl
             ? `<img src="${op.logoUrl}" class="op-revenue-logo" alt="${op.name}">`
@@ -3629,7 +3752,7 @@ function renderOperationRevenueWidget(opsData, grandTotalRevenue) {
                 <div class="op-revenue-amount">LKR ${formattedAmount}</div>
                 <div class="op-revenue-meta">
                     <span>${op.count} Hires / Jobs</span>
-                    <span>${op.subtitle || ''}</span>
+                    <span>🛣️ ${formattedKm} km</span>
                 </div>
                 <div class="op-revenue-progress-track">
                     <div class="op-revenue-progress-bar" style="width: ${Math.min(100, Math.max(0, pct))}%;"></div>

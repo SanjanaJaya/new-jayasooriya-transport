@@ -2474,6 +2474,30 @@ body.light-mode .avatar-container::after {
     color: #AB47BC;
 }
 
+.driver-op-badge.op-kti {
+    background: rgba(0, 114, 206, 0.18);
+    border: 1px solid rgba(0, 114, 206, 0.45);
+    color: #42A5F5;
+}
+
+.driver-op-badge.op-maggi {
+    background: rgba(227, 6, 19, 0.18);
+    border: 1px solid rgba(227, 6, 19, 0.45);
+    color: #FF5252;
+}
+
+.driver-op-badge.op-spectra {
+    background: rgba(0, 121, 107, 0.18);
+    border: 1px solid rgba(0, 121, 107, 0.45);
+    color: #26A69A;
+}
+
+.driver-op-badge.op-ansell {
+    background: rgba(245, 124, 0, 0.18);
+    border: 1px solid rgba(245, 124, 0, 0.45);
+    color: #FFA726;
+}
+
 .driver-op-badge.op-generic {
     background: rgba(127, 140, 141, 0.18);
     border: 1px solid rgba(127, 140, 141, 0.45);
@@ -2536,6 +2560,22 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-icl {
     background: linear-gradient(135deg, #8E44AD, #6C3483);
+}
+
+.race-badge-op.op-kti {
+    background: linear-gradient(135deg, #0072CE, #004A8F);
+}
+
+.race-badge-op.op-maggi {
+    background: linear-gradient(135deg, #E30613, #B71C1C);
+}
+
+.race-badge-op.op-spectra {
+    background: linear-gradient(135deg, #00796B, #004D40);
+}
+
+.race-badge-op.op-ansell {
+    background: linear-gradient(135deg, #F57C00, #E65100);
 }
 
 .race-badge-op.op-generic {
