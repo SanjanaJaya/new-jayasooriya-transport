@@ -73,6 +73,12 @@ const OPERATION_CONFIG = {
         logoUrl: 'https://i.postimg.cc/SKgw94Vb/ansell.png',
         badgeClass: 'op-ansell',
         color: '#F57C00'
+    },
+    sitrek: {
+        name: 'Sitrek',
+        logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png',
+        badgeClass: 'op-sitrek',
+        color: '#2980B9'
     }
 };
 
@@ -96,6 +102,7 @@ function getOperationConfig(opName) {
     if (lower.includes('maggi')) return OPERATION_CONFIG.maggi;
     if (lower.includes('spectra')) return OPERATION_CONFIG.spectra;
     if (lower.includes('ansell')) return OPERATION_CONFIG.ansell;
+    if (lower.includes('sitrek')) return OPERATION_CONFIG.sitrek;
 
     // Fallback for any other custom operation
     return {

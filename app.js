@@ -2644,6 +2644,13 @@ async function editOtherOperationHire(id) {
                 customInput.required = false;
                 customInput.value = '';
             }
+        } else if (opLower.includes('sitrek')) {
+            if (nameSelect) nameSelect.value = 'Sitrek Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
         } else if (opName !== '') {
             if (nameSelect) nameSelect.value = 'other';
             if (customInput) {
@@ -3541,6 +3548,9 @@ async function loadDashboardData(monthValue, cachedData = null) {
         let ansellRev = 0;
         let ansellCount = 0;
         let ansellKm = 0;
+        let sitrekRev = 0;
+        let sitrekCount = 0;
+        let sitrekKm = 0;
 
         const customOpsMap = {};
 
@@ -3586,6 +3596,10 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 ansellRev += amount;
                 ansellCount++;
                 ansellKm += dist;
+            } else if (lower.includes('sitrek')) {
+                sitrekRev += amount;
+                sitrekCount++;
+                sitrekKm += dist;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
@@ -3695,6 +3709,16 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 count: ansellCount,
                 km: ansellKm,
                 subtitle: 'Other Operations'
+            },
+            {
+                name: 'Sitrek Operation',
+                logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png',
+                icon: '🛡️',
+                accent: 'sitrek',
+                amount: sitrekRev,
+                count: sitrekCount,
+                km: sitrekKm,
+                subtitle: 'Other Operations'
             }
         ];
 
@@ -3710,10 +3734,13 @@ async function loadDashboardData(monthValue, cachedData = null) {
             });
         });
 
-        // Sort operations by revenue (descending)
-        opsData.sort((a, b) => b.amount - a.amount);
+        // Filter out operations with 0 hires/jobs for the current month
+        const activeOpsData = opsData.filter(op => op.count > 0 || op.amount > 0);
 
-        renderOperationRevenueWidget(opsData, totalRevenue);
+        // Sort active operations by revenue (descending)
+        activeOpsData.sort((a, b) => b.amount - a.amount);
+
+        renderOperationRevenueWidget(activeOpsData, totalRevenue);
 
         // Trigger Charts
         if (typeof loadVehicleRevenueChart === 'function') {
@@ -3809,63 +3836,94 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
             commitmentVehicles = rCommitmentVehicles;
         }
 
-        // Get hire vehicles with at least one record this month
-        const vehiclesWithData = [];
+        const vehicleModelMap = {};
+        const vehicleOwnershipMap = {};
 
-        // Group hire-to-pay records by vehicle_id
+        hireVehicles?.forEach(v => {
+            const base = extractBaseVehicleName(v.lorry_number);
+            if (v.vehicle_model && v.vehicle_model !== '-') {
+                vehicleModelMap[base] = v.vehicle_model;
+            }
+            if (v.ownership) {
+                vehicleOwnershipMap[base] = v.ownership === 'company' ? 'Company' : 'Rented';
+            }
+        });
+
+        commitmentVehicles?.forEach(v => {
+            const base = extractBaseVehicleName(v.vehicle_number);
+            if (v.vehicle_model && v.vehicle_model !== '-') {
+                vehicleModelMap[base] = v.vehicle_model;
+            }
+            if (v.ownership) {
+                vehicleOwnershipMap[base] = v.ownership === 'company' ? 'Company' : 'Rented';
+            }
+        });
+
+        const mergedVehiclesMap = {};
+
+        function getOrCreateVehicle(baseName) {
+            if (!mergedVehiclesMap[baseName]) {
+                mergedVehiclesMap[baseName] = {
+                    number: baseName,
+                    model: vehicleModelMap[baseName] || '-',
+                    ownership: vehicleOwnershipMap[baseName] || 'Company',
+                    totalKm: 0,
+                    totalRevenue: 0,
+                    totalFuel: 0,
+                    totalFuelLitres: 0,
+                    recordsCount: 0
+                };
+            }
+            return mergedVehiclesMap[baseName];
+        }
+
+        // 1. Group hire-to-pay records by vehicle_id
         const hireRecordsByVehicle = {};
         allHireRecords?.forEach(r => {
             if (!hireRecordsByVehicle[r.vehicle_id]) hireRecordsByVehicle[r.vehicle_id] = [];
             hireRecordsByVehicle[r.vehicle_id].push(r);
         });
 
-        // Check hire-to-pay vehicles
         for (const vehicle of hireVehicles || []) {
             const records = hireRecordsByVehicle[vehicle.id] || [];
-
-            // Only include if there's at least one hire record
             if (records.length > 0) {
+                const baseName = extractBaseVehicleName(vehicle.lorry_number);
+                const vEntry = getOrCreateVehicle(baseName);
+                if (vehicle.vehicle_model && vehicle.vehicle_model !== '-') {
+                    vEntry.model = vehicle.vehicle_model;
+                }
+                if (vehicle.ownership) {
+                    vEntry.ownership = vehicle.ownership === 'company' ? 'Company' : 'Rented';
+                }
+
                 const totalKm = records.reduce((sum, r) => sum + r.distance, 0);
                 const totalRevenue = records.reduce((sum, r) => sum + r.hire_amount, 0);
                 const totalFuelRaw = records.reduce((sum, r) => sum + r.fuel_cost, 0);
                 // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
                 const totalFuel = totalFuelRaw * 0.82;
                 const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
-                const profit = totalRevenue - totalFuel;
-                const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
-                vehiclesWithData.push({
-                    type: 'Hire-to-Pay',
-                    number: extractBaseVehicleName(vehicle.lorry_number),
-                    model: vehicle.vehicle_model || '-',
-                    ownership: ownershipLabel,
-                    totalKm,
-                    totalRevenue,
-                    totalFuel,
-                    totalFuelLitres,
-                    profit,
-                    recordsCount: records.length,
-                    kmLimit: null,
-                    commitmentKmPct: null
-                });
+                vEntry.totalKm += totalKm;
+                vEntry.totalRevenue += totalRevenue;
+                vEntry.totalFuel += totalFuel;
+                vEntry.totalFuelLitres += totalFuelLitres;
+                vEntry.recordsCount += records.length;
             }
         }
 
-        // Group commitment records by vehicle_id
+        // 2. Group commitment records by vehicle_id
         const commitRecordsByVehicle = {};
         allCommitmentRecordsMonth?.forEach(r => {
             if (!commitRecordsByVehicle[r.vehicle_id]) commitRecordsByVehicle[r.vehicle_id] = [];
             commitRecordsByVehicle[r.vehicle_id].push(r);
         });
 
-        // Group commitment day offs by vehicle_id
         const dayOffsByVehicle = {};
         allDayOffs?.forEach(d => {
             if (!dayOffsByVehicle[d.vehicle_id]) dayOffsByVehicle[d.vehicle_id] = [];
             dayOffsByVehicle[d.vehicle_id].push(d);
         });
 
-        // Check commitment vehicles with hires this month
         const commitmentVehicleIdsWithHires = new Set(allCommitmentRecordsMonth?.map(r => r.vehicle_id));
         const filteredCommitmentVehicles = commitmentVehicles?.filter(v => commitmentVehicleIdsWithHires.has(v.id)) || [];
 
@@ -3873,102 +3931,66 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
             const records = commitRecordsByVehicle[vehicle.id] || [];
             const dayOffs = dayOffsByVehicle[vehicle.id] || [];
 
-            // Only include if there's at least one commitment record
             if (records.length > 0) {
+                const baseName = extractBaseVehicleName(vehicle.vehicle_number);
+                const vEntry = getOrCreateVehicle(baseName);
+                if (vehicle.vehicle_model && vehicle.vehicle_model !== '-') {
+                    vEntry.model = vehicle.vehicle_model;
+                }
+                if (vehicle.ownership) {
+                    vEntry.ownership = vehicle.ownership === 'company' ? 'Company' : 'Rented';
+                }
+
                 const totalKm = records.reduce((sum, r) => sum + r.distance, 0) || 0;
-                const basePay = vehicle.fixed_monthly_payment;
+                const basePay = vehicle.fixed_monthly_payment || 0;
                 const dayOffDeductions = dayOffs.reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
-                // FIXED: Calculate extra km charge at vehicle+month level (not summing per-hire stored values)
                 const exceedingKm = Math.max(0, totalKm - (vehicle.km_limit_per_month || 0));
                 const extraKmCharges = exceedingKm * (vehicle.extra_km_charge || 0);
                 const totalRevenue = basePay - dayOffDeductions + extraKmCharges;
                 const totalFuelRaw = records.reduce((sum, r) => sum + r.fuel_cost, 0) || 0;
-                // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
                 const totalFuel = totalFuelRaw * 0.82;
                 const totalFuelLitres = records.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
-                const profit = totalRevenue - totalFuel;
-                const ownershipLabel = vehicle.ownership === 'company' ? '🏢 Company' : '🚛 Rented';
 
-                const kmLimit = vehicle.km_limit_per_month || 0;
-                const commitmentKmPct = kmLimit > 0 ? Math.min((totalKm / kmLimit) * 100, 100) : null;
-
-                const normalizedNum = extractBaseVehicleName(vehicle.vehicle_number);
-                vehiclesWithData.push({
-                    type: 'Commitment',
-                    number: normalizedNum,
-                    model: vehicle.vehicle_model || '-',
-                    ownership: ownershipLabel,
-                    totalKm,
-                    totalRevenue,
-                    totalFuel,
-                    totalFuelLitres,
-                    profit,
-                    recordsCount: records.length,
-                    kmLimit,
-                    commitmentKmPct
-                });
+                vEntry.totalKm += totalKm;
+                vEntry.totalRevenue += totalRevenue;
+                vEntry.totalFuel += totalFuel;
+                vEntry.totalFuelLitres += totalFuelLitres;
+                vEntry.recordsCount += records.length;
             }
         }
 
-        // 3. Process Other Operation Hires and merge with existing data if base name matches
+        // 3. Process Other Operation Hires
         if (otherOpRecords && otherOpRecords.length > 0) {
-            const otherOpGrouped = {};
             otherOpRecords.forEach(r => {
-                const base = extractBaseVehicleName(r.base_lorry_number);
-                if (!otherOpGrouped[base]) {
-                    otherOpGrouped[base] = {
-                        totalKm: 0,
-                        totalRevenue: 0,
-                        totalFuel: 0,
-                        totalFuelLitres: 0,
-                        recordsCount: 0
-                    };
-                }
-                otherOpGrouped[base].totalKm += r.distance || 0;
-                otherOpGrouped[base].totalRevenue += r.hire_amount || 0;
-                // Deduct 18% VAT from fuel cost (net cost = full cost × 0.82)
-                otherOpGrouped[base].totalFuel += (r.fuel_cost || 0) * 0.82;
-                otherOpGrouped[base].totalFuelLitres += r.fuel_litres || 0;
-                otherOpGrouped[base].recordsCount++;
-            });
+                const baseName = extractBaseVehicleName(r.base_lorry_number);
+                const vEntry = getOrCreateVehicle(baseName);
 
-            for (const [baseName, stats] of Object.entries(otherOpGrouped)) {
-                vehiclesWithData.push({
-                    type: 'Other Operation',
-                    number: baseName,
-                    model: '-',
-                    ownership: '🏢 Company', // Defaulting to company for other ops
-                    totalKm: stats.totalKm,
-                    totalRevenue: stats.totalRevenue,
-                    totalFuel: stats.totalFuel,
-                    totalFuelLitres: stats.totalFuelLitres,
-                    profit: stats.totalRevenue - stats.totalFuel,
-                    recordsCount: stats.recordsCount,
-                    kmLimit: null,
-                    commitmentKmPct: null
-                });
-            }
+                vEntry.totalKm += r.distance || 0;
+                vEntry.totalRevenue += r.hire_amount || 0;
+                vEntry.totalFuel += (r.fuel_cost || 0) * 0.82;
+                vEntry.totalFuelLitres += r.fuel_litres || 0;
+                vEntry.recordsCount += 1;
+            });
         }
 
-        // Sort by type (Commitment, then Hire-to-Pay, then Other Operation) and then by profit (highest first)
-        const typeOrder = {
-            'Commitment': 1,
-            'Hire-to-Pay': 2,
-            'Other Operation': 3
-        };
-        vehiclesWithData.sort((a, b) => {
-            const orderA = typeOrder[a.type] || 99;
-            const orderB = typeOrder[b.type] || 99;
-            if (orderA !== orderB) {
-                return orderA - orderB;
+        // Calculate profit & populate model/ownership from map for merged list
+        const vehiclesList = Object.values(mergedVehiclesMap);
+        vehiclesList.forEach(v => {
+            v.profit = v.totalRevenue - v.totalFuel;
+            if ((!v.model || v.model === '-') && vehicleModelMap[v.number]) {
+                v.model = vehicleModelMap[v.number];
             }
-            return b.profit - a.profit;
+            if (vehicleOwnershipMap[v.number]) {
+                v.ownership = vehicleOwnershipMap[v.number];
+            }
         });
 
-        // Generate HTML with separate sections per vehicle type
+        // Sort merged vehicles by profit (descending)
+        vehiclesList.sort((a, b) => b.profit - a.profit);
+
         let performanceHtml = '';
 
-        if (vehiclesWithData.length === 0) {
+        if (vehiclesList.length === 0) {
             performanceHtml = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📊</div>
@@ -3977,265 +3999,78 @@ async function loadVehiclePerformance(monthValue, cachedData = null) {
                 </div>
             `;
         } else {
-            // Split by groups
-            const commitmentVehicles = vehiclesWithData.filter(v => v.type === 'Commitment');
-            const hireToPayVehicles = vehiclesWithData.filter(v => v.type === 'Hire-to-Pay');
-            const otherOpVehicles = vehiclesWithData.filter(v => v.type === 'Other Operation');
+            const grandTotalKm = vehiclesList.reduce((sum, v) => sum + v.totalKm, 0);
+            const grandTotalHires = vehiclesList.reduce((sum, v) => sum + v.recordsCount, 0);
+            const grandTotalRevenue = vehiclesList.reduce((sum, v) => sum + v.totalRevenue, 0);
+            const grandTotalFuel = vehiclesList.reduce((sum, v) => sum + v.totalFuel, 0);
+            const grandTotalFuelLitres = vehiclesList.reduce((sum, v) => sum + v.totalFuelLitres, 0);
+            const grandTotalProfit = vehiclesList.reduce((sum, v) => sum + v.profit, 0);
 
-            // 1. Commitment Section
-            if (commitmentVehicles.length > 0) {
-                const totalKm = commitmentVehicles.reduce((sum, v) => sum + v.totalKm, 0);
-                const totalHires = commitmentVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
-                const totalRevenue = commitmentVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
-                const totalFuel = commitmentVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
-                const totalFuelLitres = commitmentVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
-                const totalProfit = commitmentVehicles.reduce((sum, v) => sum + v.profit, 0);
+            performanceHtml = `
+                <div class="vp-table-wrap">
+                    <table class="vp-table">
+                        <thead>
+                            <tr>
+                                <th>Vehicle</th>
+                                <th>Model</th>
+                                <th>Ownership</th>
+                                <th style="text-align: right;">Total KM</th>
+                                <th style="text-align: center;">Hires / Jobs</th>
+                                <th style="text-align: right;">Total Revenue</th>
+                                <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
+                                <th style="text-align: right;">Fuel Litres</th>
+                                <th style="text-align: right;">Net Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
 
-                performanceHtml += `
-                    <div class="vehicle-group-section group-commitment">
-                        <div class="vehicle-group-header">
-                            <div class="vehicle-group-title">🏢 Commitment Operations</div>
-                            <span class="vehicle-group-badge">${commitmentVehicles.length} Vehicle(s)</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="group-table commitment-table">
-                                <thead>
-                                    <tr>
-                                        <th>Vehicle</th>
-                                        <th>Model</th>
-                                        <th>Ownership</th>
-                                        <th style="text-align: right;">Total KM</th>
-                                        <th style="text-align: center;">KM Progress</th>
-                                        <th style="text-align: center;">Hires</th>
-                                        <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
-                                        <th style="text-align: right;">Fuel Litres</th>
-                                        <th style="text-align: right;">Profit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-
-                commitmentVehicles.forEach(vehicle => {
-                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
-                    performanceHtml += `
-                        <tr>
-                            <td style="font-weight: bold;">${vehicle.number}</td>
-                            <td>${vehicle.model}</td>
-                            <td>${vehicle.ownership}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
-                            <td style="min-width:140px;">
-                                ${vehicle.commitmentKmPct !== null ? `
-                                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-align:center;">
-                                        ${Math.round(vehicle.totalKm).toLocaleString('en-US')} / ${vehicle.kmLimit.toLocaleString('en-US')} km (${vehicle.commitmentKmPct.toFixed(0)}%)
-                                    </div>
-                                    <div style="background:var(--surface-border);border-radius:6px;height:10px;overflow:hidden;">
-                                        <div style="width:${vehicle.commitmentKmPct}%;height:100%;border-radius:6px;background:${vehicle.commitmentKmPct >= 100 ? '#E74C3C' : vehicle.commitmentKmPct >= 75 ? '#F39C12' : '#27AE60'};transition:width 0.4s;"></div>
-                                    </div>
-                                ` : '<span style="color:#bdc3c7;font-size:11px;">—</span>'}
-                            </td>
-                            <td style="text-align: center;">
-                                <span style="background: var(--blue-bg); color: var(--blue); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                    ${vehicle.recordsCount}
-                                </span>
-                            </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
-                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                        </tr>
-                    `;
-                });
+            vehiclesList.forEach(vehicle => {
+                const profitClass = vehicle.profit >= 0 ? 'vp-profit-pos' : 'vp-profit-neg';
+                const profitSign = vehicle.profit >= 0 ? '+' : '-';
+                const formattedProfit = `${profitSign} LKR ${Math.abs(vehicle.profit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const ownershipText = vehicle.ownership ? vehicle.ownership.replace(/^[^\w\s]+/, '').trim() : 'Company';
 
                 performanceHtml += `
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3">Total</td>
-                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
-                                        <td></td>
-                                        <td style="text-align: center;">
-                                            <span style="background: var(--blue-bg); color: var(--blue); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                                ${totalHires}
-                                            </span>
-                                        </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
-                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
+                    <tr>
+                        <td class="vp-vehicle-name">${vehicle.number}</td>
+                        <td class="vp-model">${vehicle.model}</td>
+                        <td><span class="vp-badge-ownership">${ownershipText}</span></td>
+                        <td style="text-align: right;" class="vp-num">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
+                        <td style="text-align: center;">
+                            <span class="vp-jobs-badge">${vehicle.recordsCount}</span>
+                        </td>
+                        <td style="text-align: right;" class="vp-num">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;" class="vp-num">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;" class="vp-num">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
+                        <td style="text-align: right;" class="${profitClass}">
+                            ${formattedProfit}
+                        </td>
+                    </tr>
                 `;
-            }
+            });
 
-            // 2. Hire-to-Pay Section
-            if (hireToPayVehicles.length > 0) {
-                const totalKm = hireToPayVehicles.reduce((sum, v) => sum + v.totalKm, 0);
-                const totalHires = hireToPayVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
-                const totalRevenue = hireToPayVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
-                const totalFuel = hireToPayVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
-                const totalFuelLitres = hireToPayVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
-                const totalProfit = hireToPayVehicles.reduce((sum, v) => sum + v.profit, 0);
-
-                performanceHtml += `
-                    <div class="vehicle-group-section group-hire-to-pay">
-                        <div class="vehicle-group-header">
-                            <div class="vehicle-group-title">🛣️ Hire-to-Pay Operations</div>
-                            <span class="vehicle-group-badge">${hireToPayVehicles.length} Vehicle(s)</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="group-table hire-to-pay-table">
-                                <thead>
-                                    <tr>
-                                        <th>Vehicle</th>
-                                        <th>Model</th>
-                                        <th>Ownership</th>
-                                        <th style="text-align: right;">Total KM</th>
-                                        <th style="text-align: center;">Hires</th>
-                                        <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
-                                        <th style="text-align: right;">Fuel Litres</th>
-                                        <th style="text-align: right;">Profit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-
-                hireToPayVehicles.forEach(vehicle => {
-                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
-                    performanceHtml += `
-                        <tr>
-                            <td style="font-weight: bold;">${vehicle.number}</td>
-                            <td>${vehicle.model}</td>
-                            <td>${vehicle.ownership}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
-                            <td style="text-align: center;">
-                                <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                    ${vehicle.recordsCount}
-                                </span>
-                            </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
-                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                performanceHtml += `
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3">Total</td>
-                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
-                                        <td style="text-align: center;">
-                                            <span style="background: var(--amber-bg); color: var(--amber); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                                ${totalHires}
-                                            </span>
-                                        </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
-                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // 3. Other Operations Section
-            if (otherOpVehicles.length > 0) {
-                const totalKm = otherOpVehicles.reduce((sum, v) => sum + v.totalKm, 0);
-                const totalHires = otherOpVehicles.reduce((sum, v) => sum + v.recordsCount, 0);
-                const totalRevenue = otherOpVehicles.reduce((sum, v) => sum + v.totalRevenue, 0);
-                const totalFuel = otherOpVehicles.reduce((sum, v) => sum + v.totalFuel, 0);
-                const totalFuelLitres = otherOpVehicles.reduce((sum, v) => sum + v.totalFuelLitres, 0);
-                const totalProfit = otherOpVehicles.reduce((sum, v) => sum + v.profit, 0);
-
-                performanceHtml += `
-                    <div class="vehicle-group-section group-other-operations">
-                        <div class="vehicle-group-header">
-                            <div class="vehicle-group-title">💼 Other Operations</div>
-                            <span class="vehicle-group-badge">${otherOpVehicles.length} Vehicle(s)</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="group-table other-operations-table">
-                                <thead>
-                                    <tr>
-                                        <th>Vehicle</th>
-                                        <th style="text-align: right;">Total KM</th>
-                                        <th style="text-align: center;">Hires</th>
-                                        <th style="text-align: right;">Total Revenue</th>
-                                        <th style="text-align: right;">Fuel Cost (After 18% VAT)</th>
-                                        <th style="text-align: right;">Fuel Litres</th>
-                                        <th style="text-align: right;">Profit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-
-                otherOpVehicles.forEach(vehicle => {
-                    const profitColor = vehicle.profit >= 0 ? 'var(--green)' : 'var(--brand-red)';
-                    performanceHtml += `
-                        <tr>
-                            <td style="font-weight: bold;">${vehicle.number}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalKm).toLocaleString('en-US')} km</td>
-                            <td style="text-align: center;">
-                                <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                    ${vehicle.recordsCount}
-                                </span>
-                            </td>
-                            <td style="text-align: right;">LKR ${vehicle.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">LKR ${vehicle.totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td style="text-align: right;">${Math.round(vehicle.totalFuelLitres).toLocaleString('en-US')} L</td>
-                            <td style="text-align: right; color: ${profitColor}; font-weight: bold;">
-                                LKR ${vehicle.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                performanceHtml += `
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>Total</td>
-                                        <td style="text-align: right;">${Math.round(totalKm).toLocaleString('en-US')} km</td>
-                                        <td style="text-align: center;">
-                                            <span style="background: rgba(123, 53, 196, 0.12); color: var(--purple); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                                ${totalHires}
-                                            </span>
-                                        </td>
-                                        <td style="text-align: right;">LKR ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">LKR ${totalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td style="text-align: right;">${Math.round(totalFuelLitres).toLocaleString('en-US')} L</td>
-                                        <td style="text-align: right; color: ${totalProfit >= 0 ? 'var(--green)' : 'var(--brand-red)'}; font-weight: bold;">
-                                            LKR ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            }
+            const grandProfitSign = grandTotalProfit >= 0 ? '+' : '-';
+            const formattedGrandProfit = `${grandProfitSign} LKR ${Math.abs(grandTotalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             performanceHtml += `
-                <div class="text-muted text-center" style="margin-top: 15px; font-size: 12px; text-align: center;">
-                    Showing ${vehiclesWithData.length} vehicle(s) with hire activity in ${monthValue}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" style="font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Fleet Grand Total (${vehiclesList.length} Vehicles)</td>
+                                <td style="text-align: right;" class="vp-num">${Math.round(grandTotalKm).toLocaleString('en-US')} km</td>
+                                <td style="text-align: center;">
+                                    <span class="vp-jobs-badge" style="background: var(--brand-red, #D1001F); color: #fff;">${grandTotalHires}</span>
+                                </td>
+                                <td style="text-align: right;" class="vp-num">LKR ${grandTotalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td style="text-align: right;" class="vp-num">LKR ${grandTotalFuel.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td style="text-align: right;" class="vp-num">${Math.round(grandTotalFuelLitres).toLocaleString('en-US')} L</td>
+                                <td style="text-align: right;" class="${grandTotalProfit >= 0 ? 'vp-profit-pos' : 'vp-profit-neg'}">
+                                    ${formattedGrandProfit}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             `;
         }
@@ -4291,6 +4126,16 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
             commitmentVehicles = rCommitmentVehicles;
         }
 
+        const vehicleModelMap = {};
+        hireVehicles?.forEach(v => {
+            const base = extractBaseVehicleName(v.lorry_number);
+            if (v.vehicle_model && v.vehicle_model !== '-') vehicleModelMap[base] = v.vehicle_model;
+        });
+        commitmentVehicles?.forEach(v => {
+            const base = extractBaseVehicleName(v.vehicle_number);
+            if (v.vehicle_model && v.vehicle_model !== '-') vehicleModelMap[base] = v.vehicle_model;
+        });
+
         const hireVehicleBaseMap = {};
         const commitVehicleBaseMap = {};
         hireVehicles?.forEach(v => { hireVehicleBaseMap[v.id] = v; });
@@ -4303,7 +4148,7 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
                 vehicleStats[number] = {
                     number,
                     type,
-                    model: model || '-',
+                    model: (model && model !== '-') ? model : (vehicleModelMap[number] || '-'),
                     totalDistance: 0,
                     totalFuelLitres: 0,
                 };
@@ -4363,7 +4208,6 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
                             <tr>
                                 <th>Vehicle</th>
                                 <th>Model</th>
-                                <th>Type</th>
                                 <th style="text-align: right;">Total KM</th>
                                 <th style="text-align: right;">Fuel Used</th>
                                 <th style="text-align: left; padding-left: 20px;">Fuel Efficiency (KM/L)</th>
@@ -4400,24 +4244,10 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
                     ? `${vehicle.efficiency.toFixed(2)} Km/L`
                     : 'N/A';
 
-                let typeBadgeStyle = '';
-                if (vehicle.type === 'Commitment') {
-                    typeBadgeStyle = 'background: var(--blue-bg); color: var(--blue);';
-                } else if (vehicle.type === 'Hire-to-Pay') {
-                    typeBadgeStyle = 'background: var(--amber-bg); color: var(--amber);';
-                } else {
-                    typeBadgeStyle = 'background: rgba(123, 53, 196, 0.12); color: var(--purple);';
-                }
-
                 html += `
                     <tr>
                         <td style="font-weight: bold;">${vehicle.number}</td>
                         <td>${vehicle.model}</td>
-                        <td>
-                            <span style="padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; ${typeBadgeStyle}">
-                                ${vehicle.type}
-                            </span>
-                        </td>
                         <td style="text-align: right;">${vehicle.totalDistance.toFixed(0)} km</td>
                         <td style="text-align: right;">${vehicle.totalFuelLitres.toFixed(0)} L</td>
                         <td style="min-width: 220px; padding-left: 20px;">
@@ -4436,7 +4266,6 @@ async function loadVehicleFuelEfficiency(monthValue, cachedData = null) {
                                     </span>
                                 `}
                             </div>
-                        </td>
                     </tr>
                 `;
             });

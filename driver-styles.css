@@ -2498,6 +2498,12 @@ body.light-mode .avatar-container::after {
     color: #FFA726;
 }
 
+.driver-op-badge.op-sitrek {
+    background: rgba(41, 128, 185, 0.18);
+    border: 1px solid rgba(41, 128, 185, 0.45);
+    color: #5DADE2;
+}
+
 .driver-op-badge.op-generic {
     background: rgba(127, 140, 141, 0.18);
     border: 1px solid rgba(127, 140, 141, 0.45);
@@ -2576,6 +2582,10 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-ansell {
     background: linear-gradient(135deg, #F57C00, #E65100);
+}
+
+.race-badge-op.op-sitrek {
+    background: linear-gradient(135deg, #2980B9, #1B4F72);
 }
 
 .race-badge-op.op-generic {

@@ -5015,6 +5015,141 @@ body.dark-mode .group-other-operations table thead {
     background: linear-gradient(135deg, #4c206d 0%, #301148 100%);
 }
 
+/* Merged Vehicle Performance Table Styling */
+.vp-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.08));
+    margin-top: 8px;
+}
+
+.vp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    background: transparent;
+}
+
+.vp-table th {
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-muted, #94A3B8);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.08));
+    white-space: nowrap;
+}
+
+body.dark-mode .vp-table th {
+    background: rgba(0, 0, 0, 0.3);
+    color: #94A3B8;
+}
+
+.vp-table td {
+    padding: 11px 14px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.05));
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.vp-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.vp-table tbody tr:hover {
+    background: rgba(209, 0, 31, 0.03);
+}
+
+body.dark-mode .vp-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.vp-num {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.vp-vehicle-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.vp-model {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.vp-badge-ownership {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--surface-raised, rgba(255, 255, 255, 0.06));
+    color: var(--text-secondary);
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.vp-jobs-badge {
+    background: rgba(0, 114, 206, 0.15);
+    color: #38BDF8;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.vp-profit-pos {
+    color: #00E676 !important;
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.vp-profit-neg {
+    color: #FF5252 !important;
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+body.light-mode .vp-profit-pos {
+    color: #00A854 !important;
+}
+
+body.light-mode .vp-profit-neg {
+    color: #D1001F !important;
+}
+
+.vp-table tfoot td {
+    padding: 13px 14px;
+    font-weight: 700;
+    background: var(--surface-raised, rgba(255, 255, 255, 0.04));
+    border-top: 2px solid var(--surface-border, rgba(255, 255, 255, 0.1));
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .vp-table th, .vp-table td {
+        padding: 9px 10px;
+        font-size: 11.5px;
+    }
+    .vp-vehicle-name {
+        font-size: 12px;
+    }
+}
+
 /* =====================================================
    GLOBAL INTERACTION POLISH
    ===================================================== */
@@ -9904,6 +10039,7 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="maggi"] { border-left: 5px solid #E30613; }
 .op-revenue-card[data-accent="spectra"] { border-left: 5px solid #00796B; }
 .op-revenue-card[data-accent="ansell"] { border-left: 5px solid #F57C00; }
+.op-revenue-card[data-accent="sitrek"] { border-left: 5px solid #2980B9; }
 .op-revenue-card[data-accent="other"] { border-left: 5px solid #E67E22; }
 
 .op-revenue-card-header {
@@ -9964,6 +10100,7 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="maggi"] .op-revenue-amount { color: #E30613; }
 .op-revenue-card[data-accent="spectra"] .op-revenue-amount { color: #00796B; }
 .op-revenue-card[data-accent="ansell"] .op-revenue-amount { color: #F57C00; }
+.op-revenue-card[data-accent="sitrek"] .op-revenue-amount { color: #2980B9; }
 .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #E67E22; }
 
 body.dark-mode .op-revenue-card[data-accent="kevilton"] .op-revenue-amount { color: #FF6B81; }
@@ -9975,6 +10112,7 @@ body.dark-mode .op-revenue-card[data-accent="kti"] .op-revenue-amount { color: #
 body.dark-mode .op-revenue-card[data-accent="maggi"] .op-revenue-amount { color: #FF5252; }
 body.dark-mode .op-revenue-card[data-accent="spectra"] .op-revenue-amount { color: #26A69A; }
 body.dark-mode .op-revenue-card[data-accent="ansell"] .op-revenue-amount { color: #FFA726; }
+body.dark-mode .op-revenue-card[data-accent="sitrek"] .op-revenue-amount { color: #5DADE2; }
 body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #F39C12; }
 
 .op-revenue-meta {
@@ -10006,6 +10144,7 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
 .op-revenue-card[data-accent="maggi"] .op-revenue-progress-bar { background: linear-gradient(90deg, #E30613, #FF5252); }
 .op-revenue-card[data-accent="spectra"] .op-revenue-progress-bar { background: linear-gradient(90deg, #00796B, #26A69A); }
 .op-revenue-card[data-accent="ansell"] .op-revenue-progress-bar { background: linear-gradient(90deg, #F57C00, #FFA726); }
+.op-revenue-card[data-accent="sitrek"] .op-revenue-progress-bar { background: linear-gradient(90deg, #2980B9, #5DADE2); }
 .op-revenue-card[data-accent="other"] .op-revenue-progress-bar { background: linear-gradient(90deg, #E67E22, #F39C12); }
 
 /* ====== RECORDS DETAILS MODAL STYLING ====== */
