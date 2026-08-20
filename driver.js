@@ -204,6 +204,26 @@ const TRANSLATIONS = {
         'profile.assignedLorry': 'ASSIGNED LORRY',
         'profile.championDesc': 'Most KM runner in a completed month',
         'profile.coordinator': '👑 Operation Coordinator',
+        'menu.theme': 'Dark Mode',
+        'menu.race': 'Month Race',
+        'gps.title': '🛰️ Lorry GPS Tracker',
+        'gps.totalLorries': 'Lorries:',
+        'gps.tabAll': 'All',
+        'gps.tabMoving': 'Moving',
+        'gps.tabIdle': 'Idle',
+        'gps.tabOffline': 'Offline',
+        'gps.searchPlaceholder': '🔍 Search plate, driver, model...',
+        'gps.loading': 'Connecting to Wialon GPS...',
+        'gps.fitMap': 'Fit All',
+        'gps.callDriver': 'Call Driver',
+        'gps.locate': '📍 Show on Map',
+        'gps.noVehicles': 'No lorries found matching filter.',
+        'gps.moving': 'Moving',
+        'gps.idle': 'Idle',
+        'gps.offline': 'Offline',
+        'gps.speed': 'Speed',
+        'gps.driver': 'Driver',
+        'gps.noDriver': 'Not Assigned',
     },
     si: {
         'offline.banner': '⚠️ ඔබ අසබැඳිව සිටී. සුරැකි තොරතුරු පෙන්වමින් ඇත.',
@@ -266,6 +286,46 @@ const TRANSLATIONS = {
         'race.noDrivers': 'මෙම මාසයේ රියදුරු ධාවනයේ කිසිවෙකු නොමැත.',
         'race.you': 'ඔබ',
         'race.failed': 'ධාවනය පූරණය නොවීය: ',
+        'greeting.morning': 'සුබ උදෑසනක්',
+        'greeting.afternoon': 'සුබ දහවලක්',
+        'greeting.evening': 'සුබ සන්ධ්‍යාවක්',
+        'greeting.default': 'ආයුබෝවන්',
+        'confirm.logout': 'ඔබට ඇත්තෙන්ම ඉවත් වීමට අවශ්‍යද?',
+        'confirm.yes': 'ඔව්',
+        'confirm.no': 'නැහැ',
+        'error.noDriver': 'මෙම දුරකථන අංකයෙන් රියදුරෙකු හමු නොවීය. ආකෘතිය පරීක්ෂා කරන්න.',
+        'error.wrongPassword': 'වැරදි මුරපදය. ඔබේ අක්තපත්‍ර පරීක්ෂා කරන්න.',
+        'error.yearRange': 'කරුණාකර වත්මන් වර්ෂ පරාසය තුළ මාසයක් තෝරන්න.',
+        'map.youAreHere': 'ඔබ මෙහි සිටී',
+        'map.openInMaps': '🗺️ Google Maps හි විවෘත කරන්න',
+        'map.navigate': '🗺️ සංචාලනය',
+        'map.copyLink': '📋 සබැඳිය පිටපත් කරන්න',
+        'map.copied': 'පිටපත් කරා!',
+        'race.helpers': 'රිය සහයවරුන්',
+        'race.driver': 'රියදුරු',
+        'race.helper': 'රිය සහය',
+        'race.new': 'නව',
+        'profile.title': 'රියදුරු පැතිකඩ',
+        'profile.loading': 'පැතිකඩ පූරණය වෙමින්...',
+        'profile.monthsWithUs': 'අප සමග මාස ගණන',
+        'profile.totalKmRun': 'ධාවනය කළ මුළු කි.මී.',
+        'profile.championMonths': 'ශූර රියදුරු වූ මාස',
+        'profile.totalHires': 'ධාවනය කළ මුළු හයර්',
+        'profile.assignedLorry': 'පවරන ලද ලොරිය',
+        'profile.championDesc': 'සම්පූර්ණ වූ මාසයක වැඩිම කි.මී. ධාවනය කළ රියදුරු',
+        'profile.coordinator': '👑 මෙහෙයුම් සම්බන්ධීකාරක',
+        'menu.theme': 'අඳුරු ප්‍රකාරය',
+        'menu.race': 'මාසික තරගය',
+        'gps.title': '🛰️ ලොරි රථ GPS ගවේශකය',
+        'gps.totalLorries': 'ලොරි රථ:',
+        'gps.tabAll': 'සියල්ල',
+        'gps.tabMoving': 'ධාවනය වන',
+        'gps.tabIdle': 'නවත්වා ඇති',
+        'gps.tabOffline': 'අසබැඳි',
+        'gps.searchPlaceholder': '🔍 අංකය, රියදුරු, මාදිලිය සොයන්න...',
+        'gps.loading': 'Wialon GPS හා සම්බන්ධ වෙමින්...',
+        'gps.fitMap': 'සියල්ල පෙන්වන්න',
+        'gps.callDriver': 'ඇමතුමක් ගන්න',
         'greeting.morning': 'සුබ උදෑසනක්',
         'greeting.afternoon': 'සුබ දහවලක්',
         'greeting.evening': 'සුබ සන්ධ්‍යාවක්',
@@ -391,17 +451,28 @@ function setLanguage(lang) {
     });
 
     // Update the toggle button labels on both login and dashboard
-    const label = lang === 'si' ? '🌐 SI' : '🌐 EN';
-    const dashBtn = document.getElementById('langToggleBtn');
+    const dashLbl = document.getElementById('langToggleLabel');
     const loginBtn = document.getElementById('loginLangToggleBtn');
-    if (dashBtn) dashBtn.textContent = label;
-    if (loginBtn) loginBtn.textContent = label;
+    if (dashLbl) dashLbl.textContent = lang === 'si' ? 'SI' : 'EN';
+    if (loginBtn) loginBtn.textContent = lang === 'si' ? '🌐 SI' : '🌐 EN';
 
     // Refresh status text to match new language
     const statusTextEl = document.getElementById('statusText');
     if (statusTextEl) {
         statusTextEl.textContent = isOnline ? t('dashboard.online') : t('dashboard.offline');
     }
+}
+
+// Time ago helper for timestamps
+function timeAgo(unixTimestamp) {
+    if (!unixTimestamp) return 'Unknown';
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - unixTimestamp;
+    if (diff < 0) return 'Just now';
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
 }
 
 // Toggle between English and Sinhala
@@ -427,11 +498,11 @@ function applyTheme(theme) {
         metaThemeColor.setAttribute('content', isDark ? '#080A0F' : '#F5F6FA');
     }
 
-    // Update all theme toggle button icons
-    const icon = isDark ? '\u{1F319}' : '\u2600\uFE0F';
-    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
-        btn.textContent = icon;
-    });
+    // Update theme toggle icon
+    const themeIcon = document.getElementById('themeToggleIcon');
+    if (themeIcon) themeIcon.textContent = isDark ? '🌙' : '☀️';
+    const loginThemeBtn = document.getElementById('loginThemeToggleBtn');
+    if (loginThemeBtn) loginThemeBtn.textContent = isDark ? '🌙' : '☀️';
 }
 
 function toggleTheme() {
@@ -768,6 +839,27 @@ function setupEventHandlers() {
         });
     }
 
+    // ⋮ Overflow Menu Toggle
+    const headerMenuBtn = document.getElementById('headerMenuBtn');
+    const headerDropdown = document.getElementById('headerDropdown');
+    if (headerMenuBtn && headerDropdown) {
+        headerMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            headerDropdown.classList.toggle('open');
+        });
+        // Close dropdown when tapping outside
+        document.addEventListener('click', (e) => {
+            if (!headerDropdown.contains(e.target) && e.target !== headerMenuBtn) {
+                headerDropdown.classList.remove('open');
+            }
+        });
+        // Close dropdown after clicking any item inside
+        headerDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                headerDropdown.classList.remove('open');
+            });
+        });
+    }
     // Touchable KM Card triggers Salary Modal
     const kmCard = document.getElementById('kmSummaryCard');
     if (kmCard) {
@@ -817,6 +909,26 @@ function setupEventHandlers() {
     // Driver Profile Modal Events
     document.getElementById('closeDriverProfileModalBtn')?.addEventListener('click', closeDriverProfileModal);
     document.getElementById('closeDriverProfileModalBackdrop')?.addEventListener('click', closeDriverProfileModal);
+
+    // Coordinator GPS Modal Events
+    document.getElementById('gpsModalBtn')?.addEventListener('click', openGpsModal);
+    document.getElementById('closeGpsModalBtn')?.addEventListener('click', closeGpsModal);
+    document.getElementById('closeGpsModalBackdrop')?.addEventListener('click', closeGpsModal);
+    document.getElementById('gpsRefreshBtn')?.addEventListener('click', () => refreshGpsData(false));
+    document.getElementById('gpsMapFitBoundsBtn')?.addEventListener('click', fitGpsMapBounds);
+
+    const searchGps = document.getElementById('gpsSearchInput');
+    if (searchGps) {
+        searchGps.addEventListener('input', () => filterGpsVehiclesList());
+    }
+
+    document.querySelectorAll('#gpsFilterTabs .gps-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            document.querySelectorAll('#gpsFilterTabs .gps-tab').forEach(t => t.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            filterGpsVehiclesList();
+        });
+    });
 
     const headerProfile = document.querySelector('.driver-profile');
     if (headerProfile) {
@@ -1003,6 +1115,16 @@ async function showDashboard() {
     document.getElementById('driverName').textContent = cleanDriverName(currentDriver.name);
     if (currentDriver.photo_url) {
         document.getElementById('driverAvatar').src = currentDriver.photo_url;
+    }
+
+    // Toggle Coordinator GPS Header Button
+    const gpsBtn = document.getElementById('gpsModalBtn');
+    if (gpsBtn) {
+        if (currentDriver && currentDriver.is_coordinator) {
+            gpsBtn.style.display = 'inline-flex';
+        } else {
+            gpsBtn.style.display = 'none';
+        }
     }
 
     // Render Operation Badge & Coordinator Badge on Header
@@ -3028,6 +3150,653 @@ async function openDriverProfileModal(driverId) {
         showDriverToast('Failed to load driver profile: ' + err.message, 'error');
         closeDriverProfileModal();
     }
+}
+
+// ==================== COORDINATOR GPS LIVE TRACKER MODULE ====================
+
+let gpsMap = null;
+let gpsMarkers = {};          // { unitId: L.marker }
+let gpsUnits = [];            // Array of parsed unit objects
+let gpsRefreshTimer = null;   // Auto-refresh interval
+let gpsDriversMap = {};       // { normalizedPlate: driverRecord }
+let gpsVehicleArtMap = {};    // { normalizedPlate: artUrl }
+let gpsVehicleModelMap = {};  // { normalizedPlate: model }
+let gpsVehicleLengthMap = {}; // { normalizedPlate: length }
+let gpsAddressCache = {};     // { unitId: { lat, lng, address } }
+let gpsGeocodeQueue = [];
+let gpsGeocodeProcessing = false;
+
+const WIALON_DEFAULT_TOKEN = '2dc41f89a60d68ba8fd0a5e34722386f728895444F6CEE221D45222A43B65B5606DE57A0';
+const GPS_OFFLINE_THRESHOLD = 30 * 60; // 30 mins
+
+function openGpsModal() {
+    if (!currentDriver || !currentDriver.is_coordinator) {
+        showDriverToast('Access restricted to Operation Coordinators', 'warning');
+        return;
+    }
+    const modal = document.getElementById('gpsModal');
+    if (modal) {
+        modal.classList.add('active');
+        initGpsMap();
+        setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 200);
+        setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 500);
+        refreshGpsData(true);
+        // Start 20-second auto-refresh interval
+        if (gpsRefreshTimer) clearInterval(gpsRefreshTimer);
+        gpsRefreshTimer = setInterval(() => {
+            refreshGpsData(false);
+        }, 20000);
+    }
+}
+
+function closeGpsModal() {
+    const modal = document.getElementById('gpsModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    if (gpsRefreshTimer) {
+        clearInterval(gpsRefreshTimer);
+        gpsRefreshTimer = null;
+    }
+}
+
+function initGpsMap() {
+    const mapEl = document.getElementById('gpsTrackerMap');
+    if (!mapEl) return;
+
+    if (gpsMap) {
+        setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 300);
+        return;
+    }
+
+    gpsMap = L.map('gpsTrackerMap', {
+        center: [7.8731, 80.7718], // Sri Lanka default center
+        zoom: 7,
+        zoomControl: true,
+        attributionControl: false
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 18
+    }).addTo(gpsMap);
+
+    setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 350);
+}
+
+// Fetch staff assignments and driver details for mapping plates to drivers
+async function loadGpsDriversAndAssignments() {
+    if (!currentDriver) return;
+    try {
+        const uid = currentDriver.user_id;
+
+        // Fetch drivers, staff_lorry_assignments, hire_to_pay_vehicles, commitment_vehicles
+        const [driversRes, assignRes, hireRes, commRes] = await Promise.all([
+            supabaseClient.from('drivers').select('id, name, photo_url, contact, role, operation, is_coordinator').eq('user_id', uid).neq('terminated', true),
+            supabaseClient.from('staff_lorry_assignments').select('driver_id, lorry_number').eq('user_id', uid).order('id', { ascending: false }),
+            supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number, vehicle_model, vector_art_url, photo_url, length').eq('user_id', uid),
+            supabaseClient.from('commitment_vehicles').select('id, vehicle_number, vehicle_model, vector_art_url, photo_url, length').eq('user_id', uid)
+        ]);
+
+        const drivers = driversRes.data || [];
+        const assignments = assignRes.data || [];
+        const hireVehicles = hireRes.data || [];
+        const commVehicles = commRes.data || [];
+
+        // Build driver lookup map
+        const driversById = {};
+        drivers.forEach(d => { driversById[d.id] = d; });
+
+        gpsDriversMap = {};
+        assignments.forEach(a => {
+            if (!a.lorry_number) return;
+            const normPlate = extractBaseVehicleName(a.lorry_number);
+            if (!gpsDriversMap[normPlate] && driversById[a.driver_id]) {
+                gpsDriversMap[normPlate] = driversById[a.driver_id];
+            }
+        });
+
+        gpsVehicleArtMap = {};
+        gpsVehicleModelMap = {};
+        gpsVehicleLengthMap = {};
+
+        hireVehicles.forEach(v => {
+            const norm = extractBaseVehicleName(v.lorry_number);
+            if (norm) {
+                gpsVehicleArtMap[norm] = v.vector_art_url || v.photo_url || null;
+                gpsVehicleModelMap[norm] = v.vehicle_model || null;
+                gpsVehicleLengthMap[norm] = v.length || null;
+            }
+        });
+
+        commVehicles.forEach(v => {
+            const norm = extractBaseVehicleName(v.vehicle_number);
+            if (norm) {
+                if (!gpsVehicleArtMap[norm]) gpsVehicleArtMap[norm] = v.vector_art_url || v.photo_url || null;
+                if (!gpsVehicleModelMap[norm]) gpsVehicleModelMap[norm] = v.vehicle_model || null;
+                if (!gpsVehicleLengthMap[norm]) gpsVehicleLengthMap[norm] = v.length || null;
+            }
+        });
+
+    } catch (e) {
+        console.warn('Error loading drivers/assignments for GPS module:', e);
+    }
+}
+
+// Fetch live GPS positions from Wialon (SDK with REST API fallback)
+async function fetchGpsUnitsFromWialon() {
+    // 1. Try Wialon JS SDK if initialized
+    if (typeof wialon !== 'undefined' && wialon.core && wialon.core.Session) {
+        try {
+            const sdkUnits = await new Promise((resolve) => {
+                const session = wialon.core.Session.getInstance();
+                var doSearch = function() {
+                    const remote = wialon.core.Remote.getInstance();
+                    remote.remoteCall('core/search_items', {
+                        spec: { itemsType: 'avl_unit', propName: 'sys_name', propValueMask: '*', sortType: 'sys_name' },
+                        force: 0,
+                        flags: 1025,
+                        from: 0,
+                        to: 0
+                    }, function(code, data) {
+                        if (code !== 0 || !data || !data.items) {
+                            resolve(null);
+                            return;
+                        }
+                        const items = data.items.map(item => {
+                            const pos = item.pos || {};
+                            return {
+                                id: item.id,
+                                name: item.nm || 'Unknown Lorry',
+                                lat: pos.y || 0,
+                                lng: pos.x || 0,
+                                speed: pos.s || 0,
+                                course: pos.c || 0,
+                                satellites: pos.sc || 0,
+                                lastTime: pos.t || 0,
+                                hasPosition: !!(pos.y && pos.x)
+                            };
+                        });
+                        resolve(items);
+                    });
+                };
+
+                if (session.getId()) {
+                    doSearch();
+                } else {
+                    try { session.initSession('https://hst-api.wialon.com'); } catch(e){}
+                    session.loginToken(WIALON_DEFAULT_TOKEN, '', function(code) {
+                        if (code === 0) doSearch();
+                        else resolve(null);
+                    });
+                }
+            });
+
+            if (sdkUnits && sdkUnits.length > 0) return sdkUnits;
+        } catch(e) {
+            console.warn('Wialon SDK fetch error, using REST fallback:', e);
+        }
+    }
+
+    // 2. Direct REST API Fallback
+    try {
+        const loginRes = await fetch(`https://hst-api.wialon.com/wialon/ajax.html?svc=token/login&params=${encodeURIComponent(JSON.stringify({ token: WIALON_DEFAULT_TOKEN }))}`);
+        const loginData = await loginRes.json();
+        const sid = loginData.eid;
+        if (!sid) return [];
+
+        const searchParams = {
+            spec: { itemsType: 'avl_unit', propName: 'sys_name', propValueMask: '*', sortType: 'sys_name' },
+            force: 0,
+            flags: 1025,
+            from: 0,
+            to: 0
+        };
+
+        const searchRes = await fetch(`https://hst-api.wialon.com/wialon/ajax.html?svc=core/search_items&params=${encodeURIComponent(JSON.stringify(searchParams))}&sid=${sid}`);
+        const searchData = await searchRes.json();
+        const items = (searchData && searchData.items) ? searchData.items : [];
+
+        return items.map(item => {
+            const pos = item.pos || {};
+            return {
+                id: item.id,
+                name: item.nm || 'Unknown Lorry',
+                lat: pos.y || 0,
+                lng: pos.x || 0,
+                speed: pos.s || 0,
+                course: pos.c || 0,
+                satellites: pos.sc || 0,
+                lastTime: pos.t || 0,
+                hasPosition: !!(pos.y && pos.x)
+            };
+        });
+    } catch(e) {
+        console.error('Wialon REST API fetch error:', e);
+        return [];
+    }
+}
+
+// Refresh full GPS data
+async function refreshGpsData(firstLoad = false) {
+    const connDot = document.getElementById('gpsConnDot');
+    const connTxt = document.getElementById('gpsConnText');
+    const loadingEl = document.getElementById('gpsVehiclesLoading');
+    const listContainer = document.getElementById('gpsVehiclesList');
+
+    if (firstLoad) {
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (listContainer) listContainer.classList.add('hidden');
+    }
+
+    if (connTxt) connTxt.textContent = 'Updating...';
+
+    await loadGpsDriversAndAssignments();
+    const units = await fetchGpsUnitsFromWialon();
+
+    gpsUnits = units;
+
+    if (connDot) connDot.className = 'gps-conn-dot connected';
+    if (connTxt) connTxt.textContent = `Connected (${units.length} Lorries)`;
+
+    // Process units status
+    const nowSec = Math.floor(Date.now() / 1000);
+    gpsUnits.forEach(u => {
+        const timeDiff = u.lastTime ? (nowSec - u.lastTime) : Infinity;
+        if (timeDiff > GPS_OFFLINE_THRESHOLD) {
+            u.status = 'offline';
+        } else if (u.speed > 0) {
+            u.status = 'moving';
+        } else {
+            u.status = 'idle';
+        }
+
+        // Attach cached address if available
+        if (gpsAddressCache[u.id]) {
+            u.address = gpsAddressCache[u.id].address;
+        } else if (u.hasPosition) {
+            u.address = 'Loading location...';
+            queueGpsGeocode(u);
+        } else {
+            u.address = 'No location fix';
+        }
+    });
+
+    plotGpsMarkersOnMap();
+    filterGpsVehiclesList();
+
+    if (firstLoad && units.length > 0) {
+        fitGpsMapBounds();
+    }
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (listContainer) listContainer.classList.remove('hidden');
+}
+
+// Custom Truck Marker Icon Generator for Leaflet Map
+function createGpsTruckMarkerIcon(unit) {
+    let color = '#00E699';
+    let label = `${Math.round(unit.speed)} km/h`;
+    let stroke = '#007A54';
+
+    if (unit.status === 'idle') {
+        color = '#FFB300';
+        label = 'Idle';
+        stroke = '#B37E00';
+    } else if (unit.status === 'offline') {
+        color = '#64748B';
+        label = 'Offline';
+        stroke = '#334155';
+    }
+
+    const html = `
+        <div style="
+            position:relative;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            transform: translate(-50%, -100%);
+        ">
+            <div style="
+                background: ${color};
+                color: ${unit.status === 'offline' ? '#fff' : '#000'};
+                font-family: var(--font-display, sans-serif);
+                font-size: 10px;
+                font-weight: 800;
+                padding: 2px 7px;
+                border-radius: 10px;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+                border: 1.5px solid ${stroke};
+                white-space: nowrap;
+                margin-bottom: 2px;
+            ">${unit.name} • ${label}</div>
+            <div style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: #fff;
+                border: 2.5px solid ${color};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+            ">🚛</div>
+        </div>`;
+
+    return L.divIcon({
+        html: html,
+        className: '',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -42]
+    });
+}
+
+// Plot markers on GPS Leaflet map
+function plotGpsMarkersOnMap() {
+    if (!gpsMap) return;
+
+    // Remove existing markers
+    Object.keys(gpsMarkers).forEach(id => {
+        if (gpsMap && gpsMarkers[id]) {
+            gpsMap.removeLayer(gpsMarkers[id]);
+        }
+    });
+    gpsMarkers = {};
+
+    gpsUnits.forEach(unit => {
+        if (!unit.hasPosition) return;
+
+        const normPlate = extractBaseVehicleName(unit.name);
+        const driver = gpsDriversMap[normPlate] || null;
+        const driverName = driver ? cleanDriverName(driver.name) : t('gps.noDriver');
+        const driverPhone = driver ? driver.contact : '';
+        const driverPhotoHtml = driver && driver.photo_url
+            ? `<img src="${driver.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #ccc;">`
+            : `<div style="width:32px; height:32px; border-radius:50%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; font-size:13px; color:#666;">👤</div>`;
+
+        const callBtnHtml = driverPhone
+            ? `<a href="tel:${driverPhone}" class="gps-call-btn" style="padding:4px 10px; font-size:10px;">📞 Call</a>`
+            : '';
+
+        const mapsLink = `https://www.google.com/maps?q=${unit.lat},${unit.lng}`;
+
+        const popupHtml = `
+            <div class="gps-map-popup" style="font-family:var(--font-sans, sans-serif); min-width:200px;">
+                <div style="font-family:var(--font-display); font-size:15px; font-weight:800; color:#1A1D24; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
+                    <span>🚛 ${unit.name}</span>
+                    <span style="font-size:11px; font-weight:700; color:${unit.status === 'moving' ? '#00B37E' : unit.status === 'idle' ? '#E07B00' : '#64748B'};">${unit.speed > 0 ? Math.round(unit.speed) + ' km/h' : unit.status.toUpperCase()}</span>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:#f8fafc; padding:6px 8px; border-radius:8px; margin: 6px 0; border:1px solid #e2e8f0;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${driverPhotoHtml}
+                        <div>
+                            <div style="font-size:8px; text-transform:uppercase; color:#94a3b8; font-weight:700;">DRIVER</div>
+                            <div style="font-size:11px; font-weight:700; color:#1e293b;">${driverName}</div>
+                        </div>
+                    </div>
+                    ${callBtnHtml}
+                </div>
+                <div style="font-size:11px; color:#64748B; line-height:1.5; margin-bottom:6px;">
+                    📍 <strong>${unit.address}</strong><br>
+                    ⏱️ Updated ${timeAgo(unit.lastTime)}
+                </div>
+                <a href="${mapsLink}" target="_blank" style="display:inline-block; font-size:11px; font-weight:700; color:#0284C7; text-decoration:none;">🗺️ Open in Google Maps ↗</a>
+            </div>`;
+
+        const marker = L.marker([unit.lat, unit.lng], { icon: createGpsTruckMarkerIcon(unit) })
+            .bindPopup(popupHtml);
+
+        marker.addTo(gpsMap);
+        gpsMarkers[unit.id] = marker;
+    });
+}
+
+// Fit bounds to show all active lorries
+function fitGpsMapBounds() {
+    if (!gpsMap) return;
+    const valid = gpsUnits.filter(u => u.hasPosition);
+    if (valid.length > 0) {
+        const bounds = L.latLngBounds(valid.map(u => [u.lat, u.lng]));
+        gpsMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    }
+}
+
+// Filter and render vehicle cards list
+function filterGpsVehiclesList() {
+    const searchInput = document.getElementById('gpsSearchInput');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const activeTab = document.querySelector('#gpsFilterTabs .gps-tab.active')?.getAttribute('data-filter') || 'all';
+
+    // Count summary
+    let movingCount = 0;
+    let idleCount = 0;
+    let offlineCount = 0;
+
+    gpsUnits.forEach(u => {
+        if (u.status === 'moving') movingCount++;
+        else if (u.status === 'idle') idleCount++;
+        else offlineCount++;
+    });
+
+    const elTotal = document.getElementById('gpsTotalCount');
+    const elAll = document.getElementById('gpsCountAll');
+    const elMoving = document.getElementById('gpsCountMoving');
+    const elIdle = document.getElementById('gpsCountIdle');
+    const elOffline = document.getElementById('gpsCountOffline');
+
+    if (elTotal) elTotal.textContent = gpsUnits.length;
+    if (elAll) elAll.textContent = gpsUnits.length;
+    if (elMoving) elMoving.textContent = movingCount;
+    if (elIdle) elIdle.textContent = idleCount;
+    if (elOffline) elOffline.textContent = offlineCount;
+
+    const filtered = gpsUnits.filter(u => {
+        // Status filter
+        if (activeTab !== 'all' && u.status !== activeTab) return false;
+
+        // Search query filter
+        if (query) {
+            const normPlate = extractBaseVehicleName(u.name);
+            const driver = gpsDriversMap[normPlate];
+            const driverName = driver ? driver.name.toLowerCase() : '';
+            const model = (gpsVehicleModelMap[normPlate] || '').toLowerCase();
+            const plate = u.name.toLowerCase();
+
+            if (!plate.includes(query) && !driverName.includes(query) && !model.includes(query)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    renderGpsVehiclesCards(filtered);
+}
+
+// Render dynamic vehicle cards
+function renderGpsVehiclesCards(unitsList) {
+    const container = document.getElementById('gpsVehiclesList');
+    if (!container) return;
+
+    if (unitsList.length === 0) {
+        container.innerHTML = `<div class="no-results" style="padding:20px; text-align:center; color:var(--text-3); font-weight:600;">${t('gps.noVehicles')}</div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    unitsList.forEach(unit => {
+        const normPlate = extractBaseVehicleName(unit.name);
+        const driver = gpsDriversMap[normPlate] || null;
+        const driverName = driver ? cleanDriverName(driver.name) : t('gps.noDriver');
+        const driverPhone = driver ? driver.contact : '';
+        const driverPhoto = driver ? driver.photo_url : null;
+        const initials = driverName !== t('gps.noDriver') ? driverName.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() : '?';
+
+        const vehicleModel = gpsVehicleModelMap[normPlate] || 'Standard Lorry';
+        const vehicleLength = formatLorryLength(gpsVehicleLengthMap[normPlate]);
+
+        const driverAvatarHtml = driverPhoto
+            ? `<img src="${driverPhoto}" class="gps-driver-avatar" alt="${driverName}">`
+            : `<div class="gps-driver-avatar-fallback">${initials}</div>`;
+
+        const callBtnHtml = driverPhone
+            ? `<a href="tel:${driverPhone}" class="gps-call-btn" onclick="event.stopPropagation();">📞 ${t('gps.callDriver')}</a>`
+            : '';
+
+        const mapsLink = `https://www.google.com/maps?q=${unit.lat},${unit.lng}`;
+
+        let statusPillText = t('gps.offline');
+        if (unit.status === 'moving') statusPillText = `⚡ ${Math.round(unit.speed)} km/h`;
+        else if (unit.status === 'idle') statusPillText = `🅿️ ${t('gps.idle')}`;
+
+        const card = document.createElement('div');
+        card.className = `gps-vehicle-card status-${unit.status}`;
+        card.innerHTML = `
+            <div class="gps-card-top">
+                <div class="gps-card-plate-wrap">
+                    <span class="gps-card-plate">🚛 ${unit.name}</span>
+                </div>
+                <span class="gps-status-pill status-${unit.status}">${statusPillText}</span>
+            </div>
+
+            <div class="gps-driver-row">
+                <div class="gps-driver-left">
+                    ${driverAvatarHtml}
+                    <div class="gps-driver-meta">
+                        <span class="gps-driver-lbl">${t('gps.driver')}</span>
+                        <span class="gps-driver-name">${driverName}</span>
+                    </div>
+                </div>
+                ${callBtnHtml}
+            </div>
+
+            <div class="gps-card-details-grid">
+                <div class="gps-detail-item">
+                    <span class="gps-detail-lbl">Model & Length</span>
+                    <span class="gps-detail-val">${vehicleModel}${vehicleLength ? ' • ' + vehicleLength : ''}</span>
+                </div>
+                <div class="gps-detail-item">
+                    <span class="gps-detail-lbl">GPS Update</span>
+                    <span class="gps-detail-val">⏱️ ${timeAgo(unit.lastTime)}</span>
+                </div>
+            </div>
+
+            <div class="gps-card-address">
+                <span>📍</span>
+                <span>${unit.address}</span>
+            </div>
+
+            <div class="gps-card-actions">
+                <button class="gps-locate-btn" onclick="focusOnGpsLorry(${unit.id}, ${unit.lat}, ${unit.lng}); event.stopPropagation();">
+                    ${t('gps.locate')}
+                </button>
+                <a class="gps-nav-btn" href="${mapsLink}" target="_blank" onclick="event.stopPropagation();">
+                    ${t('map.navigate')} ↗
+                </a>
+            </div>
+        `;
+
+        card.addEventListener('click', () => {
+            focusOnGpsLorry(unit.id, unit.lat, unit.lng);
+        });
+
+        container.appendChild(card);
+    });
+}
+
+// Center map on target lorry and open marker popup
+window.focusOnGpsLorry = function(unitId, lat, lng) {
+    if (!gpsMap || !lat || !lng) return;
+    gpsMap.setView([lat, lng], 15);
+    if (gpsMarkers[unitId]) {
+        setTimeout(() => {
+            if (gpsMarkers[unitId]) gpsMarkers[unitId].openPopup();
+        }, 300);
+    }
+};
+
+// Queue Nominatim geocoding request for reverse address lookups
+function queueGpsGeocode(unit) {
+    if (!unit || !unit.hasPosition) return;
+    if (gpsGeocodeQueue.some(item => item.id === unit.id)) return;
+    if (gpsGeocodeQueue.length >= 30) gpsGeocodeQueue.shift();
+
+    gpsGeocodeQueue.push({ id: unit.id, lat: unit.lat, lng: unit.lng });
+    if (!gpsGeocodeProcessing) {
+        gpsGeocodeProcessing = true;
+        setTimeout(processGpsGeocodeQueue, 100);
+    }
+}
+
+async function processGpsGeocodeQueue() {
+    if (gpsGeocodeQueue.length === 0) {
+        gpsGeocodeProcessing = false;
+        return;
+    }
+
+    const item = gpsGeocodeQueue.shift();
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${item.lat}&lon=${item.lng}&email=jayasooriyatransport@gmail.com`);
+        const data = await res.json();
+
+        const addr = data.address || {};
+        const road = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || "";
+        const town = addr.town || addr.city || addr.village || addr.hamlet || addr.county || "";
+        let displayAddr = road + (road && town ? ", " : "") + town;
+
+        if (!displayAddr && data.display_name) {
+            displayAddr = data.display_name.split(',').slice(0, 2).join(', ');
+        }
+        if (!displayAddr) displayAddr = "Unknown Location";
+
+        gpsAddressCache[item.id] = { lat: item.lat, lng: item.lng, address: displayAddr };
+
+        // Update unit in memory and DOM
+        const target = gpsUnits.find(u => u.id === item.id);
+        if (target) {
+            target.address = displayAddr;
+            if (gpsMarkers[target.id]) {
+                const normPlate = extractBaseVehicleName(target.name);
+                const driver = gpsDriversMap[normPlate];
+                const driverName = driver ? cleanDriverName(driver.name) : t('gps.noDriver');
+                const driverPhone = driver ? driver.contact : '';
+                const driverPhotoHtml = driver && driver.photo_url
+                    ? `<img src="${driver.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #ccc;">`
+                    : `<div style="width:32px; height:32px; border-radius:50%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; font-size:13px; color:#666;">👤</div>`;
+                const callBtnHtml = driverPhone ? `<a href="tel:${driverPhone}" class="gps-call-btn" style="padding:4px 10px; font-size:10px;">📞 Call</a>` : '';
+                const mapsLink = `https://www.google.com/maps?q=${target.lat},${target.lng}`;
+
+                const popupHtml = `
+                    <div class="gps-map-popup" style="font-family:var(--font-sans, sans-serif); min-width:200px;">
+                        <div style="font-family:var(--font-display); font-size:15px; font-weight:800; color:#1A1D24; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
+                            <span>🚛 ${target.name}</span>
+                            <span style="font-size:11px; font-weight:700; color:${target.status === 'moving' ? '#00B37E' : target.status === 'idle' ? '#E07B00' : '#64748B'};">${target.speed > 0 ? Math.round(target.speed) + ' km/h' : target.status.toUpperCase()}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-space-between; gap:8px; background:#f8fafc; padding:6px 8px; border-radius:8px; margin: 6px 0; border:1px solid #e2e8f0;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                ${driverPhotoHtml}
+                                <div>
+                                    <div style="font-size:8px; text-transform:uppercase; color:#94a3b8; font-weight:700;">DRIVER</div>
+                                    <div style="font-size:11px; font-weight:700; color:#1e293b;">${driverName}</div>
+                                </div>
+                            </div>
+                            ${callBtnHtml}
+                        </div>
+                        <div style="font-size:11px; color:#64748B; line-height:1.5; margin-bottom:6px;">
+                            📍 <strong>${displayAddr}</strong><br>
+                            ⏱️ Updated ${timeAgo(target.lastTime)}
+                        </div>
+                        <a href="${mapsLink}" target="_blank" style="display:inline-block; font-size:11px; font-weight:700; color:#0284C7; text-decoration:none;">🗺️ Open in Google Maps ↗</a>
+                    </div>`;
+
+                gpsMarkers[target.id].setPopupContent(popupHtml);
+            }
+        }
+    } catch(e) {
+        console.warn('Geocoding queue error for unit:', item.id, e);
+    }
+    setTimeout(processGpsGeocodeQueue, 1200);
 }
 
 // Start everything when DOM is ready

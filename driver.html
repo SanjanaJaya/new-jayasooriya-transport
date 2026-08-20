@@ -20,6 +20,9 @@
     <!-- Driver App Stylesheet -->
     <link rel="stylesheet" href="driver-styles.css">
     
+    <!-- Wialon Remote API SDK -->
+    <script src="https://hst-api.wialon.com/wsdk/script/wialon.js"></script>
+    
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="driver-manifest.json">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png">
@@ -83,35 +86,50 @@
     <!-- ==================== MAIN DASHBOARD VIEW ==================== -->
     <div id="dashboardView" class="view">
         <header class="app-header">
-            <div class="driver-profile">
-                <div class="avatar-container">
-                    <img id="driverAvatar" src="https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png" alt="Driver Profile" class="avatar-img">
+            <!-- Row 1: Profile Info & Status Toggle -->
+            <div class="header-top-row">
+                <div class="driver-profile">
+                    <div class="avatar-container">
+                        <img id="driverAvatar" src="https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png" alt="Driver Profile" class="avatar-img">
+                    </div>
+                    <div class="driver-info">
+                        <span class="welcome-text" data-i18n="dashboard.partner">Partner</span>
+                        <span id="driverName" class="driver-name"><div class="skeleton skeleton-text"></div></span>
+                        <div id="driverOperationBadgeWrap" class="driver-op-wrap"></div>
+                    </div>
                 </div>
-                <div class="driver-info">
-                    <span class="welcome-text" data-i18n="dashboard.partner">Partner</span>
-                    <span id="driverName" class="driver-name"><div class="skeleton skeleton-text"></div></span>
-                    <div id="driverOperationBadgeWrap" class="driver-op-wrap"></div>
+                
+                <!-- Jayasooriya Transport Brand Text -->
+                <div class="header-brand-text-wrap" title="Jayasooriya Transport">
+                    <span class="brand-text-main">JAYASOORIYA</span>
+                    <span class="brand-text-sub">TRANSPORT</span>
                 </div>
             </div>
-            
-            <!-- Header Right Actions Container -->
-            <div class="header-right-actions">
-                <!-- Theme Toggle -->
-                <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Light/Dark Mode">🌙</button>
+
+            <!-- Row 2: Action Buttons Bar -->
+            <div class="header-action-bar">
+                <!-- Coordinator GPS Button -->
+                <button id="gpsModalBtn" class="header-gps-btn" style="display:none;" title="Coordinator GPS Live Tracker">
+                    <span class="gps-btn-icon">🛰️</span>
+                    <span class="gps-btn-text">GPS</span>
+                </button>
 
                 <!-- Race/Leaderboard Button -->
-                <button id="raceModalBtn" class="header-action-icon" title="View Month Race">🏁</button>
+                <button id="raceModalBtn" class="header-action-btn" title="View Month Race">
+                    <span class="btn-icon">🏁</span>
+                    <span class="btn-label" data-i18n="menu.race">Race</span>
+                </button>
 
                 <!-- Language Toggle -->
-                <button id="langToggleBtn" class="lang-toggle-btn" title="Switch Language / භාෂාව මාරු කරන්න">🌐 EN</button>
-                
-                <!-- Status Toggle -->
-                <div class="status-toggle-wrapper">
-                    <button id="statusToggleBtn" class="status-btn online">
-                        <span class="status-indicator"></span>
-                        <span id="statusText" data-i18n="dashboard.online">ONLINE</span>
-                    </button>
-                </div>
+                <button id="langToggleBtn" class="header-action-btn" title="Switch Language">
+                    <span class="btn-icon">🌐</span>
+                    <span id="langToggleLabel">EN</span>
+                </button>
+
+                <!-- Theme Toggle -->
+                <button id="themeToggleBtn" class="header-action-btn" title="Toggle Light/Dark Mode">
+                    <span id="themeToggleIcon">🌙</span>
+                </button>
             </div>
         </header>
 
@@ -439,6 +457,67 @@
                                 </div>
                                 <span class="pstat-lbl" data-i18n="profile.totalHires">Total Hires</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== COORDINATOR GPS TRACKER SHEET (MODAL) ==================== -->
+        <div id="gpsModal" class="salary-modal gps-modal">
+            <div class="salary-modal-backdrop" id="closeGpsModalBackdrop"></div>
+            <div class="salary-modal-content gps-modal-content">
+                <div class="salary-modal-header gps-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <div class="gps-title-wrap">
+                            <h3 data-i18n="gps.title" style="color: #38BDF8; font-family: var(--font-display); font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;">🛰️ Lorry GPS Tracker</h3>
+                            <span class="race-badge race-badge-coord" style="display:inline-flex; align-items:center; gap:4px; font-size:10px; padding:2px 7px;">⭐ Coordinator</span>
+                        </div>
+                        <button class="close-modal-btn" id="closeGpsModalBtn">&times;</button>
+                    </div>
+
+                    <!-- Live Connection Bar & Stat Counters -->
+                    <div class="gps-status-bar">
+                        <div class="gps-stat-chip">
+                            <span id="gpsConnDot" class="gps-conn-dot"></span>
+                            <span id="gpsConnText" class="gps-conn-text">Connecting...</span>
+                        </div>
+                        <div class="gps-stat-chip count-chip">
+                            <span class="chip-label" data-i18n="gps.totalLorries">Lorries:</span>
+                            <span id="gpsTotalCount" class="chip-val">0</span>
+                        </div>
+                        <button id="gpsRefreshBtn" class="gps-refresh-btn" title="Refresh Live Positions">🔄</button>
+                    </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="gps-controls-wrapper">
+                        <div class="gps-search-input-wrap">
+                            <input type="text" id="gpsSearchInput" data-i18n-placeholder="gps.searchPlaceholder" placeholder="🔍 Search plate, driver, model...">
+                        </div>
+                        <div class="gps-filter-tabs" id="gpsFilterTabs">
+                            <button class="gps-tab active" data-filter="all"><span data-i18n="gps.tabAll">All</span> (<span id="gpsCountAll">0</span>)</button>
+                            <button class="gps-tab tab-moving" data-filter="moving"><span data-i18n="gps.tabMoving">Moving</span> (<span id="gpsCountMoving">0</span>)</button>
+                            <button class="gps-tab tab-idle" data-filter="idle"><span data-i18n="gps.tabIdle">Idle</span> (<span id="gpsCountIdle">0</span>)</button>
+                            <button class="gps-tab tab-offline" data-filter="offline"><span data-i18n="gps.tabOffline">Offline</span> (<span id="gpsCountOffline">0</span>)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="salary-modal-body gps-modal-body">
+                    <!-- Interactive Leaflet Map Container -->
+                    <div class="gps-map-wrapper">
+                        <div id="gpsTrackerMap"></div>
+                        <button id="gpsMapFitBoundsBtn" class="gps-map-fit-btn" title="Fit all lorries on map">
+                            🎯 <span data-i18n="gps.fitMap">Fit All</span>
+                        </button>
+                    </div>
+
+                    <!-- Lorries Vehicles Cards List -->
+                    <div class="gps-vehicles-section">
+                        <div id="gpsVehiclesLoading" class="loading-spinner" data-i18n="gps.loading">Connecting to Wialon GPS...</div>
+                        <div id="gpsVehiclesList" class="gps-vehicles-list hidden">
+                            <!-- Dynamic vehicle cards injected here -->
                         </div>
                     </div>
                 </div>
