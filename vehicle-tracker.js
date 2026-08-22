@@ -825,7 +825,13 @@
                     }
 
                     var items = (data && data.items) ? data.items : [];
-                    var parsedUnits = items.map(function (item) {
+                    var parsedUnits = items
+                        .filter(function (item) {
+                            var name = item.nm || '';
+                            var clean = name.replace(/[\s\-]/g, '').toUpperCase();
+                            return !clean.includes('479845');
+                        })
+                        .map(function (item) {
                         var pos = item.pos || {};
                         var unitId = item.id;
                         var lat = pos.y || 0;

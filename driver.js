@@ -3303,20 +3303,26 @@ async function fetchGpsUnitsFromWialon() {
                             resolve(null);
                             return;
                         }
-                        const items = data.items.map(item => {
-                            const pos = item.pos || {};
-                            return {
-                                id: item.id,
-                                name: item.nm || 'Unknown Lorry',
-                                lat: pos.y || 0,
-                                lng: pos.x || 0,
-                                speed: pos.s || 0,
-                                course: pos.c || 0,
-                                satellites: pos.sc || 0,
-                                lastTime: pos.t || 0,
-                                hasPosition: !!(pos.y && pos.x)
-                            };
-                        });
+                        const items = data.items
+                            .filter(item => {
+                                const name = item.nm || '';
+                                const clean = name.replace(/[\s\-]/g, '').toUpperCase();
+                                return !clean.includes('479845');
+                            })
+                            .map(item => {
+                                const pos = item.pos || {};
+                                return {
+                                    id: item.id,
+                                    name: item.nm || 'Unknown Lorry',
+                                    lat: pos.y || 0,
+                                    lng: pos.x || 0,
+                                    speed: pos.s || 0,
+                                    course: pos.c || 0,
+                                    satellites: pos.sc || 0,
+                                    lastTime: pos.t || 0,
+                                    hasPosition: !!(pos.y && pos.x)
+                                };
+                            });
                         resolve(items);
                     });
                 };
@@ -3357,20 +3363,26 @@ async function fetchGpsUnitsFromWialon() {
         const searchData = await searchRes.json();
         const items = (searchData && searchData.items) ? searchData.items : [];
 
-        return items.map(item => {
-            const pos = item.pos || {};
-            return {
-                id: item.id,
-                name: item.nm || 'Unknown Lorry',
-                lat: pos.y || 0,
-                lng: pos.x || 0,
-                speed: pos.s || 0,
-                course: pos.c || 0,
-                satellites: pos.sc || 0,
-                lastTime: pos.t || 0,
-                hasPosition: !!(pos.y && pos.x)
-            };
-        });
+        return items
+            .filter(item => {
+                const name = item.nm || '';
+                const clean = name.replace(/[\s\-]/g, '').toUpperCase();
+                return !clean.includes('479845');
+            })
+            .map(item => {
+                const pos = item.pos || {};
+                return {
+                    id: item.id,
+                    name: item.nm || 'Unknown Lorry',
+                    lat: pos.y || 0,
+                    lng: pos.x || 0,
+                    speed: pos.s || 0,
+                    course: pos.c || 0,
+                    satellites: pos.sc || 0,
+                    lastTime: pos.t || 0,
+                    hasPosition: !!(pos.y && pos.x)
+                };
+            });
     } catch(e) {
         console.error('Wialon REST API fetch error:', e);
         return [];
