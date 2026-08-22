@@ -1457,6 +1457,118 @@ body.dark-mode .detail-value.profit { color: #2EEBA0; }
     box-shadow: var(--shadow-red-lg);
 }
 
+.report-controls {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 24px;
+    animation: fadeSlideUp 0.65s 0.12s var(--ease-base) both;
+}
+
+.report-controls .btn {
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 12px 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-audit-report {
+    background: linear-gradient(135deg, #D1001F 0%, #900014 100%);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 12px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(209, 0, 31, 0.40);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-audit-report:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(209, 0, 31, 0.55);
+}
+
+/* Audit Modal Components */
+.audit-period-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.audit-period-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.12));
+    background: var(--surface-card, #1A1D27);
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-secondary, #A0AEC0);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.audit-period-card.active, .audit-period-card:has(input:checked) {
+    border-color: #D1001F;
+    background: rgba(209, 0, 31, 0.16);
+    color: #FFFFFF;
+    box-shadow: 0 0 14px rgba(209, 0, 31, 0.35);
+}
+
+.audit-period-card input[type="radio"] {
+    accent-color: #D1001F;
+    margin-right: 8px;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.audit-expense-box {
+    background: rgba(209, 0, 31, 0.10);
+    border: 1px solid rgba(209, 0, 31, 0.30);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.audit-expense-box-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #FF3B56;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.audit-expense-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.audit-expense-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary, #E2E8F0);
+}
+
 .full-width {
     width: 100%;
     justify-content: center;

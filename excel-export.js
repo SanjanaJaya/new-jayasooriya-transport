@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // excel-export.js — Revenue Summary Excel Export
 // Jayasooriya Transport Management System
 // Depends on: SheetJS (xlsx) loaded in index.html
@@ -175,7 +175,7 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
     // I: Distance (km)    J: Waiting / Extra Chg            K: Fixed Pay (commit)
 
     const summaryRows = [
-      ['JAYASOORIYA TRANSPORT — REVENUE SUMMARY'],
+      ['JAYASOORIYA TRANSPORT (Reg No: KG/RMB/5919) — REVENUE SUMMARY'],
       [`Date Range: ${formatDateRangeLabel(startDate, endDate)}`],
       [`Generated: ${new Date().toLocaleString('en-US')}`],
       [],
@@ -741,7 +741,7 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
     }
 
     const maintenanceRows = [
-      ['JAYASOORIYA TRANSPORT — MAINTENANCE EXPENSES DETAIL'],
+      ['JAYASOORIYA TRANSPORT (Reg No: KG/RMB/5919) — MAINTENANCE EXPENSES DETAIL'],
       [`Date Range: ${formatDateRangeLabel(startDate, endDate)}`],
       [`Generated: ${new Date().toLocaleString('en-US')}`],
       [],
@@ -778,7 +778,7 @@ async function exportRevenueSummaryExcel(startDate, endDate) {
     // SHEET 7 — Driver Salaries Summary
     // =========================================================
     const salarySummaryRows = [
-      ['JAYASOORIYA TRANSPORT — DRIVER SALARIES SUMMARY'],
+      ['JAYASOORIYA TRANSPORT (Reg No: KG/RMB/5919) — DRIVER SALARIES SUMMARY'],
       [`Month Range: ${startMonth} → ${endMonth}`],
       [`Generated: ${new Date().toLocaleString('en-US')}`],
       [],

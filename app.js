@@ -6017,6 +6017,104 @@ document.getElementById('generateReportBtn')?.addEventListener('click', async ()
     }
 });
 
+// ============ AUDIT REPORT MODAL HANDLERS ============
+function openAuditReportModal() {
+    const modal = document.getElementById('auditReportModal');
+    if (!modal) return;
+
+    // Set default month inputs
+    const dashMonth = document.getElementById('dashboardMonth')?.value;
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const defaultMonth = dashMonth || currentMonth;
+
+    const singleMonthEl = document.getElementById('auditSingleMonth');
+    const startMonthEl = document.getElementById('auditStartMonth');
+    const endMonthEl = document.getElementById('auditEndMonth');
+
+    if (singleMonthEl && !singleMonthEl.value) singleMonthEl.value = defaultMonth;
+    if (startMonthEl && !startMonthEl.value) startMonthEl.value = `${now.getFullYear()}-01`;
+    if (endMonthEl && !endMonthEl.value) endMonthEl.value = defaultMonth;
+
+    // Ensure single month radio selected by default
+    const singleRadio = document.querySelector('input[name="auditReportType"][value="single"]');
+    if (singleRadio) {
+        singleRadio.checked = true;
+        toggleAuditReportTypeInputs();
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+}
+
+function closeAuditReportModal() {
+    const modal = document.getElementById('auditReportModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+function toggleAuditReportTypeInputs() {
+    const type = document.querySelector('input[name="auditReportType"]:checked')?.value || 'single';
+    const singleGroup = document.getElementById('auditSingleMonthGroup');
+    const rangeGroup = document.getElementById('auditMonthRangeGroup');
+    const cardSingle = document.getElementById('auditPeriodCardSingle');
+    const cardRange = document.getElementById('auditPeriodCardRange');
+
+    if (type === 'single') {
+        if (singleGroup) singleGroup.style.display = 'block';
+        if (rangeGroup) rangeGroup.style.display = 'none';
+        if (cardSingle) cardSingle.classList.add('active');
+        if (cardRange) cardRange.classList.remove('active');
+    } else {
+        if (singleGroup) singleGroup.style.display = 'none';
+        if (rangeGroup) rangeGroup.style.display = 'block';
+        if (cardSingle) cardSingle.classList.remove('active');
+        if (cardRange) cardRange.classList.add('active');
+    }
+}
+
+document.getElementById('generateAuditReportConfirmBtn')?.addEventListener('click', async () => {
+    const type = document.querySelector('input[name="auditReportType"]:checked')?.value || 'single';
+    let startMonthVal = '', endMonthVal = '';
+
+    if (type === 'single') {
+        startMonthVal = document.getElementById('auditSingleMonth')?.value;
+        endMonthVal = startMonthVal;
+        if (!startMonthVal) {
+            showToast('Please select a month for the audit report', 'warning');
+            return;
+        }
+    } else {
+        startMonthVal = document.getElementById('auditStartMonth')?.value;
+        endMonthVal = document.getElementById('auditEndMonth')?.value;
+        if (!startMonthVal || !endMonthVal) {
+            showToast('Please select both From Month and To Month for the audit report', 'warning');
+            return;
+        }
+    }
+
+    if (typeof generateAuditReport === 'function') {
+        await generateAuditReport(type, startMonthVal, endMonthVal);
+    } else {
+        showToast('Audit Report generator script not loaded properly', 'error');
+    }
+});
+
+// Close audit modal when clicking outside content area
+document.getElementById('auditReportModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('auditReportModal')) {
+        closeAuditReportModal();
+    }
+});
+
+// Expose open/close functions globally for onclick attributes
+window.openAuditReportModal = openAuditReportModal;
+window.closeAuditReportModal = closeAuditReportModal;
+window.toggleAuditReportTypeInputs = toggleAuditReportTypeInputs;
+
 // ============ HELPER FUNCTIONS (LIGHTBOX) ============
 
 function openPhotoLightbox(photoUrl) {

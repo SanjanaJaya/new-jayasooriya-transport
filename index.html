@@ -491,8 +491,8 @@
 
                     <div class="report-controls">
                         <button class="btn btn-report" id="generateReportBtn">📄 Generate Monthly Report</button>
-                        <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export
-                            Excel</button>
+                        <button class="btn btn-audit-report" id="openAuditReportBtn" onclick="openAuditReportModal()">📊 Generate Audit Report</button>
+                        <button class="btn btn-success" onclick="openExportModal()" id="exportExcelBtn">📥 Export Excel</button>
                     </div>
 
                     <!-- ====== DASHBOARD OPERATION-WISE REVENUE WIDGET ====== -->
@@ -3438,6 +3438,75 @@
                 <div class="form-actions" style="margin:0;gap:10px;display:flex">
                     <button class="btn btn-success" id="exportConfirmBtn" style="flex:1">✅ Export Now</button>
                     <button class="btn btn-secondary" id="exportCancelBtn" style="flex:1">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== AUDIT & PROFIT/LOSS REPORT MODAL ====== -->
+    <div id="auditReportModal" class="modal" style="display:none;">
+        <div class="modal-content audit-modal-container" style="max-width:520px; border-radius:18px;">
+            <div class="login-header" style="padding:24px 28px 14px; position:relative;">
+                <button class="close-modal-btn" onclick="closeAuditReportModal()" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; transition: color 0.2s;" title="Close">&times;</button>
+                <h2 style="margin:0; display:flex; align-items:center; gap:10px;">
+                    <span>📊</span> Audit Report Generator
+                </h2>
+                <p style="font-size:13px; margin-top:6px; color: var(--text-muted); line-height: 1.4;">
+                    Select month or month range to generate a comprehensive Audit & Profit/Loss Report (includes Maintenance, Leasing, Loans, Staff, and Fuel).
+                </p>
+            </div>
+            <div style="padding:18px 28px 28px; display:flex; flex-direction:column; gap:18px;">
+                <div class="form-group">
+                    <label style="font-weight:600; margin-bottom:10px; display:block; font-size:13px;">Report Period Type</label>
+                    <div class="audit-period-selector">
+                        <label class="audit-period-card active" id="auditPeriodCardSingle">
+                            <input type="radio" name="auditReportType" value="single" checked onchange="toggleAuditReportTypeInputs()">
+                            <span>📅 Single Month</span>
+                        </label>
+                        <label class="audit-period-card" id="auditPeriodCardRange">
+                            <input type="radio" name="auditReportType" value="range" onchange="toggleAuditReportTypeInputs()">
+                            <span>🗓️ Month Range</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="auditSingleMonthGroup" class="form-group">
+                    <label for="auditSingleMonth" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">📆 Select Month</label>
+                    <input type="month" id="auditSingleMonth" class="form-control" style="width:100%; padding:11px 14px; border-radius:10px;" />
+                </div>
+
+                <div id="auditMonthRangeGroup" class="form-group" style="display:none;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div>
+                            <label for="auditStartMonth" style="font-weight:600; font-size:12px; margin-bottom:6px; display:block;">From Month</label>
+                            <input type="month" id="auditStartMonth" class="form-control" style="width:100%; padding:11px 14px; border-radius:10px;" />
+                        </div>
+                        <div>
+                            <label for="auditEndMonth" style="font-weight:600; font-size:12px; margin-bottom:6px; display:block;">To Month</label>
+                            <input type="month" id="auditEndMonth" class="form-control" style="width:100%; padding:11px 14px; border-radius:10px;" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-expense-box">
+                    <div class="audit-expense-box-title">
+                        <span>📋</span> Included Audit Expense Ledger:
+                    </div>
+                    <div class="audit-expense-grid">
+                        <div class="audit-expense-item"><span>✔️</span> Gross Hires & Revenues</div>
+                        <div class="audit-expense-item"><span>✔️</span> Net Fuel (18% VAT Refund)</div>
+                        <div class="audit-expense-item"><span>✔️</span> Routine Maintenance (Oil, Tyres)</div>
+                        <div class="audit-expense-item"><span>✔️</span> Driver & Staff Salaries</div>
+                        <div class="audit-expense-item"><span>✔️</span> Vehicle Leasing Installments</div>
+                        <div class="audit-expense-item"><span>✔️</span> Vehicle Loan Installments</div>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin:0; gap:12px; display:flex; margin-top: 6px;">
+                    <button class="btn btn-audit-report" id="generateAuditReportConfirmBtn" style="flex:1.6; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 18px;">
+                        <span>📄</span> Generate Audit PDF Report
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeAuditReportModal()" style="flex:1; padding:12px 18px;">Cancel</button>
                 </div>
             </div>
         </div>

@@ -1434,12 +1434,17 @@ function createSalarySlipPDF() {
 
         // Add company name
         pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(24);
+        pdf.setFontSize(20);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('JAYASOORIYA TRANSPORT', pageWidth / 2, 20, { align: 'center' });
+        pdf.text('JAYASOORIYA TRANSPORT', pageWidth / 2, 16, { align: 'center' });
 
-        pdf.setFontSize(14);
-        pdf.text('DRIVER SALARY SLIP', pageWidth / 2, 30, { align: 'center' });
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('BUSINESS REG NO: KG/RMB/5919', pageWidth / 2, 23, { align: 'center' });
+
+        pdf.setFontSize(13);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('STAFF SALARY SLIP', pageWidth / 2, 33, { align: 'center' });
 
         // Reset text color
         pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
