@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jt-driver-cache-v10';
+const CACHE_NAME = 'jt-driver-cache-v12';
 const STATIC_ASSETS = [
     '/driver.html',
     '/driver-styles.css',
@@ -42,8 +42,8 @@ self.addEventListener('activate', event => {
 // Fetch events: Network First falling back to Cache (for app code/manifest)
 // Cache First for external assets (Leaflet, images, fonts)
 self.addEventListener('fetch', event => {
-    // Only intercept GET requests
-    if (event.request.method !== 'GET') {
+    // Only intercept HTTP/HTTPS GET requests
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
         return;
     }
 

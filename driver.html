@@ -108,33 +108,28 @@
 
             <!-- Row 2: Action Buttons Bar -->
             <div class="header-action-bar">
-                <!-- Coordinator GPS Button -->
-                <button id="gpsModalBtn" class="header-gps-btn" style="display:none;" title="Coordinator GPS Live Tracker">
-                    <span class="gps-btn-icon">🛰️</span>
-                    <span class="gps-btn-text">GPS</span>
+                <button id="gpsModalBtn" class="header-action-btn" onclick="openGpsModal()">
+                    <span class="btn-icon">🛰️</span>
+                    <span class="btn-label">GPS</span>
                 </button>
 
-                <!-- Race/Leaderboard Button -->
-                <button id="raceModalBtn" class="header-action-btn" title="View Month Race">
+                <button id="raceModalBtn" class="header-action-btn" onclick="openRaceModal()">
                     <span class="btn-icon">🏁</span>
                     <span class="btn-label" data-i18n="menu.race">Race</span>
                 </button>
 
-                <!-- Advance Request Button -->
-                <button id="headerAdvanceRequestBtn" class="header-action-btn" title="Request Salary Advance" onclick="openAdvanceRequestModal()">
+                <button id="headerAdvanceRequestBtn" class="header-action-btn" onclick="openAdvanceRequestModal()">
                     <span class="btn-icon">💵</span>
                     <span class="btn-label" data-i18n="menu.advance">Advance</span>
                 </button>
 
-                <!-- Language Toggle -->
-                <button id="langToggleBtn" class="header-action-btn" title="Switch Language">
+                <button id="langToggleBtn" class="header-action-btn">
                     <span class="btn-icon">🌐</span>
-                    <span id="langToggleLabel">EN</span>
+                    <span id="langToggleLabel" class="btn-label">EN</span>
                 </button>
 
-                <!-- Theme Toggle -->
-                <button id="themeToggleBtn" class="header-action-btn" title="Toggle Light/Dark Mode">
-                    <span id="themeToggleIcon">🌙</span>
+                <button id="themeToggleBtn" class="header-action-btn">
+                    <span id="themeToggleIcon" class="btn-icon">🌙</span>
                 </button>
             </div>
         </header>
@@ -355,6 +350,7 @@
                 <div class="salary-modal-footer">
                     <button class="btn btn-outline-danger btn-block" id="logoutBtn" onclick="confirmLogout()" data-i18n="salary.logout">Logout App</button>
                 </div>
+            </div>
         </div>
 
         <!-- ==================== DRIVER ADVANCE REQUEST SHEET (MODAL) ==================== -->
@@ -667,6 +663,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Driver App Logic Script -->
-    <script src="driver.js?v=9"></script>
+    <script src="driver.js?v=12"></script>
 </body>
 </html>

@@ -535,35 +535,53 @@ body.light-mode .brand-text-sub {
 .header-action-bar {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     width: 100%;
-    padding-top: 4px;
+    padding-top: 6px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
+
+.header-action-bar::-webkit-scrollbar { display: none; }
 
 .header-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    padding: 6px 12px;
+    gap: 4px;
+    padding: 5px 10px;
     border-radius: var(--r-pill);
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     color: var(--text-2);
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
-    flex: 1;
-    min-width: max-content;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.header-action-btn .btn-icon {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.header-action-btn .btn-label {
+    font-size: 10.5px;
+    line-height: 1;
 }
 
 .header-action-btn:active {
-    opacity: 0.75;
+    transform: scale(0.93);
+    opacity: 0.8;
 }
+
+/* Prevent child elements from stealing clicks */
+.header-action-btn * { pointer-events: none; }
 
 body.light-mode .header-action-bar {
     border-top-color: rgba(0, 0, 0, 0.06);
@@ -1139,7 +1157,7 @@ body.light-mode .kd-popup-copy-btn:hover {
 .salary-modal, .km-log-modal {
     position: absolute;
     inset: 0;
-    z-index: 100;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -3758,4 +3776,141 @@ body.light-mode .hint-card-header {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ==================== COORDINATOR GPS TRACKER STYLES ==================== */
+.gps-modal-content {
+    max-height: 94% !important;
+    height: 94%;
+}
+
+.gps-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+    overflow-y: auto;
+}
+
+.gps-map-wrapper {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    min-height: 280px;
+    border-radius: var(--r-md);
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+#gpsTrackerMap {
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    background: #1A1D24;
+}
+
+.gps-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-elevated);
+    border-radius: var(--r-sm);
+    margin-top: 8px;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.gps-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.gps-conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #E07B00;
+}
+
+.gps-conn-dot.connected {
+    background: #00B37E;
+    box-shadow: 0 0 8px rgba(0, 179, 126, 0.6);
+}
+
+.gps-refresh-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.gps-controls-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.gps-search-input-wrap input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    color: var(--text-1);
+    font-size: 13px;
+}
+
+.gps-filter-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+}
+
+.gps-tab {
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.gps-tab.active {
+    background: #0284C7;
+    color: #fff;
+    border-color: #0284C7;
+}
+
+.gps-map-fit-btn {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-1);
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.gps-vehicles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }

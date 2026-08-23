@@ -723,11 +723,15 @@ function initApp() {
         return;
     }
 
-    // Register Service Worker for PWA installability
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=3')
-            .then(reg => console.log('Driver App PWA Service Worker Registered', reg.scope))
-            .catch(err => console.error('Driver App PWA Service Worker Registration Failed', err));
+    // Register Service Worker for PWA installability (only on HTTP/HTTPS)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:' || location.hostname === 'localhost')) {
+        try {
+            navigator.serviceWorker.register('sw.js?v=12')
+                .then(reg => console.log('Driver App PWA Service Worker Registered', reg.scope))
+                .catch(err => console.warn('PWA Service Worker skipped:', err));
+        } catch (e) {
+            console.warn('Service worker check error:', e);
+        }
     }
 
     updateOnlineStatus(); // Set initial online banner visibility state
@@ -934,16 +938,18 @@ function setupEventHandlers() {
     });
 
     // Race Modal Events
-    document.getElementById('raceModalBtn')?.addEventListener('click', openRaceModal);
     document.getElementById('closeRaceModalBtn')?.addEventListener('click', closeRaceModal);
     document.getElementById('closeRaceModalBackdrop')?.addEventListener('click', closeRaceModal);
+
+    // Advance Request Modal Events
+    document.getElementById('closeAdvanceRequestModalBtn')?.addEventListener('click', closeAdvanceRequestModal);
+    document.getElementById('closeAdvanceRequestModalBackdrop')?.addEventListener('click', closeAdvanceRequestModal);
 
     // Driver Profile Modal Events
     document.getElementById('closeDriverProfileModalBtn')?.addEventListener('click', closeDriverProfileModal);
     document.getElementById('closeDriverProfileModalBackdrop')?.addEventListener('click', closeDriverProfileModal);
 
     // Coordinator GPS Modal Events
-    document.getElementById('gpsModalBtn')?.addEventListener('click', openGpsModal);
     document.getElementById('closeGpsModalBtn')?.addEventListener('click', closeGpsModal);
     document.getElementById('closeGpsModalBackdrop')?.addEventListener('click', closeGpsModal);
     document.getElementById('gpsRefreshBtn')?.addEventListener('click', () => refreshGpsData(false));
@@ -1337,18 +1343,6 @@ async function fetchLorryAssignment() {
 
                 if (hireResult.error) console.warn('[Vehicle Debug] hire_to_pay_vehicles query error:', hireResult.error.message);
                 if (commResult.error) console.warn('[Vehicle Debug] commitment_vehicles query error:', commResult.error.message);
-
-                console.log('[Vehicle Debug] hire_to_pay_vehicles count:', hireVehicles?.length || 0, '| commitment_vehicles count:', commVehicles?.length || 0);
-
-                // Log all vehicle plates and their art URLs for debugging
-                hireVehicles?.forEach(v => {
-                    const clean = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                    console.log('[Vehicle Debug] Hire vehicle:', v.lorry_number, '| clean:', clean, '| vector_art_url:', v.vector_art_url ? 'SET' : 'NULL', '| photo_url:', v.photo_url ? 'SET' : 'NULL');
-                });
-                commVehicles?.forEach(v => {
-                    const clean = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                    console.log('[Vehicle Debug] Commitment vehicle:', v.vehicle_number, '| clean:', clean, '| vector_art_url:', v.vector_art_url ? 'SET' : 'NULL', '| photo_url:', v.photo_url ? 'SET' : 'NULL');
-                });
 
                 // Combine all candidates from hire_to_pay_vehicles and commitment_vehicles
                 const candidates = [];
@@ -2374,10 +2368,15 @@ function animateNumericText(elementId, start, end, duration, prefix = "", suffix
 // ==================== DRIVER RACE Standings ====================
 
 function openRaceModal() {
+    console.log('[Modal Debug] openRaceModal() called');
     const modal = document.getElementById('raceModal');
+    console.log('[Modal Debug] raceModal element:', modal, 'classList before:', modal?.classList?.toString());
     if (modal) {
         modal.classList.add('active');
+        console.log('[Modal Debug] raceModal classList after:', modal.classList.toString());
         loadDriverRace();
+    } else {
+        console.error('[Modal Debug] raceModal element NOT FOUND in DOM!');
     }
 }
 
@@ -2403,6 +2402,10 @@ async function loadDriverRace() {
     const labelEl = document.getElementById('raceMonthLabel');
     
     if (!listContainer || !loadingEl) return;
+    if (!currentDriver) {
+        loadingEl.textContent = 'Please log in to view standings.';
+        return;
+    }
 
     // Show loading state, hide list
     loadingEl.classList.remove('hidden');
@@ -3202,13 +3205,12 @@ const WIALON_DEFAULT_TOKEN = '2dc41f89a60d68ba8fd0a5e34722386f728895444F6CEE221D
 const GPS_OFFLINE_THRESHOLD = 30 * 60; // 30 mins
 
 function openGpsModal() {
-    if (!currentDriver || !currentDriver.is_coordinator) {
-        showDriverToast('Access restricted to Operation Coordinators', 'warning');
-        return;
-    }
+    console.log('[Modal Debug] openGpsModal() called');
     const modal = document.getElementById('gpsModal');
+    console.log('[Modal Debug] gpsModal element:', modal);
     if (modal) {
         modal.classList.add('active');
+        console.log('[Modal Debug] gpsModal classList after:', modal.classList.toString());
         initGpsMap();
         setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 200);
         setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 500);
@@ -3218,6 +3220,8 @@ function openGpsModal() {
         gpsRefreshTimer = setInterval(() => {
             refreshGpsData(false);
         }, 20000);
+    } else {
+        console.error('[Modal Debug] gpsModal element NOT FOUND in DOM!');
     }
 }
 
@@ -3922,11 +3926,16 @@ function checkAdvanceRequestWindow(now = new Date()) {
 }
 
 function openAdvanceRequestModal() {
+    console.log('[Modal Debug] openAdvanceRequestModal() called');
     const modal = document.getElementById('advanceRequestModal');
+    console.log('[Modal Debug] advanceRequestModal element:', modal, 'classList before:', modal?.classList?.toString());
     if (modal) {
         modal.classList.add('active');
+        console.log('[Modal Debug] advanceRequestModal classList after:', modal.classList.toString());
         refreshAdvanceRequestModalUI();
         subscribeDriverAdvanceRequestsRealtime();
+    } else {
+        console.error('[Modal Debug] advanceRequestModal element NOT FOUND in DOM!');
     }
 }
 
