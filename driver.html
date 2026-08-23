@@ -120,6 +120,12 @@
                     <span class="btn-label" data-i18n="menu.race">Race</span>
                 </button>
 
+                <!-- Advance Request Button -->
+                <button id="headerAdvanceRequestBtn" class="header-action-btn" title="Request Salary Advance" onclick="openAdvanceRequestModal()">
+                    <span class="btn-icon">💵</span>
+                    <span class="btn-label" data-i18n="menu.advance">Advance</span>
+                </button>
+
                 <!-- Language Toggle -->
                 <button id="langToggleBtn" class="header-action-btn" title="Switch Language">
                     <span class="btn-icon">🌐</span>
@@ -268,6 +274,12 @@
                                 </div>
                             </div>
 
+                            <!-- Request Advance Action Button -->
+                            <button type="button" id="openAdvanceRequestModalBtn" class="btn btn-primary btn-block" style="margin-bottom: 14px; background: linear-gradient(135deg, #D1001F, #E74C3C); border: none; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(209,0,31,0.25);" onclick="openAdvanceRequestModal()">
+                                <span>📩</span>
+                                <span data-i18n="advance.requestBtn">Request Advance / අත්තිකාරම් ඉල්ලන්න</span>
+                            </button>
+
                             <div class="breakdown-card">
                                 <div class="breakdown-row total-row">
                                     <span data-i18n="salary.totalAdvances">Total Advances Drawn</span>
@@ -342,6 +354,128 @@
                 
                 <div class="salary-modal-footer">
                     <button class="btn btn-outline-danger btn-block" id="logoutBtn" onclick="confirmLogout()" data-i18n="salary.logout">Logout App</button>
+                </div>
+        </div>
+
+        <!-- ==================== DRIVER ADVANCE REQUEST SHEET (MODAL) ==================== -->
+        <div id="advanceRequestModal" class="salary-modal">
+            <div class="salary-modal-backdrop" id="closeAdvanceRequestModalBackdrop" onclick="closeAdvanceRequestModal()"></div>
+            <div class="salary-modal-content" style="border-top-color: #D1001F;">
+                <div class="salary-modal-header">
+                    <div class="header-indicator"></div>
+                    <div class="header-title-bar">
+                        <h3 style="color: #D1001F;" data-i18n="advanceModal.title">📩 Request Salary Advance</h3>
+                        <button class="close-modal-btn" id="closeAdvanceRequestModalBtn" onclick="closeAdvanceRequestModal()">&times;</button>
+                    </div>
+                </div>
+
+                <div class="salary-modal-body" style="padding-top: 10px;">
+                    <!-- ── BILINGUAL HINT & RULES CARD (Sinhala & English) ── -->
+                    <div class="bilingual-hint-card">
+                        <div class="hint-card-header">
+                            <span class="hint-icon">📌</span>
+                            <div>
+                                <strong class="hint-title-en">Advance Request Rules & Schedule</strong>
+                                <div class="hint-title-si">අත්තිකාරම් ඉල්ලීම් නීති සහ කාලසටහන</div>
+                            </div>
+                        </div>
+                        <div class="hint-card-body">
+                            <div class="hint-rule-item">
+                                <div class="hint-rule-icon">💵</div>
+                                <div class="hint-rule-content">
+                                    <div class="rule-en"><strong>Max Amount per Request:</strong> LKR 2,500</div>
+                                    <div class="rule-si">එක් වරකට ඉල්ලුම් කළ හැකි උපරිම මුදල: රු. 2,500 යි</div>
+                                </div>
+                            </div>
+                            <div class="hint-rule-item">
+                                <div class="hint-rule-icon">📊</div>
+                                <div class="hint-rule-content">
+                                    <div class="rule-en"><strong>Weekly Advance Limit:</strong> LKR 7,000 max (Resets Monday)</div>
+                                    <div class="rule-si">සතියකට ගත හැකි උපරිම අත්තිකාරම් සීමාව: රු. 7,000 යි</div>
+                                </div>
+                            </div>
+                            <div class="hint-rule-item">
+                                <div class="hint-rule-icon">🌅</div>
+                                <div class="hint-rule-content">
+                                    <div class="rule-en"><strong>Monday Morning Request:</strong> 00:00 – 06:00 <br><small style="color:#f39c12;">⚡ Transferred between 06:00 – 08:00</small></div>
+                                    <div class="rule-si">සඳුදා උදෑසන ඉල්ලීම්: පෙ.ව. 00:00 – පෙ.ව. 06:00 <br><small style="color:#f39c12;">⚡ මුදල් හුවමාරුව: පෙ.ව. 06:00 – 08:00</small></div>
+                                </div>
+                            </div>
+                            <div class="hint-rule-item">
+                                <div class="hint-rule-icon">☀️</div>
+                                <div class="hint-rule-content">
+                                    <div class="rule-en"><strong>Daily Regular Request (Mon–Sun):</strong> 08:00 – 17:00 <br><small style="color:#27ae60;">⚡ Released between 17:00 – 19:00</small></div>
+                                    <div class="rule-si">දෛනික සාමාන්‍ය ඉල්ලීම් (සඳුදා-ඉරිදා): පෙ.ව. 08:00 – ප.ව. 05:00 <br><small style="color:#27ae60;">⚡ මුදල් නිකුත් කිරීම: ප.ව. 05:00 – 07:00</small></div>
+                                </div>
+                            </div>
+                            <div class="hint-rule-item">
+                                <div class="hint-rule-icon">💡</div>
+                                <div class="hint-rule-content">
+                                    <div class="rule-en"><em>Missed Monday morning window? You can still request during regular hours (08:00 – 17:00) on Monday!</em></div>
+                                    <div class="rule-si"><em>සඳුදා උදෑසන කාලය මඟහැරුණහොත්, සඳුදා දවල් 08:00 – 17:00 අතරද ඉල්ලුම් කළ හැක.</em></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── LIVE WINDOW STATUS CARD ── -->
+                    <div id="driverWindowStatusCard" class="window-status-card">
+                        <div class="status-indicator-icon" id="wsIcon">🟢</div>
+                        <div class="status-indicator-text">
+                            <div id="wsBadge" class="ws-badge-open">WINDOW OPEN</div>
+                            <div id="wsMsgEn" class="ws-msg-en">Request window is currently open.</div>
+                            <div id="wsMsgSi" class="ws-msg-si">ඉල්ලීම් කාලය දැනට විවෘතයි.</div>
+                        </div>
+                    </div>
+
+                    <!-- ── REMAINING WEEKLY BALANCE CARD ── -->
+                    <div class="weekly-limit-summary-card">
+                        <div class="wls-row">
+                            <span class="wls-label" data-i18n="advanceModal.remainingWeekly">Weekly Advance Balance Remaining</span>
+                            <span id="armWeeklyRemaining" class="wls-value text-green">LKR 7,000.00</span>
+                        </div>
+                        <div class="wls-progress-bar-wrap">
+                            <div id="armWeeklyProgress" class="wls-progress-bar" style="width: 100%;"></div>
+                        </div>
+                        <div class="wls-sub" id="armWeeklySubText">LKR 0 used of LKR 7,000 limit</div>
+                    </div>
+
+                    <!-- ── ADVANCE REQUEST FORM ── -->
+                    <form id="driverAdvanceRequestForm" onsubmit="handleDriverAdvanceRequestSubmit(event)">
+                        <div class="form-group-driver">
+                            <label for="arAmountInput" data-i18n="advanceModal.amountLabel">Request Amount (LKR) — Max LKR 2,500</label>
+                            <div class="input-with-currency">
+                                <span class="currency-prefix">LKR</span>
+                                <input type="number" id="arAmountInput" placeholder="Enter amount (e.g. 2000)" step="50" min="100" max="2500" required>
+                            </div>
+                        </div>
+
+                        <!-- Quick Amount Preset Chips -->
+                        <div class="amount-chips-row">
+                            <button type="button" class="amount-chip" onclick="setPresetAmount(1000)">LKR 1,000</button>
+                            <button type="button" class="amount-chip" onclick="setPresetAmount(1500)">LKR 1,500</button>
+                            <button type="button" class="amount-chip" onclick="setPresetAmount(2000)">LKR 2,000</button>
+                            <button type="button" class="amount-chip active" onclick="setPresetAmount(2500)">LKR 2,500</button>
+                        </div>
+
+                        <div class="form-group-driver">
+                            <label for="arReasonInput" data-i18n="advanceModal.reasonLabel">Reason / Notes (Optional)</label>
+                            <input type="text" id="arReasonInput" placeholder="Reason (e.g. Fuel, Personal requirement)">
+                        </div>
+
+                        <button type="submit" id="submitAdvanceRequestBtn" class="btn btn-primary btn-block" style="margin-top: 15px; padding: 14px; font-weight: 800; font-size: 15px;">
+                            <span data-i18n="advanceModal.submitBtn">Submit Request / ඉල්ලුම් කරන්න</span>
+                            <span>→</span>
+                        </button>
+                    </form>
+
+                    <!-- ── MY RECENT REQUESTS HISTORY ── -->
+                    <div class="recent-requests-section" style="margin-top: 24px;">
+                        <h4 class="section-title text-red" style="font-size: 14px; margin-bottom: 10px;" data-i18n="advanceModal.myRequests">📜 My Advance Requests</h4>
+                        <div id="driverRequestsHistoryContainer" class="requests-history-container">
+                            <div style="text-align: center; color: var(--text-muted); padding: 15px;" data-i18n="advanceModal.loadingHistory">Loading request history...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

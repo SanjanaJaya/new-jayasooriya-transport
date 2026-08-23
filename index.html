@@ -282,6 +282,11 @@
                             <span class="nav-icon">💵</span>
                             <span>Advances</span>
                         </button>
+                        <button class="nav-item nav-sub-item" data-page="driver-advance-requests">
+                            <span class="nav-icon">📩</span>
+                            <span>Advance Requests</span>
+                            <span class="nav-badge-count" id="navAdvanceRequestsBadge" style="display:none; background:#E74C3C; color:#fff; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:700; margin-left:auto;">0</span>
+                        </button>
                         <button class="nav-item nav-sub-item" data-page="driver-dayoffs">
                             <span class="nav-icon">⛔</span>
                             <span>Day Offs</span>
@@ -1250,6 +1255,18 @@
                         <button class="btn btn-primary" id="addAdvanceBtn">+ Add Advance</button>
                     </div>
 
+                    <!-- ── PENDING ADVANCE REQUESTS QUICK BANNER ── -->
+                    <div id="pendingRequestsQuickBanner" class="performance-section" style="display:none; background: linear-gradient(135deg, rgba(230,126,34,0.1), rgba(241,196,15,0.1)); border: 1.5px solid rgba(230,126,34,0.35); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h4 style="margin: 0 0 4px 0; color: #d35400; font-size: 15px; font-weight: 700;">📩 Pending Driver Advance Requests (<span id="quickPendingCount">0</span>)</h4>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Drivers have requested advances via Driver App. Review and click <strong>Complete</strong> below or switch to Advance Requests panel.</p>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-warning" onclick="switchPage('driver-advance-requests'); setActiveNavItem('driver-advance-requests');" style="font-weight: 700;">View All Requests →</button>
+                        </div>
+                        <div id="quickPendingList" style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;"></div>
+                    </div>
+
                     <div class="form-container" id="advanceFormContainer" style="display:none;">
                         <form id="advanceForm">
                             <div class="form-row">
@@ -1362,6 +1379,102 @@
                                     <th>Amount</th>
                                     <th>Notes</th>
                                     <th>Receipt</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── ADVANCE REQUESTS PANEL ── -->
+                <div id="driver-advance-requests" class="page">
+                    <div class="page-header">
+                        <h3>📩 Driver Advance Requests</h3>
+                        <span class="last-synced-label" style="font-size: 12px; font-weight: 600;">⚡ Realtime Sync Active</span>
+                    </div>
+
+                    <!-- Rule Criteria Banner for Admin -->
+                    <div style="background: rgba(41, 128, 185, 0.08); border: 1px solid rgba(41, 128, 185, 0.25); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="font-size: 20px;">ℹ️</span>
+                            <div style="font-size: 13px; color: var(--text-dark, #2c3e50); line-height: 1.5;">
+                                <strong>Advance Request Criteria & Schedule Rules:</strong><br>
+                                • <strong>Monday Morning Requests:</strong> Window 00:00 – 06:00 → Transfer Window: 06:00 – 08:00<br>
+                                • <strong>Daily Regular Requests (Mon–Sun):</strong> Window 08:00 – 17:00 → Release Window: 17:00 – 19:00<br>
+                                • <strong>Limits:</strong> Maximum LKR 2,500 per request | Weekly Limit LKR 7,000 per driver (resets Monday)<br>
+                                • Click <strong>Complete</strong> to approve request and automatically add to Staff Advances list & salary slip deductions.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="metrics-grid" style="margin-bottom: 24px;">
+                        <div class="metric-card">
+                            <div class="metric-icon">⏳</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Pending Requests</div>
+                                <div class="metric-value" id="arPendingCount" style="color: #E67E22;">0</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">💰</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Pending Amount</div>
+                                <div class="metric-value" id="arPendingAmount" style="color: #D1001F;">LKR 0.00</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">✅</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Completed Today</div>
+                                <div class="metric-value" id="arCompletedToday" style="color: #27AE60;">0</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">📅</div>
+                            <div class="metric-content">
+                                <div class="metric-label">This Week Approved</div>
+                                <div class="metric-value" id="arWeeklyApproved" style="color: #2980B9;">LKR 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls / Filters -->
+                    <div class="dashboard-controls">
+                        <div class="control-group">
+                            <label for="advanceRequestMonth">📆 Month</label>
+                            <input type="month" id="advanceRequestMonth" title="Select Month and Year">
+                        </div>
+                        <div class="control-group">
+                            <label for="advanceRequestDriverFilter">👤 Driver</label>
+                            <select id="advanceRequestDriverFilter" title="Filter by Driver">
+                                <option value="">All Drivers</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="advanceRequestStatusFilter">📌 Status</label>
+                            <select id="advanceRequestStatusFilter" title="Filter by Status">
+                                <option value="all">All Statuses</option>
+                                <option value="pending" selected>Pending Only (⏳)</option>
+                                <option value="completed">Completed Only (✅)</option>
+                                <option value="rejected">Rejected Only (❌)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Advance Requests Table -->
+                    <div class="table-responsive">
+                        <table id="advanceRequestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Driver</th>
+                                    <th>Date &amp; Time</th>
+                                    <th>Window Type</th>
+                                    <th>Requested Amount</th>
+                                    <th>Weekly Limit Remaining</th>
+                                    <th>Reason / Notes</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>

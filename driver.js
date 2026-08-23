@@ -224,6 +224,22 @@ const TRANSLATIONS = {
         'gps.speed': 'Speed',
         'gps.driver': 'Driver',
         'gps.noDriver': 'Not Assigned',
+        'menu.advance': 'Advance',
+        'advance.requestBtn': 'Request Advance',
+        'advanceModal.title': '📩 Request Salary Advance',
+        'advanceModal.remainingWeekly': 'Weekly Advance Limit Remaining',
+        'advanceModal.amountLabel': 'Request Amount (LKR) — Max LKR 2,500',
+        'advanceModal.reasonLabel': 'Reason / Notes (Optional)',
+        'advanceModal.submitBtn': 'Submit Request / ඉල්ලුම් කරන්න',
+        'advanceModal.submitting': 'Submitting request...',
+        'advanceModal.myRequests': '📜 My Advance Requests',
+        'advanceModal.loadingHistory': 'Loading request history...',
+        'advanceModal.noRequests': 'No advance requests submitted yet.',
+        'advanceModal.windowClosedErr': 'Advance request window is currently closed. Please check the schedule above.',
+        'advanceModal.maxLimitErr': 'Maximum request amount per time is LKR 2,500.',
+        'advanceModal.weeklyLimitErr': 'Requested amount exceeds your remaining weekly limit.',
+        'advanceModal.pendingExistErr': 'You already have a pending advance request. Please wait until admin reviews it.',
+        'advanceModal.successMsg': '✅ Advance request submitted successfully! Payment will be processed during scheduled window.',
     },
     si: {
         'offline.banner': '⚠️ ඔබ අසබැඳිව සිටී. සුරැකි තොරතුරු පෙන්වමින් ඇත.',
@@ -326,6 +342,22 @@ const TRANSLATIONS = {
         'gps.loading': 'Wialon GPS හා සම්බන්ධ වෙමින්...',
         'gps.fitMap': 'සියල්ල පෙන්වන්න',
         'gps.callDriver': 'ඇමතුමක් ගන්න',
+        'menu.advance': 'අත්තිකාරම්',
+        'advance.requestBtn': 'අත්තිකාරම් ඉල්ලන්න',
+        'advanceModal.title': '📩 වැටුප් අත්තිකාරම් ඉල්ලුම් කිරීම',
+        'advanceModal.remainingWeekly': 'ඉතිරි සතිපතා අත්තිකාරම් සීමාව',
+        'advanceModal.amountLabel': 'ඉල්ලුම් කරන මුදල (රු.) — උපරිම රු. 2,500',
+        'advanceModal.reasonLabel': 'හේතුව / සටහන් (අත්‍යවශ්‍ය නොවේ)',
+        'advanceModal.submitBtn': 'ඉල්ලුම් කරන්න',
+        'advanceModal.submitting': 'ඉල්ලුම් කරමින්...',
+        'advanceModal.myRequests': '📜 මාගේ අත්තිකාරම් ඉල්ලීම්',
+        'advanceModal.loadingHistory': 'පැරණි ඉල්ලීම් පූරණය වෙමින්...',
+        'advanceModal.noRequests': 'තවම අත්තිකාරම් ඉල්ලීම් සිදුකර නොමැත.',
+        'advanceModal.windowClosedErr': 'අත්තිකාරම් ඉල්ලීම් කාලය දැනට වසා ඇත. කරුණාකර ඉහත කාලසටහන බලන්න.',
+        'advanceModal.maxLimitErr': 'එක් වරකට ඉල්ලුම් කළ හැකි උපරිම මුදල රු. 2,500 කි.',
+        'advanceModal.weeklyLimitErr': 'ඉල්ලුම් කළ මුදල ඔබගේ ඉතිරි සතිපතා සීමාව ඉක්මවා ඇත.',
+        'advanceModal.pendingExistErr': 'ඔබගේ පෙර ඉල්ලීමක් තවමත් පරිපාලක අනුමැතිය සඳහා බලාපොරොත්තුවෙන් පවතී.',
+        'advanceModal.successMsg': '✅ අත්තිකාරම් ඉල්ලීම සාර්ථකව යොමු කරන ලදී! නියමිත වේලාවට මුදල් නිකුත් කෙරෙනු ඇත.',
         'greeting.morning': 'සුබ උදෑසනක්',
         'greeting.afternoon': 'සුබ දහවලක්',
         'greeting.evening': 'සුබ සන්ධ්‍යාවක්',
@@ -3809,6 +3841,401 @@ async function processGpsGeocodeQueue() {
         console.warn('Geocoding queue error for unit:', item.id, e);
     }
     setTimeout(processGpsGeocodeQueue, 1200);
+}
+
+// ==================== ADVANCE REQUEST SUBMISSION & MODAL LOGIC ====================
+
+let driverAdvanceRequestsChannel = null;
+let currentRemainingWeeklyLimit = 7000;
+
+/**
+ * Checks current time window for advance requests.
+ */
+function checkAdvanceRequestWindow(now = new Date()) {
+    const day = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    const hours = now.getHours();
+    const mins = now.getMinutes();
+    const timeInMins = hours * 60 + mins;
+
+    // Monday Special Criteria
+    if (day === 1) {
+        // Monday Morning Request Window: 00:00 - 06:00 (0 to 360 mins)
+        if (timeInMins >= 0 && timeInMins < 360) {
+            return {
+                isOpen: true,
+                windowType: 'monday_morning',
+                badgeText: '🌅 MONDAY MORNING WINDOW OPEN',
+                badgeClass: 'ws-badge-morning',
+                msgEn: 'Monday Morning Request Window is OPEN (00:00 – 06:00). Money will be transferred between 06:00 and 08:00.',
+                msgSi: 'සඳුදා උදෑසන ඉල්ලීම් කාලය විවෘතයි (පෙ.ව. 00:00 – 06:00). මුදල් පෙ.ව. 06:00 – 08:00 අතර ලබා දේ.'
+            };
+        }
+        // Monday Morning Transfer Processing: 06:00 - 08:00 (360 to 480 mins)
+        if (timeInMins >= 360 && timeInMins < 480) {
+            return {
+                isOpen: false,
+                windowType: 'closed',
+                badgeText: '⏳ MORNING PROCESSING (06:00 - 08:00)',
+                badgeClass: 'ws-badge-processing',
+                msgEn: 'Monday morning requests are currently being processed (06:00 – 08:00). Regular request window opens at 08:00.',
+                msgSi: 'උදෑසන ඉල්ලීම් මේ වන විට සකස් කෙරෙමින් පවතී (06:00 – 08:00). සාමාන්‍ය ඉල්ලීම් කාලය පෙ.ව. 08:00 ට ආරම්භ වේ.'
+            };
+        }
+        // Monday Regular Request Window: 08:00 - 17:00 (480 to 1020 mins)
+        if (timeInMins >= 480 && timeInMins < 1020) {
+            return {
+                isOpen: true,
+                windowType: 'regular',
+                badgeText: '☀️ REGULAR WINDOW OPEN',
+                badgeClass: 'ws-badge-open',
+                msgEn: 'Regular Request Window is OPEN (08:00 – 17:00). Advances will be released between 17:00 and 19:00.',
+                msgSi: 'සාමාන්‍ය දෛනික ඉල්ලීම් කාලය විවෘතයි (පෙ.ව. 08:00 – ප.ව. 05:00). මුදල් ප.ව. 05:00 – 07:00 අතර නිකුත් කෙරේ.'
+            };
+        }
+    } else { // Regular Days (Tue, Wed, Thu, Fri, Sat, Sun)
+        // Daily Regular Request Window: 08:00 - 17:00 (480 to 1020 mins)
+        if (timeInMins >= 480 && timeInMins < 1020) {
+            return {
+                isOpen: true,
+                windowType: 'regular',
+                badgeText: '☀️ REGULAR WINDOW OPEN',
+                badgeClass: 'ws-badge-open',
+                msgEn: 'Regular Request Window is OPEN (08:00 – 17:00). Advances will be released between 17:00 and 19:00.',
+                msgSi: 'සාමාන්‍ය දෛනික ඉල්ලීම් කාලය විවෘතයි (පෙ.ව. 08:00 – ප.ව. 05:00). මුදල් ප.ව. 05:00 – 07:00 අතර නිකුත් කෙරේ.'
+            };
+        }
+    }
+
+    // Default CLOSED state
+    return {
+        isOpen: false,
+        windowType: 'closed',
+        badgeText: '🔴 REQUEST WINDOW CLOSED',
+        badgeClass: 'ws-badge-closed',
+        msgEn: (day === 0 && hours >= 17)
+            ? 'Request window is CLOSED. Monday Morning window opens tonight at 00:00 midnight.'
+            : 'Request window is CLOSED. Requests open daily from 08:00 to 17:00 (and Monday 00:00 to 06:00).',
+        msgSi: (day === 0 && hours >= 17)
+            ? 'ඉල්ලීම් කාලය වසා ඇත. සඳුදා උදෑසන ඉල්ලීම් කාලය අද මධ්‍යම රාත්‍රී 00:00 ට ආරම්භ වේ.'
+            : 'ඉල්ලීම් කාලය වසා ඇත. දිනපතා පෙ.ව. 08:00 – ප.ව. 05:00 අතර (සහ සඳුදා පෙ.ව. 00:00 – 06:00) විවෘතයි.'
+    };
+}
+
+function openAdvanceRequestModal() {
+    const modal = document.getElementById('advanceRequestModal');
+    if (modal) {
+        modal.classList.add('active');
+        refreshAdvanceRequestModalUI();
+        subscribeDriverAdvanceRequestsRealtime();
+    }
+}
+
+function closeAdvanceRequestModal() {
+    const modal = document.getElementById('advanceRequestModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function setPresetAmount(amt) {
+    const input = document.getElementById('arAmountInput');
+    if (input) input.value = amt;
+
+    document.querySelectorAll('.amount-chip').forEach(c => {
+        const chipVal = parseInt(c.textContent.replace(/\D/g, ''));
+        if (chipVal === amt) {
+            c.classList.add('active');
+        } else {
+            c.classList.remove('active');
+        }
+    });
+}
+
+/**
+ * Refresh the Advance Request Modal UI (Window Status, Remaining Balance, History).
+ */
+async function refreshAdvanceRequestModalUI() {
+    if (!currentDriver) return;
+
+    // 1. Update Window Status Card
+    const win = checkAdvanceRequestWindow();
+    const wsIcon = document.getElementById('wsIcon');
+    const wsBadge = document.getElementById('wsBadge');
+    const wsMsgEn = document.getElementById('wsMsgEn');
+    const wsMsgSi = document.getElementById('wsMsgSi');
+    const statusCard = document.getElementById('driverWindowStatusCard');
+
+    if (wsBadge) {
+        wsBadge.textContent = win.badgeText;
+        wsBadge.className = win.badgeClass;
+    }
+    if (wsIcon) wsIcon.textContent = win.isOpen ? '🟢' : (win.windowType === 'closed' ? '🔴' : '⏳');
+    if (wsMsgEn) wsMsgEn.textContent = win.msgEn;
+    if (wsMsgSi) wsMsgSi.textContent = win.msgSi;
+
+    if (statusCard) {
+        statusCard.classList.remove('ws-card-open', 'ws-card-processing', 'ws-card-closed');
+        if (win.isOpen) statusCard.classList.add('ws-card-open');
+        else if (win.windowType === 'closed') statusCard.classList.add('ws-card-closed');
+        else statusCard.classList.add('ws-card-processing');
+    }
+
+    // 2. Calculate remaining weekly limit
+    const nameLower = (currentDriver.name || currentDriver.nickname || '').toLowerCase();
+    const isFamilyDriver = ['jauk', 'jaap'].some(k => nameLower.includes(k));
+
+    let weeklyUsed = 0;
+    const { start, end } = getWeekBounds();
+
+    try {
+        // Fetch approved advances in current week
+        const { data: advances } = await supabaseClient
+            .from('driver_advances')
+            .select('amount')
+            .eq('driver_id', currentDriver.id)
+            .gte('advance_date', start)
+            .lte('advance_date', end);
+
+        // Fetch pending requests in current week
+        const { data: pendingReqs } = await supabaseClient
+            .from('driver_advance_requests')
+            .select('amount')
+            .eq('driver_id', currentDriver.id)
+            .eq('status', 'pending')
+            .gte('request_date', start)
+            .lte('request_date', end);
+
+        const sumAdv = (advances || []).reduce((s, a) => s + parseFloat(a.amount || 0), 0);
+        const sumReq = (pendingReqs || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+        weeklyUsed = sumAdv + sumReq;
+
+    } catch (e) {
+        console.warn('Error fetching weekly advances/requests:', e);
+    }
+
+    currentRemainingWeeklyLimit = isFamilyDriver ? 999999 : Math.max(0, WEEKLY_ADVANCE_LIMIT - weeklyUsed);
+
+    // Update Remaining Weekly Balance UI
+    const elRem = document.getElementById('armWeeklyRemaining');
+    const elProg = document.getElementById('armWeeklyProgress');
+    const elSub = document.getElementById('armWeeklySubText');
+    const amountInput = document.getElementById('arAmountInput');
+
+    const fmtLKR = (val) => `LKR ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    if (isFamilyDriver) {
+        if (elRem) elRem.textContent = 'Unlimited (Family Partner)';
+        if (elProg) elProg.style.width = '100%';
+        if (elSub) elSub.textContent = 'No weekly advance limit applies';
+        if (amountInput) amountInput.max = 2500;
+    } else {
+        const pct = Math.round((currentRemainingWeeklyLimit / WEEKLY_ADVANCE_LIMIT) * 100);
+        if (elRem) {
+            elRem.textContent = currentRemainingWeeklyLimit <= 0 ? t('advance.limitReached') : fmtLKR(currentRemainingWeeklyLimit);
+            elRem.className = currentRemainingWeeklyLimit > 3000 ? 'wls-value text-green' : (currentRemainingWeeklyLimit > 1000 ? 'wls-value text-amber' : 'wls-value text-red');
+        }
+        if (elProg) elProg.style.width = `${pct}%`;
+        if (elSub) elSub.textContent = `${fmtLKR(weeklyUsed)} ${t('advance.usedOf')} ${fmtLKR(WEEKLY_ADVANCE_LIMIT)}`;
+        if (amountInput) amountInput.max = Math.min(2500, currentRemainingWeeklyLimit);
+    }
+
+    // 3. Load Request History
+    loadDriverRequestsHistory();
+}
+
+/**
+ * Load History of Driver's Advance Requests
+ */
+async function loadDriverRequestsHistory() {
+    const container = document.getElementById('driverRequestsHistoryContainer');
+    if (!container || !currentDriver) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('driver_advance_requests')
+            .select('*')
+            .eq('driver_id', currentDriver.id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `<div class="sub-list-item" style="font-style:italic; text-align:center; color:var(--text-muted);">${t('advanceModal.noRequests')}</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        data.forEach(req => {
+            const item = document.createElement('div');
+            item.className = 'driver-request-history-card';
+
+            let statusBadge = `<span class="badge-status badge-pending">⏳ Pending</span>`;
+            if (req.status === 'completed') statusBadge = `<span class="badge-status badge-completed">✅ Completed</span>`;
+            if (req.status === 'rejected') statusBadge = `<span class="badge-status badge-rejected">❌ Rejected</span>`;
+
+            const windowText = req.window_type === 'monday_morning' ? '🌅 Mon Morning' : '☀️ Daily Regular';
+
+            item.innerHTML = `
+                <div class="drh-top">
+                    <div>
+                        <span class="drh-amount">LKR ${parseFloat(req.amount).toFixed(2)}</span>
+                        <span class="drh-window">${windowText}</span>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div class="drh-bottom">
+                    <span class="drh-date">📅 ${req.request_date} ${req.request_time || ''}</span>
+                    ${req.reason ? `<span class="drh-reason">"${req.reason}"</span>` : ''}
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+    } catch (err) {
+        console.warn('Error loading driver requests history:', err);
+        container.innerHTML = `<div class="sub-list-item" style="color:var(--text-muted); font-size:12px;">Failed to load request history.</div>`;
+    }
+}
+
+/**
+ * Handle Driver Advance Request Form Submission
+ */
+async function handleDriverAdvanceRequestSubmit(e) {
+    e.preventDefault();
+    if (!currentDriver) return;
+
+    const amountInput = document.getElementById('arAmountInput');
+    const reasonInput = document.getElementById('arReasonInput');
+    const submitBtn = document.getElementById('submitAdvanceRequestBtn');
+
+    const requestedAmount = parseFloat(amountInput.value);
+    const reason = reasonInput ? reasonInput.value.trim() : null;
+
+    // 1. Check Window Criteria
+    const win = checkAdvanceRequestWindow();
+    if (!win.isOpen) {
+        showDriverToast(t('advanceModal.windowClosedErr'), 'error');
+        return;
+    }
+
+    // 2. Validate Amount Limit (Max LKR 2,500)
+    if (isNaN(requestedAmount) || requestedAmount <= 0) {
+        showDriverToast('Please enter a valid request amount.', 'warning');
+        return;
+    }
+
+    if (requestedAmount > 2500) {
+        showDriverToast(t('advanceModal.maxLimitErr'), 'error');
+        return;
+    }
+
+    // 3. Validate Remaining Weekly Limit
+    const nameLower = (currentDriver.name || currentDriver.nickname || '').toLowerCase();
+    const isFamilyDriver = ['jauk', 'jaap'].some(k => nameLower.includes(k));
+
+    if (!isFamilyDriver && requestedAmount > currentRemainingWeeklyLimit) {
+        showDriverToast(t('advanceModal.weeklyLimitErr'), 'error');
+        return;
+    }
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span>⏳</span> ${t('advanceModal.submitting')}`;
+        }
+
+        // 4. Check if driver already has a pending request
+        const { data: existingPending } = await supabaseClient
+            .from('driver_advance_requests')
+            .select('id')
+            .eq('driver_id', currentDriver.id)
+            .eq('status', 'pending');
+
+        if (existingPending && existingPending.length > 0) {
+            showDriverToast(t('advanceModal.pendingExistErr'), 'warning');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span data-i18n="advanceModal.submitBtn">Submit Request / ඉල්ලුම් කරන්න</span> <span>→</span>`;
+            }
+            return;
+        }
+
+        // 5. Build request record
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        const requestRecord = {
+            driver_id: currentDriver.id,
+            driver_name: currentDriver.name || currentDriver.nickname,
+            user_id: currentDriver.user_id,
+            amount: requestedAmount,
+            reason: reason || null,
+            status: 'pending',
+            request_date: todayStr,
+            request_time: timeStr,
+            window_type: win.windowType,
+            remaining_limit: currentRemainingWeeklyLimit - requestedAmount,
+            created_at: now.toISOString()
+        };
+
+        const { data: inserted, error: insertErr } = await supabaseClient
+            .from('driver_advance_requests')
+            .insert([requestRecord])
+            .select()
+            .single();
+
+        if (insertErr) {
+            console.error('Database insert error:', insertErr);
+            throw insertErr;
+        }
+
+        showDriverToast(t('advanceModal.successMsg'), 'success');
+
+        // Reset form
+        if (amountInput) amountInput.value = '';
+        if (reasonInput) reasonInput.value = '';
+
+        // Refresh UI
+        refreshAdvanceRequestModalUI();
+
+    } catch (err) {
+        console.error('Error submitting advance request:', err);
+        showDriverToast('Failed to submit request: ' + err.message, 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span data-i18n="advanceModal.submitBtn">Submit Request / ඉල්ලුම් කරන්න</span> <span>→</span>`;
+        }
+    }
+}
+
+/**
+ * Realtime Subscription for Driver App
+ */
+function subscribeDriverAdvanceRequestsRealtime() {
+    if (!supabaseClient || !currentDriver) return;
+
+    if (driverAdvanceRequestsChannel) {
+        supabaseClient.removeChannel(driverAdvanceRequestsChannel);
+    }
+
+    driverAdvanceRequestsChannel = supabaseClient
+        .channel(`driver_requests_${currentDriver.id}`)
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'driver_advance_requests',
+            filter: `driver_id=eq.${currentDriver.id}`
+        }, (payload) => {
+            console.log('Driver requests realtime update:', payload);
+            refreshAdvanceRequestModalUI();
+        })
+        .subscribe();
 }
 
 // Start everything when DOM is ready

@@ -387,6 +387,7 @@ async function initializeApp() {
             initServiceTracking(); // Initialize Service Tracking
             initNotificationCenter(); // Initialize Notification Center
             initDriverKmLog(); // Initialize Driver KM Log
+            initAdvanceRequests(); // Initialize Advance Requests
             await loadDashboard();
             preloadAllData(); // Preload other tabs
             initVehicleExpiryPage(); // Init Expiry Tracker
@@ -491,7 +492,8 @@ function setDefaultMonths() {
         'driverDayOffMonth', // ADDED: New Driver Day Off filter
         'maintenanceMonth',  // ADDED: Lorry Maintenance filter
         'otherOperationHiresMonth', // ADDED: Other Operation Hires filter
-        'driverKmMonthFilter' // ADDED: Driver KM Log filter
+        'driverKmMonthFilter', // ADDED: Driver KM Log filter
+        'advanceRequestMonth' // ADDED: Advance Requests filter
     ];
 
     elements.forEach(id => {
@@ -570,6 +572,7 @@ const PAGE_GROUP_MAP = {
     'kevilton-distributions': null,
     'drivers': 'navGroupStaff',
     'driver-advances': 'navGroupStaff',
+    'driver-advance-requests': 'navGroupStaff',
     'driver-dayoffs': 'navGroupStaff',
     'driver-km-log': 'navGroupStaff',
     'driver-salary': 'navGroupStaff',
@@ -655,6 +658,7 @@ function switchPage(page) {
         'credit-cards': 'Credit Cards',
         'drivers': 'Manage Staff',
         'driver-advances': 'Staff Salary Advances',
+        'driver-advance-requests': 'Driver Advance Requests',
         'driver-salary': 'Staff Salary Calculator & Salary Slips',
         'hire-vehicles': 'Hire-to-Pay Vehicles',
         'hire-records': 'Hire-to-Pay Records',
@@ -679,6 +683,7 @@ function switchPage(page) {
     if (page === 'credit-cards') loadCreditCardsPage();
     if (page === 'drivers') loadDrivers();
     if (page === 'driver-advances') loadDriverAdvances();
+    if (page === 'driver-advance-requests') { ensureMonthValue('advanceRequestMonth'); loadDriverAdvanceRequests(); }
 
     if (page === 'driver-salary') {
         if (typeof loadSalaryDrivers === 'function') loadSalaryDrivers();
@@ -5570,9 +5575,381 @@ async function loadDriverAdvances() {
         });
 
         await updateAdvanceDriverSelectors();
+        await updatePendingRequestsQuickBanner();
         if (typeof loadNotifications === 'function') loadNotifications();
     } catch (error) {
         console.error('Error loading advances:', error.message);
+    }
+}
+
+// ============ DRIVER ADVANCE REQUESTS SYSTEM ============
+
+let advanceRequestsChannel = null;
+
+// Initialize filter listeners and realtime channel for Advance Requests
+function initAdvanceRequests() {
+    document.getElementById('advanceRequestMonth')?.addEventListener('change', loadDriverAdvanceRequests);
+    document.getElementById('advanceRequestDriverFilter')?.addEventListener('change', loadDriverAdvanceRequests);
+    document.getElementById('advanceRequestStatusFilter')?.addEventListener('change', loadDriverAdvanceRequests);
+
+    subscribeAdvanceRequestsRealtime();
+}
+
+function subscribeAdvanceRequestsRealtime() {
+    if (!supabaseClient) return;
+
+    if (advanceRequestsChannel) {
+        supabaseClient.removeChannel(advanceRequestsChannel);
+    }
+
+    advanceRequestsChannel = supabaseClient
+        .channel('admin_advance_requests_realtime')
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'driver_advance_requests'
+        }, (payload) => {
+            console.log('Realtime advance request update:', payload);
+            loadDriverAdvanceRequests();
+            loadDriverAdvances();
+        })
+        .subscribe();
+}
+
+// Load advance requests in Admin Panel
+async function loadDriverAdvanceRequests() {
+    try {
+        const monthValue = document.getElementById('advanceRequestMonth')?.value;
+        const driverFilter = document.getElementById('advanceRequestDriverFilter')?.value;
+        const statusFilter = document.getElementById('advanceRequestStatusFilter')?.value || 'all';
+
+        const currentQueryUserId = getQueryUserId();
+
+        // 1. Load drivers for selector
+        await updateAdvanceRequestDriverSelector();
+
+        // 2. Query driver_advance_requests
+        let query = supabaseClient
+            .from('driver_advance_requests')
+            .select('*, drivers(name, contact)')
+            .eq('user_id', currentQueryUserId);
+
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+            query = query.gte('request_date', startDate).lte('request_date', endDate);
+        }
+
+        if (driverFilter) {
+            query = query.eq('driver_id', driverFilter);
+        }
+
+        if (statusFilter && statusFilter !== 'all') {
+            query = query.eq('status', statusFilter);
+        }
+
+        const { data: requests, error } = await query.order('created_at', { ascending: false });
+
+        if (error) {
+            console.warn('Could not query driver_advance_requests from Supabase (may need table creation).', error.message);
+        }
+
+        const list = requests || getCachedData('jt_driver_advance_requests_cache') || [];
+
+        // 3. Compute Summary Statistics
+        let pendingCount = 0;
+        let pendingAmount = 0;
+        let completedToday = 0;
+        let weeklyApproved = 0;
+
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const now = new Date();
+        const day = now.getDay();
+        const diffToMonday = (day === 0) ? -6 : 1 - day;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + diffToMonday);
+        monday.setHours(0,0,0,0);
+        const mondayStr = monday.toISOString().substring(0, 10);
+
+        list.forEach(r => {
+            const amt = parseFloat(r.amount || 0);
+            if (r.status === 'pending') {
+                pendingCount++;
+                pendingAmount += amt;
+            } else if (r.status === 'completed') {
+                if (r.completed_at && r.completed_at.substring(0, 10) === todayStr) {
+                    completedToday++;
+                }
+                if (r.request_date >= mondayStr) {
+                    weeklyApproved += amt;
+                }
+            }
+        });
+
+        // Update Stats DOM
+        const elPendingCount = document.getElementById('arPendingCount');
+        const elPendingAmount = document.getElementById('arPendingAmount');
+        const elCompletedToday = document.getElementById('arCompletedToday');
+        const elWeeklyApproved = document.getElementById('arWeeklyApproved');
+
+        if (elPendingCount) elPendingCount.textContent = pendingCount;
+        if (elPendingAmount) elPendingAmount.textContent = `LKR ${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (elCompletedToday) elCompletedToday.textContent = completedToday;
+        if (elWeeklyApproved) elWeeklyApproved.textContent = `LKR ${weeklyApproved.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        // Update Sidebar Badge
+        const navBadge = document.getElementById('navAdvanceRequestsBadge');
+        if (navBadge) {
+            if (pendingCount > 0) {
+                navBadge.textContent = pendingCount;
+                navBadge.style.display = 'inline-block';
+            } else {
+                navBadge.style.display = 'none';
+            }
+        }
+
+        // 4. Render Table
+        const tbody = document.querySelector('#advanceRequestsTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No advance requests found matching filters.</td></tr>`;
+            return;
+        }
+
+        list.forEach(r => {
+            const row = document.createElement('tr');
+
+            const driverName = r.drivers?.name || r.driver_name || `Driver #${r.driver_id}`;
+            const dateStr = `${r.request_date} ${r.request_time || ''}`;
+            const windowBadge = r.window_type === 'monday_morning'
+                ? `<span class="badge-window badge-monday-morning" title="Monday 00:00 - 06:00 Request">🌅 Monday Morning</span>`
+                : `<span class="badge-window badge-regular" title="Daily 08:00 - 17:00 Request">☀️ Daily Regular</span>`;
+
+            const amtStr = `LKR ${parseFloat(r.amount || 0).toFixed(2)}`;
+
+            let statusBadge = `<span class="badge-status badge-pending">⏳ Pending</span>`;
+            if (r.status === 'completed') statusBadge = `<span class="badge-status badge-completed">✅ Completed</span>`;
+            if (r.status === 'rejected') statusBadge = `<span class="badge-status badge-rejected">❌ Rejected</span>`;
+
+            const remainingPreview = r.remaining_limit !== undefined && r.remaining_limit !== null
+                ? `LKR ${parseFloat(r.remaining_limit).toFixed(2)}`
+                : 'LKR 7,000.00';
+
+            const actionButtons = userRole === 'viewer' ? '-' : (
+                r.status === 'pending'
+                    ? `<td class="action-buttons">
+                        <button type="button" class="btn btn-sm btn-success" onclick="completeAdvanceRequest(${r.id})" title="Approve & Issue Advance">✅ Complete</button>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="rejectAdvanceRequest(${r.id})" title="Reject Request">❌ Reject</button>
+                       </td>`
+                    : `<td><small style="color:var(--text-muted);">${r.completed_at ? 'Done ' + r.completed_at.substring(0, 10) : 'Processed'}</small></td>`
+            );
+
+            row.innerHTML = `
+                <td><strong>${driverName}</strong></td>
+                <td>${dateStr}</td>
+                <td>${windowBadge}</td>
+                <td><strong style="color:var(--primary, #D1001F);">${amtStr}</strong></td>
+                <td><span style="font-size:12px; font-weight:600; color:#27AE60;">${remainingPreview}</span></td>
+                <td>${r.reason || '-'}</td>
+                <td>${statusBadge}</td>
+                ${actionButtons}
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error('Error loading driver advance requests:', err);
+    }
+}
+
+// Populate driver selector for Advance Requests filter
+async function updateAdvanceRequestDriverSelector() {
+    const sel = document.getElementById('advanceRequestDriverFilter');
+    if (!sel || sel.options.length > 1) return;
+
+    try {
+        const { data: drivers } = await supabaseClient
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', getQueryUserId())
+            .neq('terminated', true)
+            .order('name');
+
+        if (drivers) {
+            drivers.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                sel.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.warn('Error populating advance requests driver dropdown:', e);
+    }
+}
+
+// Complete an advance request (Approve, issue advance to driver_advances, send SMS)
+async function completeAdvanceRequest(requestId) {
+    if (!checkAdminAccess('save')) return;
+
+    try {
+        const { data: req, error: fetchErr } = await supabaseClient
+            .from('driver_advance_requests')
+            .select('*, drivers(name, contact)')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchErr || !req) {
+            showToast('Error loading request details.', 'error');
+            return;
+        }
+
+        if (req.status === 'completed') {
+            showToast('This request is already completed.', 'info');
+            return;
+        }
+
+        const driverName = req.drivers?.name || req.driver_name || 'Driver';
+        const amount = parseFloat(req.amount);
+        const confirmMsg = `Are you sure you want to COMPLETE this advance request?\n\nDriver: ${driverName}\nAmount: LKR ${amount.toFixed(2)}\nWindow: ${req.window_type === 'monday_morning' ? 'Monday Morning' : 'Regular'}`;
+
+        if (!await showConfirmAsync(confirmMsg, { title: 'Complete Advance Request', icon: '✅', yesLabel: 'Complete Request' })) {
+            return;
+        }
+
+        const nowIso = new Date().toISOString();
+
+        // 1. Update request status to completed
+        const { error: updateErr } = await supabaseClient
+            .from('driver_advance_requests')
+            .update({
+                status: 'completed',
+                completed_at: nowIso
+            })
+            .eq('id', requestId);
+
+        if (updateErr) {
+            console.warn('Could not update driver_advance_requests in DB:', updateErr.message);
+        }
+
+        // 2. Insert into official driver_advances table
+        const advanceRecord = {
+            driver_id: req.driver_id,
+            advance_date: req.request_date,
+            amount: amount,
+            notes: `Advance Request (${req.window_type === 'monday_morning' ? 'Mon Morning' : 'Regular'}): ${req.reason || 'Requested via Driver App'}`,
+            user_id: req.user_id || getQueryUserId()
+        };
+
+        const { data: newAdv, error: insertErr } = await supabaseClient
+            .from('driver_advances')
+            .insert([advanceRecord])
+            .select()
+            .single();
+
+        if (insertErr) {
+            console.error('Error inserting advance record:', insertErr.message);
+            showToast('Failed to add advance to salary deductions: ' + insertErr.message, 'error');
+            return;
+        }
+
+        showToast(`✅ Advance Request of LKR ${amount.toFixed(2)} for ${driverName} completed successfully!`, 'success');
+
+        // 3. Option to send SMS notification
+        const phone = req.drivers?.contact;
+        if (phone) {
+            const smsMsg = `Jayasooriya Transport\nDear ${driverName},\n\nYour requested advance of LKR ${amount.toFixed(2)} has been COMPLETED and credited to your account.\n\nJayasooriya Transport`;
+            sendTextLkSms(phone, smsMsg).then(res => {
+                if (res?.success) showToast(`📱 SMS confirmation sent to ${driverName}!`, 'info');
+            });
+        }
+
+        // 4. Refresh UI
+        loadDriverAdvanceRequests();
+        loadDriverAdvances();
+
+    } catch (err) {
+        console.error('Error completing advance request:', err);
+        showToast('Error completing advance request: ' + err.message, 'error');
+    }
+}
+
+// Reject an advance request
+async function rejectAdvanceRequest(requestId) {
+    if (!checkAdminAccess('save')) return;
+
+    try {
+        if (!await showConfirmAsync('Are you sure you want to REJECT this advance request?', { title: 'Reject Request', icon: '❌', yesLabel: 'Reject Request' })) {
+            return;
+        }
+
+        const nowIso = new Date().toISOString();
+        const { error } = await supabaseClient
+            .from('driver_advance_requests')
+            .update({
+                status: 'rejected',
+                completed_at: nowIso
+            })
+            .eq('id', requestId);
+
+        if (error) throw error;
+
+        showToast('Advance request rejected.', 'warning');
+        loadDriverAdvanceRequests();
+        loadDriverAdvances();
+
+    } catch (err) {
+        console.error('Error rejecting advance request:', err);
+        showToast('Error rejecting advance request: ' + err.message, 'error');
+    }
+}
+
+// Populate Quick Pending Requests Banner on Advances Page
+async function updatePendingRequestsQuickBanner() {
+    const banner = document.getElementById('pendingRequestsQuickBanner');
+    const listEl = document.getElementById('quickPendingList');
+    const countEl = document.getElementById('quickPendingCount');
+
+    if (!banner || !listEl) return;
+
+    try {
+        const { data: pendingReqs, error } = await supabaseClient
+            .from('driver_advance_requests')
+            .select('*, drivers(name, contact)')
+            .eq('user_id', getQueryUserId())
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (error || !pendingReqs || pendingReqs.length === 0) {
+            banner.style.display = 'none';
+            return;
+        }
+
+        banner.style.display = 'block';
+        if (countEl) countEl.textContent = pendingReqs.length;
+
+        listEl.innerHTML = '';
+        pendingReqs.forEach(req => {
+            const driverName = req.drivers?.name || req.driver_name || 'Driver';
+            const card = document.createElement('div');
+            card.style.cssText = 'background: #fff; border-radius: 10px; padding: 12px; border: 1px solid rgba(230,126,34,0.3); display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);';
+            card.innerHTML = `
+                <div>
+                    <div style="font-weight: 700; font-size: 13px; color: #2c3e50;">${driverName}</div>
+                    <div style="font-size: 12px; color: #d35400; font-weight: 800; margin: 2px 0;">LKR ${parseFloat(req.amount).toFixed(2)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${req.request_date} (${req.window_type === 'monday_morning' ? 'Mon Morning' : 'Regular'})</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-success" onclick="completeAdvanceRequest(${req.id})" style="font-size: 11px !important; padding: 4px 10px !important;">✅ Complete</button>
+            `;
+            listEl.appendChild(card);
+        });
+
+    } catch (e) {
+        console.warn('Error updating pending requests quick banner:', e);
     }
 }
 
