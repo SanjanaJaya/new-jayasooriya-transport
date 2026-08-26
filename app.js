@@ -10885,6 +10885,9 @@ async function loadDriverPerformance(monthValue) {
         let tableRows = '';
         let mobileCards = '';
 
+        let totalKmDrivers = 0, totalGrossDrivers = 0, totalAdvDrivers = 0, totalDedDrivers = 0, totalNetDrivers = 0;
+        let totalKmHelpers = 0, totalGrossHelpers = 0, totalAdvHelpers = 0, totalDedHelpers = 0, totalNetHelpers = 0;
+
         // Helper function to render a staff member's rows/cards
         const renderStaffRow = (driver, isHelper, rank) => {
             const totalKm = kmByDriver[driver.id] || 0;
@@ -10920,6 +10923,11 @@ async function loadDriverPerformance(monthValue) {
             let salaryColor = 'var(--text-secondary)';
             let netColor = 'var(--text-secondary)';
 
+            let numAdv = 0;
+            let numDed = 0;
+            let numGross = 0;
+            let numNet = 0;
+
             if (!skipSalary) {
                 const totalAdv = advByDriver[driver.id] || 0;
                 const baseDed = dedByDriver[driver.id] || 0;
@@ -10928,6 +10936,9 @@ async function loadDriverPerformance(monthValue) {
                 const kmLimit = driver.km_limit || 0;
                 const isFixed = driver.salary_type === 'fixed';
                 const totalDed = baseDed + dayOffDed;
+
+                numAdv = totalAdv;
+                numDed = totalDed;
 
                 advColor = '#e74c3c';
                 dedColor = '#e67e22';
@@ -10947,8 +10958,10 @@ async function loadDriverPerformance(monthValue) {
                 const isPerTip = driver.salary_type === 'per_tip';
 
                 if (savedSalary) {
-                    fullSalaryText = `LKR ${savedSalary.gross_salary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    netSalaryText = `LKR ${savedSalary.net_salary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    numGross = parseFloat(savedSalary.gross_salary) || 0;
+                    numNet = parseFloat(savedSalary.net_salary) || 0;
+                    fullSalaryText = `LKR ${numGross.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    netSalaryText = `LKR ${numNet.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 } else if (!isPerTip) {
                     const basicSalary = driver.basic_salary || 0;
                     const extraKmRate = driver.extra_km_rate || 0;
@@ -10957,12 +10970,17 @@ async function loadDriverPerformance(monthValue) {
                     const grossSalary = basicSalary + extraKmSalary;
                     const netSalary = grossSalary - totalAdv - totalDed;
 
+                    numGross = grossSalary;
+                    numNet = netSalary;
+
                     fullSalaryText = `LKR ${grossSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     netSalaryText = `LKR ${netSalary.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 } else {
                     const rate = driver.per_tip_charge || 0;
                     fullSalaryText = `Per Tip (LKR ${rate.toFixed(2)})`;
                     netSalaryText = `Per Tip (LKR ${rate.toFixed(2)})`;
+                    numGross = 0;
+                    numNet = 0;
                 }
             }
 
@@ -11030,7 +11048,7 @@ async function loadDriverPerformance(monthValue) {
                 </div>
             `;
 
-            return { rowHtml, cardHtml };
+            return { rowHtml, cardHtml, totalKm, numGross, numAdv, numDed, numNet };
         };
 
         // Render Drivers
@@ -11048,9 +11066,14 @@ async function loadDriverPerformance(monthValue) {
                 </div>
             `;
             driversOnly.forEach((driver, idx) => {
-                const { rowHtml, cardHtml } = renderStaffRow(driver, false, idx + 1);
-                tableRows += rowHtml;
-                mobileCards += cardHtml;
+                const res = renderStaffRow(driver, false, idx + 1);
+                tableRows += res.rowHtml;
+                mobileCards += res.cardHtml;
+                totalKmDrivers += res.totalKm;
+                totalGrossDrivers += res.numGross;
+                totalAdvDrivers += res.numAdv;
+                totalDedDrivers += res.numDed;
+                totalNetDrivers += res.numNet;
             });
         }
 
@@ -11069,13 +11092,25 @@ async function loadDriverPerformance(monthValue) {
                 </div>
             `;
             helpersOnly.forEach((helper) => {
-                const { rowHtml, cardHtml } = renderStaffRow(helper, true, null);
-                tableRows += rowHtml;
-                mobileCards += cardHtml;
+                const res = renderStaffRow(helper, true, null);
+                tableRows += res.rowHtml;
+                mobileCards += res.cardHtml;
+                totalKmHelpers += res.totalKm;
+                totalGrossHelpers += res.numGross;
+                totalAdvHelpers += res.numAdv;
+                totalDedHelpers += res.numDed;
+                totalNetHelpers += res.numNet;
             });
         }
 
-        // Assemble: desktop table (scrollable) + mobile cards
+        const totalKmAll = totalKmDrivers + totalKmHelpers;
+        const totalGrossAll = totalGrossDrivers + totalGrossHelpers;
+        const totalAdvAll = totalAdvDrivers + totalAdvHelpers;
+        const totalDedAll = totalDedDrivers + totalDedHelpers;
+        const totalNetAll = totalNetDrivers + totalNetHelpers;
+        const totalStaffCount = driversOnly.length + helpersOnly.length;
+
+        // Assemble: desktop table (scrollable) + mobile cards + projected net salary summary strip
         const html = `
             <div class="driver-perf-table-wrap table-responsive">
                 <table style="width: 100%; border-collapse: collapse; min-width: 700px;">
@@ -11092,9 +11127,66 @@ async function loadDriverPerformance(monthValue) {
                         </tr>
                     </thead>
                     <tbody>${tableRows}</tbody>
+                    <tfoot>
+                        <tr style="background: var(--surface-card); font-weight: bold; border-top: 2px solid var(--brand-red); border-bottom: 2px solid var(--surface-border);">
+                            <td colspan="3" style="padding: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: var(--text-primary);">
+                                📊 Total (${totalStaffCount} Staff)
+                            </td>
+                            <td style="padding: 12px; text-align: right; font-weight: 700; color: var(--blue);">
+                                ${totalKmAll.toFixed(2)} km
+                            </td>
+                            <td style="padding: 12px; text-align: right; font-weight: 700; color: var(--blue);">
+                                LKR ${totalGrossAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style="padding: 12px; text-align: right; font-weight: 700; color: #e74c3c;">
+                                LKR ${totalAdvAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style="padding: 12px; text-align: right; font-weight: 700; color: #e67e22;">
+                                LKR ${totalDedAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style="padding: 12px; text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--green);">
+                                LKR ${totalNetAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             <div class="driver-perf-cards">${mobileCards}</div>
+            <div class="driver-perf-summary-footer" style="margin-top: 16px; padding: 16px 20px; background: var(--surface-card); border: 1px solid var(--surface-border); border-left: 4px solid var(--green); border-radius: var(--radius-md); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: rgba(39, 174, 96, 0.12); display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--green); flex-shrink: 0;">
+                        💵
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.8px;">Total Projected Net Salary</div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">${driversOnly.length} Drivers &amp; ${helpersOnly.length} Helpers (${monthValue})</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;" class="driver-perf-summary-metrics">
+                    <div style="text-align: right; padding: 4px 12px; border-right: 1px solid var(--surface-border);" class="driver-perf-metric-box">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Drivers Net Total</div>
+                        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">LKR ${totalNetDrivers.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    ${helpersOnly.length > 0 ? `
+                        <div style="text-align: right; padding: 4px 12px; border-right: 1px solid var(--surface-border);" class="driver-perf-metric-box">
+                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Helpers Net Total</div>
+                            <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">LKR ${totalNetHelpers.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                    ` : ''}
+                    <div style="text-align: right; padding: 4px 12px; border-right: 1px solid var(--surface-border);" class="driver-perf-metric-box">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Total Advances</div>
+                        <div style="font-size: 14px; font-weight: 700; color: #e74c3c;">LKR ${totalAdvAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style="text-align: right; padding: 4px 12px; border-right: 1px solid var(--surface-border);" class="driver-perf-metric-box">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Total Deductions</div>
+                        <div style="font-size: 14px; font-weight: 700; color: #e67e22;">LKR ${totalDedAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #27AE60 0%, #1e8449 100%); padding: 10px 20px; border-radius: var(--radius-md); color: #ffffff; text-align: right; box-shadow: 0 4px 14px rgba(39, 174, 96, 0.3);" class="driver-perf-net-total-box">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.9;">Projected Net Total</div>
+                        <div style="font-size: 20px; font-weight: 800; font-family: var(--font-display); line-height: 1.2;">LKR ${totalNetAll.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                </div>
+            </div>
         `;
 
         tableDiv.innerHTML = html;
