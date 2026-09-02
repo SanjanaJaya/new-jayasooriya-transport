@@ -2522,6 +2522,18 @@ body.light-mode .avatar-container::after {
     color: #5DADE2;
 }
 
+.driver-op-badge.op-okidoki {
+    background: rgba(230, 81, 0, 0.18);
+    border: 1px solid rgba(230, 81, 0, 0.45);
+    color: #FF9800;
+}
+
+.driver-op-badge.op-rockland {
+    background: rgba(139, 0, 0, 0.18);
+    border: 1px solid rgba(139, 0, 0, 0.45);
+    color: #EF5350;
+}
+
 .driver-op-badge.op-generic {
     background: rgba(127, 140, 141, 0.18);
     border: 1px solid rgba(127, 140, 141, 0.45);
@@ -2604,6 +2616,14 @@ body.light-mode .avatar-container::after {
 
 .race-badge-op.op-sitrek {
     background: linear-gradient(135deg, #2980B9, #1B4F72);
+}
+
+.race-badge-op.op-okidoki {
+    background: linear-gradient(135deg, #E65100, #EF6C00);
+}
+
+.race-badge-op.op-rockland {
+    background: linear-gradient(135deg, #8B0000, #B71C1C);
 }
 
 .race-badge-op.op-generic {

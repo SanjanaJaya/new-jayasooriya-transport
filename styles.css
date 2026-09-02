@@ -10242,6 +10242,8 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="spectra"] { border-left: 5px solid #00796B; }
 .op-revenue-card[data-accent="ansell"] { border-left: 5px solid #F57C00; }
 .op-revenue-card[data-accent="sitrek"] { border-left: 5px solid #2980B9; }
+.op-revenue-card[data-accent="okidoki"] { border-left: 5px solid #E65100; }
+.op-revenue-card[data-accent="rockland"] { border-left: 5px solid #8B0000; }
 .op-revenue-card[data-accent="other"] { border-left: 5px solid #E67E22; }
 
 .op-revenue-card-header {
@@ -10303,6 +10305,8 @@ body.dark-mode .slider-sm {
 .op-revenue-card[data-accent="spectra"] .op-revenue-amount { color: #00796B; }
 .op-revenue-card[data-accent="ansell"] .op-revenue-amount { color: #F57C00; }
 .op-revenue-card[data-accent="sitrek"] .op-revenue-amount { color: #2980B9; }
+.op-revenue-card[data-accent="okidoki"] .op-revenue-amount { color: #E65100; }
+.op-revenue-card[data-accent="rockland"] .op-revenue-amount { color: #8B0000; }
 .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #E67E22; }
 
 body.dark-mode .op-revenue-card[data-accent="kevilton"] .op-revenue-amount { color: #FF6B81; }
@@ -10315,6 +10319,8 @@ body.dark-mode .op-revenue-card[data-accent="maggi"] .op-revenue-amount { color:
 body.dark-mode .op-revenue-card[data-accent="spectra"] .op-revenue-amount { color: #26A69A; }
 body.dark-mode .op-revenue-card[data-accent="ansell"] .op-revenue-amount { color: #FFA726; }
 body.dark-mode .op-revenue-card[data-accent="sitrek"] .op-revenue-amount { color: #5DADE2; }
+body.dark-mode .op-revenue-card[data-accent="okidoki"] .op-revenue-amount { color: #FF9800; }
+body.dark-mode .op-revenue-card[data-accent="rockland"] .op-revenue-amount { color: #EF5350; }
 body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color: #F39C12; }
 
 .op-revenue-meta {
@@ -10347,6 +10353,8 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
 .op-revenue-card[data-accent="spectra"] .op-revenue-progress-bar { background: linear-gradient(90deg, #00796B, #26A69A); }
 .op-revenue-card[data-accent="ansell"] .op-revenue-progress-bar { background: linear-gradient(90deg, #F57C00, #FFA726); }
 .op-revenue-card[data-accent="sitrek"] .op-revenue-progress-bar { background: linear-gradient(90deg, #2980B9, #5DADE2); }
+.op-revenue-card[data-accent="okidoki"] .op-revenue-progress-bar { background: linear-gradient(90deg, #E65100, #FF9800); }
+.op-revenue-card[data-accent="rockland"] .op-revenue-progress-bar { background: linear-gradient(90deg, #8B0000, #EF5350); }
 .op-revenue-card[data-accent="other"] .op-revenue-progress-bar { background: linear-gradient(90deg, #E67E22, #F39C12); }
 
 /* ====== RECORDS DETAILS MODAL STYLING ====== */

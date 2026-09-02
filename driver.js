@@ -79,6 +79,18 @@ const OPERATION_CONFIG = {
         logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png',
         badgeClass: 'op-sitrek',
         color: '#2980B9'
+    },
+    okidoki: {
+        name: 'OKIDOKI',
+        logoUrl: 'https://i.postimg.cc/MTyhKwcy/images.png',
+        badgeClass: 'op-okidoki',
+        color: '#E65100'
+    },
+    rockland: {
+        name: 'Rockland',
+        logoUrl: 'https://i.postimg.cc/qq4WNFyp/rockland-distilleries-pvt-ltd-logo.jpg',
+        badgeClass: 'op-rockland',
+        color: '#8B0000'
     }
 };
 
@@ -103,6 +115,8 @@ function getOperationConfig(opName) {
     if (lower.includes('spectra')) return OPERATION_CONFIG.spectra;
     if (lower.includes('ansell')) return OPERATION_CONFIG.ansell;
     if (lower.includes('sitrek')) return OPERATION_CONFIG.sitrek;
+    if (lower.includes('okidoki')) return OPERATION_CONFIG.okidoki;
+    if (lower.includes('rockland')) return OPERATION_CONFIG.rockland;
 
     // Fallback for any other custom operation
     return {

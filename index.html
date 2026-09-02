@@ -1146,6 +1146,8 @@
                                         <option value="Spectra">Spectra</option>
                                         <option value="Ansell">Ansell</option>
                                         <option value="Sitrek">Sitrek</option>
+                                        <option value="OKIDOKI">OKIDOKI</option>
+                                        <option value="Rockland">Rockland</option>
                                     </select>
                                 </div>
                                 <div class="form-group" style="flex:1; display:flex; align-items:flex-end; padding-bottom:8px;">
@@ -1984,7 +1986,10 @@
 
                 <div id="hire-vehicles" class="page">
                     <div class="page-header">
-                        <h3>🚚 Hire-to-Pay Vehicles</h3>
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png" alt="Kevilton" style="height: 32px; width: 32px; object-fit: contain; background: #ffffff; padding: 3px; border-radius: 8px; border: 1.5px solid rgba(209,0,31,0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            <span>Hire-to-Pay Vehicles</span>
+                        </h3>
                         <button class="btn btn-primary" id="addHireVehicleBtn">+ Add Vehicle</button>
                     </div>
 
@@ -2088,7 +2093,10 @@
                     <!-- HIRE RECORDS SUMMARY STRIP -->
                     <div class="records-summary-strip" id="hireRecordsSummaryStrip"></div>
                     <div class="page-header">
-                        <h3>📋 Hire-to-Pay Records</h3>
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png" alt="Kevilton" style="height: 32px; width: 32px; object-fit: contain; background: #ffffff; padding: 3px; border-radius: 8px; border: 1.5px solid rgba(209,0,31,0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            <span>Hire-to-Pay Records</span>
+                        </h3>
                         <button class="btn btn-primary" id="addHireRecordBtn">+ Add Record</button>
                     </div>
 
@@ -2210,6 +2218,8 @@
                                     <option value="Spectra Operation">Spectra Operation</option>
                                     <option value="Ansell Operation">Ansell Operation</option>
                                     <option value="Sitrek Operation">Sitrek Operation</option>
+                                    <option value="OKIDOKI Operation">OKIDOKI Operation</option>
+                                    <option value="Rockland Operation">Rockland Operation</option>
                                     <option value="other">Other (Custom)</option>
                                 </select>
                                 <input type="text" id="otherOpOperationNameCustom" placeholder="Enter Custom Operation" style="display: none;">
@@ -2287,6 +2297,28 @@
                                     placeholder="Vehicle Model (e.g., TATA, ISUZU)" required>
                             </div>
                             <div class="form-row">
+                                <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                                    <label for="commitmentVehicleOperationSelect" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🏢 Operation Assignment</label>
+                                    <select id="commitmentVehicleOperationSelect" required>
+                                        <option value="">Select Operation</option>
+                                        <option value="Kevilton Operation">Kevilton Operation</option>
+                                        <option value="Pelwatte Operation">Pelwatte Operation</option>
+                                        <option value="Keells Operation">Keells Operation</option>
+                                        <option value="Space Logistics">Space Logistics</option>
+                                        <option value="ICL Operation">ICL Operation</option>
+                                        <option value="KTI Operation">KTI Operation</option>
+                                        <option value="Maggi Operation">Maggi Operation</option>
+                                        <option value="Spectra Operation">Spectra Operation</option>
+                                        <option value="Ansell Operation">Ansell Operation</option>
+                                        <option value="Sitrek Operation">Sitrek Operation</option>
+                                        <option value="OKIDOKI Operation">OKIDOKI Operation</option>
+                                        <option value="Rockland Operation">Rockland Operation</option>
+                                        <option value="other">Other (Custom)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="commitmentVehicleOperationCustom" placeholder="Enter Custom Operation Name" style="display: none; flex: 1; align-self: flex-end;">
+                            </div>
+                            <div class="form-row">
                                 <input type="number" id="fixedPayment" placeholder="Fixed Monthly Payment (LKR)"
                                     required>
                                 <input type="number" id="commitmentVehicleLength" placeholder="Length (ft)" step="any" required>
@@ -2350,6 +2382,7 @@
                                 <tr>
                                     <th>Photo</th>
                                     <th>Vehicle No</th>
+                                    <th>Operation</th>
                                     <th>Model</th>
                                     <th>Length</th>
                                     <th>Fixed Payment</th>

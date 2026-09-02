@@ -43,7 +43,9 @@
         maggi: { name: 'Maggi', logoUrl: 'https://i.postimg.cc/kX83pkM8/maggi.png', color: '#E30613', bg: 'rgba(227,6,19,0.18)' },
         spectra: { name: 'Spectra', logoUrl: 'https://i.postimg.cc/mgsff8hn/spectra.jpg', color: '#00796B', bg: 'rgba(0,121,107,0.18)' },
         ansell: { name: 'Ansell', logoUrl: 'https://i.postimg.cc/SKgw94Vb/ansell.png', color: '#F57C00', bg: 'rgba(245,124,0,0.18)' },
-        sitrek: { name: 'Sitrek', logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png', color: '#2980B9', bg: 'rgba(41,128,185,0.18)' }
+        sitrek: { name: 'Sitrek', logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png', color: '#2980B9', bg: 'rgba(41,128,185,0.18)' },
+        okidoki: { name: 'OKIDOKI', logoUrl: 'https://i.postimg.cc/MTyhKwcy/images.png', color: '#E65100', bg: 'rgba(230,81,0,0.18)' },
+        rockland: { name: 'Rockland', logoUrl: 'https://i.postimg.cc/qq4WNFyp/rockland-distilleries-pvt-ltd-logo.jpg', color: '#8B0000', bg: 'rgba(139,0,0,0.18)' }
     };
 
     function getTrackerOperationConfig(opName) {
@@ -63,6 +65,8 @@
         if (lower.indexOf('spectra') !== -1) return TRACKER_OPERATION_CONFIG.spectra;
         if (lower.indexOf('ansell') !== -1) return TRACKER_OPERATION_CONFIG.ansell;
         if (lower.indexOf('sitrek') !== -1) return TRACKER_OPERATION_CONFIG.sitrek;
+        if (lower.indexOf('okidoki') !== -1) return TRACKER_OPERATION_CONFIG.okidoki;
+        if (lower.indexOf('rockland') !== -1) return TRACKER_OPERATION_CONFIG.rockland;
 
         return { name: cleanOp, logoUrl: null, color: '#7F8C8D', bg: 'rgba(127,140,141,0.18)' };
     }

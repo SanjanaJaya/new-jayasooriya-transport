@@ -2656,6 +2656,20 @@ async function editOtherOperationHire(id) {
                 customInput.required = false;
                 customInput.value = '';
             }
+        } else if (opLower.includes('okidoki')) {
+            if (nameSelect) nameSelect.value = 'OKIDOKI Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        } else if (opLower.includes('rockland')) {
+            if (nameSelect) nameSelect.value = 'Rockland Operation';
+            if (customInput) {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
         } else if (opName !== '') {
             if (nameSelect) nameSelect.value = 'other';
             if (customInput) {
@@ -2727,10 +2741,26 @@ async function deleteOtherOperationHire(id) {
 }
 
 // ============ COMMITMENT VEHICLES ============
+document.getElementById('commitmentVehicleOperationSelect')?.addEventListener('change', (e) => {
+    const customInput = document.getElementById('commitmentVehicleOperationCustom');
+    if (!customInput) return;
+    if (e.target.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+});
+
 document.getElementById('addCommitmentVehicleBtn')?.addEventListener('click', () => {
     if (!checkAdminAccess('add')) return;
     document.getElementById('commitmentVehicleForm').reset();
     document.getElementById('commitmentVehicleId').value = '';
+    const opCustom = document.getElementById('commitmentVehicleOperationCustom');
+    if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
     // Reset terminated checkbox
     if (document.getElementById('commitmentVehicleTerminated')) {
         document.getElementById('commitmentVehicleTerminated').checked = false;
@@ -2750,9 +2780,22 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
 
     const id = document.getElementById('commitmentVehicleId').value;
     const lengthVal = parseFloat(document.getElementById('commitmentVehicleLength').value);
+
+    let opName = 'Kevilton Operation';
+    const opSelect = document.getElementById('commitmentVehicleOperationSelect');
+    const opCustom = document.getElementById('commitmentVehicleOperationCustom');
+    if (opSelect) {
+        if (opSelect.value === 'other') {
+            opName = opCustom?.value?.trim() || 'Other Operation';
+        } else if (opSelect.value) {
+            opName = opSelect.value;
+        }
+    }
+
     const data = {
         vehicle_number: document.getElementById('commitmentVehicleNumber').value,
         vehicle_model: document.getElementById('commitmentVehicleModel').value,
+        operation_name: opName,
         length: isNaN(lengthVal) ? null : lengthVal,
         fixed_monthly_payment: parseFloat(document.getElementById('fixedPayment').value),
         photo_url: document.getElementById('commitmentVehiclePhoto').value || null,
@@ -2767,16 +2810,43 @@ document.getElementById('commitmentVehicleForm')?.addEventListener('submit', asy
 
     try {
         if (id) {
-            const { error: updateError } = await supabaseClient.from('commitment_vehicles').update(data).eq('id', id);
-            if (updateError) throw updateError;
+            let { error: updateError } = await supabaseClient.from('commitment_vehicles').update(data).eq('id', id);
+            if (updateError) {
+                if (updateError.message?.includes('operation_name') || updateError.code === 'PGRST204' || updateError.status === 400) {
+                    const fallbackData = { ...data };
+                    delete fallbackData.operation_name;
+                    const { error: retryError } = await supabaseClient.from('commitment_vehicles').update(fallbackData).eq('id', id);
+                    if (retryError) throw retryError;
+                } else {
+                    throw updateError;
+                }
+            }
         } else {
-            const { error: insertError } = await supabaseClient.from('commitment_vehicles').insert([data]);
-            if (insertError) throw insertError;
+            let { error: insertError } = await supabaseClient.from('commitment_vehicles').insert([data]);
+            if (insertError) {
+                // If operation_name column hasn't been created in Supabase DB yet, retry without operation_name
+                if (insertError.message?.includes('operation_name') || insertError.code === 'PGRST204' || insertError.status === 400 || (insertError.message && insertError.message.includes('column'))) {
+                    const fallbackData = { ...data };
+                    delete fallbackData.operation_name;
+                    const { error: retryError } = await supabaseClient.from('commitment_vehicles').insert([fallbackData]);
+                    if (retryError) {
+                        if (retryError.status === 409 || retryError.code === '23505') {
+                            throw new Error(`Database Unique Constraint: To allow multiple commitments for "${data.vehicle_number}", please run the SQL command in Supabase to drop the UNIQUE constraint on commitment_vehicles.`);
+                        }
+                        throw retryError;
+                    }
+                    showToast('Vehicle saved! Note: Please run the SQL command in Supabase to enable operation saving for commitment vehicles.', 'warning', 6000);
+                } else if (insertError.status === 409 || insertError.code === '23505') {
+                    throw new Error(`Database Unique Constraint: To allow multiple commitments for "${data.vehicle_number}", please run the SQL command in Supabase to drop the UNIQUE constraint on commitment_vehicles.`);
+                } else {
+                    throw insertError;
+                }
+            }
         }
         loadCommitmentVehicles();
         document.getElementById('commitmentVehicleFormContainer').style.display = 'none';
     } catch (error) {
-        showToast('Error saving commitment vehicle: ' + error.message, 'error');
+        showToast('Error saving commitment vehicle: ' + error.message, 'error', 8000);
     }
 });
 
@@ -2793,11 +2863,33 @@ function buildCommitmentVehicleRow(vehicle) {
     const statusBadge = vehicle.terminated
         ? `<span style="background: #E74C3C; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">TERMINATED</span>`
         : `<span style="background: #27AE60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">ACTIVE</span>`;
+
+    const opName = vehicle.operation_name || 'Kevilton Operation';
+    const opLower = opName.toLowerCase();
+    let badgeClass = 'op-generic';
+    let logoUrl = null;
+    if (opLower.includes('kevilton')) { badgeClass = 'op-kevilton'; logoUrl = 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'; }
+    else if (opLower.includes('pelwatte')) { badgeClass = 'op-pelwatte'; logoUrl = 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg'; }
+    else if (opLower.includes('keells')) { badgeClass = 'op-keells'; logoUrl = 'https://i.postimg.cc/x8KcWWty/images.jpg'; }
+    else if (opLower.includes('space')) { badgeClass = 'op-space-logistics'; logoUrl = 'https://i.postimg.cc/65VKKKR2/images-(1).jpg'; }
+    else if (opLower.includes('icl')) { badgeClass = 'op-icl'; logoUrl = 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg'; }
+    else if (opLower.includes('kti')) { badgeClass = 'op-kti'; logoUrl = 'https://i.postimg.cc/BbrpFYdb/kti.jpg'; }
+    else if (opLower.includes('maggi')) { badgeClass = 'op-maggi'; logoUrl = 'https://i.postimg.cc/kX83pkM8/maggi.png'; }
+    else if (opLower.includes('spectra')) { badgeClass = 'op-spectra'; logoUrl = 'https://i.postimg.cc/mgsff8hn/spectra.jpg'; }
+    else if (opLower.includes('ansell')) { badgeClass = 'op-ansell'; logoUrl = 'https://i.postimg.cc/SKgw94Vb/ansell.png'; }
+    else if (opLower.includes('sitrek')) { badgeClass = 'op-sitrek'; logoUrl = 'https://i.postimg.cc/FK9sV94L/images.png'; }
+    else if (opLower.includes('okidoki')) { badgeClass = 'op-okidoki'; logoUrl = 'https://i.postimg.cc/MTyhKwcy/images.png'; }
+    else if (opLower.includes('rockland')) { badgeClass = 'op-rockland'; logoUrl = 'https://i.postimg.cc/qq4WNFyp/rockland-distilleries-pvt-ltd-logo.jpg'; }
+
+    const logoHTML = logoUrl ? `<img src="${logoUrl}" class="op-revenue-logo" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">` : '';
+    const opBadgeHTML = `<span class="driver-op-badge ${badgeClass}">${logoHTML}${opName}</span>`;
+
     const row = document.createElement('tr');
     if (vehicle.terminated) { row.style.backgroundColor = '#FADBD8'; row.style.opacity = '0.7'; }
     row.innerHTML = `
         <td>${photoHTML}</td>
         <td>${vehicle.vehicle_number}<br>${statusBadge}</td>
+        <td>${opBadgeHTML}</td>
         <td>${vehicle.vehicle_model || '-'}</td>
         <td>${vehicle.length ? vehicle.length : '-'}</td>
         <td>LKR ${vehicle.fixed_monthly_payment}</td>
@@ -2825,7 +2917,7 @@ async function loadCommitmentVehicles() {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No vehicles found</td></tr>';
             return;
         }
 
@@ -2835,7 +2927,7 @@ async function loadCommitmentVehicles() {
         activeVehicles.forEach(vehicle => tbody.appendChild(buildCommitmentVehicleRow(vehicle)));
 
         if (terminatedVehicles.length > 0) {
-            const colSpan = userRole === 'viewer' ? 9 : 10;
+            const colSpan = userRole === 'viewer' ? 10 : 11;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.id = 'commitmentArchiveToggleRow';
             archiveToggleRow.innerHTML = `
@@ -2889,6 +2981,55 @@ async function editCommitmentVehicle(id) {
         document.getElementById('commitmentOwnership').value = data.ownership || '';
         if (document.getElementById('commitmentVehicleTerminated')) {
             document.getElementById('commitmentVehicleTerminated').checked = data.terminated || false;
+        }
+
+        const opName = data.operation_name || 'Kevilton Operation';
+        const opSelect = document.getElementById('commitmentVehicleOperationSelect');
+        const opCustom = document.getElementById('commitmentVehicleOperationCustom');
+        const opLower = opName.toLowerCase();
+
+        if (opLower.includes('kevilton')) {
+            if (opSelect) opSelect.value = 'Kevilton Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('pelwatte')) {
+            if (opSelect) opSelect.value = 'Pelwatte Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('keells')) {
+            if (opSelect) opSelect.value = 'Keells Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('space')) {
+            if (opSelect) opSelect.value = 'Space Logistics';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('icl')) {
+            if (opSelect) opSelect.value = 'ICL Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('kti')) {
+            if (opSelect) opSelect.value = 'KTI Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('maggi')) {
+            if (opSelect) opSelect.value = 'Maggi Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('spectra')) {
+            if (opSelect) opSelect.value = 'Spectra Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('ansell')) {
+            if (opSelect) opSelect.value = 'Ansell Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('sitrek')) {
+            if (opSelect) opSelect.value = 'Sitrek Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('okidoki')) {
+            if (opSelect) opSelect.value = 'OKIDOKI Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opLower.includes('rockland')) {
+            if (opSelect) opSelect.value = 'Rockland Operation';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
+        } else if (opName !== '') {
+            if (opSelect) opSelect.value = 'other';
+            if (opCustom) { opCustom.style.display = 'block'; opCustom.required = true; opCustom.value = opName; }
+        } else {
+            if (opSelect) opSelect.value = '';
+            if (opCustom) { opCustom.style.display = 'none'; opCustom.required = false; opCustom.value = ''; }
         }
 
         document.getElementById('commitmentVehicleFormContainer').style.display = 'block';
@@ -3524,7 +3665,54 @@ async function loadDashboardData(monthValue, cachedData = null) {
 
         // --- OPERATION-WISE REVENUE BREAKDOWN WIDGET ---
         const hireToPayRev = hireRecords?.reduce((sum, r) => sum + (r.hire_amount || 0), 0) || 0;
-        const commitmentNetRev = commitmentPayment - dayOffDeductions + extraKmCharges;
+
+        let keviltonCommitRev = 0;
+        let keviltonCommitCount = 0;
+        let keviltonCommitKm = 0;
+
+        let pelwatteCommitRev = 0;
+        let pelwatteCommitCount = 0;
+        let pelwatteCommitKm = 0;
+
+        let keellsCommitRev = 0;
+        let keellsCommitCount = 0;
+        let keellsCommitKm = 0;
+
+        let spaceLogisticsCommitRev = 0;
+        let spaceLogisticsCommitCount = 0;
+        let spaceLogisticsCommitKm = 0;
+
+        let iclCommitRev = 0;
+        let iclCommitCount = 0;
+        let iclCommitKm = 0;
+
+        let ktiCommitRev = 0;
+        let ktiCommitCount = 0;
+        let ktiCommitKm = 0;
+
+        let maggiCommitRev = 0;
+        let maggiCommitCount = 0;
+        let maggiCommitKm = 0;
+
+        let spectraCommitRev = 0;
+        let spectraCommitCount = 0;
+        let spectraCommitKm = 0;
+
+        let ansellCommitRev = 0;
+        let ansellCommitCount = 0;
+        let ansellCommitKm = 0;
+
+        let sitrekCommitRev = 0;
+        let sitrekCommitCount = 0;
+        let sitrekCommitKm = 0;
+
+        let okidokiCommitRev = 0;
+        let okidokiCommitCount = 0;
+        let okidokiCommitKm = 0;
+
+        let rocklandCommitRev = 0;
+        let rocklandCommitCount = 0;
+        let rocklandCommitKm = 0;
 
         let keviltonOtherRev = 0;
         let keviltonOtherCount = 0;
@@ -3556,8 +3744,87 @@ async function loadDashboardData(monthValue, cachedData = null) {
         let sitrekRev = 0;
         let sitrekCount = 0;
         let sitrekKm = 0;
+        let okidokiOtherRev = 0;
+        let okidokiOtherCount = 0;
+        let okidokiOtherKm = 0;
+        let rocklandOtherRev = 0;
+        let rocklandOtherCount = 0;
+        let rocklandOtherKm = 0;
 
         const customOpsMap = {};
+
+        // Calculate Commitment Vehicles revenue & stats per assigned operation
+        commitmentVehicles?.forEach(v => {
+            const vPayment = v.fixed_monthly_payment || 0;
+            const vDayOffDeductions = dayOffs?.filter(d => d.vehicle_id === v.id).reduce((sum, d) => sum + (d.deduction_amount || 0), 0) || 0;
+            const vRecords = commitmentRecords?.filter(r => r.vehicle_id === v.id) || [];
+            const vKm = vRecords.reduce((sum, r) => sum + (r.distance || 0), 0);
+            const vExceedingKm = Math.max(0, vKm - (v.km_limit_per_month || 0));
+            const vExtraKmCharge = vExceedingKm * (v.extra_km_charge || 0);
+            const vNetRev = vPayment - vDayOffDeductions + vExtraKmCharge;
+            const vCount = vRecords.length;
+
+            const opName = (v.operation_name || 'Kevilton Operation').trim();
+            const lower = opName.toLowerCase().replace(/[\s-]/g, '');
+
+            if (lower.includes('kevilton')) {
+                keviltonCommitRev += vNetRev;
+                keviltonCommitCount += vCount;
+                keviltonCommitKm += vKm;
+            } else if (lower.includes('pelwatte')) {
+                pelwatteCommitRev += vNetRev;
+                pelwatteCommitCount += vCount;
+                pelwatteCommitKm += vKm;
+            } else if (lower.includes('keells')) {
+                keellsCommitRev += vNetRev;
+                keellsCommitCount += vCount;
+                keellsCommitKm += vKm;
+            } else if (lower.includes('space') || lower.includes('spacelogistics')) {
+                spaceLogisticsCommitRev += vNetRev;
+                spaceLogisticsCommitCount += vCount;
+                spaceLogisticsCommitKm += vKm;
+            } else if (lower.includes('icl')) {
+                iclCommitRev += vNetRev;
+                iclCommitCount += vCount;
+                iclCommitKm += vKm;
+            } else if (lower.includes('kti')) {
+                ktiCommitRev += vNetRev;
+                ktiCommitCount += vCount;
+                ktiCommitKm += vKm;
+            } else if (lower.includes('maggi')) {
+                maggiCommitRev += vNetRev;
+                maggiCommitCount += vCount;
+                maggiCommitKm += vKm;
+            } else if (lower.includes('spectra')) {
+                spectraCommitRev += vNetRev;
+                spectraCommitCount += vCount;
+                spectraCommitKm += vKm;
+            } else if (lower.includes('ansell')) {
+                ansellCommitRev += vNetRev;
+                ansellCommitCount += vCount;
+                ansellCommitKm += vKm;
+            } else if (lower.includes('sitrek')) {
+                sitrekCommitRev += vNetRev;
+                sitrekCommitCount += vCount;
+                sitrekCommitKm += vKm;
+            } else if (lower.includes('okidoki')) {
+                okidokiCommitRev += vNetRev;
+                okidokiCommitCount += vCount;
+                okidokiCommitKm += vKm;
+            } else if (lower.includes('rockland')) {
+                rocklandCommitRev += vNetRev;
+                rocklandCommitCount += vCount;
+                rocklandCommitKm += vKm;
+            } else {
+                const displayName = opName || 'Other Operation';
+                if (!customOpsMap[displayName]) {
+                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0 };
+                }
+                customOpsMap[displayName].amount += vNetRev;
+                customOpsMap[displayName].count += vCount;
+                customOpsMap[displayName].km += vKm;
+            }
+        });
 
         otherOpHires?.forEach(r => {
             const opName = (r.operation_name || '').trim();
@@ -3605,6 +3872,14 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 sitrekRev += amount;
                 sitrekCount++;
                 sitrekKm += dist;
+            } else if (lower.includes('okidoki')) {
+                okidokiOtherRev += amount;
+                okidokiOtherCount++;
+                okidokiOtherKm += dist;
+            } else if (lower.includes('rockland')) {
+                rocklandOtherRev += amount;
+                rocklandOtherCount++;
+                rocklandOtherKm += dist;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
@@ -3616,12 +3891,11 @@ async function loadDashboardData(monthValue, cachedData = null) {
             }
         });
 
-        const keviltonTotalRev = hireToPayRev + commitmentNetRev + keviltonOtherRev;
-        const keviltonTotalCount = (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + keviltonOtherCount;
+        const keviltonTotalRev = hireToPayRev + keviltonCommitRev + keviltonOtherRev;
+        const keviltonTotalCount = (hireRecords?.length || 0) + keviltonCommitCount + keviltonOtherCount;
 
         // Calculate KM for kevilton from hire-to-pay + commitment + other ops
         const keviltonHireKm = hireRecords?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
-        const keviltonCommitKm = commitmentRecords?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
         const keviltonTotalKm = keviltonHireKm + keviltonCommitKm + keviltonOtherKm;
 
         const opsData = [
@@ -3640,90 +3914,110 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 logoUrl: 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg',
                 icon: '🌾',
                 accent: 'pelwatte',
-                amount: pelwatteRev,
-                count: pelwatteCount,
-                km: pelwatteKm,
-                subtitle: 'Other Operations'
+                amount: pelwatteCommitRev + pelwatteRev,
+                count: pelwatteCommitCount + pelwatteCount,
+                km: pelwatteCommitKm + pelwatteKm,
+                subtitle: pelwatteCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Keells Operation',
                 logoUrl: 'https://i.postimg.cc/x8KcWWty/images.jpg',
                 icon: '🛒',
                 accent: 'keells',
-                amount: keellsRev,
-                count: keellsCount,
-                km: keellsKm,
-                subtitle: 'Other Operations'
+                amount: keellsCommitRev + keellsRev,
+                count: keellsCommitCount + keellsCount,
+                km: keellsCommitKm + keellsKm,
+                subtitle: keellsCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Space Logistics',
                 logoUrl: 'https://i.postimg.cc/65VKKKR2/images-(1).jpg',
                 icon: '🚀',
                 accent: 'space-logistics',
-                amount: spaceLogisticsRev,
-                count: spaceLogisticsCount,
-                km: spaceLogisticsKm,
-                subtitle: 'Other Operations'
+                amount: spaceLogisticsCommitRev + spaceLogisticsRev,
+                count: spaceLogisticsCommitCount + spaceLogisticsCount,
+                km: spaceLogisticsCommitKm + spaceLogisticsKm,
+                subtitle: spaceLogisticsCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'ICL Operation',
                 logoUrl: 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg',
                 icon: '💄',
                 accent: 'icl',
-                amount: iclRev,
-                count: iclCount,
-                km: iclKm,
-                subtitle: 'Other Operations'
+                amount: iclCommitRev + iclRev,
+                count: iclCommitCount + iclCount,
+                km: iclCommitKm + iclKm,
+                subtitle: iclCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'KTI Operation',
                 logoUrl: 'https://i.postimg.cc/BbrpFYdb/kti.jpg',
                 icon: '🏭',
                 accent: 'kti',
-                amount: ktiRev,
-                count: ktiCount,
-                km: ktiKm,
-                subtitle: 'Other Operations'
+                amount: ktiCommitRev + ktiRev,
+                count: ktiCommitCount + ktiCount,
+                km: ktiCommitKm + ktiKm,
+                subtitle: ktiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Maggi Operation',
                 logoUrl: 'https://i.postimg.cc/kX83pkM8/maggi.png',
                 icon: '🍜',
                 accent: 'maggi',
-                amount: maggiRev,
-                count: maggiCount,
-                km: maggiKm,
-                subtitle: 'Other Operations'
+                amount: maggiCommitRev + maggiRev,
+                count: maggiCommitCount + maggiCount,
+                km: maggiCommitKm + maggiKm,
+                subtitle: maggiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Spectra Operation',
                 logoUrl: 'https://i.postimg.cc/mgsff8hn/spectra.jpg',
                 icon: '🔬',
                 accent: 'spectra',
-                amount: spectraRev,
-                count: spectraCount,
-                km: spectraKm,
-                subtitle: 'Other Operations'
+                amount: spectraCommitRev + spectraRev,
+                count: spectraCommitCount + spectraCount,
+                km: spectraCommitKm + spectraKm,
+                subtitle: spectraCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Ansell Operation',
                 logoUrl: 'https://i.postimg.cc/SKgw94Vb/ansell.png',
                 icon: '🧤',
                 accent: 'ansell',
-                amount: ansellRev,
-                count: ansellCount,
-                km: ansellKm,
-                subtitle: 'Other Operations'
+                amount: ansellCommitRev + ansellRev,
+                count: ansellCommitCount + ansellCount,
+                km: ansellCommitKm + ansellKm,
+                subtitle: ansellCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
                 name: 'Sitrek Operation',
                 logoUrl: 'https://i.postimg.cc/FK9sV94L/images.png',
                 icon: '🛡️',
                 accent: 'sitrek',
-                amount: sitrekRev,
-                count: sitrekCount,
-                km: sitrekKm,
-                subtitle: 'Other Operations'
+                amount: sitrekCommitRev + sitrekRev,
+                count: sitrekCommitCount + sitrekCount,
+                km: sitrekCommitKm + sitrekKm,
+                subtitle: sitrekCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
+            },
+            {
+                name: 'OKIDOKI Operation',
+                logoUrl: 'https://i.postimg.cc/MTyhKwcy/images.png',
+                icon: '📦',
+                accent: 'okidoki',
+                amount: okidokiCommitRev + okidokiOtherRev,
+                count: okidokiCommitCount + okidokiOtherCount,
+                km: okidokiCommitKm + okidokiOtherKm,
+                subtitle: okidokiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
+            },
+            {
+                name: 'Rockland Operation',
+                logoUrl: 'https://i.postimg.cc/qq4WNFyp/rockland-distilleries-pvt-ltd-logo.jpg',
+                icon: '🍷',
+                accent: 'rockland',
+                amount: rocklandCommitRev + rocklandOtherRev,
+                count: rocklandCommitCount + rocklandOtherCount,
+                km: rocklandCommitKm + rocklandOtherKm,
+                subtitle: rocklandCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             }
         ];
 
