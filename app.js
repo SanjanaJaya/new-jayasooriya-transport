@@ -1544,35 +1544,76 @@ async function loadDrivers() {
             const cleanedName = cleanDriverName(driver.name);
             const nickname = getNickname(driver.name);
 
-            let operationHTML = '<span style="color:#7F8C8D;font-size:12px;">-</span>';
-            if (driver.operation) {
-                const opLower = driver.operation.toLowerCase();
-                const logoUrl = opLower === 'kevilton'
-                    ? 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'
-                    : (opLower === 'pelwatte'
-                        ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg'
-                        : (opLower.includes('space')
-                            ? 'https://i.postimg.cc/65VKKKR2/images-(1).jpg'
-                            : (opLower.includes('icl')
-                                ? 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg'
-                                : (opLower.includes('keells') ? 'https://i.postimg.cc/x8KcWWty/images.jpg' : null))));
+            const standardOps = [
+                'Kevilton',
+                'Pelwatte',
+                'Keells',
+                'Space Logistics',
+                'ICL',
+                'KTI',
+                'Maggi',
+                'Spectra',
+                'Ansell',
+                'Sitrek',
+                'OKIDOKI',
+                'Rockland'
+            ];
 
-                const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
-                const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
+            const currentOp = driver.operation || '';
+            const coordTag = driver.is_coordinator ? `<span style="background:rgba(241,196,15,0.15);color:#F39C12;border:1px solid rgba(241,196,15,0.4);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;" title="Operation Coordinator">⭐ Coordinator</span>` : '';
 
-                const bgStyle = opLower === 'kevilton'
-                    ? 'background:rgba(209,0,31,0.18);color:#FF6B81;border:1px solid rgba(209,0,31,0.4);'
-                    : (opLower === 'pelwatte'
-                        ? 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'
-                        : (opLower.includes('space')
-                            ? 'background:rgba(0,26,63,0.18);color:#4A90E2;border:1px solid rgba(0,26,63,0.4);'
-                            : (opLower.includes('icl')
-                                ? 'background:rgba(142,68,173,0.18);color:#AB47BC;border:1px solid rgba(142,68,173,0.4);'
-                                : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);')));
+            let operationHTML = '';
+            if (userRole === 'viewer') {
+                if (driver.operation) {
+                    const opLower = driver.operation.toLowerCase();
+                    const logoUrl = opLower === 'kevilton'
+                        ? 'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png'
+                        : (opLower === 'pelwatte'
+                            ? 'https://i.postimg.cc/Kv7vZCdh/db809eadd12d21eb61044e0f3bf7c9b7.jpg'
+                            : (opLower.includes('space')
+                                ? 'https://i.postimg.cc/65VKKKR2/images-(1).jpg'
+                                : (opLower.includes('icl')
+                                    ? 'https://i.postimg.cc/wM5YBmn1/international-cosmetics-pvt-ltd-logo.jpg'
+                                    : (opLower.includes('keells') ? 'https://i.postimg.cc/x8KcWWty/images.jpg' : null))));
 
-                const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
+                    const logoTag = logoUrl ? `<img src="${logoUrl}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;background:#fff;padding:1px;">` : '';
+                    const bgStyle = opLower === 'kevilton'
+                        ? 'background:rgba(209,0,31,0.18);color:#FF6B81;border:1px solid rgba(209,0,31,0.4);'
+                        : (opLower === 'pelwatte'
+                            ? 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);'
+                            : (opLower.includes('space')
+                                ? 'background:rgba(0,26,63,0.18);color:#4A90E2;border:1px solid rgba(0,26,63,0.4);'
+                                : (opLower.includes('icl')
+                                    ? 'background:rgba(142,68,173,0.18);color:#AB47BC;border:1px solid rgba(142,68,173,0.4);'
+                                    : 'background:rgba(0,179,126,0.18);color:#2ECC71;border:1px solid rgba(0,179,126,0.4);')));
 
-                operationHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${opBadge}${coordTag}</div>`;
+                    const opBadge = `<span style="${bgStyle}padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${logoTag}${driver.operation}</span>`;
+                    operationHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${opBadge}${coordTag}</div>`;
+                } else {
+                    operationHTML = '<span style="color:#7F8C8D;font-size:12px;">-</span>';
+                }
+            } else {
+                let opOptions = `<option value="">No Specific Operation</option>`;
+                let foundCurrent = !currentOp;
+
+                standardOps.forEach(op => {
+                    const selected = currentOp.toLowerCase() === op.toLowerCase() ? 'selected' : '';
+                    if (selected) foundCurrent = true;
+                    opOptions += `<option value="${op}" ${selected}>${op}</option>`;
+                });
+
+                if (currentOp && !foundCurrent) {
+                    opOptions += `<option value="${currentOp}" selected>${currentOp}</option>`;
+                }
+
+                operationHTML = `
+                    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
+                        <select class="op-assign-select" onchange="updateDriverOperation(${driver.id}, this.value)" title="Change Operation">
+                            ${opOptions}
+                        </select>
+                        ${coordTag}
+                    </div>
+                `;
             }
 
             row.innerHTML = `
@@ -1680,6 +1721,25 @@ window.unassignLorry = async function (driverId) {
     } catch (err) {
         console.error('Error unassigning lorry:', err);
         showToast('Error removing assignment: ' + err.message, 'error');
+    }
+};
+
+// Update staff operation from table dropdown
+window.updateDriverOperation = async function (driverId, newOperation) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const userId = getQueryUserId();
+        const { error } = await supabaseClient.from('drivers')
+            .update({ operation: newOperation || null })
+            .eq('id', driverId)
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        showToast('Staff operation updated successfully!', 'success');
+        loadDrivers();
+    } catch (err) {
+        console.error('Error updating operation:', err);
+        showToast('Error updating operation: ' + err.message, 'error');
     }
 };
 

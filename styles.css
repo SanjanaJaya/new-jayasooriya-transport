@@ -1218,6 +1218,26 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     box-shadow: 0 0 0 3px var(--brand-red-glow);
 }
 
+.op-assign-select {
+    padding: 6px 10px;
+    border: 1.5px solid var(--surface-border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    max-width: 175px;
+    transition: border-color var(--ease-base), box-shadow var(--ease-base);
+}
+
+.op-assign-select:focus {
+    outline: none;
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px var(--brand-red-glow);
+}
+
 /* ── Dark mode ── */
 body.dark-mode .lorry-badge {
     background: linear-gradient(135deg, #12243a 0%, #1a2d3a 100%);
@@ -1244,7 +1264,8 @@ body.dark-mode .lorry-assign-btn {
     color: var(--text-muted);
 }
 
-body.dark-mode .lorry-assign-select {
+body.dark-mode .lorry-assign-select,
+body.dark-mode .op-assign-select {
     background: var(--surface-raised);
     color: var(--text-primary);
     border-color: var(--surface-border);
