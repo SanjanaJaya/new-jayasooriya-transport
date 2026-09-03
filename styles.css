@@ -12537,6 +12537,272 @@ body.dark-mode .job-number-auto-badge {
     border-color: rgba(39, 174, 96, 0.3);
 }
 
+/* ==========================================================================
+   9–12" UNIVERSAL TABLET RESPONSIVE SYSTEM (iPad Air, iPad Pro, Android & Surface)
+   ========================================================================== */
+
+/* ── 1. Global Touch Accessibility & Tablet Ergonomics ───────────────────── */
+@media (min-width: 600px) and (max-width: 1400px) {
+    /* Touch Target Sizing (Apple & Android HIG: min 44px target height/width) */
+    .btn,
+    .action-buttons button,
+    .hamburger-menu,
+    .dark-mode-toggle button,
+    .lang-toggle-btn,
+    .theme-toggle-btn,
+    .btn-edit,
+    .btn-danger,
+    .modal-close,
+    .pagination-btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Prevent browser auto-zoom on touch input focus */
+    .form-row input,
+    .form-row select,
+    .form-row textarea,
+    .form-group input,
+    .form-group select,
+    .control-group input,
+    .control-group select,
+    .date-selector input {
+        font-size: 16px !important;
+        min-height: 44px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    /* Smooth Momentum Touch Scrolling for Data Containers & Tables */
+    .table-responsive,
+    .pages-container,
+    .sidebar,
+    .modal-content,
+    .advance-summary-grid {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive {
+        border-radius: var(--radius-md, 12px);
+        box-shadow: inset 0 0 0 1px var(--surface-border, rgba(0,0,0,0.08));
+    }
+}
+
+/* Touch Active Feedback (Non-Sticky Hover) */
+@media (hover: none) and (pointer: coarse) {
+    .btn:active,
+    .metric-card:active,
+    .advance-card:active,
+    .stat-card:active,
+    .action-buttons button:active {
+        transform: scale(0.98) !important;
+        opacity: 0.92;
+        transition: transform 0.1s ease, opacity 0.1s ease;
+    }
+
+    /* Disable hover-only translations that cut off edges on touch screens */
+    .metric-card:hover,
+    .tracked-vehicle-card:hover,
+    .km-widget-detail-card:hover {
+        transform: none;
+    }
+}
+
+/* ── 2. Portrait Tablet Orientation (Width: 600px – 1024px) ─────────────── */
+@media only screen and (min-width: 600px) and (max-width: 1024px) and (orientation: portrait) {
+    /* Responsive Off-Canvas Overlay Sidebar for Portrait Tablets */
+    .sidebar {
+        position: fixed;
+        width: 310px;
+        max-width: 82vw;
+        height: 100vh;
+        height: -webkit-fill-available;
+        left: 0;
+        top: 0;
+        transform: translateX(-105%);
+        z-index: 1000;
+        box-shadow: 0 0 40px rgba(0,0,0,0.3);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    .top-header {
+        padding-left: max(18px, env(safe-area-inset-left));
+        padding-right: max(18px, env(safe-area-inset-right));
+        padding-top: max(14px, calc(14px + env(safe-area-inset-top)));
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .hamburger-menu {
+        display: flex !important;
+        margin-right: 14px;
+    }
+
+    .pages-container {
+        padding: 20px 18px calc(80px + env(safe-area-inset-bottom)) 18px;
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Metric Cards: Balanced 2-Column Grid on Portrait Tablets */
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px;
+    }
+
+    .metric-card {
+        padding: 18px 16px;
+    }
+
+    .metric-value {
+        font-size: 26px;
+    }
+
+    /* Stack Charts Vertically in Portrait */
+    .charts-container {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .chart-wrapper {
+        height: 320px;
+    }
+
+    /* Detailed Grids & Rankings */
+    .metrics-detailed,
+    .top-vehicles-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .advance-summary-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px;
+    }
+
+    /* Form Rows: Fluid 2-Column or Single Column */
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+
+    /* Floating Action Buttons Safe Area Inset */
+    .dark-mode-toggle {
+        bottom: max(24px, calc(20px + env(safe-area-inset-bottom)));
+        right: max(20px, env(safe-area-inset-right));
+    }
+}
+
+/* ── 3. Landscape Tablet Orientation (Width: 960px – 1400px) ────────────── */
+@media only screen and (min-width: 960px) and (max-width: 1400px) and (orientation: landscape) {
+    :root {
+        --sidebar-w: 250px;
+    }
+
+    .sidebar {
+        width: var(--sidebar-w);
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: none !important;
+    }
+
+    .top-header {
+        padding-left: calc(var(--sidebar-w) + 24px);
+    }
+
+    .pages-container {
+        margin-left: var(--sidebar-w);
+        padding: 24px 28px calc(60px + env(safe-area-inset-bottom)) 28px;
+        width: calc(100% - var(--sidebar-w));
+    }
+
+    /* 4-Column Grid on Wide Landscape Tablets (iPad Pro 12.9", Galaxy Tab S9+) */
+    @media (min-width: 1180px) {
+        .metrics-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 16px;
+        }
+
+        .charts-container {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 20px;
+        }
+
+        .advance-summary-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+    }
+
+    /* 3-Column Grid on 10"–11" Landscape Tablets */
+    @media (max-width: 1179px) {
+        .metrics-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 14px;
+        }
+
+        .charts-container {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 16px;
+        }
+
+        .advance-summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+}
+
+/* ── 4. Tablet Modals, Glassmorphism & Safe Inset Polishing ──────────────── */
+@media (min-width: 600px) and (max-width: 1400px) {
+    .modal-content,
+    .login-modal {
+        max-width: 640px;
+        width: 90vw;
+        border-radius: 20px;
+        padding: 28px 24px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+
+    /* Table horizontal touch scroll indicators */
+    table {
+        min-width: 600px;
+    }
+
+    th, td {
+        padding: 12px 14px;
+    }
+
+    /* Grand Total Banner scaling for 9-12" Tablets */
+    .summary-banner {
+        padding: 18px 20px !important;
+        border-radius: 16px !important;
+    }
+
+    .summary-banner > div[style*="font-size:44px"],
+    .summary-banner > div[style*="font-size: 44px"] {
+        font-size: 36px !important;
+    }
+
+    .summary-banner div[style*="font-size:38px"],
+    .summary-banner div[style*="font-size: 38px"] {
+        font-size: 30px !important;
+    }
+}
+
+
 
 
 

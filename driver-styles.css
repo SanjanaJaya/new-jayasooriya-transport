@@ -3934,3 +3934,123 @@ body.light-mode .hint-card-header {
     flex-direction: column;
     gap: 10px;
 }
+
+/* ==========================================================================
+   DRIVER PORTAL — 9–12" UNIVERSAL TABLET RESPONSIVE SYSTEM
+   ========================================================================== */
+
+@media (min-width: 600px) and (max-width: 1400px) {
+    /* Container Sizing & Layout Center Alignment for 9–12" Tablets */
+    .driver-container,
+    .main-container,
+    .app-header {
+        max-width: 860px;
+        margin: 0 auto;
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+
+    /* Touch Target Sizing (Apple & Android HIG min 44px) */
+    .btn,
+    .btn-primary,
+    .action-btn,
+    .lang-toggle-btn,
+    .theme-toggle-btn,
+    .gps-tab,
+    .gps-map-fit-btn,
+    .modal-close-btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Prevent Safari auto-zoom on input focus */
+    input, select, textarea {
+        font-size: 16px !important;
+        min-height: 44px;
+    }
+
+    /* Weekly Advance Limit Widget Tablet Scaling */
+    .weekly-advance-widget {
+        padding: 20px 22px;
+        border-radius: 18px;
+    }
+
+    .waw-body {
+        gap: 22px;
+    }
+
+    .waw-ring-wrap {
+        width: 104px;
+        height: 104px;
+    }
+
+    .waw-pct-text {
+        font-size: 22px;
+    }
+
+    .waw-info-amount {
+        font-size: 22px;
+    }
+
+    .waw-info-used {
+        font-size: 13px;
+    }
+
+    /* Race Leaderboard & Cards Tablet Enhancement */
+    .race-card {
+        padding: 14px 18px;
+        gap: 12px;
+        border-radius: 14px;
+    }
+
+    .race-avatar-container {
+        width: 42px;
+        height: 42px;
+    }
+
+    .race-name {
+        font-size: 15px;
+    }
+
+    .race-value {
+        font-size: 16px;
+    }
+
+    .driver-op-wrap {
+        gap: 6px;
+    }
+
+    .driver-op-badge {
+        font-size: 10.5px;
+        padding: 3px 8px;
+    }
+
+    /* Tablet Modals & Overlays */
+    .driver-profile-modal-content,
+    .salary-modal-content,
+    .driver-modal-content {
+        max-width: 600px;
+        width: 90vw;
+        margin: 0 auto;
+        border-radius: 20px;
+        padding: 28px 24px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+}
+
+/* Touch Active Feedback for Driver Portal on Touch Displays */
+@media (hover: none) and (pointer: coarse) {
+    .btn-primary:active,
+    .action-btn:active,
+    .race-card:active,
+    .status-btn:active {
+        transform: scale(0.98) !important;
+        opacity: 0.92;
+        transition: transform 0.1s ease, opacity 0.1s ease;
+    }
+}
+
