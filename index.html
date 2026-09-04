@@ -3419,6 +3419,12 @@
                         <!-- Leaflet Map -->
                         <div class="tracker-map-wrapper">
                             <div id="trackerMap" class="tracker-map-container"></div>
+                            <!-- Floating Map Controls for Tablet & Touch -->
+                            <div class="tracker-map-controls-floating" id="trackerMapControlsFloating">
+                                <button type="button" class="tracker-map-float-btn" id="trackerFloatMapSL" title="Fit Sri Lanka View">🌍 Sri Lanka</button>
+                                <button type="button" class="tracker-map-float-btn" id="trackerFloatClearFocus" title="Show All Vehicles">🎯 Fit All</button>
+                                <button type="button" class="tracker-map-float-btn" id="trackerFloatKDToggle" title="Toggle Distributors">🗺️ Distributors</button>
+                            </div>
                         </div>
 
                         <!-- Vehicle Cards Grid -->
@@ -3433,13 +3439,20 @@
                                 </div>
                                 <div class="tracker-filter-group">
                                     <input type="text" id="trackerSearchInput" placeholder="🔍 Search vehicle..." class="tracker-search-input">
-                                    <select id="trackerStatusFilter" class="tracker-status-filter" style="flex:1;">
+                                    <select id="trackerStatusFilter" class="tracker-status-filter">
                                         <option value="all">All Status</option>
                                         <option value="moving">Moving</option>
                                         <option value="idle">Idle / Parked</option>
                                         <option value="offline">Offline</option>
                                     </select>
                                     <button class="btn btn-sm" id="trackerZoomSriLankaBtn" title="Zoom to Sri Lanka" style="padding:6px 10px; font-size:11px; white-space:nowrap; background:var(--blue); color:#fff; border:none; display:flex; align-items:center; gap:4px; border-radius:4px; cursor:pointer;">🌍 Map</button>
+                                </div>
+                                <!-- Touch Filter Chips for Tablet/Mobile -->
+                                <div class="tracker-status-chips" id="trackerStatusChips">
+                                    <button type="button" class="tracker-chip active" data-status="all">All</button>
+                                    <button type="button" class="tracker-chip chip-moving" data-status="moving">🟢 Moving</button>
+                                    <button type="button" class="tracker-chip chip-idle" data-status="idle">🟠 Idle</button>
+                                    <button type="button" class="tracker-chip chip-offline" data-status="offline">🔴 Offline</button>
                                 </div>
                             </div>
                             <div class="tracker-vehicle-grid" id="trackerVehicleGrid">

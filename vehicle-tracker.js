@@ -174,11 +174,20 @@
         });
     }
 
-    async function fetchDriversAndAssignments() {
+    let lastDriversFetchTime = 0;
+    const DRIVERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
+
+    async function fetchDriversAndAssignments(force) {
         try {
             if (typeof supabaseClient === 'undefined') return;
             var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : null;
             if (!userId) return;
+
+            var now = Date.now();
+            if (!force && (now - lastDriversFetchTime < DRIVERS_CACHE_TTL) && trackerDrivers.length > 0) {
+                return;
+            }
+            lastDriversFetchTime = now;
 
             var pDrivers = supabaseClient.from('drivers').select('*').eq('user_id', userId).neq('terminated', true);
             var pAssignments = supabaseClient.from('staff_lorry_assignments').select('*').eq('user_id', userId);
@@ -476,16 +485,20 @@
         }
     }
 
+    let saveAddressCacheTimer = null;
     function saveAddressCache() {
-        try {
-            // Evict oldest entries before saving
-            var keys = Object.keys(trackerAddressCache);
-            if (keys.length > MAX_ADDRESS_CACHE_SIZE) {
-                var toRemove = keys.slice(0, keys.length - MAX_ADDRESS_CACHE_SIZE);
-                toRemove.forEach(function (k) { delete trackerAddressCache[k]; });
-            }
-            localStorage.setItem(TRACKER_ADDRESS_CACHE_KEY, JSON.stringify(trackerAddressCache));
-        } catch (e) { }
+        if (saveAddressCacheTimer) clearTimeout(saveAddressCacheTimer);
+        saveAddressCacheTimer = setTimeout(function () {
+            try {
+                // Evict oldest entries before saving
+                var keys = Object.keys(trackerAddressCache);
+                if (keys.length > MAX_ADDRESS_CACHE_SIZE) {
+                    var toRemove = keys.slice(0, keys.length - MAX_ADDRESS_CACHE_SIZE);
+                    toRemove.forEach(function (k) { delete trackerAddressCache[k]; });
+                }
+                localStorage.setItem(TRACKER_ADDRESS_CACHE_KEY, JSON.stringify(trackerAddressCache));
+            } catch (e) { }
+        }, 2000);
     }
 
     function queueGeocode(unit) {
@@ -898,6 +911,7 @@
     function slideMarkerTo(marker, toLatLng, duration) {
         if (marker._animFrameId) {
             cancelAnimationFrame(marker._animFrameId);
+            marker._animFrameId = null;
         }
 
         var start = performance.now();
@@ -907,10 +921,10 @@
         var toLat = Array.isArray(toLatLng) ? toLatLng[0] : toLatLng.lat;
         var toLng = Array.isArray(toLatLng) ? toLatLng[1] : toLatLng.lng;
 
-        if (fromLat === toLat && fromLng === toLng) return;
+        var distanceSq = Math.pow(toLat - fromLat, 2) + Math.pow(toLng - fromLng, 2);
+        if (distanceSq < 0.00000001) return; // Ignore micro movements (<0.1m)
 
-        var distance = Math.sqrt(Math.pow(toLat - fromLat, 2) + Math.pow(toLng - fromLng, 2));
-        if (distance > 0.5) {
+        if (distanceSq > 0.25) {
             marker.setLatLng([toLat, toLng]);
             return;
         }
@@ -1820,7 +1834,57 @@
         var statusFilter = document.getElementById('trackerStatusFilter');
         if (statusFilter) {
             statusFilter.addEventListener('change', function () {
+                var selected = statusFilter.value;
+                // Sync chips UI
+                var chips = document.querySelectorAll('#trackerStatusChips .tracker-chip');
+                chips.forEach(function (chip) {
+                    if (chip.dataset.status === selected) chip.classList.add('active');
+                    else chip.classList.remove('active');
+                });
                 renderTrackerCards(trackerUnits);
+            });
+        }
+
+        // Touch filter chips (for tablet / touch screen users)
+        var chipsContainer = document.getElementById('trackerStatusChips');
+        if (chipsContainer) {
+            chipsContainer.addEventListener('click', function (e) {
+                var chip = e.target.closest('.tracker-chip');
+                if (!chip) return;
+                var status = chip.dataset.status || 'all';
+
+                // Update chips active state
+                var allChips = chipsContainer.querySelectorAll('.tracker-chip');
+                allChips.forEach(function (c) { c.classList.remove('active'); });
+                chip.classList.add('active');
+
+                // Sync select dropdown
+                if (statusFilter) statusFilter.value = status;
+
+                renderTrackerCards(trackerUnits);
+            });
+        }
+
+        // Floating Map Controls (for quick tablet navigation)
+        var floatSLBtn = document.getElementById('trackerFloatMapSL');
+        if (floatSLBtn) {
+            floatSLBtn.addEventListener('click', function () {
+                clearTrackerVehicleFocus();
+            });
+        }
+
+        var floatFitBtn = document.getElementById('trackerFloatClearFocus');
+        if (floatFitBtn) {
+            floatFitBtn.addEventListener('click', function () {
+                clearTrackerVehicleFocus();
+            });
+        }
+
+        var floatKDToggleBtn = document.getElementById('trackerFloatKDToggle');
+        if (floatKDToggleBtn) {
+            floatKDToggleBtn.addEventListener('click', function () {
+                var kdBtn = document.getElementById('trackerKDToggleBtn');
+                if (kdBtn) kdBtn.click();
             });
         }
 

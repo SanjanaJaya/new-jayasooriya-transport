@@ -11600,8 +11600,115 @@ body.dark-mode .terminated-badge {
     background: radial-gradient(circle, rgba(231, 76, 60, 0.12) 0%, rgba(231, 76, 60, 0) 70%);
 }
 
-/* Responsive Stacking for Tablets and Phones */
-@media (max-width: 992px) {
+/* Floating Map Controls for Tablet & Touch Screens */
+.tracker-map-wrapper {
+    position: relative;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+}
+
+.tracker-map-controls-floating {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(26, 29, 36, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 5px 10px;
+    border-radius: 30px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.tracker-map-float-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.tracker-map-float-btn:hover,
+.tracker-map-float-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.02);
+}
+
+/* Touch Filter Chips for Tablet & Mobile */
+.tracker-status-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tracker-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--surface-border, rgba(0,0,0,0.12));
+    background: var(--surface-bg, #f8f9fa);
+    color: var(--text-secondary, #6B7280);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    touch-action: manipulation;
+    line-height: 1.2;
+}
+
+.tracker-chip:active {
+    transform: scale(0.96);
+}
+
+.tracker-chip.active {
+    background: var(--brand-red, #D1001F);
+    color: #ffffff;
+    border-color: var(--brand-red, #D1001F);
+    box-shadow: 0 2px 8px rgba(209, 0, 31, 0.3);
+}
+
+.tracker-chip.chip-moving.active {
+    background: #00B878;
+    border-color: #00B878;
+    box-shadow: 0 2px 8px rgba(0, 184, 120, 0.3);
+}
+
+.tracker-chip.chip-idle.active {
+    background: #FFA000;
+    border-color: #FFA000;
+    box-shadow: 0 2px 8px rgba(255, 160, 0, 0.3);
+}
+
+.tracker-chip.chip-offline.active {
+    background: #E74C3C;
+    border-color: #E74C3C;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+/* Hardware Acceleration & 120Hz Tablet Lag Fixes */
+.tracker-vehicle-card {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+/* Responsive Stacking & Tablet Optimization (12.1" Redmi Pad Pro 5G) */
+@media (max-width: 767px) {
     #vehicle-tracker.active {
         height: auto;
         overflow: visible;
@@ -11611,7 +11718,7 @@ body.dark-mode .terminated-badge {
         height: auto;
     }
     .tracker-map-wrapper {
-        height: 400px;
+        height: 360px;
         flex: none;
     }
     .tracker-vehicles-section {
@@ -11620,8 +11727,59 @@ body.dark-mode .terminated-badge {
         flex: none;
     }
     .tracker-vehicle-grid {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; /* Grid flow on mobile/tablet */
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
         overflow-y: visible;
+    }
+    .tracker-map-controls-floating {
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+    }
+    .tracker-map-float-btn {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
+
+/* Tablet Portrait Breakpoint (e.g. 768px – 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    #vehicle-tracker.active {
+        height: auto;
+        overflow: visible;
+    }
+    .tracker-split-layout {
+        flex-direction: column;
+        height: auto;
+        gap: 16px;
+    }
+    .tracker-map-wrapper {
+        height: 420px;
+        flex: none;
+    }
+    .tracker-vehicles-section {
+        width: 100%;
+        height: auto;
+        flex: none;
+    }
+    .tracker-vehicle-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important; /* 2-column card grid for tablet portrait */
+        gap: 14px !important;
+        overflow-y: visible;
+    }
+}
+
+/* Tablet Landscape Breakpoint (e.g. 900px – 1366px horizontal) */
+@media (min-width: 768px) and (max-width: 1366px) and (orientation: landscape) {
+    #vehicle-tracker.active {
+        height: calc(100vh - 100px);
+    }
+    .tracker-split-layout {
+        flex-direction: row;
+        gap: 16px;
+    }
+    .tracker-vehicles-section {
+        width: 380px; /* Optimal sidebar width for 12.1" tablet horizontal */
     }
 }
 
