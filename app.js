@@ -612,6 +612,9 @@ const PAGE_GROUP_MAP = {
     'lorry-maintenance': 'navGroupFleet',
     'vehicle-expiry': 'navGroupFleet',
     'vehicle-tracker': null,
+    'client-accounts': 'navGroupClientTracking',
+    'client-drop-points': 'navGroupClientTracking',
+    'client-route-monitor': 'navGroupClientTracking',
 };
 
 function openNavGroup(groupId) {
@@ -699,6 +702,9 @@ function switchPage(page) {
         'kevilton-distributions': 'Kevilton Distributions',
         'vehicle-expiry': 'Insurance Expiry Tracker',
         'vehicle-tracker': 'Vehicle Tracker',
+        'client-accounts': 'Client Portal Accounts',
+        'client-drop-points': 'Client Drop Points & Routes',
+        'client-route-monitor': 'Shuttle Drop Point Monitor',
     };
 
     const titleEl = document.getElementById('pageTitle');
@@ -751,6 +757,9 @@ function switchPage(page) {
     if (page === 'vehicle-tracker') {
         if (typeof initVehicleTracker === 'function') initVehicleTracker();
     }
+    if (page === 'client-accounts') loadClientAccounts();
+    if (page === 'client-drop-points') loadClientDropPoints();
+    if (page === 'client-route-monitor') loadClientRouteMonitor();
 }
 
 // ============ BACKGROUND PRELOADER ============
@@ -16212,4 +16221,526 @@ document.addEventListener('click', (e) => {
         });
     }
 });
+
+
+// ============================================================================
+// ==================== CLIENT TRACKING PORTAL ADMIN MODULE ===================
+// ============================================================================
+
+// Global cache for client module
+let currentClientAccounts = [];
+let currentClientDropPoints = [];
+
+// SHA-256 helper for client passwords
+async function hashClientPassword(password) {
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ----------------------------------------------------------------------------
+// 1. CLIENT PORTAL ACCOUNTS CRUD
+// ----------------------------------------------------------------------------
+
+async function loadClientAccounts() {
+    const tbody = document.getElementById('clientAccountsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Loading client accounts...</td></tr>`;
+
+    try {
+        const userId = getQueryUserId();
+        // Fetch clients
+        let query = supabaseClient.from('client_users').select('*');
+        if (userId) query = query.eq('user_id', userId);
+        const { data: clients, error: cErr } = await query.order('created_at', { ascending: false });
+
+        if (cErr) throw cErr;
+        currentClientAccounts = clients || [];
+
+        // Fetch vehicle access mapping
+        let accessQuery = supabaseClient.from('client_vehicle_access').select('*');
+        if (userId) accessQuery = accessQuery.eq('user_id', userId);
+        const { data: accessData } = await accessQuery;
+
+        // Group vehicles by client_id
+        const vehicleMap = {};
+        (accessData || []).forEach(item => {
+            if (!vehicleMap[item.client_id]) vehicleMap[item.client_id] = [];
+            vehicleMap[item.client_id].push(item.vehicle_number);
+        });
+
+        if (currentClientAccounts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No client accounts created yet. Click "Create Client Account" to add one.</td></tr>`;
+            updateClientDropdowns();
+            return;
+        }
+
+        tbody.innerHTML = currentClientAccounts.map(client => {
+            const vehicles = vehicleMap[client.id] || [];
+            const vehBadges = vehicles.length > 0
+                ? vehicles.map(v => `<span style="display:inline-block; padding:2px 8px; background:rgba(39,174,96,0.15); color:#27AE60; border-radius:12px; font-size:12px; font-weight:600; margin:2px;">${v}</span>`).join(' ')
+                : `<span style="color:var(--text-muted); font-size:12px;">No vehicles assigned</span>`;
+
+            const statusBadge = client.is_active
+                ? `<span style="color:#27AE60; font-weight:600;">● Active</span>`
+                : `<span style="color:var(--text-muted); font-weight:600;">○ Inactive</span>`;
+
+            const createdDate = new Date(client.created_at).toLocaleDateString('en-GB');
+
+            return `
+                <tr>
+                    <td style="font-weight:600;">${escapeHtml(client.client_name)}</td>
+                    <td>${escapeHtml(client.email)}</td>
+                    <td>${vehBadges}</td>
+                    <td>${statusBadge}</td>
+                    <td>${createdDate}</td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-sm btn-secondary" onclick="openEditClientModal('${client.id}')">✏️ Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteClientAccount('${client.id}', '${escapeHtml(client.client_name)}')">🗑️ Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        updateClientDropdowns();
+    } catch (err) {
+        console.error('Error loading client accounts:', err);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#e74c3c;">Failed to load client accounts: ${err.message}</td></tr>`;
+    }
+}
+
+function updateClientDropdowns() {
+    const dropFilter = document.getElementById('dropPointClientFilter');
+    const monFilter = document.getElementById('monitorClientFilter');
+    const modalSelect = document.getElementById('dpmClientId');
+
+    const options = currentClientAccounts.map(c => `<option value="${c.id}">${escapeHtml(c.client_name)} (${escapeHtml(c.email)})</option>`).join('');
+
+    if (dropFilter) {
+        const curVal = dropFilter.value;
+        dropFilter.innerHTML = `<option value="">Select Client...</option>` + options;
+        if (curVal) dropFilter.value = curVal;
+    }
+
+    if (monFilter) {
+        const curVal = monFilter.value;
+        monFilter.innerHTML = `<option value="ALL">All Clients</option>` + options;
+        if (curVal) monFilter.value = curVal;
+    }
+
+    if (modalSelect) {
+        modalSelect.innerHTML = `<option value="">-- Select Client --</option>` + options;
+    }
+}
+
+async function openAddClientModal() {
+    document.getElementById('clientAccountModalTitle').textContent = '➕ Create Client Account';
+    document.getElementById('camClientId').value = '';
+    document.getElementById('camClientName').value = '';
+    document.getElementById('camEmail').value = '';
+    document.getElementById('camPassword').value = '';
+    document.getElementById('camPassword').required = true;
+
+    await loadVehicleCheckboxesForClient([]);
+    document.getElementById('clientAccountModal').style.display = 'flex';
+}
+
+async function openEditClientModal(clientId) {
+    const client = currentClientAccounts.find(c => c.id === clientId);
+    if (!client) return;
+
+    document.getElementById('clientAccountModalTitle').textContent = '✏️ Edit Client Account';
+    document.getElementById('camClientId').value = client.id;
+    document.getElementById('camClientName').value = client.client_name;
+    document.getElementById('camEmail').value = client.email;
+    document.getElementById('camPassword').value = '';
+    document.getElementById('camPassword').required = false;
+
+    // Fetch assigned vehicles
+    const userId = getQueryUserId();
+    let query = supabaseClient.from('client_vehicle_access').select('vehicle_number').eq('client_id', clientId);
+    if (userId) query = query.eq('user_id', userId);
+    const { data: assigned } = await query;
+    const assignedVehicles = (assigned || []).map(a => a.vehicle_number);
+
+    await loadVehicleCheckboxesForClient(assignedVehicles);
+    document.getElementById('clientAccountModal').style.display = 'flex';
+}
+
+function closeClientAccountModal() {
+    document.getElementById('clientAccountModal').style.display = 'none';
+}
+
+async function loadVehicleCheckboxesForClient(assignedVehicles = []) {
+    const container = document.getElementById('camVehicleCheckboxes');
+    if (!container) return;
+
+    try {
+        const userId = getQueryUserId();
+        
+        let query1 = supabaseClient.from('hire_to_pay_vehicles').select('vehicle_number');
+        if (userId) query1 = query1.eq('user_id', userId);
+        const { data: hVehicles } = await query1;
+
+        let query2 = supabaseClient.from('commitment_vehicles').select('vehicle_number');
+        if (userId) query2 = query2.eq('user_id', userId);
+        const { data: cVehicles } = await query2;
+
+        const set = new Set();
+        (hVehicles || []).forEach(v => v.vehicle_number && set.add(v.vehicle_number.trim()));
+        (cVehicles || []).forEach(v => v.vehicle_number && set.add(v.vehicle_number.trim()));
+
+        const allVehicles = Array.from(set).sort();
+
+        if (allVehicles.length === 0) {
+            container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">No vehicles found in your system. Add vehicles first in Fleet manager.</div>`;
+            return;
+        }
+
+        container.innerHTML = allVehicles.map(veh => {
+            const isChecked = assignedVehicles.includes(veh) ? 'checked' : '';
+            return `
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" name="camVehicles" value="${escapeHtml(veh)}" ${isChecked} style="width:16px; height:16px;">
+                    <span>🚚 <strong>${escapeHtml(veh)}</strong></span>
+                </label>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error loading vehicles for checkbox:', err);
+        container.innerHTML = `<div style="color:#e74c3c; font-size:12px;">Failed to load vehicles</div>`;
+    }
+}
+
+async function saveClientAccount(event) {
+    event.preventDefault();
+    const clientId = document.getElementById('camClientId').value;
+    const clientName = document.getElementById('camClientName').value.trim();
+    const email = document.getElementById('camEmail').value.trim().toLowerCase();
+    const password = document.getElementById('camPassword').value;
+    const userId = getQueryUserId();
+
+    const selectedVehicles = Array.from(document.querySelectorAll('input[name="camVehicles"]:checked')).map(cb => cb.value);
+
+    try {
+        let savedClientId = clientId;
+
+        if (!clientId) {
+            if (!password) {
+                alert('Password is required for new client accounts');
+                return;
+            }
+            const passwordHash = await hashClientPassword(password);
+
+            const { data, error } = await supabaseClient.from('client_users').insert([{
+                user_id: userId,
+                client_name: clientName,
+                email: email,
+                password_hash: passwordHash,
+                is_active: true
+            }]).select();
+
+            if (error) throw error;
+            savedClientId = data[0].id;
+        } else {
+            const updatePayload = { client_name: clientName, email: email };
+            if (password) {
+                updatePayload.password_hash = await hashClientPassword(password);
+            }
+
+            let updateQuery = supabaseClient.from('client_users').update(updatePayload).eq('id', clientId);
+            if (userId) updateQuery = updateQuery.eq('user_id', userId);
+            const { error } = await updateQuery;
+            if (error) throw error;
+        }
+
+        let deleteAccessQuery = supabaseClient.from('client_vehicle_access').delete().eq('client_id', savedClientId);
+        if (userId) deleteAccessQuery = deleteAccessQuery.eq('user_id', userId);
+        await deleteAccessQuery;
+
+        if (selectedVehicles.length > 0) {
+            const accessRows = selectedVehicles.map(veh => ({
+                user_id: userId,
+                client_id: savedClientId,
+                vehicle_number: veh
+            }));
+            const { error: insErr } = await supabaseClient.from('client_vehicle_access').insert(accessRows);
+            if (insErr) console.error("Vehicle access insert error:", insErr);
+        }
+
+        closeClientAccountModal();
+        await loadClientAccounts();
+        alert('Client account saved successfully!');
+    } catch (err) {
+        console.error('Error saving client account:', err);
+        alert('Failed to save client account: ' + err.message);
+    }
+}
+
+async function deleteClientAccount(clientId, clientName) {
+    if (!confirm(`Are you sure you want to delete client account "${clientName}"? This will also remove their drop points and event history.`)) return;
+
+    try {
+        const userId = getQueryUserId();
+        let query = supabaseClient.from('client_users').delete().eq('id', clientId);
+        if (userId) query = query.eq('user_id', userId);
+        const { error } = await query;
+        if (error) throw error;
+
+        await loadClientAccounts();
+        alert('Client account deleted.');
+    } catch (err) {
+        console.error('Error deleting client account:', err);
+        alert('Failed to delete client account: ' + err.message);
+    }
+}
+
+
+// ----------------------------------------------------------------------------
+// 2. CLIENT DROP POINTS & ROUTES CRUD
+// ----------------------------------------------------------------------------
+
+async function loadClientDropPoints() {
+    const tbody = document.getElementById('clientDropPointsTableBody');
+    const filterSelect = document.getElementById('dropPointClientFilter');
+    if (!tbody || !filterSelect) return;
+
+    const clientId = filterSelect.value;
+    if (!clientId) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Please select a client from the dropdown above to view drop points.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Loading drop points...</td></tr>`;
+
+    try {
+        const userId = getQueryUserId();
+        let query = supabaseClient.from('client_drop_points').select('*').eq('client_id', clientId);
+        if (userId) query = query.eq('user_id', userId);
+        const { data: points, error } = await query.order('route_name').order('point_order');
+
+        if (error) throw error;
+        currentClientDropPoints = points || [];
+
+        if (currentClientDropPoints.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No drop points configured for this client yet. Click "Add Drop Point" to create one.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = currentClientDropPoints.map(dp => `
+            <tr>
+                <td style="font-weight:700; color:var(--text-muted);">#${dp.point_order}</td>
+                <td style="font-weight:600;">${escapeHtml(dp.point_name)}</td>
+                <td><span style="padding:3px 10px; background:rgba(41,128,185,0.15); color:#2980b9; border-radius:12px; font-size:12px; font-weight:600;">${escapeHtml(dp.route_name)}</span></td>
+                <td style="font-family:monospace; font-size:12px;">${dp.latitude.toFixed(5)}, ${dp.longitude.toFixed(5)}</td>
+                <td>${dp.radius_meters || 500}m</td>
+                <td>${dp.min_dwell_minutes || 5} mins</td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-sm btn-secondary" onclick="openEditDropPointModal('${dp.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteClientDropPoint('${dp.id}', '${escapeHtml(dp.point_name)}')">🗑️ Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error('Error loading drop points:', err);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#e74c3c;">Failed to load drop points: ${err.message}</td></tr>`;
+    }
+}
+
+function openAddDropPointModal() {
+    updateClientDropdowns();
+    const filterSelect = document.getElementById('dropPointClientFilter');
+
+    document.getElementById('clientDropPointModalTitle').textContent = '➕ Add Shuttle Drop Point';
+    document.getElementById('dpmPointId').value = '';
+    document.getElementById('dpmClientId').value = filterSelect ? filterSelect.value : '';
+    document.getElementById('dpmPointName').value = '';
+    document.getElementById('dpmRouteName').value = 'Shuttle Route 1';
+    document.getElementById('dpmLat').value = '';
+    document.getElementById('dpmLng').value = '';
+    document.getElementById('dpmPointOrder').value = (currentClientDropPoints.length + 1);
+    document.getElementById('dpmRadius').value = '500';
+
+    document.getElementById('clientDropPointModal').style.display = 'flex';
+}
+
+function openEditDropPointModal(pointId) {
+    const point = currentClientDropPoints.find(p => p.id === pointId);
+    if (!point) return;
+
+    updateClientDropdowns();
+    document.getElementById('clientDropPointModalTitle').textContent = '✏️ Edit Shuttle Drop Point';
+    document.getElementById('dpmPointId').value = point.id;
+    document.getElementById('dpmClientId').value = point.client_id;
+    document.getElementById('dpmPointName').value = point.point_name;
+    document.getElementById('dpmRouteName').value = point.route_name;
+    document.getElementById('dpmLat').value = point.latitude;
+    document.getElementById('dpmLng').value = point.longitude;
+    document.getElementById('dpmPointOrder').value = point.point_order;
+    document.getElementById('dpmRadius').value = point.radius_meters || 500;
+
+    document.getElementById('clientDropPointModal').style.display = 'flex';
+}
+
+function closeClientDropPointModal() {
+    document.getElementById('clientDropPointModal').style.display = 'none';
+}
+
+async function saveClientDropPoint(event) {
+    event.preventDefault();
+    const pointId = document.getElementById('dpmPointId').value;
+    const clientId = document.getElementById('dpmClientId').value;
+    const pointName = document.getElementById('dpmPointName').value.trim();
+    const routeName = document.getElementById('dpmRouteName').value.trim();
+    const latitude = parseFloat(document.getElementById('dpmLat').value);
+    const longitude = parseFloat(document.getElementById('dpmLng').value);
+    const pointOrder = parseInt(document.getElementById('dpmPointOrder').value, 10) || 1;
+    const radiusMeters = parseInt(document.getElementById('dpmRadius').value, 10) || 500;
+    const userId = getQueryUserId();
+
+    if (!clientId) {
+        alert('Please select a client for this drop point');
+        return;
+    }
+
+    try {
+        const payload = {
+            user_id: userId,
+            client_id: clientId,
+            point_name: pointName,
+            route_name: routeName,
+            latitude: latitude,
+            longitude: longitude,
+            point_order: pointOrder,
+            radius_meters: radiusMeters,
+            min_dwell_minutes: 5
+        };
+
+        if (!pointId) {
+            const { error } = await supabaseClient.from('client_drop_points').insert([payload]);
+            if (error) throw error;
+        } else {
+            let query = supabaseClient.from('client_drop_points').update(payload).eq('id', pointId);
+            if (userId) query = query.eq('user_id', userId);
+            const { error } = await query;
+            if (error) throw error;
+        }
+
+        closeClientDropPointModal();
+        
+        const filterSelect = document.getElementById('dropPointClientFilter');
+        if (filterSelect) filterSelect.value = clientId;
+        await loadClientDropPoints();
+
+        alert('Drop point saved successfully!');
+    } catch (err) {
+        console.error('Error saving drop point:', err);
+        alert('Failed to save drop point: ' + err.message);
+    }
+}
+
+async function deleteClientDropPoint(pointId, pointName) {
+    if (!confirm(`Are you sure you want to delete drop point "${pointName}"?`)) return;
+
+    try {
+        const userId = getQueryUserId();
+        let query = supabaseClient.from('client_drop_points').delete().eq('id', pointId);
+        if (userId) query = query.eq('user_id', userId);
+        const { error } = await query;
+        if (error) throw error;
+
+        await loadClientDropPoints();
+        alert('Drop point deleted.');
+    } catch (err) {
+        console.error('Error deleting drop point:', err);
+        alert('Failed to delete drop point: ' + err.message);
+    }
+}
+
+
+// ----------------------------------------------------------------------------
+// 3. CLIENT SHUTTLE ROUTE MONITOR
+// ----------------------------------------------------------------------------
+
+async function loadClientRouteMonitor() {
+    const tbody = document.getElementById('clientRouteMonitorTableBody');
+    const clientFilter = document.getElementById('monitorClientFilter');
+    const dateInput = document.getElementById('monitorDateFilter');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Loading shuttle event logs...</td></tr>`;
+
+    try {
+        const userId = getQueryUserId();
+        let query = supabaseClient.from('drop_point_events')
+            .select(`
+                *,
+                client_users (client_name),
+                client_drop_points (point_name, route_name)
+            `);
+
+        if (userId) query = query.eq('user_id', userId);
+
+        if (clientFilter && clientFilter.value && clientFilter.value !== 'ALL') {
+            query = query.eq('client_id', clientFilter.value);
+        }
+
+        if (dateInput && dateInput.value) {
+            const startOfDay = new Date(dateInput.value + 'T00:00:00.000Z').toISOString();
+            const endOfDay = new Date(dateInput.value + 'T23:59:59.999Z').toISOString();
+            query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+        }
+
+        const { data: events, error } = await query.order('created_at', { ascending: false }).limit(100);
+        if (error) throw error;
+
+        if (!events || events.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">No drop point events logged for the selected filter.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = events.map(evt => {
+            const clientName = evt.client_users ? evt.client_users.client_name : 'Client';
+            const pointName = evt.client_drop_points ? evt.client_drop_points.point_name : 'Drop Point';
+            const routeName = evt.client_drop_points ? evt.client_drop_points.route_name : evt.route_name || 'Shuttle';
+
+            const entryTimeStr = evt.entry_time ? new Date(evt.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+            const exitTimeStr = evt.exit_time ? new Date(evt.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+
+            let statusBadge = `<span style="padding:3px 10px; background:rgba(241,196,15,0.15); color:#f39c12; border-radius:12px; font-size:12px; font-weight:600;">🟡 Arrived / In Zone</span>`;
+            if (evt.status === 'DEPARTED' || evt.exit_time) {
+                statusBadge = `<span style="padding:3px 10px; background:rgba(39,174,96,0.15); color:#27AE60; border-radius:12px; font-size:12px; font-weight:600;">🟢 Completed & Departed</span>`;
+            }
+
+            const waitMins = evt.waited_minutes != null ? `${evt.waited_minutes} mins` : '—';
+            const eventDate = new Date(evt.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+            return `
+                <tr>
+                    <td style="font-size:12px; color:var(--text-muted);">${eventDate}</td>
+                    <td style="font-weight:600;">${escapeHtml(clientName)}</td>
+                    <td><span style="font-family:monospace; font-weight:700;">🚚 ${escapeHtml(evt.vehicle_number)}</span></td>
+                    <td>${escapeHtml(routeName)}</td>
+                    <td style="font-weight:600;">📍 ${escapeHtml(pointName)}</td>
+                    <td><span style="color:#2980b9; font-weight:600;">📥 ${entryTimeStr}</span></td>
+                    <td style="font-weight:600; color:#f39c12;">⏱️ ${waitMins}</td>
+                    <td><span style="color:#27AE60; font-weight:600;">📤 ${exitTimeStr}</span></td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Error loading route monitor events:', err);
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#e74c3c;">Failed to load events: ${err.message}</td></tr>`;
+    }
+}
+
 
