@@ -4054,3 +4054,34 @@ body.light-mode .hint-card-header {
     }
 }
 
+/* ── Landscape Tablet Orientation System (Redmi Pad, iPad, Android Tablets) ── */
+@media (min-width: 600px) and (max-width: 1400px) and (orientation: landscape) {
+    .driver-container,
+    .main-container,
+    .app-header {
+        max-width: 1100px !important;
+        width: 100% !important;
+    }
+
+    .driver-profile-modal-content,
+    .salary-modal-content,
+    .driver-modal-content,
+    .gps-modal-content {
+        max-width: 720px !important;
+        width: 90vw !important;
+        max-height: 88vh !important;
+        overflow-y: auto !important;
+    }
+
+    .gps-map-wrapper {
+        height: 320px !important;
+        min-height: 320px !important;
+    }
+
+    .form-row {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
+    }
+}
+

@@ -1067,6 +1067,17 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 18px;
+    width: 100%;
+}
+
+/* Ensure single chart wrappers span 100% full width of the container */
+.charts-container > .chart-wrapper:only-child,
+.charts-container:has(> .chart-wrapper:only-child) > .chart-wrapper,
+.chart-wrapper.chart-wide,
+.chart-wrapper.chart-full {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 .chart-wrapper {
@@ -1089,6 +1100,7 @@ body.dark-mode #totalDistance    { color: #5BB8FF; }
 }
 
 .chart-wrapper canvas {
+    width: 100% !important;
     max-width: 100% !important;
     /* Chart.js manages canvas height internally when maintainAspectRatio: false */
     display: block;
@@ -12861,8 +12873,8 @@ body.dark-mode .job-number-auto-badge {
     }
 }
 
-/* ── 3. Landscape Tablet Orientation (Width: 960px – 1400px) ────────────── */
-@media only screen and (min-width: 960px) and (max-width: 1400px) and (orientation: landscape) {
+/* ── 3. Landscape Tablet Orientation (Width: 768px – 1400px & Landscape) ────────────── */
+@media only screen and (min-width: 768px) and (max-width: 1400px) and (orientation: landscape) {
     :root {
         --sidebar-w: 250px;
     }
@@ -12886,7 +12898,32 @@ body.dark-mode .job-number-auto-badge {
         width: calc(100% - var(--sidebar-w));
     }
 
-    /* 4-Column Grid on Wide Landscape Tablets (iPad Pro 12.9", Galaxy Tab S9+) */
+    /* Standard height for chart cards in landscape mode to avoid excessive vertical space */
+    .chart-wrapper {
+        height: 340px !important;
+        width: 100% !important;
+    }
+
+    .chart-wrapper.chart-tall {
+        height: 400px !important;
+    }
+
+    .chart-wrapper canvas {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Single-chart containers MUST span 100% full width of row */
+    .charts-container > .chart-wrapper:only-child,
+    .charts-container:has(> .chart-wrapper:only-child) > .chart-wrapper,
+    .chart-wrapper.chart-wide,
+    .chart-wrapper.chart-full {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* 4-Column Grid on Wide Landscape Tablets (iPad Pro 12.9", Galaxy Tab S9+, Redmi Pad Pro) */
     @media (min-width: 1180px) {
         .metrics-grid {
             grid-template-columns: repeat(4, 1fr) !important;
@@ -12894,7 +12931,7 @@ body.dark-mode .job-number-auto-badge {
         }
 
         .charts-container {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
         }
 
@@ -12903,7 +12940,7 @@ body.dark-mode .job-number-auto-badge {
         }
     }
 
-    /* 3-Column Grid on 10"–11" Landscape Tablets */
+    /* 3-Column Grid on 10"–11" Landscape Tablets (Redmi Pad, Redmi Pad SE) */
     @media (max-width: 1179px) {
         .metrics-grid {
             grid-template-columns: repeat(3, 1fr) !important;
@@ -12911,7 +12948,7 @@ body.dark-mode .job-number-auto-badge {
         }
 
         .charts-container {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: repeat(2, 1fr);
             gap: 16px;
         }
 
@@ -12927,6 +12964,8 @@ body.dark-mode .job-number-auto-badge {
     .login-modal {
         max-width: 640px;
         width: 90vw;
+        max-height: 88vh;
+        overflow-y: auto;
         border-radius: 20px;
         padding: 28px 24px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.3);

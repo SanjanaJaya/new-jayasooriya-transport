@@ -364,11 +364,38 @@ function createPagination(containerId, data, renderRowFn, tableId, colCount, pag
 }
 
 
+// ============ RESPONSIVE CHART RESIZER FOR ORIENTATION CHANGE & TABLET RESIZING ============
+function initResponsiveChartResizer() {
+    let resizeTimer = null;
+    const handleResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (window.Chart && window.Chart.instances) {
+                Object.values(window.Chart.instances).forEach(instance => {
+                    try {
+                        if (instance && typeof instance.resize === 'function') {
+                            instance.resize();
+                        }
+                    } catch (e) {
+                        console.warn('Chart resize error:', e);
+                    }
+                });
+            }
+        }, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(handleResize, 200);
+    });
+}
+
 // Initialize App
 async function initializeApp() {
     initSupabase();
     initHamburgerMenu();
     initDarkMode(); // Initialize Dark Mode
+    initResponsiveChartResizer(); // Auto-resize charts on screen rotation / resize
 
     if (!supabaseClient) {
         console.error('Supabase not initialized');
