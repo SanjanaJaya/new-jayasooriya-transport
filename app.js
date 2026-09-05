@@ -645,7 +645,7 @@ function setActiveNavItem(page) {
     if (target) target.classList.add('active');
 
     // Close all groups, then open the relevant one
-    ['navGroupStaff', 'navGroupFleet', 'navGroupClientTracking'].forEach(id => closeNavGroup(id));
+    ['navGroupStaff', 'navGroupFleet'].forEach(id => closeNavGroup(id));
     const groupId = PAGE_GROUP_MAP[page];
     if (groupId) openNavGroup(groupId);
 }
