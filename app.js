@@ -16231,6 +16231,16 @@ document.addEventListener('click', (e) => {
 let currentClientAccounts = [];
 let currentClientDropPoints = [];
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // SHA-256 helper for client passwords
 async function hashClientPassword(password) {
     const msgBuffer = new TextEncoder().encode(password);
@@ -16317,6 +16327,7 @@ function updateClientDropdowns() {
     const dropFilter = document.getElementById('dropPointClientFilter');
     const monFilter = document.getElementById('monitorClientFilter');
     const modalSelect = document.getElementById('dpmClientId');
+    const srClientSelect = document.getElementById('srClientId');
 
     const options = currentClientAccounts.map(c => `<option value="${c.id}">${escapeHtml(c.client_name)} (${escapeHtml(c.email)})</option>`).join('');
 
@@ -16334,6 +16345,12 @@ function updateClientDropdowns() {
 
     if (modalSelect) {
         modalSelect.innerHTML = `<option value="">-- Select Client --</option>` + options;
+    }
+
+    if (srClientSelect) {
+        const curVal = srClientSelect.value;
+        srClientSelect.innerHTML = `<option value="">-- Select Client --</option>` + options;
+        if (curVal) srClientSelect.value = curVal;
     }
 }
 
@@ -16375,44 +16392,106 @@ function closeClientAccountModal() {
     document.getElementById('clientAccountModal').style.display = 'none';
 }
 
+async function fetchWialonGpsUnits() {
+    try {
+        const token = '2dc41f89a60d68ba8fd0a5e34722386f728895444F6CEE221D45222A43B65B5606DE57A0';
+        const loginUrl = `https://hst-api.wialon.com/wialon/ajax.html?svc=token/login&params=${encodeURIComponent(JSON.stringify({ token }))}`;
+        const loginRes = await fetch(loginUrl);
+        const loginData = await loginRes.json();
+        if (!loginData || !loginData.eid) return [];
+
+        const sid = loginData.eid;
+        const searchUrl = `https://hst-api.wialon.com/wialon/ajax.html?svc=core/search_items&params=${encodeURIComponent(JSON.stringify({
+            spec: { itemsType: 'avl_unit', propName: 'sys_name', propValueMask: '*', sortType: 'sys_name' },
+            force: 1, flags: 1, from: 0, to: 0
+        }))}&sid=${sid}`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        const units = (searchData && searchData.items) ? searchData.items.map(u => u.nm) : [];
+
+        // Clean logout
+        fetch(`https://hst-api.wialon.com/wialon/ajax.html?svc=core/logout&sid=${sid}`).catch(() => {});
+
+        return units;
+    } catch (e) {
+        console.error("Wialon API fetch error:", e);
+        return [];
+    }
+}
+
 async function loadVehicleCheckboxesForClient(assignedVehicles = []) {
     const container = document.getElementById('camVehicleCheckboxes');
     if (!container) return;
 
+    container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">📡 Fetching Wialon GPS vehicles...</div>`;
+
     try {
         const userId = getQueryUserId();
-        
-        let query1 = supabaseClient.from('hire_to_pay_vehicles').select('vehicle_number');
+
+        // 1. Fetch DB Vehicles
+        let query1 = supabaseClient.from('hire_to_pay_vehicles').select('*');
         if (userId) query1 = query1.eq('user_id', userId);
         const { data: hVehicles } = await query1;
 
-        let query2 = supabaseClient.from('commitment_vehicles').select('vehicle_number');
+        let query2 = supabaseClient.from('commitment_vehicles').select('*');
         if (userId) query2 = query2.eq('user_id', userId);
         const { data: cVehicles } = await query2;
 
-        const set = new Set();
-        (hVehicles || []).forEach(v => v.vehicle_number && set.add(v.vehicle_number.trim()));
-        (cVehicles || []).forEach(v => v.vehicle_number && set.add(v.vehicle_number.trim()));
+        const dbBaseVehicles = new Set();
+        (hVehicles || []).forEach(v => {
+            const raw = v.lorry_number || v.vehicle_number;
+            const base = extractBaseVehicleName(raw);
+            if (base) dbBaseVehicles.add(base);
+        });
+        (cVehicles || []).forEach(v => {
+            const raw = v.lorry_number || v.vehicle_number;
+            const base = extractBaseVehicleName(raw);
+            if (base) dbBaseVehicles.add(base);
+        });
 
-        const allVehicles = Array.from(set).sort();
+        // 2. Fetch Live Wialon GPS units
+        const wialonUnits = await fetchWialonGpsUnits();
+        const wialonBaseSet = new Set(wialonUnits.map(u => extractBaseVehicleName(u)));
+
+        // Combine DB base vehicles + Wialon units
+        const finalVehicleSet = new Set();
+        
+        if (wialonBaseSet.size > 0) {
+            // Include all Wialon GPS units
+            wialonBaseSet.forEach(v => finalVehicleSet.add(v));
+            // Also include matching DB base vehicles
+            dbBaseVehicles.forEach(v => {
+                if (wialonBaseSet.has(v)) finalVehicleSet.add(v);
+            });
+        } else {
+            // Fallback to deduplicated DB base vehicles
+            dbBaseVehicles.forEach(v => finalVehicleSet.add(v));
+        }
+
+        const allVehicles = Array.from(finalVehicleSet).sort();
 
         if (allVehicles.length === 0) {
-            container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">No vehicles found in your system. Add vehicles first in Fleet manager.</div>`;
+            container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">No GPS vehicles found.</div>`;
             return;
         }
 
+        const assignedBaseSet = new Set((assignedVehicles || []).map(v => extractBaseVehicleName(v)));
+
         container.innerHTML = allVehicles.map(veh => {
-            const isChecked = assignedVehicles.includes(veh) ? 'checked' : '';
+            const isChecked = assignedBaseSet.has(veh) || assignedVehicles.includes(veh) ? 'checked' : '';
+            const isGpsActive = wialonBaseSet.has(veh);
+            const gpsBadge = isGpsActive ? `<span style="font-size:10px; padding:2px 6px; background:rgba(39,174,96,0.2); color:#27AE60; border-radius:10px; font-weight:700; margin-left:6px;">📡 GPS ONLINE</span>` : '';
+
             return `
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
                     <input type="checkbox" name="camVehicles" value="${escapeHtml(veh)}" ${isChecked} style="width:16px; height:16px;">
-                    <span>🚚 <strong>${escapeHtml(veh)}</strong></span>
+                    <span>🚚 <strong>${escapeHtml(veh)}</strong> ${gpsBadge}</span>
                 </label>
             `;
         }).join('');
     } catch (err) {
         console.error('Error loading vehicles for checkbox:', err);
-        container.innerHTML = `<div style="color:#e74c3c; font-size:12px;">Failed to load vehicles</div>`;
+        container.innerHTML = `<div style="color:#e74c3c; font-size:12px;">Failed to load vehicles: ${err.message}</div>`;
     }
 }
 
@@ -16501,168 +16580,364 @@ async function deleteClientAccount(clientId, clientName) {
 
 
 // ----------------------------------------------------------------------------
-// 2. CLIENT DROP POINTS & ROUTES CRUD
+// 2. CLIENT DROP POINTS & ROUTES MANAGEMENT
 // ----------------------------------------------------------------------------
 
 async function loadClientDropPoints() {
-    const tbody = document.getElementById('clientDropPointsTableBody');
+    const container = document.getElementById('clientDropPointsContainer');
     const filterSelect = document.getElementById('dropPointClientFilter');
-    if (!tbody || !filterSelect) return;
+    if (!container) return;
 
-    const clientId = filterSelect.value;
+    const clientId = filterSelect ? filterSelect.value : '';
     if (!clientId) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Please select a client from the dropdown above to view drop points.</td></tr>`;
+        container.innerHTML = `
+            <div class="card" style="padding:40px; text-align:center; border-radius:12px; background:var(--surface-card); border:1px solid var(--surface-border); color:var(--text-muted);">
+                📍 Please select a client from the dropdown above to view or manage shuttle routes.
+            </div>
+        `;
         return;
     }
 
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Loading drop points...</td></tr>`;
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Loading shuttle routes...</div>`;
 
     try {
         const userId = getQueryUserId();
         let query = supabaseClient.from('client_drop_points').select('*').eq('client_id', clientId);
         if (userId) query = query.eq('user_id', userId);
-        const { data: points, error } = await query.order('route_name').order('point_order');
+        const { data: points, error } = await query.order('route_name', { ascending: true }).order('point_order', { ascending: true });
 
         if (error) throw error;
         currentClientDropPoints = points || [];
 
         if (currentClientDropPoints.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No drop points configured for this client yet. Click "Add Drop Point" to create one.</td></tr>`;
+            container.innerHTML = `
+                <div class="card" style="padding:40px; text-align:center; border-radius:12px; background:var(--surface-card); border:1px solid var(--surface-border);">
+                    <div style="font-size:32px; margin-bottom:10px;">🛣️</div>
+                    <div style="font-size:16px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">No Shuttle Routes Found</div>
+                    <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">This client has no shuttle routes configured yet.</div>
+                    <button class="btn btn-primary" onclick="openSimpleRouteModal()" style="font-weight:700;">
+                        <span>➕</span> Add First Route
+                    </button>
+                </div>
+            `;
             return;
         }
 
-        tbody.innerHTML = currentClientDropPoints.map(dp => `
-            <tr>
-                <td style="font-weight:700; color:var(--text-muted);">#${dp.point_order}</td>
-                <td style="font-weight:600;">${escapeHtml(dp.point_name)}</td>
-                <td><span style="padding:3px 10px; background:rgba(41,128,185,0.15); color:#2980b9; border-radius:12px; font-size:12px; font-weight:600;">${escapeHtml(dp.route_name)}</span></td>
-                <td style="font-family:monospace; font-size:12px;">${dp.latitude.toFixed(5)}, ${dp.longitude.toFixed(5)}</td>
-                <td>${dp.radius_meters || 500}m</td>
-                <td>${dp.min_dwell_minutes || 5} mins</td>
-                <td>
-                    <div style="display:flex; gap:6px;">
-                        <button class="btn btn-sm btn-secondary" onclick="openEditDropPointModal('${dp.id}')">✏️ Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteClientDropPoint('${dp.id}', '${escapeHtml(dp.point_name)}')">🗑️ Delete</button>
+        // Group points by route_name
+        const routeGroups = {};
+        currentClientDropPoints.forEach(p => {
+            const rName = p.route_name || 'Default Route';
+            if (!routeGroups[rName]) routeGroups[rName] = [];
+            routeGroups[rName].push(p);
+        });
+
+        let html = '';
+
+        Object.keys(routeGroups).forEach(routeName => {
+            const pts = routeGroups[routeName].sort((a, b) => (a.point_order || 0) - (b.point_order || 0));
+            const firstPt = pts[0] || {};
+            const assignedVehicle = firstPt.assigned_vehicle && firstPt.assigned_vehicle !== 'ALL'
+                ? `🚚 ${escapeHtml(firstPt.assigned_vehicle)}`
+                : `🌐 All Allowed Vehicles`;
+
+            html += `
+                <div class="card" style="margin-bottom:20px; border-radius:12px; background:var(--surface-card); border:1px solid var(--surface-border); overflow:hidden;">
+                    <!-- Route Header -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:var(--surface-ground); border-bottom:1px solid var(--surface-border); flex-wrap:wrap; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="font-size:20px;">🛣️</div>
+                            <div>
+                                <h3 style="margin:0; font-size:16px; font-weight:700; color:var(--text-primary);">${escapeHtml(routeName)}</h3>
+                                <div style="font-size:12px; font-weight:600; color:var(--accent-blue); margin-top:2px;">
+                                    ${assignedVehicle} &nbsp;•&nbsp; <span style="color:var(--text-muted);">${pts.length} Stops</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-sm" onclick="restartHireAdmin('${clientId}', '${escapeHtml(routeName).replace(/'/g, "\\'")}')" style="font-weight:600; background:#E8001D; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">🚀 Restart Hire</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openSimpleRouteModal('${escapeHtml(routeName)}')" style="font-weight:600;">✏️ Edit Route</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteClientRoute('${escapeHtml(routeName)}')" style="font-weight:600;">🗑️ Delete Route</button>
+                        </div>
                     </div>
-                </td>
-            </tr>
-        `).join('');
+
+                    <!-- Route Stops Table -->
+                    <div class="table-responsive">
+                        <table class="data-table" style="width:100%; margin:0;">
+                            <thead>
+                                <tr style="background:transparent;">
+                                    <th style="width:60px;">Order</th>
+                                    <th>Point Name & Role</th>
+                                    <th>Coordinates (Lat, Lng)</th>
+                                    <th>Radius</th>
+                                    <th>Dwell Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pts.map(dp => {
+                                    const pType = dp.point_type || (dp.is_start_point ? 'START' : dp.is_turning_point ? 'TURN' : 'INTERMEDIATE');
+                                    let typeBadge = `<span style="padding:2px 8px; background:rgba(52,152,219,0.15); color:#3498DB; border-radius:10px; font-weight:700; font-size:11px;">📍 DROP</span>`;
+                                    if (pType === 'START' || dp.is_start_point) {
+                                        typeBadge = `<span style="padding:2px 8px; background:rgba(39,174,96,0.15); color:#27AE60; border-radius:10px; font-weight:700; font-size:11px;">🟢 START (ORIGIN)</span>`;
+                                    } else if (pType === 'TURN' || dp.is_turning_point) {
+                                        typeBadge = `<span style="padding:2px 8px; background:rgba(142,68,173,0.15); color:#8E44AD; border-radius:10px; font-weight:700; font-size:11px;">🔄 TURN POINT</span>`;
+                                    } else if (pType === 'DESTINATION') {
+                                        typeBadge = `<span style="padding:2px 8px; background:rgba(231,76,60,0.15); color:#E74C3C; border-radius:10px; font-weight:700; font-size:11px;">🏁 DESTINATION</span>`;
+                                    }
+
+                                    return `
+                                        <tr>
+                                            <td style="font-weight:700; color:var(--text-muted);">#${dp.point_order}</td>
+                                            <td style="font-weight:600;">${escapeHtml(dp.point_name)} ${typeBadge}</td>
+                                            <td style="font-family:monospace; font-size:12px;">${dp.latitude.toFixed(5)}, ${dp.longitude.toFixed(5)}</td>
+                                            <td>${dp.radius_meters || 500}m</td>
+                                            <td>${dp.min_dwell_minutes || 5} mins</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
 
     } catch (err) {
-        console.error('Error loading drop points:', err);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#e74c3c;">Failed to load drop points: ${err.message}</td></tr>`;
+        console.error('Error loading shuttle routes:', err);
+        container.innerHTML = `<div class="card" style="padding:30px; text-align:center; color:#e74c3c;">Failed to load shuttle routes: ${err.message}</div>`;
     }
 }
 
-function openAddDropPointModal() {
+async function populateSimpleRouteVehicleSelect(clientId, selectedVehicle = 'ALL') {
+    const select = document.getElementById('srVehicle');
+    if (!select) return;
+    select.innerHTML = '<option value="ALL">🌐 All Allowed Vehicles (Default)</option>';
+    if (!clientId) return;
+
+    try {
+        const userId = getQueryUserId();
+        let query = supabaseClient.from('client_vehicle_access').select('vehicle_number').eq('client_id', clientId);
+        if (userId) query = query.eq('user_id', userId);
+        const { data } = await query;
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                if (item.vehicle_number) {
+                    const opt = document.createElement('option');
+                    opt.value = item.vehicle_number;
+                    opt.textContent = `🚚 ${item.vehicle_number}`;
+                    select.appendChild(opt);
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Error fetching client vehicles for modal:', e);
+    }
+    select.value = selectedVehicle || 'ALL';
+}
+
+async function openSimpleRouteModal(routeNameEdit = null) {
     updateClientDropdowns();
     const filterSelect = document.getElementById('dropPointClientFilter');
+    let selectedClientId = filterSelect ? filterSelect.value : '';
 
-    document.getElementById('clientDropPointModalTitle').textContent = '➕ Add Shuttle Drop Point';
-    document.getElementById('dpmPointId').value = '';
-    document.getElementById('dpmClientId').value = filterSelect ? filterSelect.value : '';
-    document.getElementById('dpmPointName').value = '';
-    document.getElementById('dpmRouteName').value = 'Shuttle Route 1';
-    document.getElementById('dpmLat').value = '';
-    document.getElementById('dpmLng').value = '';
-    document.getElementById('dpmPointOrder').value = (currentClientDropPoints.length + 1);
-    document.getElementById('dpmRadius').value = '500';
+    const modalTitle = document.getElementById('simpleRouteModalTitle');
+    const origInput = document.getElementById('srOriginalRouteName');
+    const clientSelect = document.getElementById('srClientId');
+    const routeInput = document.getElementById('srRouteName');
+    const container = document.getElementById('srStopsContainer');
 
-    document.getElementById('clientDropPointModal').style.display = 'flex';
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (clientSelect) {
+        clientSelect.onchange = function() {
+            populateSimpleRouteVehicleSelect(this.value, 'ALL');
+        };
+    }
+
+    if (routeNameEdit && currentClientDropPoints.length > 0) {
+        // Editing existing route
+        const existingPts = currentClientDropPoints.filter(p => p.route_name === routeNameEdit)
+            .sort((a, b) => (a.point_order || 0) - (b.point_order || 0));
+
+        if (existingPts.length > 0) {
+            const first = existingPts[0];
+            selectedClientId = first.client_id;
+            if (modalTitle) modalTitle.textContent = `✏️ Edit Route "${routeNameEdit}"`;
+            if (origInput) origInput.value = routeNameEdit;
+            if (clientSelect) clientSelect.value = first.client_id;
+            if (routeInput) routeInput.value = routeNameEdit;
+
+            await populateSimpleRouteVehicleSelect(first.client_id, first.assigned_vehicle || 'ALL');
+
+            existingPts.forEach(pt => {
+                const type = pt.point_type || (pt.is_start_point ? 'START' : pt.is_turning_point ? 'TURN' : 'INTERMEDIATE');
+                addSimpleRouteStop(type, pt.point_name, pt.latitude, pt.longitude, pt.radius_meters || 500);
+            });
+        }
+    } else {
+        // Adding new route
+        if (modalTitle) modalTitle.textContent = '➕ Add New Shuttle Route';
+        if (origInput) origInput.value = '';
+        if (clientSelect) clientSelect.value = selectedClientId;
+        if (routeInput) routeInput.value = 'Shuttle Route 1';
+
+        await populateSimpleRouteVehicleSelect(selectedClientId, 'ALL');
+
+        // Pre-add 2 default empty stops (Start and Destination)
+        addSimpleRouteStop('START', '', '', '', 500);
+        addSimpleRouteStop('DESTINATION', '', '', '', 500);
+    }
+
+    document.getElementById('simpleRouteModal').style.display = 'flex';
 }
 
-function openEditDropPointModal(pointId) {
-    const point = currentClientDropPoints.find(p => p.id === pointId);
-    if (!point) return;
-
-    updateClientDropdowns();
-    document.getElementById('clientDropPointModalTitle').textContent = '✏️ Edit Shuttle Drop Point';
-    document.getElementById('dpmPointId').value = point.id;
-    document.getElementById('dpmClientId').value = point.client_id;
-    document.getElementById('dpmPointName').value = point.point_name;
-    document.getElementById('dpmRouteName').value = point.route_name;
-    document.getElementById('dpmLat').value = point.latitude;
-    document.getElementById('dpmLng').value = point.longitude;
-    document.getElementById('dpmPointOrder').value = point.point_order;
-    document.getElementById('dpmRadius').value = point.radius_meters || 500;
-
-    document.getElementById('clientDropPointModal').style.display = 'flex';
+function closeSimpleRouteModal() {
+    document.getElementById('simpleRouteModal').style.display = 'none';
 }
 
-function closeClientDropPointModal() {
-    document.getElementById('clientDropPointModal').style.display = 'none';
+function addSimpleRouteStop(type = 'INTERMEDIATE', name = '', lat = '', lng = '', radius = 500) {
+    const container = document.getElementById('srStopsContainer');
+    if (!container) return;
+    const count = container.children.length + 1;
+
+    const div = document.createElement('div');
+    div.className = 'sr-stop-row';
+    div.style.cssText = 'display:flex; gap:8px; align-items:center; background:var(--surface-card); padding:8px 10px; border-radius:8px; border:1px solid var(--surface-border); flex-wrap:wrap;';
+
+    div.innerHTML = `
+        <span class="sr-stop-num" style="font-size:11px; font-weight:700; color:var(--text-muted); min-width:24px; text-align:center;">#${count}</span>
+        <select class="sr-type form-control" style="width:130px; padding:6px 8px; font-size:11px; border-radius:6px; border:1px solid var(--surface-border); background:var(--surface-ground); color:var(--text-primary);">
+            <option value="START" ${type === 'START' ? 'selected' : ''}>🟢 Start Point</option>
+            <option value="INTERMEDIATE" ${type === 'INTERMEDIATE' ? 'selected' : ''}>📍 Drop Point</option>
+            <option value="TURN" ${type === 'TURN' ? 'selected' : ''}>🔄 Turn Point</option>
+            <option value="DESTINATION" ${type === 'DESTINATION' ? 'selected' : ''}>🏁 Destination</option>
+        </select>
+        <input type="text" class="sr-name form-control" value="${escapeHtml(name)}" placeholder="Point Name (e.g. Kaduruwela)" required style="flex:1.5; min-width:120px; padding:6px 8px; font-size:12px; border-radius:6px; border:1px solid var(--surface-border); background:var(--surface-ground); color:var(--text-primary);">
+        <input type="number" step="any" class="sr-lat form-control" value="${lat}" placeholder="Lat (7.9398)" required style="flex:1; min-width:90px; padding:6px 8px; font-size:12px; border-radius:6px; border:1px solid var(--surface-border); background:var(--surface-ground); color:var(--text-primary);">
+        <input type="number" step="any" class="sr-lng form-control" value="${lng}" placeholder="Lng (81.0028)" required style="flex:1; min-width:90px; padding:6px 8px; font-size:12px; border-radius:6px; border:1px solid var(--surface-border); background:var(--surface-ground); color:var(--text-primary);">
+        <input type="number" class="sr-radius form-control" value="${radius}" placeholder="Rad(m)" required style="width:70px; padding:6px 8px; font-size:12px; border-radius:6px; border:1px solid var(--surface-border); background:var(--surface-ground); color:var(--text-primary);">
+        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove(); updateSimpleRouteStopNumbers();" style="padding:5px 9px; font-size:11px; border-radius:6px;">🗑️</button>
+    `;
+    container.appendChild(div);
 }
 
-async function saveClientDropPoint(event) {
+function updateSimpleRouteStopNumbers() {
+    const container = document.getElementById('srStopsContainer');
+    if (!container) return;
+    const rows = container.querySelectorAll('.sr-stop-row');
+    rows.forEach((row, idx) => {
+        const numSpan = row.querySelector('.sr-stop-num');
+        if (numSpan) numSpan.textContent = `#${idx + 1}`;
+    });
+}
+
+async function saveSimpleRoute(event) {
     event.preventDefault();
-    const pointId = document.getElementById('dpmPointId').value;
-    const clientId = document.getElementById('dpmClientId').value;
-    const pointName = document.getElementById('dpmPointName').value.trim();
-    const routeName = document.getElementById('dpmRouteName').value.trim();
-    const latitude = parseFloat(document.getElementById('dpmLat').value);
-    const longitude = parseFloat(document.getElementById('dpmLng').value);
-    const pointOrder = parseInt(document.getElementById('dpmPointOrder').value, 10) || 1;
-    const radiusMeters = parseInt(document.getElementById('dpmRadius').value, 10) || 500;
+    const clientId = document.getElementById('srClientId').value;
+    const routeName = document.getElementById('srRouteName').value.trim();
+    const vehicle = document.getElementById('srVehicle').value;
+    const originalRouteName = document.getElementById('srOriginalRouteName').value;
     const userId = getQueryUserId();
 
     if (!clientId) {
-        alert('Please select a client for this drop point');
+        alert('Please select a client.');
+        return;
+    }
+    if (!routeName) {
+        alert('Please enter a route name.');
+        return;
+    }
+
+    const rows = document.querySelectorAll('#srStopsContainer .sr-stop-row');
+    if (rows.length === 0) {
+        alert('Please add at least one point to the route.');
+        return;
+    }
+
+    const pointsToInsert = [];
+    rows.forEach((row, idx) => {
+        const type = row.querySelector('.sr-type').value;
+        const name = row.querySelector('.sr-name').value.trim();
+        const lat = parseFloat(row.querySelector('.sr-lat').value);
+        const lng = parseFloat(row.querySelector('.sr-lng').value);
+        const radius = parseInt(row.querySelector('.sr-radius').value, 10) || 500;
+
+        if (name && !isNaN(lat) && !isNaN(lng)) {
+            pointsToInsert.push({
+                user_id: userId,
+                client_id: clientId,
+                route_name: routeName,
+                point_name: name,
+                latitude: lat,
+                longitude: lng,
+                radius_meters: radius,
+                min_dwell_minutes: 5,
+                point_order: idx + 1,
+                point_type: type,
+                is_start_point: type === 'START',
+                is_turning_point: type === 'TURN',
+                assigned_vehicle: vehicle
+            });
+        }
+    });
+
+    if (pointsToInsert.length === 0) {
+        alert('Please fill valid name, latitude, and longitude for at least one stop.');
         return;
     }
 
     try {
-        const payload = {
-            user_id: userId,
-            client_id: clientId,
-            point_name: pointName,
-            route_name: routeName,
-            latitude: latitude,
-            longitude: longitude,
-            point_order: pointOrder,
-            radius_meters: radiusMeters,
-            min_dwell_minutes: 5
-        };
-
-        if (!pointId) {
-            const { error } = await supabaseClient.from('client_drop_points').insert([payload]);
-            if (error) throw error;
-        } else {
-            let query = supabaseClient.from('client_drop_points').update(payload).eq('id', pointId);
-            if (userId) query = query.eq('user_id', userId);
-            const { error } = await query;
-            if (error) throw error;
+        // If editing an existing route, delete previous points for that route first
+        if (originalRouteName) {
+            let delQuery = supabaseClient.from('client_drop_points')
+                .delete()
+                .eq('client_id', clientId)
+                .eq('route_name', originalRouteName);
+            if (userId) delQuery = delQuery.eq('user_id', userId);
+            await delQuery;
         }
 
-        closeClientDropPointModal();
-        
+        // Insert new route points
+        const { error } = await supabaseClient.from('client_drop_points').insert(pointsToInsert);
+        if (error) throw error;
+
+        closeSimpleRouteModal();
+
         const filterSelect = document.getElementById('dropPointClientFilter');
         if (filterSelect) filterSelect.value = clientId;
         await loadClientDropPoints();
 
-        alert('Drop point saved successfully!');
+        alert(`🎉 Shuttle Route "${routeName}" saved with ${pointsToInsert.length} stops!`);
     } catch (err) {
-        console.error('Error saving drop point:', err);
-        alert('Failed to save drop point: ' + err.message);
+        console.error('Error saving route:', err);
+        alert('Failed to save route: ' + err.message);
     }
 }
 
-async function deleteClientDropPoint(pointId, pointName) {
-    if (!confirm(`Are you sure you want to delete drop point "${pointName}"?`)) return;
+async function deleteClientRoute(routeName) {
+    const filterSelect = document.getElementById('dropPointClientFilter');
+    const clientId = filterSelect ? filterSelect.value : '';
+
+    if (!confirm(`Are you sure you want to delete the ENTIRE route "${routeName}" and all its drop points?`)) return;
 
     try {
         const userId = getQueryUserId();
-        let query = supabaseClient.from('client_drop_points').delete().eq('id', pointId);
+        let query = supabaseClient.from('client_drop_points').delete().eq('route_name', routeName);
+        if (clientId) query = query.eq('client_id', clientId);
         if (userId) query = query.eq('user_id', userId);
         const { error } = await query;
         if (error) throw error;
 
         await loadClientDropPoints();
-        alert('Drop point deleted.');
+        alert(`Route "${routeName}" deleted.`);
     } catch (err) {
-        console.error('Error deleting drop point:', err);
-        alert('Failed to delete drop point: ' + err.message);
+        console.error('Error deleting route:', err);
+        alert('Failed to delete route: ' + err.message);
     }
 }
+
 
 
 // ----------------------------------------------------------------------------
@@ -16714,12 +16989,21 @@ async function loadClientRouteMonitor() {
             const entryTimeStr = evt.entry_time ? new Date(evt.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
             const exitTimeStr = evt.exit_time ? new Date(evt.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
 
+            const isDeparted = (evt.status && evt.status.toUpperCase() === 'DEPARTED') || !!evt.exit_time;
             let statusBadge = `<span style="padding:3px 10px; background:rgba(241,196,15,0.15); color:#f39c12; border-radius:12px; font-size:12px; font-weight:600;">🟡 Arrived / In Zone</span>`;
-            if (evt.status === 'DEPARTED' || evt.exit_time) {
+            if (isDeparted) {
                 statusBadge = `<span style="padding:3px 10px; background:rgba(39,174,96,0.15); color:#27AE60; border-radius:12px; font-size:12px; font-weight:600;">🟢 Completed & Departed</span>`;
             }
 
-            const waitMins = evt.waited_minutes != null ? `${evt.waited_minutes} mins` : '—';
+            let waitMins = '—';
+            if (isDeparted) {
+                const totalMins = evt.waited_minutes != null ? evt.waited_minutes :
+                    (evt.exit_time && evt.entry_time ? Math.round((new Date(evt.exit_time) - new Date(evt.entry_time)) / 60000) : 0);
+                waitMins = `${Math.round(totalMins)} mins`;
+            } else if (evt.entry_time) {
+                const liveMins = Math.round((Date.now() - new Date(evt.entry_time).getTime()) / 60000);
+                waitMins = `${Math.max(0, liveMins)} mins (Live)`;
+            }
             const eventDate = new Date(evt.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 
             return `
@@ -16742,5 +17026,44 @@ async function loadClientRouteMonitor() {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#e74c3c;">Failed to load events: ${err.message}</td></tr>`;
     }
 }
+
+async function restartHireAdmin(clientId = null, routeName = null) {
+    if (!clientId) {
+        const filterSelect = document.getElementById('dropPointClientFilter') || document.getElementById('monitorClientFilter');
+        clientId = filterSelect ? filterSelect.value : '';
+    }
+
+    if (!clientId || clientId === 'ALL') {
+        alert('Please select a specific client from the dropdown to restart hire tracking.');
+        return;
+    }
+
+    const routeLabel = routeName ? `route "${routeName}"` : 'all routes for this client';
+    if (!confirm(`Are you sure you want to restart hire tracking for ${routeLabel}? This will reset tracking states and begin a fresh hire cycle.`)) {
+        return;
+    }
+
+    try {
+        const userId = getQueryUserId();
+        const { error } = await supabaseClient
+            .from('drop_point_events')
+            .insert([{
+                user_id: userId,
+                client_id: clientId,
+                route_name: routeName || 'SYSTEM_RESET',
+                status: 'RESTART_HIRE',
+                created_at: new Date().toISOString()
+            }]);
+
+        if (error) throw error;
+
+        showToast(`🚀 Hire tracking restarted successfully for ${routeName ? 'route ' + routeName : 'client'}!`, 'success');
+        if (typeof loadClientRouteMonitor === 'function') loadClientRouteMonitor();
+    } catch (err) {
+        console.error('Error restarting hire:', err);
+        showToast('Failed to restart hire: ' + err.message, 'error');
+    }
+}
+
 
 
