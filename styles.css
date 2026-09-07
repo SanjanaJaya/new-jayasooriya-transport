@@ -10360,9 +10360,23 @@ body.dark-mode .op-revenue-card[data-accent="other"] .op-revenue-amount { color:
     font-size: 12px;
     color: var(--text-muted);
     font-weight: 500;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     display: flex;
     justify-content: space-between;
+}
+.op-revenue-fuel-meta {
+    margin-top: 2px;
+    margin-bottom: 12px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--surface-border);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.op-revenue-fuel-meta span:first-child {
+    color: #D35400;
+}
+body.dark-mode .op-revenue-fuel-meta span:first-child {
+    color: #E67E22;
 }
 .op-revenue-progress-track {
     width: 100%;

@@ -3765,87 +3765,146 @@ async function loadDashboardData(monthValue, cachedData = null) {
         let keviltonCommitRev = 0;
         let keviltonCommitCount = 0;
         let keviltonCommitKm = 0;
+        let keviltonCommitFuel = 0;
+        let keviltonCommitLitres = 0;
 
         let pelwatteCommitRev = 0;
         let pelwatteCommitCount = 0;
         let pelwatteCommitKm = 0;
+        let pelwatteCommitFuel = 0;
+        let pelwatteCommitLitres = 0;
 
         let keellsCommitRev = 0;
         let keellsCommitCount = 0;
         let keellsCommitKm = 0;
+        let keellsCommitFuel = 0;
+        let keellsCommitLitres = 0;
 
         let spaceLogisticsCommitRev = 0;
         let spaceLogisticsCommitCount = 0;
         let spaceLogisticsCommitKm = 0;
+        let spaceLogisticsCommitFuel = 0;
+        let spaceLogisticsCommitLitres = 0;
 
         let iclCommitRev = 0;
         let iclCommitCount = 0;
         let iclCommitKm = 0;
+        let iclCommitFuel = 0;
+        let iclCommitLitres = 0;
 
         let ktiCommitRev = 0;
         let ktiCommitCount = 0;
         let ktiCommitKm = 0;
+        let ktiCommitFuel = 0;
+        let ktiCommitLitres = 0;
 
         let maggiCommitRev = 0;
         let maggiCommitCount = 0;
         let maggiCommitKm = 0;
+        let maggiCommitFuel = 0;
+        let maggiCommitLitres = 0;
 
         let spectraCommitRev = 0;
         let spectraCommitCount = 0;
         let spectraCommitKm = 0;
+        let spectraCommitFuel = 0;
+        let spectraCommitLitres = 0;
 
         let ansellCommitRev = 0;
         let ansellCommitCount = 0;
         let ansellCommitKm = 0;
+        let ansellCommitFuel = 0;
+        let ansellCommitLitres = 0;
 
         let sitrekCommitRev = 0;
         let sitrekCommitCount = 0;
         let sitrekCommitKm = 0;
+        let sitrekCommitFuel = 0;
+        let sitrekCommitLitres = 0;
 
         let okidokiCommitRev = 0;
         let okidokiCommitCount = 0;
         let okidokiCommitKm = 0;
+        let okidokiCommitFuel = 0;
+        let okidokiCommitLitres = 0;
 
         let rocklandCommitRev = 0;
         let rocklandCommitCount = 0;
         let rocklandCommitKm = 0;
+        let rocklandCommitFuel = 0;
+        let rocklandCommitLitres = 0;
 
         let keviltonOtherRev = 0;
         let keviltonOtherCount = 0;
         let keviltonOtherKm = 0;
+        let keviltonOtherFuel = 0;
+        let keviltonOtherLitres = 0;
+
         let pelwatteRev = 0;
         let pelwatteCount = 0;
         let pelwatteKm = 0;
+        let pelwatteFuel = 0;
+        let pelwatteLitres = 0;
+
         let keellsRev = 0;
         let keellsCount = 0;
         let keellsKm = 0;
+        let keellsFuel = 0;
+        let keellsLitres = 0;
+
         let spaceLogisticsRev = 0;
         let spaceLogisticsCount = 0;
         let spaceLogisticsKm = 0;
+        let spaceLogisticsFuel = 0;
+        let spaceLogisticsLitres = 0;
+
         let iclRev = 0;
         let iclCount = 0;
         let iclKm = 0;
+        let iclFuel = 0;
+        let iclLitres = 0;
+
         let ktiRev = 0;
         let ktiCount = 0;
         let ktiKm = 0;
+        let ktiFuel = 0;
+        let ktiLitres = 0;
+
         let maggiRev = 0;
         let maggiCount = 0;
         let maggiKm = 0;
+        let maggiFuel = 0;
+        let maggiLitres = 0;
+
         let spectraRev = 0;
         let spectraCount = 0;
         let spectraKm = 0;
+        let spectraFuel = 0;
+        let spectraLitres = 0;
+
         let ansellRev = 0;
         let ansellCount = 0;
         let ansellKm = 0;
+        let ansellFuel = 0;
+        let ansellLitres = 0;
+
         let sitrekRev = 0;
         let sitrekCount = 0;
         let sitrekKm = 0;
+        let sitrekFuel = 0;
+        let sitrekLitres = 0;
+
         let okidokiOtherRev = 0;
         let okidokiOtherCount = 0;
         let okidokiOtherKm = 0;
+        let okidokiOtherFuel = 0;
+        let okidokiOtherLitres = 0;
+
         let rocklandOtherRev = 0;
         let rocklandOtherCount = 0;
         let rocklandOtherKm = 0;
+        let rocklandOtherFuel = 0;
+        let rocklandOtherLitres = 0;
 
         const customOpsMap = {};
 
@@ -3860,6 +3919,9 @@ async function loadDashboardData(monthValue, cachedData = null) {
             const vNetRev = vPayment - vDayOffDeductions + vExtraKmCharge;
             const vCount = vRecords.length;
 
+            const vFuel = vRecords.reduce((sum, r) => sum + (r.fuel_cost || 0), 0);
+            const vLitres = vRecords.reduce((sum, r) => sum + (r.fuel_litres || 0), 0);
+
             const opName = (v.operation_name || 'Kevilton Operation').trim();
             const lower = opName.toLowerCase().replace(/[\s-]/g, '');
 
@@ -3867,58 +3929,84 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 keviltonCommitRev += vNetRev;
                 keviltonCommitCount += vCount;
                 keviltonCommitKm += vKm;
+                keviltonCommitFuel += vFuel;
+                keviltonCommitLitres += vLitres;
             } else if (lower.includes('pelwatte')) {
                 pelwatteCommitRev += vNetRev;
                 pelwatteCommitCount += vCount;
                 pelwatteCommitKm += vKm;
+                pelwatteCommitFuel += vFuel;
+                pelwatteCommitLitres += vLitres;
             } else if (lower.includes('keells')) {
                 keellsCommitRev += vNetRev;
                 keellsCommitCount += vCount;
                 keellsCommitKm += vKm;
+                keellsCommitFuel += vFuel;
+                keellsCommitLitres += vLitres;
             } else if (lower.includes('space') || lower.includes('spacelogistics')) {
                 spaceLogisticsCommitRev += vNetRev;
                 spaceLogisticsCommitCount += vCount;
                 spaceLogisticsCommitKm += vKm;
+                spaceLogisticsCommitFuel += vFuel;
+                spaceLogisticsCommitLitres += vLitres;
             } else if (lower.includes('icl')) {
                 iclCommitRev += vNetRev;
                 iclCommitCount += vCount;
                 iclCommitKm += vKm;
+                iclCommitFuel += vFuel;
+                iclCommitLitres += vLitres;
             } else if (lower.includes('kti')) {
                 ktiCommitRev += vNetRev;
                 ktiCommitCount += vCount;
                 ktiCommitKm += vKm;
+                ktiCommitFuel += vFuel;
+                ktiCommitLitres += vLitres;
             } else if (lower.includes('maggi')) {
                 maggiCommitRev += vNetRev;
                 maggiCommitCount += vCount;
                 maggiCommitKm += vKm;
+                maggiCommitFuel += vFuel;
+                maggiCommitLitres += vLitres;
             } else if (lower.includes('spectra')) {
                 spectraCommitRev += vNetRev;
                 spectraCommitCount += vCount;
                 spectraCommitKm += vKm;
+                spectraCommitFuel += vFuel;
+                spectraCommitLitres += vLitres;
             } else if (lower.includes('ansell')) {
                 ansellCommitRev += vNetRev;
                 ansellCommitCount += vCount;
                 ansellCommitKm += vKm;
+                ansellCommitFuel += vFuel;
+                ansellCommitLitres += vLitres;
             } else if (lower.includes('sitrek')) {
                 sitrekCommitRev += vNetRev;
                 sitrekCommitCount += vCount;
                 sitrekCommitKm += vKm;
+                sitrekCommitFuel += vFuel;
+                sitrekCommitLitres += vLitres;
             } else if (lower.includes('okidoki')) {
                 okidokiCommitRev += vNetRev;
                 okidokiCommitCount += vCount;
                 okidokiCommitKm += vKm;
+                okidokiCommitFuel += vFuel;
+                okidokiCommitLitres += vLitres;
             } else if (lower.includes('rockland')) {
                 rocklandCommitRev += vNetRev;
                 rocklandCommitCount += vCount;
                 rocklandCommitKm += vKm;
+                rocklandCommitFuel += vFuel;
+                rocklandCommitLitres += vLitres;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
-                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0 };
+                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0, fuel: 0, litres: 0 };
                 }
                 customOpsMap[displayName].amount += vNetRev;
                 customOpsMap[displayName].count += vCount;
                 customOpsMap[displayName].km += vKm;
+                customOpsMap[displayName].fuel += vFuel;
+                customOpsMap[displayName].litres += vLitres;
             }
         });
 
@@ -3927,72 +4015,105 @@ async function loadDashboardData(monthValue, cachedData = null) {
             const lower = opName.toLowerCase().replace(/[\s-]/g, '');
             const amount = r.hire_amount || 0;
             const dist = r.distance || 0;
+            const fuel = r.fuel_cost || 0;
+            const litres = r.fuel_litres || 0;
 
             if (lower.includes('kevilton')) {
                 keviltonOtherRev += amount;
                 keviltonOtherCount++;
                 keviltonOtherKm += dist;
+                keviltonOtherFuel += fuel;
+                keviltonOtherLitres += litres;
             } else if (lower.includes('pelwatte')) {
                 pelwatteRev += amount;
                 pelwatteCount++;
                 pelwatteKm += dist;
+                pelwatteFuel += fuel;
+                pelwatteLitres += litres;
             } else if (lower.includes('keells')) {
                 keellsRev += amount;
                 keellsCount++;
                 keellsKm += dist;
+                keellsFuel += fuel;
+                keellsLitres += litres;
             } else if (lower.includes('space') || lower.includes('spacelogistics')) {
                 spaceLogisticsRev += amount;
                 spaceLogisticsCount++;
                 spaceLogisticsKm += dist;
+                spaceLogisticsFuel += fuel;
+                spaceLogisticsLitres += litres;
             } else if (lower.includes('icl')) {
                 iclRev += amount;
                 iclCount++;
                 iclKm += dist;
+                iclFuel += fuel;
+                iclLitres += litres;
             } else if (lower.includes('kti')) {
                 ktiRev += amount;
                 ktiCount++;
                 ktiKm += dist;
+                ktiFuel += fuel;
+                ktiLitres += litres;
             } else if (lower.includes('maggi')) {
                 maggiRev += amount;
                 maggiCount++;
                 maggiKm += dist;
+                maggiFuel += fuel;
+                maggiLitres += litres;
             } else if (lower.includes('spectra')) {
                 spectraRev += amount;
                 spectraCount++;
                 spectraKm += dist;
+                spectraFuel += fuel;
+                spectraLitres += litres;
             } else if (lower.includes('ansell')) {
                 ansellRev += amount;
                 ansellCount++;
                 ansellKm += dist;
+                ansellFuel += fuel;
+                ansellLitres += litres;
             } else if (lower.includes('sitrek')) {
                 sitrekRev += amount;
                 sitrekCount++;
                 sitrekKm += dist;
+                sitrekFuel += fuel;
+                sitrekLitres += litres;
             } else if (lower.includes('okidoki')) {
                 okidokiOtherRev += amount;
                 okidokiOtherCount++;
                 okidokiOtherKm += dist;
+                okidokiOtherFuel += fuel;
+                okidokiOtherLitres += litres;
             } else if (lower.includes('rockland')) {
                 rocklandOtherRev += amount;
                 rocklandOtherCount++;
                 rocklandOtherKm += dist;
+                rocklandOtherFuel += fuel;
+                rocklandOtherLitres += litres;
             } else {
                 const displayName = opName || 'Other Operation';
                 if (!customOpsMap[displayName]) {
-                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0 };
+                    customOpsMap[displayName] = { amount: 0, count: 0, km: 0, fuel: 0, litres: 0 };
                 }
                 customOpsMap[displayName].amount += amount;
                 customOpsMap[displayName].count++;
                 customOpsMap[displayName].km += dist;
+                customOpsMap[displayName].fuel += fuel;
+                customOpsMap[displayName].litres += litres;
             }
         });
 
         const keviltonTotalRev = hireToPayRev + keviltonCommitRev + keviltonOtherRev;
         const keviltonTotalCount = (hireRecords?.length || 0) + keviltonCommitCount + keviltonOtherCount;
 
-        // Calculate KM for kevilton from hire-to-pay + commitment + other ops
+        // Calculate KM & Fuel for kevilton from hire-to-pay + commitment + other ops
         const keviltonHireKm = hireRecords?.reduce((sum, r) => sum + (r.distance || 0), 0) || 0;
         const keviltonTotalKm = keviltonHireKm + keviltonCommitKm + keviltonOtherKm;
+
+        const keviltonHireFuel = hireRecords?.reduce((sum, r) => sum + (r.fuel_cost || 0), 0) || 0;
+        const keviltonHireLitres = hireRecords?.reduce((sum, r) => sum + (r.fuel_litres || 0), 0) || 0;
+        const keviltonTotalFuel = keviltonHireFuel + keviltonCommitFuel + keviltonOtherFuel;
+        const keviltonTotalLitres = keviltonHireLitres + keviltonCommitLitres + keviltonOtherLitres;
 
         const opsData = [
             {
@@ -4003,6 +4124,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: keviltonTotalRev,
                 count: keviltonTotalCount,
                 km: keviltonTotalKm,
+                fuelCost: keviltonTotalFuel,
+                fuelLitres: keviltonTotalLitres,
                 subtitle: 'Hire-to-Pay + Commitment'
             },
             {
@@ -4013,6 +4136,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: pelwatteCommitRev + pelwatteRev,
                 count: pelwatteCommitCount + pelwatteCount,
                 km: pelwatteCommitKm + pelwatteKm,
+                fuelCost: pelwatteCommitFuel + pelwatteFuel,
+                fuelLitres: pelwatteCommitLitres + pelwatteLitres,
                 subtitle: pelwatteCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4023,6 +4148,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: keellsCommitRev + keellsRev,
                 count: keellsCommitCount + keellsCount,
                 km: keellsCommitKm + keellsKm,
+                fuelCost: keellsCommitFuel + keellsFuel,
+                fuelLitres: keellsCommitLitres + keellsLitres,
                 subtitle: keellsCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4033,6 +4160,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: spaceLogisticsCommitRev + spaceLogisticsRev,
                 count: spaceLogisticsCommitCount + spaceLogisticsCount,
                 km: spaceLogisticsCommitKm + spaceLogisticsKm,
+                fuelCost: spaceLogisticsCommitFuel + spaceLogisticsFuel,
+                fuelLitres: spaceLogisticsCommitLitres + spaceLogisticsLitres,
                 subtitle: spaceLogisticsCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4043,6 +4172,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: iclCommitRev + iclRev,
                 count: iclCommitCount + iclCount,
                 km: iclCommitKm + iclKm,
+                fuelCost: iclCommitFuel + iclFuel,
+                fuelLitres: iclCommitLitres + iclLitres,
                 subtitle: iclCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4053,6 +4184,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: ktiCommitRev + ktiRev,
                 count: ktiCommitCount + ktiCount,
                 km: ktiCommitKm + ktiKm,
+                fuelCost: ktiCommitFuel + ktiFuel,
+                fuelLitres: ktiCommitLitres + ktiLitres,
                 subtitle: ktiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4063,6 +4196,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: maggiCommitRev + maggiRev,
                 count: maggiCommitCount + maggiCount,
                 km: maggiCommitKm + maggiKm,
+                fuelCost: maggiCommitFuel + maggiFuel,
+                fuelLitres: maggiCommitLitres + maggiLitres,
                 subtitle: maggiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4073,6 +4208,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: spectraCommitRev + spectraRev,
                 count: spectraCommitCount + spectraCount,
                 km: spectraCommitKm + spectraKm,
+                fuelCost: spectraCommitFuel + spectraFuel,
+                fuelLitres: spectraCommitLitres + spectraLitres,
                 subtitle: spectraCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4083,6 +4220,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: ansellCommitRev + ansellRev,
                 count: ansellCommitCount + ansellCount,
                 km: ansellCommitKm + ansellKm,
+                fuelCost: ansellCommitFuel + ansellFuel,
+                fuelLitres: ansellCommitLitres + ansellLitres,
                 subtitle: ansellCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4093,6 +4232,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: sitrekCommitRev + sitrekRev,
                 count: sitrekCommitCount + sitrekCount,
                 km: sitrekCommitKm + sitrekKm,
+                fuelCost: sitrekCommitFuel + sitrekFuel,
+                fuelLitres: sitrekCommitLitres + sitrekLitres,
                 subtitle: sitrekCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4103,6 +4244,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: okidokiCommitRev + okidokiOtherRev,
                 count: okidokiCommitCount + okidokiOtherCount,
                 km: okidokiCommitKm + okidokiOtherKm,
+                fuelCost: okidokiCommitFuel + okidokiOtherFuel,
+                fuelLitres: okidokiCommitLitres + okidokiOtherLitres,
                 subtitle: okidokiCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             },
             {
@@ -4113,6 +4256,8 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: rocklandCommitRev + rocklandOtherRev,
                 count: rocklandCommitCount + rocklandOtherCount,
                 km: rocklandCommitKm + rocklandOtherKm,
+                fuelCost: rocklandCommitFuel + rocklandOtherFuel,
+                fuelLitres: rocklandCommitLitres + rocklandOtherLitres,
                 subtitle: rocklandCommitCount > 0 ? 'Other Operations + Commitment' : 'Other Operations'
             }
         ];
@@ -4125,12 +4270,14 @@ async function loadDashboardData(monthValue, cachedData = null) {
                 amount: customOpsMap[opName].amount,
                 count: customOpsMap[opName].count,
                 km: customOpsMap[opName].km,
+                fuelCost: customOpsMap[opName].fuel,
+                fuelLitres: customOpsMap[opName].litres,
                 subtitle: 'Custom Operation'
             });
         });
 
         // Filter out operations with 0 hires/jobs for the current month
-        const activeOpsData = opsData.filter(op => op.count > 0 || op.amount > 0);
+        const activeOpsData = opsData.filter(op => op.count > 0 || op.amount > 0 || (op.fuelCost && op.fuelCost > 0));
 
         // Sort active operations by revenue (descending)
         activeOpsData.sort((a, b) => b.amount - a.amount);
@@ -4161,6 +4308,12 @@ function renderOperationRevenueWidget(opsData, grandTotalRevenue) {
         const formattedAmount = op.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const formattedKm = Math.round(op.km || 0).toLocaleString('en-US');
 
+        const grossFuelCost = op.fuelCost || 0;
+        const netFuelCost = grossFuelCost * 0.82; // 18% VAT Refund OFF
+        const formattedGrossFuel = grossFuelCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedNetFuel = netFuelCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedLitres = Math.round(op.fuelLitres || 0).toLocaleString('en-US');
+
         const logoHTML = op.logoUrl
             ? `<img src="${op.logoUrl}" class="op-revenue-logo" alt="${op.name}">`
             : `<span class="op-revenue-icon">${op.icon || '📦'}</span>`;
@@ -4173,8 +4326,12 @@ function renderOperationRevenueWidget(opsData, grandTotalRevenue) {
                 </div>
                 <div class="op-revenue-amount">LKR ${formattedAmount}</div>
                 <div class="op-revenue-meta">
-                    <span>${op.count} Hires / Jobs</span>
+                    <span>📋 ${op.count} Hires / Jobs</span>
                     <span>🛣️ ${formattedKm} km</span>
+                </div>
+                <div class="op-revenue-meta op-revenue-fuel-meta">
+                    <span title="Gross Fuel Cost (Net: LKR ${formattedNetFuel} after 18% VAT Off)">⛽ Fuel: LKR ${formattedGrossFuel}</span>
+                    <span>🛢️ ${formattedLitres} L</span>
                 </div>
                 <div class="op-revenue-progress-track">
                     <div class="op-revenue-progress-bar" style="width: ${Math.min(100, Math.max(0, pct))}%;"></div>
