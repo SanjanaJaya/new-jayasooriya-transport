@@ -2169,7 +2169,18 @@ function renderDeductionsList(list) {
 
 // ==================== WEEKLY ADVANCE LIMIT WIDGET ====================
 
-const WEEKLY_ADVANCE_LIMIT = 7000; // LKR 7,000 per week
+const DEFAULT_WEEKLY_ADVANCE_LIMIT = 7000; // Default LKR 7,000 per week
+
+/**
+ * Returns the effective weekly advance limit for the current driver.
+ * Uses per-driver custom limit from DB if set, otherwise falls back to default.
+ */
+function getDriverWeeklyAdvanceLimit() {
+    if (currentDriver && currentDriver.weekly_advance_limit) {
+        return parseFloat(currentDriver.weekly_advance_limit);
+    }
+    return DEFAULT_WEEKLY_ADVANCE_LIMIT;
+}
 
 /**
  * Returns the Monday and Sunday of the current ISO week as YYYY-MM-DD strings.
@@ -2248,12 +2259,12 @@ async function loadWeeklyAdvanceWidget() {
             setCachedData('jt_driver_weekly_advance', weeklyUsed);
         }
 
-        updateWeeklyAdvanceUI(weeklyUsed, WEEKLY_ADVANCE_LIMIT);
+        updateWeeklyAdvanceUI(weeklyUsed, getDriverWeeklyAdvanceLimit());
 
     } catch (err) {
         console.warn('Weekly advance widget error:', err.message);
         const cached = getCachedData('jt_driver_weekly_advance');
-        updateWeeklyAdvanceUI(cached || 0, WEEKLY_ADVANCE_LIMIT);
+        updateWeeklyAdvanceUI(cached || 0, getDriverWeeklyAdvanceLimit());
     }
 }
 
@@ -3864,7 +3875,7 @@ async function processGpsGeocodeQueue() {
 // ==================== ADVANCE REQUEST SUBMISSION & MODAL LOGIC ====================
 
 let driverAdvanceRequestsChannel = null;
-let currentRemainingWeeklyLimit = 7000;
+let currentRemainingWeeklyLimit = DEFAULT_WEEKLY_ADVANCE_LIMIT;
 
 /**
  * Checks current time window for advance requests.
@@ -4036,7 +4047,8 @@ async function refreshAdvanceRequestModalUI() {
         console.warn('Error fetching weekly advances/requests:', e);
     }
 
-    currentRemainingWeeklyLimit = isFamilyDriver ? 999999 : Math.max(0, WEEKLY_ADVANCE_LIMIT - weeklyUsed);
+    const driverWeeklyLimit = getDriverWeeklyAdvanceLimit();
+    currentRemainingWeeklyLimit = isFamilyDriver ? 999999 : Math.max(0, driverWeeklyLimit - weeklyUsed);
 
     // Update Remaining Weekly Balance UI
     const elRem = document.getElementById('armWeeklyRemaining');
@@ -4052,13 +4064,13 @@ async function refreshAdvanceRequestModalUI() {
         if (elSub) elSub.textContent = 'No weekly advance limit applies';
         if (amountInput) amountInput.max = 2500;
     } else {
-        const pct = Math.round((currentRemainingWeeklyLimit / WEEKLY_ADVANCE_LIMIT) * 100);
+        const pct = Math.round((currentRemainingWeeklyLimit / driverWeeklyLimit) * 100);
         if (elRem) {
             elRem.textContent = currentRemainingWeeklyLimit <= 0 ? t('advance.limitReached') : fmtLKR(currentRemainingWeeklyLimit);
             elRem.className = currentRemainingWeeklyLimit > 3000 ? 'wls-value text-green' : (currentRemainingWeeklyLimit > 1000 ? 'wls-value text-amber' : 'wls-value text-red');
         }
         if (elProg) elProg.style.width = `${pct}%`;
-        if (elSub) elSub.textContent = `${fmtLKR(weeklyUsed)} ${t('advance.usedOf')} ${fmtLKR(WEEKLY_ADVANCE_LIMIT)}`;
+        if (elSub) elSub.textContent = `${fmtLKR(weeklyUsed)} ${t('advance.usedOf')} ${fmtLKR(driverWeeklyLimit)}`;
         if (amountInput) amountInput.max = Math.min(2500, currentRemainingWeeklyLimit);
     }
 

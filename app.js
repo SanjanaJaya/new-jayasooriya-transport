@@ -1386,6 +1386,7 @@ document.getElementById('driverForm')?.addEventListener('submit', async (e) => {
         km_limit: (salaryType === 'fixed' && !isHelper) ? (parseFloat(document.getElementById('driverKmLimit').value) || null) : null,
         extra_km_rate: (salaryType === 'fixed' && !isHelper) ? (parseFloat(document.getElementById('driverExtraKmRate').value) || null) : null,
         per_tip_charge: salaryType === 'per_tip' ? (parseFloat(document.getElementById('driverPerTipCharge').value) || null) : null,
+        weekly_advance_limit: parseFloat(document.getElementById('driverWeeklyAdvanceLimit')?.value) || null,
         terminated: document.getElementById('driverTerminated') ? document.getElementById('driverTerminated').checked : false,
         user_id: adminUserId
     };
@@ -1457,7 +1458,7 @@ async function loadDrivers() {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 20px; color: #7F8C8D;">No staff found</td></tr>';
             return;
         }
 
@@ -1652,6 +1653,28 @@ async function loadDrivers() {
                 `;
             }
 
+            // ── Weekly Advance Limit inline editor ──
+            const nameCleanForLimit = cleanDriverName(driver.name).toLowerCase();
+            const isFamilyDriverLimit = nameCleanForLimit === 'jaap jayasooriya' || nameCleanForLimit === 'jauk jayasooriya';
+            const currentLimit = driver.weekly_advance_limit || 7000;
+            let advanceLimitHtml = '';
+
+            if (isFamilyDriverLimit) {
+                advanceLimitHtml = '<span style="color:#27AE60;font-size:12px;font-weight:700;">∞ Unlimited</span>';
+            } else if (userRole === 'viewer') {
+                advanceLimitHtml = `<span style="font-size:12px;font-weight:700;color:var(--text-primary);">LKR ${currentLimit.toLocaleString()}</span>`;
+            } else {
+                const isCustom = driver.weekly_advance_limit && driver.weekly_advance_limit !== 7000;
+                advanceLimitHtml = `
+                    <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+                        <input type="number" class="adv-limit-input" value="${currentLimit}" min="0" step="500"
+                            onchange="updateDriverWeeklyAdvanceLimit(${driver.id}, this.value, this)"
+                            title="Weekly advance limit (LKR)" />
+                        ${isCustom ? '<span style="font-size:9px;background:rgba(155,89,182,0.15);color:#8E44AD;padding:1px 6px;border-radius:8px;font-weight:700;">Custom</span>' : '<span style="font-size:9px;color:var(--text-muted);font-weight:600;">Default</span>'}
+                    </div>
+                `;
+            }
+
             row.innerHTML = `
                 <td>${photoHTML}</td>
                 <td>${cleanedName}${driver.terminated ? '<br><span style="background:#E74C3C;color:white;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;">TERMINATED</span>' : ''}${lorryHtml}</td>
@@ -1671,6 +1694,7 @@ async function loadDrivers() {
                 <td>${formatDriverAge(driver.age)}</td>
                 <td>${driver.address}</td>
                 <td style="font-size:12px;">${salaryInfo}</td>
+                <td>${advanceLimitHtml}</td>
                 ${actionButtons}
             `;
             return row;
@@ -1688,7 +1712,7 @@ async function loadDrivers() {
         normalActiveDrivers.forEach(driver => tbody.appendChild(buildDriverRow(driver)));
 
         if (familyActiveDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 11 : 12;
+            const colSpan = userRole === 'viewer' ? 13 : 14;
             const familyHeaderRow = document.createElement('tr');
             familyHeaderRow.innerHTML = `
                 <td colspan="${colSpan}" style="background-color: var(--surface-hover); font-weight: bold; padding: 12px; color: var(--text-primary); text-align: left; border-bottom: 2px solid var(--brand-red);">
@@ -1700,7 +1724,7 @@ async function loadDrivers() {
         }
 
         if (terminatedDrivers.length > 0) {
-            const colSpan = userRole === 'viewer' ? 11 : 12;
+            const colSpan = userRole === 'viewer' ? 13 : 14;
             const archiveToggleRow = document.createElement('tr');
             archiveToggleRow.innerHTML = `
                 <td colspan="${colSpan}" onclick="toggleDriverArchive()">
@@ -1779,6 +1803,42 @@ window.updateDriverOperation = async function (driverId, newOperation) {
     }
 };
 
+// Update weekly advance limit from inline table input
+window.updateDriverWeeklyAdvanceLimit = async function (driverId, newLimit, inputEl) {
+    if (!checkAdminAccess('edit')) return;
+    try {
+        const userId = getQueryUserId();
+        const parsedLimit = parseFloat(newLimit);
+        const limitValue = (isNaN(parsedLimit) || parsedLimit <= 0) ? null : parsedLimit;
+
+        const { error } = await supabaseClient.from('drivers')
+            .update({ weekly_advance_limit: limitValue })
+            .eq('id', driverId)
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        // Visual feedback on the input
+        if (inputEl) {
+            inputEl.style.borderColor = '#27AE60';
+            inputEl.style.boxShadow = '0 0 0 3px rgba(39,174,96,0.2)';
+            setTimeout(() => {
+                inputEl.style.borderColor = '';
+                inputEl.style.boxShadow = '';
+            }, 1500);
+        }
+
+        const displayLimit = limitValue ? `LKR ${limitValue.toLocaleString()}` : 'LKR 7,000 (default)';
+        showToast(`✅ Weekly advance limit updated to ${displayLimit}`, 'success');
+
+        // Refresh weekly tracker if on advances page
+        if (typeof loadWeeklyAdvanceSummary === 'function') loadWeeklyAdvanceSummary();
+    } catch (err) {
+        console.error('Error updating weekly advance limit:', err);
+        showToast('Error updating advance limit: ' + err.message, 'error');
+    }
+};
+
 
 function toggleDriverArchive() {
     const rows = document.querySelectorAll('.driver-archive-row');
@@ -1831,6 +1891,9 @@ async function editDriver(id) {
         document.getElementById('driverKmLimit').value = data.km_limit || '';
         document.getElementById('driverExtraKmRate').value = data.extra_km_rate || '';
         document.getElementById('driverPerTipCharge').value = data.per_tip_charge || '';
+        if (document.getElementById('driverWeeklyAdvanceLimit')) {
+            document.getElementById('driverWeeklyAdvanceLimit').value = data.weekly_advance_limit || '';
+        }
         toggleDriverSalaryTypeFields();
         if (document.getElementById('driverTerminated')) {
             document.getElementById('driverTerminated').checked = data.terminated || false;
@@ -6178,7 +6241,7 @@ async function loadDriverAdvanceRequests() {
         // 2. Query driver_advance_requests
         let query = supabaseClient
             .from('driver_advance_requests')
-            .select('*, drivers(name, contact)')
+            .select('*, drivers(name, contact, weekly_advance_limit)')
             .eq('user_id', currentQueryUserId);
 
         if (monthValue) {
@@ -6282,9 +6345,10 @@ async function loadDriverAdvanceRequests() {
             if (r.status === 'completed') statusBadge = `<span class="badge-status badge-completed">✅ Completed</span>`;
             if (r.status === 'rejected') statusBadge = `<span class="badge-status badge-rejected">❌ Rejected</span>`;
 
+            const driverWeeklyLimit = parseFloat(r.drivers?.weekly_advance_limit) || 7000;
             const remainingPreview = r.remaining_limit !== undefined && r.remaining_limit !== null
                 ? `LKR ${parseFloat(r.remaining_limit).toFixed(2)}`
-                : 'LKR 7,000.00';
+                : `LKR ${driverWeeklyLimit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             const actionButtons = userRole === 'viewer' ? '-' : (
                 r.status === 'pending'
@@ -6648,7 +6712,7 @@ async function loadWeeklyAdvanceSummary() {
     const weekLabel = document.getElementById('watWeekLabel');
     if (!grid) return;
 
-    const WEEKLY_LIMIT = 7000;
+    const DEFAULT_WEEKLY_LIMIT = 7000;
 
     // Compute current week bounds (Monday → Sunday)
     const now = new Date();
@@ -6682,7 +6746,7 @@ async function loadWeeklyAdvanceSummary() {
         // 1. Get all active drivers
         const { data: drivers, error: dErr } = await supabaseClient
             .from('drivers')
-            .select('id, name')
+            .select('id, name, weekly_advance_limit')
             .eq('user_id', uid)
             .neq('terminated', true)
             .order('name', { ascending: true });
@@ -6726,10 +6790,11 @@ async function loadWeeklyAdvanceSummary() {
         grid.innerHTML = '';
 
         filteredDrivers.forEach(d => {
+            const driverLimit = parseFloat(d.weekly_advance_limit) || DEFAULT_WEEKLY_LIMIT;
             const used = usedByDriver[d.id] || 0;
-            const remaining = Math.max(0, WEEKLY_LIMIT - used);
-            const pct = Math.round((remaining / WEEKLY_LIMIT) * 100);
-            const remainArc = (remaining / WEEKLY_LIMIT) * circumference;
+            const remaining = Math.max(0, driverLimit - used);
+            const pct = Math.round((remaining / driverLimit) * 100);
+            const remainArc = (remaining / driverLimit) * circumference;
 
             let colorClass = 'wat-green';
             let badge = '✅ Safe';
@@ -6740,6 +6805,12 @@ async function loadWeeklyAdvanceSummary() {
 
             // Clean driver name (strip nicknames)
             const cleanName = (d.name || '').replace(/\s*\(.*?\)\s*$/, '').trim();
+
+            // Custom limit badge
+            const isCustomLimit = d.weekly_advance_limit && d.weekly_advance_limit !== DEFAULT_WEEKLY_LIMIT;
+            const limitBadge = isCustomLimit
+                ? `<span style="font-size:9px;background:rgba(155,89,182,0.15);color:#8E44AD;padding:1px 6px;border-radius:8px;font-weight:700;margin-top:2px;display:inline-block;">Custom: ${fmtLKR(driverLimit)}</span>`
+                : '';
 
             const card = document.createElement('div');
             card.className = `wat-card ${colorClass}`;
@@ -6756,8 +6827,9 @@ async function loadWeeklyAdvanceSummary() {
                     </div>
                 </div>
                 <div class="wat-name">${cleanName}</div>
+                ${limitBadge}
                 <div class="wat-remaining">${remaining <= 0 ? '⚠️ Limit Reached' : fmtLKR(remaining)}</div>
-                <div class="wat-used">${fmtLKR(used)} used of ${fmtLKR(WEEKLY_LIMIT)}</div>
+                <div class="wat-used">${fmtLKR(used)} used of ${fmtLKR(driverLimit)}</div>
                 <span class="wat-badge">${badge}</span>
             `;
             grid.appendChild(card);

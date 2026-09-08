@@ -1237,6 +1237,14 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Weekly Advance Limit -->
+                            <div class="form-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="driverWeeklyAdvanceLimit" style="font-size:12px;color:#666;font-weight:700;">📅 Weekly Advance Limit (LKR)</label>
+                                    <input type="number" id="driverWeeklyAdvanceLimit" placeholder="Default: 7,000" step="100" min="0">
+                                    <small style="color: #666; font-size: 11px;">Maximum advance amount per week. Leave blank for default LKR 7,000.</small>
+                                </div>
+                            </div>
                             <div class="form-row full">
                                 <label>
                                     <input type="checkbox" id="driverTerminated">
@@ -1267,6 +1275,7 @@
                                     <th>Age</th>
                                     <th>Address</th>
                                     <th>Salary Info</th>
+                                    <th>Advance Limit</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -1357,8 +1366,8 @@
                             <h3 style="margin:0;">📅 This Week's Advance Usage</h3>
                             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                                 <span id="watWeekLabel" style="font-size:12px; color:#7f8c8d; font-weight:600;"></span>
-                                <span style="font-size:11px; background:#FFF3CD; color:#856404; padding:3px 10px; border-radius:20px; font-weight:700; border:1px solid #FFEEBA;">
-                                    ⚠️ Limit: LKR 7,000 / driver / week
+                                <span id="watDefaultLimitBadge" style="font-size:11px; background:#FFF3CD; color:#856404; padding:3px 10px; border-radius:20px; font-weight:700; border:1px solid #FFEEBA;">
+                                    ⚠️ Default Limit: LKR 7,000 / week (per driver, customizable)
                                 </span>
                             </div>
                         </div>
@@ -1428,7 +1437,7 @@
                                 <strong>Advance Request Criteria & Schedule Rules:</strong><br>
                                 • <strong>Monday Morning Requests:</strong> Window 00:00 – 06:00 → Transfer Window: 06:00 – 08:00<br>
                                 • <strong>Daily Regular Requests (Mon–Sun):</strong> Window 08:00 – 17:00 → Release Window: 17:00 – 19:00<br>
-                                • <strong>Limits:</strong> Maximum LKR 2,500 per request | Weekly Limit LKR 7,000 per driver (resets Monday)<br>
+                                • <strong>Limits:</strong> Maximum LKR 2,500 per request | Weekly Limit per driver (default LKR 7,000, customizable in Manage Staff). Resets every Monday.<br>
                                 • Click <strong>Complete</strong> to approve request and automatically add to Staff Advances list & salary slip deductions.
                             </div>
                         </div>
