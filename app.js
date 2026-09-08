@@ -458,6 +458,7 @@ function showApp() {
     if (currentUser) {
         document.getElementById('userEmail').textContent = currentUser.email;
     }
+    updateTextLkBalanceUI(false);
 }
 
 // Login Form
@@ -5734,8 +5735,103 @@ const TEXT_LK_CONFIG = {
     apiToken: '4486|HMhhtp9k41SXVgBfyvQxvNeNi4dCFJNuXL5FFiOvf42605e7',
     senderId: 'Jayasooriya',
     endpointV3: 'https://app.text.lk/api/v3/sms/send',
-    endpointHttp: 'https://app.text.lk/api/http/sms/send'
+    endpointHttp: 'https://app.text.lk/api/http/sms/send',
+    endpointBalanceV3: 'https://app.text.lk/api/v3/balance',
+    endpointBalanceHttp: 'https://app.text.lk/api/http/balance'
 };
+
+let cachedTextLkBalance = null;
+
+async function fetchTextLkBalance() {
+    try {
+        const response = await fetch(TEXT_LK_CONFIG.endpointBalanceV3, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${TEXT_LK_CONFIG.apiToken}`,
+                'Accept': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.status === 'success' && data.data) {
+            cachedTextLkBalance = {
+                success: true,
+                remainingBalance: data.data.remaining_balance,
+                expiredOn: data.data.expired_on,
+                fetchedAt: new Date()
+            };
+            return cachedTextLkBalance;
+        }
+
+        // Fallback to HTTP endpoint
+        const httpResponse = await fetch(`${TEXT_LK_CONFIG.endpointBalanceHttp}?api_token=${encodeURIComponent(TEXT_LK_CONFIG.apiToken)}`);
+        const httpData = await httpResponse.json();
+        if (httpResponse.ok && httpData.status === 'success' && httpData.data) {
+            cachedTextLkBalance = {
+                success: true,
+                remainingBalance: httpData.data.remaining_balance,
+                expiredOn: httpData.data.expired_on,
+                fetchedAt: new Date()
+            };
+            return cachedTextLkBalance;
+        }
+
+        return { success: false, message: data?.message || httpData?.message || 'Failed to fetch balance' };
+    } catch (err) {
+        console.error('Error fetching Text.lk balance:', err);
+        return { success: false, message: err.message };
+    }
+}
+
+async function updateTextLkBalanceUI(showToastNotice = false) {
+    const badgeCount = document.getElementById('smsCreditCount');
+    const badgeContainer = document.getElementById('smsCreditBadge');
+    const formPill = document.getElementById('advanceFormSmsCredit');
+    const requestsPill = document.getElementById('requestsPageSmsCredit');
+
+    if (showToastNotice) {
+        if (badgeContainer) badgeContainer.classList.add('pulse-loading');
+        showToast('Refreshing Text.lk SMS credit balance...', 'info');
+    }
+
+    const res = await fetchTextLkBalance();
+    if (badgeContainer) badgeContainer.classList.remove('pulse-loading');
+
+    if (res && res.success) {
+        const count = res.remainingBalance;
+        const expiry = res.expiredOn ? `Expires: ${res.expiredOn}` : '';
+
+        if (badgeCount) {
+            badgeCount.textContent = `${count} SMS`;
+        }
+        if (badgeContainer) {
+            badgeContainer.title = `Text.lk Remaining Balance: ${count} SMS messages. ${expiry} (Click to refresh)`;
+            badgeContainer.classList.remove('sms-credit-low', 'sms-credit-empty');
+            const num = parseInt(count, 10);
+            if (isNaN(num) || num <= 0) {
+                badgeContainer.classList.add('sms-credit-empty');
+            } else if (num < 50) {
+                badgeContainer.classList.add('sms-credit-low');
+            }
+        }
+        if (formPill) {
+            formPill.textContent = `💬 ${count} SMS Credit Remaining (${res.expiredOn || ''})`;
+            formPill.style.display = 'inline-flex';
+        }
+        if (requestsPill) {
+            requestsPill.textContent = `💬 Text.lk Credit: ${count} SMS available (${res.expiredOn || ''})`;
+            requestsPill.style.display = 'inline-flex';
+        }
+
+        if (showToastNotice) {
+            showToast(`💬 Text.lk Balance: ${count} SMS available! (${expiry})`, 'success');
+        }
+    } else {
+        if (badgeCount) badgeCount.textContent = 'SMS --';
+        if (showToastNotice) {
+            showToast(`⚠️ Could not update Text.lk balance: ${res.message}`, 'warning');
+        }
+    }
+}
 
 function formatPhoneForTextLk(phone) {
     if (!phone) return null;
@@ -5772,6 +5868,7 @@ async function sendTextLkSms(recipient, message) {
 
         const data = await response.json();
         if (response.ok && (data.status === 'success' || data.status === 200 || data.code === 200)) {
+            setTimeout(() => updateTextLkBalanceUI(false), 1500);
             return { success: true, data };
         }
 
@@ -5795,6 +5892,7 @@ async function sendTextLkSms(recipient, message) {
 
         const httpData = await httpResponse.json();
         if (httpResponse.ok && (httpData.status === 'success' || httpData.status === 200)) {
+            setTimeout(() => updateTextLkBalanceUI(false), 1500);
             return { success: true, data: httpData };
         }
 
@@ -5808,6 +5906,7 @@ async function sendTextLkSms(recipient, message) {
         });
         const getData = await getResponse.json();
         if (getResponse.ok && (getData.status === 'success' || getData.status === 200)) {
+            setTimeout(() => updateTextLkBalanceUI(false), 1500);
             return { success: true, data: getData };
         }
 

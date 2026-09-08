@@ -393,6 +393,14 @@
                     <h2 id="pageTitle">Dashboard</h2>
                 </div>
                 <div class="header-right">
+                    <!-- SMS Credit Badge -->
+                    <div class="sms-credit-badge" id="smsCreditBadge" onclick="updateTextLkBalanceUI(true)" title="Text.lk Remaining Balance (Click to refresh)">
+                        <span class="sms-credit-pulse"></span>
+                        <span class="sms-credit-icon">💬</span>
+                        <span class="sms-credit-label">SMS Credit:</span>
+                        <span class="sms-credit-count" id="smsCreditCount">Loading...</span>
+                    </div>
+
                     <!-- Last Synced Label -->
                     <span class="last-synced-label" id="lastSyncedLabel">🟢 Live</span>
 
@@ -1346,11 +1354,14 @@
                                 </div>
                             </div>
                             <div class="form-row full" style="margin-top: 10px; margin-bottom: 10px;">
-                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(52, 152, 219, 0.08); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 152, 219, 0.2);">
-                                    <input type="checkbox" id="advanceSendSms" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #D1001F);">
-                                    <span style="font-weight: 600; font-size: 13px; color: var(--text-dark, #2c3e50);">
-                                        📱 Send SMS notification to driver via Text.lk (Sender: Jayasooriya)
-                                    </span>
+                                <label style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; cursor: pointer; background: rgba(52, 152, 219, 0.08); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 152, 219, 0.2);">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="checkbox" id="advanceSendSms" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #D1001F);">
+                                        <span style="font-weight: 600; font-size: 13px; color: var(--text-dark, #2c3e50);">
+                                            📱 Send SMS notification to driver via Text.lk (Sender: Jayasooriya)
+                                        </span>
+                                    </div>
+                                    <span id="advanceFormSmsCredit" class="sms-credit-form-pill" style="display: none;">💬 Text.lk Credit Loading...</span>
                                 </label>
                             </div>
                             <div class="form-actions">
@@ -1426,7 +1437,10 @@
                 <div id="driver-advance-requests" class="page">
                     <div class="page-header">
                         <h3>📩 Driver Advance Requests</h3>
-                        <span class="last-synced-label" style="font-size: 12px; font-weight: 600;">⚡ Realtime Sync Active</span>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span id="requestsPageSmsCredit" class="sms-credit-form-pill" style="display: none;">💬 Text.lk Credit Loading...</span>
+                            <span class="last-synced-label" style="font-size: 12px; font-weight: 600;">⚡ Realtime Sync Active</span>
+                        </div>
                     </div>
 
                     <!-- Rule Criteria Banner for Admin -->
