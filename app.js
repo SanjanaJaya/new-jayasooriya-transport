@@ -5849,6 +5849,9 @@ async function sendTextLkSms(recipient, message) {
         return { success: false, message: 'Invalid or missing phone number.' };
     }
 
+    const isUnicode = /[\u0D80-\u0DFF]/.test(message);
+    const msgType = isUnicode ? 'unicode' : 'plain';
+
     try {
         // Method 1: Primary RESTful API v3
         const response = await fetch(TEXT_LK_CONFIG.endpointV3, {
@@ -5861,7 +5864,7 @@ async function sendTextLkSms(recipient, message) {
             body: JSON.stringify({
                 recipient: formattedPhone,
                 sender_id: TEXT_LK_CONFIG.senderId,
-                type: 'plain',
+                type: msgType,
                 message: message
             })
         });
@@ -5885,7 +5888,7 @@ async function sendTextLkSms(recipient, message) {
                 api_token: TEXT_LK_CONFIG.apiToken,
                 recipient: formattedPhone,
                 sender_id: TEXT_LK_CONFIG.senderId,
-                type: 'plain',
+                type: msgType,
                 message: message
             })
         });
@@ -5899,7 +5902,7 @@ async function sendTextLkSms(recipient, message) {
         console.warn('Text.lk HTTP POST response:', httpData, 'Attempting HTTP GET fallback...');
 
         // Method 3: HTTP API GET Endpoint (url parameters)
-        const getUrl = `${TEXT_LK_CONFIG.endpointHttp}?api_token=${encodeURIComponent(TEXT_LK_CONFIG.apiToken)}&recipient=${encodeURIComponent(formattedPhone)}&sender_id=${encodeURIComponent(TEXT_LK_CONFIG.senderId)}&message=${encodeURIComponent(message)}&type=plain`;
+        const getUrl = `${TEXT_LK_CONFIG.endpointHttp}?api_token=${encodeURIComponent(TEXT_LK_CONFIG.apiToken)}&recipient=${encodeURIComponent(formattedPhone)}&sender_id=${encodeURIComponent(TEXT_LK_CONFIG.senderId)}&message=${encodeURIComponent(message)}&type=${msgType}`;
         const getResponse = await fetch(getUrl, {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
@@ -5956,7 +5959,7 @@ async function sendAdvanceSmsDirect(advanceId) {
         const totalMonthAdvances = (monthAdvances || []).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
         const monthLabel = new Date(yr, mo - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
-        const message = `Jayasooriya Transport\nDear ${driverName},\n\nYour advance of LKR ${parseFloat(advance.amount).toFixed(2)} has been granted to your account.\nYour total advances for ${monthLabel}: LKR ${totalMonthAdvances.toFixed(2)}.\n\nJayasooriya Transport`;
+        const message = `ජයසූරිය ට්‍රාන්ස්පෝට්\nගරු ${driverName},\n\nඔබගේ LKR ${parseFloat(advance.amount).toFixed(2)} අත්පිට මුදල (Advance) ඔබගේ ගිණුමට බැර කර ඇත.\n${monthLabel} මාසය සඳහා මුළු අත්පිට මුදල: LKR ${totalMonthAdvances.toFixed(2)}.\n\nජයසූරිය ට්‍රාන්ස්පෝට්`;
 
         showToast(`Sending SMS to ${driverName}...`, 'info');
         const res = await sendTextLkSms(phone, message);
@@ -6572,7 +6575,7 @@ async function completeAdvanceRequest(requestId) {
         // 3. Option to send SMS notification
         const phone = req.drivers?.contact;
         if (phone) {
-            const smsMsg = `Jayasooriya Transport\nDear ${driverName},\n\nYour requested advance of LKR ${amount.toFixed(2)} has been COMPLETED and credited to your account.\n\nJayasooriya Transport`;
+            const smsMsg = `ජයසූරිය ට්‍රාන්ස්පෝට්\nගරු ${driverName},\n\nඔබ ඉල්ලුම් කළ LKR ${amount.toFixed(2)} අත්පිට මුදල (Advance) සම්පූර්ණ කර ඔබගේ ගිණුමට බැර කර ඇත.\n\nජයසූරිය ට්‍රාන්ස්පෝට්`;
             sendTextLkSms(phone, smsMsg).then(res => {
                 if (res?.success) showToast(`📱 SMS confirmation sent to ${driverName}!`, 'info');
             });
@@ -6943,7 +6946,7 @@ async function loadWeeklyAdvanceSummary() {
 // Build the SMS message template for a driver's advances
 function buildAdvanceSmsMessage(driverName, monthLabel, records) {
     if (records.length === 0) {
-        return `Jayasooriya Transport\nDear ${driverName},\n\nYou have no recorded advances for ${monthLabel}.\n\nThank you.`;
+        return `ජයසූරිය ට්‍රාන්ස්පෝට්\nගරු ${driverName},\n\n${monthLabel} මාසය සඳහා ලබාගත් අත්පිට මුදල් (Advance) නොමැත.\n\nස්තූතියි.`;
     }
 
     let lines = records.map((rec, i) => {
@@ -6954,7 +6957,7 @@ function buildAdvanceSmsMessage(driverName, monthLabel, records) {
 
     const total = records.reduce((sum, r) => sum + r.amount, 0);
 
-    return `Jayasooriya Transport\nDear ${driverName},\n\nAdvance summary for ${monthLabel}:\n\n${lines.join('\n')}\n\nTotal: LKR ${total.toFixed(2)}\n\nThank you.`;
+    return `ජයසූරිය ට්‍රාන්ස්පෝට්\nගරු ${driverName},\n\n${monthLabel} සඳහා අත්පිට මුදල් (Advance) විස්තරය:\n\n${lines.join('\n')}\n\nමුළු එකතුව: LKR ${total.toFixed(2)}\n\nස්තූතියි.`;
 }
 
 // Copy the SMS message to clipboard and show feedback on the button
