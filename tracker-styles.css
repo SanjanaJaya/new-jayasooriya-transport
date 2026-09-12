@@ -1,0 +1,1347 @@
+/* ============================================================
+   JAYASOORIYA TRANSPORT — MOBILE LORRY TRACKER CSS DESIGN SYSTEM
+   Modern, responsive, touch-friendly CSS stylesheet.
+   ============================================================ */
+
+:root {
+    --bg-primary: #080a0f;
+    --bg-surface: #11141c;
+    --bg-surface-elevated: #1a1e2b;
+    --bg-glass: rgba(17, 20, 28, 0.85);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    --primary: #3b82f6;
+    --primary-glow: rgba(59, 130, 246, 0.25);
+    --accent: #d1001f;
+
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --text-dim: #6b7280;
+
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Outfit', sans-serif;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-full: 9999px;
+
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-floating: 0 8px 30px rgba(0, 0, 0, 0.6);
+
+    --bottom-nav-height: 66px;
+    --header-height: 64px;
+}
+
+body.light-mode {
+    --bg-primary: #f4f6fb;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f8fafc;
+    --bg-glass: rgba(255, 255, 255, 0.88);
+
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.16);
+
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --text-dim: #9ca3af;
+
+    --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.08);
+    --shadow-floating: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Reset & Base ── */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ── App Shell ── */
+#appRoot {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    height: -webkit-fill-available;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── Header ── */
+.app-header {
+    height: var(--header-height);
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    z-index: 1000;
+    flex-shrink: 0;
+}
+
+.brand-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: #fff;
+    padding: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.brand-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--text-main);
+    line-height: 1.1;
+}
+
+.brand-sub {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-elevated);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:active {
+    transform: scale(0.92);
+    background: var(--border-strong);
+}
+
+/* Connection Status Dot */
+/* Return Portal Button */
+.portal-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.16) 0%, rgba(209, 0, 31, 0.08) 100%);
+    border: 1.5px solid rgba(209, 0, 31, 0.4);
+    border-radius: var(--radius-full);
+    color: #ff5277;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.portal-back-btn:hover {
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.32) 0%, rgba(209, 0, 31, 0.20) 100%);
+    border-color: rgba(209, 0, 31, 0.7);
+    color: #ffffff;
+    transform: translateX(-2px);
+    box-shadow: 0 4px 12px rgba(209, 0, 31, 0.3);
+}
+
+.portal-back-btn:active {
+    transform: translateX(0);
+}
+
+body.light-mode .portal-back-btn {
+    background: rgba(209, 0, 31, 0.08);
+    border-color: rgba(209, 0, 31, 0.35);
+    color: var(--accent, #d1001f);
+}
+
+body.light-mode .portal-back-btn:hover {
+    background: rgba(209, 0, 31, 0.18);
+    color: #d1001f;
+}
+
+.conn-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.conn-dot.connected {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* ── Content View Pages ── */
+.view-container {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: calc(100% - var(--header-height) - var(--bottom-nav-height));
+    overflow: hidden;
+}
+
+.page-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    transform: translateY(6px);
+}
+
+.page-view.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* ── Quick Stats Strip ── */
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+}
+.stats-bar::-webkit-scrollbar { display: none; }
+
+.stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.stat-chip.active {
+    border-color: var(--primary);
+    background: var(--primary-glow);
+    color: var(--text-main);
+}
+
+.stat-chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+.stat-chip.moving .dot { background: var(--success); }
+.stat-chip.idle .dot { background: var(--warning); }
+.stat-chip.offline .dot { background: var(--danger); }
+.stat-chip.all .dot { background: var(--primary); }
+
+/* ── Search & Filter Controls Bar ── */
+.filter-section {
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.search-box {
+    position: relative;
+    width: 100%;
+}
+
+.search-input {
+    width: 100%;
+    height: 40px;
+    padding: 0 38px 0 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-elevated);
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+}
+
+.op-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+.op-filter-row::-webkit-scrollbar { display: none; }
+
+.op-chip {
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.op-chip.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.op-chip-img {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: contain;
+}
+
+/* ── Live Map View Page ── */
+#mapPage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#leafletTrackerMap {
+    width: 100%;
+    height: 100%;
+    background: #090c12;
+    z-index: 1;
+}
+
+/* Leaflet Overrides & Dark Theme */
+.leaflet-container {
+    font-family: var(--font-sans) !important;
+    background: #090c12 !important;
+}
+
+/* Top Map HUD Bar */
+.map-top-hud {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    pointer-events: none;
+}
+
+.hud-pill {
+    background: rgba(12, 16, 24, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: var(--radius-full);
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+}
+
+.map-floating-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 999;
+}
+
+.map-floating-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-strong);
+    color: var(--text-main);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-floating);
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.map-floating-btn:active {
+    transform: scale(0.92);
+}
+
+.map-floating-btn.pill-btn {
+    width: auto;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 800;
+    border-radius: var(--radius-full);
+}
+
+/* ── Sleek Custom Lorry Map Markers ── */
+.tracker-marker-wrapper {
+    background: none !important;
+    border: none !important;
+}
+
+.custom-lorry-marker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.custom-lorry-marker:hover {
+    transform: scale(1.15);
+    z-index: 1000 !important;
+}
+
+/* Center Vehicle Badge */
+.marker-center-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-surface-elevated, #1a1e2b);
+    border: 2.5px solid var(--primary, #3b82f6);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px var(--primary-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.custom-lorry-marker.status-moving .marker-center-badge {
+    border-color: #10b981;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.custom-lorry-marker.status-idle .marker-center-badge {
+    border-color: #f59e0b;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.35);
+}
+
+.custom-lorry-marker.status-offline .marker-center-badge {
+    border-color: #ef4444;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.marker-art-img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+
+.marker-emoji {
+    font-size: 20px;
+}
+
+/* Glowing Pulse Ring for Moving Lorries */
+.marker-pulse-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    margin-left: -22px;
+    border-radius: 50%;
+    border: 2px solid #10b981;
+    animation: markerPulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@keyframes markerPulse {
+    0% { transform: scale(0.9); opacity: 0.9; }
+    70% { transform: scale(1.9); opacity: 0; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Rotating Direction Pointer (Centered on 44px badge) */
+.marker-heading-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 44px;
+    height: 44px;
+    pointer-events: none;
+    z-index: 4;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: 22px 22px;
+    display: flex;
+    justify-content: center;
+}
+
+.heading-arrow {
+    position: absolute;
+    top: -12px;
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid #10b981;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+}
+
+/* Sleek Metallic Glassmorphism Label Badge */
+.marker-glass-label {
+    position: absolute;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(12, 16, 24, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    padding: 3px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.label-name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.label-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.label-dot.moving { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.label-dot.idle { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.label-dot.offline { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+.label-name {
+    font-family: var(--font-display, 'Outfit', sans-serif);
+    font-size: 11px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.3px;
+}
+
+.label-speed {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 6px;
+}
+
+.label-speed.moving { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.label-speed.idle { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.label-speed.offline { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+/* Leaflet Dark Glassmorphism Popups */
+.leaflet-popup-content-wrapper {
+    background: rgba(15, 20, 30, 0.94) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7) !important;
+    color: #f3f4f6 !important;
+    padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+    background: rgba(15, 20, 30, 0.94) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.leaflet-popup-close-button {
+    color: #9ca3af !important;
+    padding: 8px !important;
+}
+.leaflet-popup-close-button:hover {
+    color: #ffffff !important;
+}
+
+/* Mobile GPS User Location Marker */
+.user-location-pulse {
+    width: 18px;
+    height: 18px;
+    background: #3b82f6;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #3b82f6;
+    position: relative;
+}
+.user-location-pulse::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.35);
+    animation: pulseRing 2s infinite;
+}
+
+@keyframes pulseRing {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ── Lorry List View Page ── */
+#listPage {
+    background: var(--bg-primary);
+    overflow-y: auto;
+    padding: 10px 12px 20px 12px;
+}
+
+.lorry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 12px;
+}
+
+.lorry-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.lorry-card:active {
+    transform: scale(0.98);
+    border-color: var(--primary);
+}
+
+.card-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.lorry-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lorry-art-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 1px solid var(--border-subtle);
+    object-fit: contain;
+}
+
+.lorry-name {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.lorry-sub-details {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.status-badge.moving { background: var(--success-bg); color: var(--success); }
+.status-badge.idle { background: var(--warning-bg); color: var(--warning); }
+.status-badge.offline { background: var(--danger-bg); color: var(--danger); }
+
+.card-middle-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: var(--bg-surface-elevated);
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.info-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-top: 2px;
+}
+
+.card-address-row {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.4;
+}
+
+.card-driver-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.driver-info-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.driver-photo-mini {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface-elevated);
+}
+
+.driver-name-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* ── Fuel Efficiency Analytics View Page ── */
+#fuelPage {
+    background: var(--bg-primary);
+    overflow-y: auto;
+    padding: 14px;
+}
+
+.analytics-header {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-card);
+}
+
+.analytics-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.analytics-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.backdate-banner {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.analytics-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.kpi-card {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-num {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-top: 4px;
+}
+
+.kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.fuel-table-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+}
+
+.fuel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.fuel-table th {
+    background: var(--bg-surface-elevated);
+    padding: 12px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.fuel-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.fuel-table tr:last-child td {
+    border-bottom: none;
+}
+
+.kmpl-badge {
+    padding: 4px 8px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-block;
+}
+
+.kmpl-good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.kmpl-avg { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.kmpl-low { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* ── Slide-up Bottom Inspector Drawer ── */
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.drawer-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.bottom-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    max-height: 85vh;
+    background: var(--bg-surface);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    border-top: 1px solid var(--border-strong);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+    z-index: 2001;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bottom-drawer.active {
+    transform: translateY(0);
+}
+
+.drawer-handle-bar {
+    width: 100%;
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.drawer-handle {
+    width: 40px;
+    height: 5px;
+    border-radius: var(--radius-full);
+    background: var(--border-strong);
+}
+
+.drawer-content {
+    padding: 0 16px 24px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.drawer-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.drawer-action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn-action {
+    height: 44px;
+    border-radius: var(--radius-md);
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn-action:active { transform: scale(0.96); }
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-strong); }
+
+/* ── Bottom Navigation Bar ── */
+.bottom-nav {
+    height: var(--bottom-nav-height);
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 1000;
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+    flex: 1;
+    height: 100%;
+}
+
+.nav-item:active { transform: scale(0.92); }
+
+.nav-icon {
+    font-size: 20px;
+}
+
+.nav-item.active {
+    color: var(--primary);
+}
+
+/* Loading & Empty States */
+.state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    gap: 12px;
+    color: var(--text-muted);
+}
+.state-icon { font-size: 36px; }
+
+/* Responsive adjustments & Redmi Pad Pro Tablet Optimization */
+@media (min-width: 768px) {
+    :root {
+        --header-height: 70px;
+        --bottom-nav-height: 72px;
+    }
+
+    .app-header {
+        padding: 0 24px;
+    }
+
+    .brand-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .brand-title {
+        font-size: 18px;
+        letter-spacing: 0.8px;
+    }
+
+    .brand-sub {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+    }
+
+    .portal-back-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .filter-section {
+        padding: 12px 24px;
+    }
+
+    .search-input {
+        height: 46px;
+        font-size: 14px;
+        padding-left: 42px;
+    }
+
+    .search-icon {
+        font-size: 16px;
+        left: 14px;
+    }
+
+    /* Grid & Cards on Tablet */
+    .lorry-grid {
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .lorry-card {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .lorry-name {
+        font-size: 18px;
+    }
+
+    /* Fuel Analytics Grid on Tablet */
+    .analytics-header {
+        padding: 22px;
+    }
+
+    .analytics-title {
+        font-size: 20px;
+    }
+
+    .analytics-kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .kpi-card {
+        padding: 16px;
+    }
+
+    .kpi-num {
+        font-size: 24px;
+    }
+
+    .kpi-label {
+        font-size: 11px;
+    }
+
+    .fuel-table th, .fuel-table td {
+        padding: 14px 16px;
+        font-size: 13px;
+    }
+
+    /* Tablet Inspector Drawer Centering */
+    .bottom-drawer {
+        left: 50%;
+        transform: translate(-50%, 100%);
+        width: 90vw;
+        max-width: 660px;
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -12px 50px rgba(0, 0, 0, 0.85);
+    }
+
+    .bottom-drawer.active {
+        transform: translate(-50%, 0);
+    }
+
+    /* Tablet Map Controls Touch Sizing (48px targets) */
+    .map-floating-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    .map-floating-controls {
+        bottom: 24px;
+        right: 24px;
+    }
+
+    .map-top-hud .hud-pill {
+        padding: 8px 20px;
+        font-size: 13px;
+    }
+
+    .nav-item {
+        font-size: 11px;
+    }
+    .nav-icon {
+        font-size: 22px;
+    }
+}
+
+/* ── Landscape Tablet (min-width: 1024px) -- Redmi Pad Pro 12.1" Primary View ── */
+@media (min-width: 1024px) {
+    :root {
+        --header-height: 72px;
+    }
+
+    /* On 12.1" Redmi Pad Pro landscape, floating top tab rail navigation */
+    .bottom-nav {
+        height: 64px;
+        position: relative;
+        border-top: none;
+        border-bottom: 1px solid var(--border-subtle);
+        order: -1;
+        background: var(--bg-surface-elevated);
+        box-shadow: inset 0 -1px 0 var(--border-subtle);
+        padding: 0 24px;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .nav-item {
+        flex: 0 0 auto;
+        flex-direction: row;
+        padding: 8px 20px;
+        height: 44px;
+        border-radius: var(--radius-full);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nav-item.active {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px var(--primary-glow);
+    }
+
+    .nav-item:hover:not(.active) {
+        background: var(--bg-surface-elevated);
+        color: var(--text-main);
+        border-color: var(--border-strong);
+        transform: translateY(-1px);
+    }
+
+    .nav-icon {
+        font-size: 16px;
+    }
+
+    .view-container {
+        height: calc(100vh - var(--header-height) - 64px);
+    }
+
+    /* Multi-column layout for Lorry Cards on 12.1" Tablet */
+    .lorry-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+    }
+
+    /* Inspector Floating Dialog on 12.1" Redmi Pad Pro */
+    .bottom-drawer {
+        bottom: 24px;
+        max-height: 80vh;
+        border-radius: 24px;
+        border: 1px solid var(--border-strong);
+    }
+
+    /* Analytics KPI Grid 3-4 columns on wide tablet */
+    .analytics-kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

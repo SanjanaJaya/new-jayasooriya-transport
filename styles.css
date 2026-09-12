@@ -5866,6 +5866,57 @@ body.dark-mode .driver-perf-card-header {
     transition: all var(--ease-base);
 }
 
+/* ── Header Mobile Tracker Launcher Button ── */
+.header-tracker-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.12) 0%, rgba(59, 130, 246, 0.12) 100%);
+    border: 1.5px solid rgba(209, 0, 31, 0.4);
+    border-radius: var(--radius-pill, 50px);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-red, #D1001F);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    position: relative;
+    user-select: none;
+    box-shadow: 0 2px 10px rgba(209, 0, 31, 0.12);
+}
+
+.header-tracker-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.25) 0%, rgba(59, 130, 246, 0.22) 100%);
+    border-color: rgba(209, 0, 31, 0.7);
+    color: var(--brand-red, #D1001F);
+    box-shadow: 0 6px 16px rgba(209, 0, 31, 0.25);
+}
+
+.header-tracker-btn:active {
+    transform: translateY(0);
+}
+
+body.dark-mode .header-tracker-btn {
+    color: #ff5277;
+    border-color: rgba(255, 82, 119, 0.45);
+    background: linear-gradient(135deg, rgba(209, 0, 31, 0.22) 0%, rgba(59, 130, 246, 0.18) 100%);
+}
+
+body.dark-mode .header-tracker-btn:hover {
+    color: #ffffff;
+    border-color: rgba(255, 82, 119, 0.8);
+    box-shadow: 0 6px 18px rgba(209, 0, 31, 0.4);
+}
+
+.header-tracker-icon {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
 /* ── Text.lk SMS Credit Badge ── */
 .sms-credit-badge {
     display: inline-flex;
