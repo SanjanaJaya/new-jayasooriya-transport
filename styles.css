@@ -13933,7 +13933,52 @@ body.dark-mode .dash-fuel-summary-bar {
     #monitorDateFilter {
         width: 100%;
     }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
 }
+
+/* =====================================================
+   UNIVERSAL TABLET & REDMI PAD PRO CHART SIZE FIX
+   ===================================================== */
+@media only screen and (min-width: 600px) and (max-width: 1400px) {
+    #cumulativeKmCompareSection .chart-wrapper,
+    #cumulativeKmCompareSection .chart-wrapper.chart-tall,
+    #cumulativeKmCompareSection .chart-wrapper.chart-wide {
+        height: 520px !important;
+        min-height: 460px !important;
+    }
+}
+
+/* =====================================================
+   PIXEL 7 & MOBILE HEADER RESPONSIVE FIXES
+   ===================================================== */
+@media (max-width: 768px) {
+    .top-header {
+        padding: 0 10px !important;
+        gap: 6px !important;
+    }
+    .header-right {
+        gap: 5px !important;
+    }
+    .header-tracker-btn {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+    }
+    .header-tracker-label {
+        display: none !important;
+    }
+    .sms-credit-badge {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+    }
+    .sms-credit-label {
+        display: none !important;
+    }
+}
+
 
 
 

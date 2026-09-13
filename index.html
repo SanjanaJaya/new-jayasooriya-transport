@@ -4043,24 +4043,34 @@
     (function () {
         'use strict';
 
-        // Called from app.js after dashboard loads (or on page switch to dashboard)
+        // ── Core render function ──────────────────────────────────────────────────
         window.renderDashboardFuelWidget = async function () {
-            const grid = document.getElementById('dashboardFuelGrid');
-            const summaryBar = document.getElementById('dashFuelSummaryBar');
+            var grid = document.getElementById('dashboardFuelGrid');
+            var summaryBar = document.getElementById('dashFuelSummaryBar');
             if (!grid) return;
 
-            // Show loading
+            // Use getQueryUserId or global currentUser set by app.js after auth completes
+            var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : (window.currentUser ? window.currentUser.id : null);
+            var sb = window.supabaseClient || null;
+
+            if (!userId || !sb) {
+                if (!window._dashFuelRetryCount) window._dashFuelRetryCount = 0;
+                if (window._dashFuelRetryCount < 15) {
+                    window._dashFuelRetryCount++;
+                    setTimeout(function() {
+                        if (typeof window.renderDashboardFuelWidget === 'function') window.renderDashboardFuelWidget();
+                    }, 350);
+                    return;
+                }
+                grid.innerHTML = '<div class="dash-fuel-loading"><div class="dash-fuel-spinner"></div><span>Waiting for session...</span></div>';
+                return;
+            }
+            window._dashFuelRetryCount = 0;
+
             grid.innerHTML = '<div class="dash-fuel-loading"><div class="dash-fuel-spinner"></div><span>Loading fuel efficiency data...</span></div>';
             if (summaryBar) summaryBar.style.display = 'none';
 
             try {
-                // ── Step 1: Get fuel litres from DB (same logic as vehicle-tracker.js) ──
-                var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : null;
-                if (!userId || typeof supabaseClient === 'undefined') {
-                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">Connect to your account to view fuel data.</span></div>';
-                    return;
-                }
-
                 var now = new Date();
                 var year = now.getFullYear();
                 var month = String(now.getMonth() + 1).padStart(2, '0');
@@ -4069,11 +4079,11 @@
                 var endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
 
                 var results = await Promise.all([
-                    supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId).neq('terminated', true),
-                    supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', userId).neq('terminated', true),
-                    supabaseClient.from('hire_to_pay_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
-                    supabaseClient.from('commitment_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
-                    supabaseClient.from('other_operation_hires').select('base_lorry_number, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate)
+                    sb.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId).neq('terminated', true),
+                    sb.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', userId).neq('terminated', true),
+                    sb.from('hire_to_pay_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                    sb.from('commitment_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                    sb.from('other_operation_hires').select('base_lorry_number, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate)
                 ]);
 
                 // Build vehicle name maps
@@ -4105,22 +4115,17 @@
                     }
                 });
 
-                // ── Step 2: Try to get GPS km from tracker cache ──
-                // (trackerVehicleFuelConsumption is populated by vehicle-tracker.js if the tracker page was visited)
-                var fuelConsumptionCache = (typeof window.trackerVehicleFuelConsumption !== 'undefined')
-                    ? window.trackerVehicleFuelConsumption : {};
+                // GPS km from tracker cache (if tracker was visited this session)
+                var fuelConsumptionCache = window.trackerVehicleFuelConsumption || {};
 
-                // Build vehicle list from all vehicles that have fuel data this month
                 var vehicleNames = Object.keys(litresMap).filter(function (k) { return litresMap[k] > 0; });
                 if (vehicleNames.length === 0) {
                     grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No fuel records found for ' + year + '-' + month + '.</span></div>';
                     return;
                 }
 
-                // Sort by litres consumed (desc)
                 vehicleNames.sort(function (a, b) { return (litresMap[b] || 0) - (litresMap[a] || 0); });
 
-                // ── Step 3: Render cards ──
                 var maxKmpl = 0;
                 var cards = vehicleNames.map(function (name) {
                     var litres = litresMap[name] || 0;
@@ -4131,29 +4136,19 @@
                     return { name: name, litres: litres, km: km, kmpl: kmpl };
                 });
 
-                var refKmpl = maxKmpl > 0 ? maxKmpl : 12; // normalise bar to max or 12 as reference
-
+                var refKmpl = maxKmpl > 0 ? maxKmpl : 12;
                 var html = '';
-                var totalL = 0, totalKm = 0, countWithKm = 0;
+                var totalL = 0, totalKm = 0;
 
                 cards.forEach(function (c) {
                     totalL += c.litres;
-                    if (c.km > 0) { totalKm += c.km; countWithKm++; }
+                    if (c.km > 0) totalKm += c.km;
 
                     var tier, tierLabel;
-                    if (c.kmpl <= 0) {
-                        tier = 'fuel-no-data';
-                        tierLabel = 'No GPS data';
-                    } else if (c.kmpl >= 8) {
-                        tier = 'fuel-excellent';
-                        tierLabel = 'Excellent';
-                    } else if (c.kmpl >= 5) {
-                        tier = 'fuel-good';
-                        tierLabel = 'Good';
-                    } else {
-                        tier = 'fuel-poor';
-                        tierLabel = 'Low';
-                    }
+                    if (c.kmpl <= 0)     { tier = 'fuel-no-data'; tierLabel = 'No GPS data'; }
+                    else if (c.kmpl >= 8) { tier = 'fuel-excellent'; tierLabel = 'Excellent'; }
+                    else if (c.kmpl >= 5) { tier = 'fuel-good'; tierLabel = 'Good'; }
+                    else                  { tier = 'fuel-poor'; tierLabel = 'Low'; }
 
                     var kmplDisplay = c.kmpl > 0 ? c.kmpl.toFixed(1) : '—';
                     var barPct = c.kmpl > 0 ? Math.min((c.kmpl / refKmpl) * 100, 100).toFixed(1) : '0';
@@ -4189,7 +4184,6 @@
 
                 grid.innerHTML = html;
 
-                // ── Step 4: Summary bar ──
                 if (summaryBar) {
                     var fleetAvg = totalKm > 0 && totalL > 0 ? (totalKm / totalL).toFixed(1) : '—';
                     var lEl = document.getElementById('dashFuelTotalLitres');
@@ -4202,40 +4196,31 @@
                 }
 
             } catch (err) {
-                console.error('[DashFuel] Error rendering fuel widget:', err);
-                grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--brand-red);">Error loading fuel data. Please try again.</span></div>';
+                console.error('[DashFuel] Error:', err);
+                grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--brand-red);">Error loading fuel data.</span></div>';
             }
         };
 
-        // Hook into dashboard load — render fuel widget when dashboard page is shown
-        document.addEventListener('DOMContentLoaded', function () {
-            // Observe page switches — re-render when dashboard becomes active
-            var observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (m) {
-                    if (m.target && m.target.id === 'dashboard' && m.target.classList.contains('active')) {
-                        // Small delay to let other dashboard widgets load first
-                        setTimeout(function () {
-                            if (typeof window.renderDashboardFuelWidget === 'function') {
-                                window.renderDashboardFuelWidget();
-                            }
-                        }, 800);
-                    }
-                });
-            });
-
-            var dashPage = document.getElementById('dashboard');
-            if (dashPage) {
-                observer.observe(dashPage, { attributes: true, attributeFilter: ['class'] });
-                // Initial load if dashboard is already active
-                if (dashPage.classList.contains('active')) {
-                    setTimeout(function () {
-                        if (typeof window.renderDashboardFuelWidget === 'function') {
-                            window.renderDashboardFuelWidget();
-                        }
-                    }, 1200);
-                }
+        // ── Hook: wrap the global loadDashboard so fuel widget renders after it ──
+        // We wait until app.js defines loadDashboard, then wrap it.
+        function hookLoadDashboard() {
+            if (typeof window.loadDashboard !== 'function') {
+                // app.js not loaded yet — retry
+                setTimeout(hookLoadDashboard, 100);
+                return;
             }
-        });
+            var _orig = window.loadDashboard;
+            window.loadDashboard = async function () {
+                await _orig.apply(this, arguments);
+                // Render fuel widget 1.2s after dashboard finishes loading
+                setTimeout(function () {
+                    if (typeof window.renderDashboardFuelWidget === 'function') {
+                        window.renderDashboardFuelWidget();
+                    }
+                }, 1200);
+            };
+        }
+        hookLoadDashboard();
 
     })();
     </script>
