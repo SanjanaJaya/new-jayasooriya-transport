@@ -30,7 +30,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
     <!-- Leaflet.js for interactive map -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
@@ -354,6 +354,8 @@
                             <span>Insurance Tracker</span>
                         </button>
                     </div>
+                </div>
+
                 <!-- ── CLIENT TRACKING GROUP ── -->
                 <div class="nav-group" id="navGroupClientTracking">
                     <button class="nav-group-header" data-group="clientTracking" aria-expanded="false">
@@ -568,6 +570,42 @@
                             </div>
                             <div class="insurance-alert-list" id="dashInsuranceAlerts">
                                 <div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading insurance alerts...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ====== DASHBOARD FUEL TRACKING WIDGET ====== -->
+                    <div class="performance-section" id="dashboardFuelTrackingSection">
+                        <h3>⛽ Live Fuel Tracking — This Month</h3>
+                        <div class="dash-fuel-widget-header">
+                            <span class="dash-fuel-subtitle">Real-time fuel efficiency per vehicle based on GPS km ÷ diesel litres consumed</span>
+                            <div class="dash-fuel-legend">
+                                <span class="dash-fuel-leg-item leg-excellent"><span class="dash-fuel-leg-dot"></span> Excellent (&gt;8 km/L)</span>
+                                <span class="dash-fuel-leg-item leg-good"><span class="dash-fuel-leg-dot"></span> Good (5–8 km/L)</span>
+                                <span class="dash-fuel-leg-item leg-poor"><span class="dash-fuel-leg-dot"></span> Low (&lt;5 km/L)</span>
+                            </div>
+                        </div>
+                        <div class="dash-fuel-grid" id="dashboardFuelGrid">
+                            <div class="dash-fuel-loading">
+                                <div class="dash-fuel-spinner"></div>
+                                <span>Loading fuel data from Vehicle Tracker...</span>
+                            </div>
+                        </div>
+                        <div class="dash-fuel-summary-bar" id="dashFuelSummaryBar" style="display:none;">
+                            <div class="dash-fuel-sum-item">
+                                <span class="dash-fuel-sum-icon">⛽</span>
+                                <span class="dash-fuel-sum-label">Total Fuel Used</span>
+                                <span class="dash-fuel-sum-val" id="dashFuelTotalLitres">— L</span>
+                            </div>
+                            <div class="dash-fuel-sum-item">
+                                <span class="dash-fuel-sum-icon">🛣️</span>
+                                <span class="dash-fuel-sum-label">Total GPS Distance</span>
+                                <span class="dash-fuel-sum-val" id="dashFuelTotalKm">— km</span>
+                            </div>
+                            <div class="dash-fuel-sum-item">
+                                <span class="dash-fuel-sum-icon">📊</span>
+                                <span class="dash-fuel-sum-label">Fleet Avg Efficiency</span>
+                                <span class="dash-fuel-sum-val" id="dashFuelFleetAvg">— km/L</span>
                             </div>
                         </div>
                     </div>
@@ -3970,6 +4008,26 @@
                         setTimeout(function () { ripple.remove(); }, 700);
                     });
                 });
+
+            // ── Screen Orientation: request landscape on tablets & touch devices ──
+            // This runs after DOMContentLoaded. The manifest already declares "any"
+            // orientation so both portrait and landscape work, but we prefer landscape.
+            (function requestLandscapeOrientation() {
+                try {
+                    // Only request on touch devices (tablets/phones) — not desktop
+                    var isTouch = window.matchMedia('(pointer: coarse)').matches;
+                    // Only request if screen width is tablet-size (>=600px) in either orientation
+                    var isTabletOrLarger = Math.max(screen.width, screen.height) >= 600;
+                    if (isTouch && isTabletOrLarger && screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock('landscape').catch(function (err) {
+                            // Graceful fail — user may have system rotation locked or browser may not allow
+                            console.log('[Orientation] Could not lock to landscape:', err.message || err);
+                        });
+                    }
+                } catch (e) {
+                    // Ignore any errors — orientation API is optional
+                }
+            })();
             });
         })();
     </script>
@@ -3987,6 +4045,208 @@
     <script src="salary-slip.js"></script>
     <script src="vehicle-tracker.js?v=24"></script>
     <script src="credit-cards.js"></script>
+
+    <!-- ===== DASHBOARD FUEL TRACKING WIDGET JS ===== -->
+    <script>
+    (function () {
+        'use strict';
+
+        // Called from app.js after dashboard loads (or on page switch to dashboard)
+        window.renderDashboardFuelWidget = async function () {
+            const grid = document.getElementById('dashboardFuelGrid');
+            const summaryBar = document.getElementById('dashFuelSummaryBar');
+            if (!grid) return;
+
+            // Show loading
+            grid.innerHTML = '<div class="dash-fuel-loading"><div class="dash-fuel-spinner"></div><span>Loading fuel efficiency data...</span></div>';
+            if (summaryBar) summaryBar.style.display = 'none';
+
+            try {
+                // ── Step 1: Get fuel litres from DB (same logic as vehicle-tracker.js) ──
+                var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : null;
+                if (!userId || typeof supabaseClient === 'undefined') {
+                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">Connect to your account to view fuel data.</span></div>';
+                    return;
+                }
+
+                var now = new Date();
+                var year = now.getFullYear();
+                var month = String(now.getMonth() + 1).padStart(2, '0');
+                var startDate = year + '-' + month + '-01';
+                var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+                var endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+
+                var results = await Promise.all([
+                    supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId).neq('terminated', true),
+                    supabaseClient.from('commitment_vehicles').select('id, vehicle_number').eq('user_id', userId).neq('terminated', true),
+                    supabaseClient.from('hire_to_pay_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                    supabaseClient.from('commitment_records').select('vehicle_id, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate),
+                    supabaseClient.from('other_operation_hires').select('base_lorry_number, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate)
+                ]);
+
+                // Build vehicle name maps
+                var hireVehicles = {};
+                (results[0].data || []).forEach(function (v) {
+                    hireVehicles[v.id] = typeof extractBaseVehicleName === 'function'
+                        ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
+                });
+                var commitVehicles = {};
+                (results[1].data || []).forEach(function (v) {
+                    commitVehicles[v.id] = typeof extractBaseVehicleName === 'function'
+                        ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
+                });
+
+                // Accumulate litres per vehicle
+                var litresMap = {};
+                function addLitres(name, litres) {
+                    if (!name || !litres) return;
+                    var key = name.trim().toUpperCase();
+                    litresMap[key] = (litresMap[key] || 0) + parseFloat(litres || 0);
+                }
+                (results[2].data || []).forEach(function (r) { addLitres(hireVehicles[r.vehicle_id], r.fuel_litres); });
+                (results[3].data || []).forEach(function (r) { addLitres(commitVehicles[r.vehicle_id], r.fuel_litres); });
+                (results[4].data || []).forEach(function (r) {
+                    if (r.base_lorry_number) {
+                        var n = typeof extractBaseVehicleName === 'function'
+                            ? extractBaseVehicleName(r.base_lorry_number) : r.base_lorry_number;
+                        addLitres(n, r.fuel_litres);
+                    }
+                });
+
+                // ── Step 2: Try to get GPS km from tracker cache ──
+                // (trackerVehicleFuelConsumption is populated by vehicle-tracker.js if the tracker page was visited)
+                var fuelConsumptionCache = (typeof window.trackerVehicleFuelConsumption !== 'undefined')
+                    ? window.trackerVehicleFuelConsumption : {};
+
+                // Build vehicle list from all vehicles that have fuel data this month
+                var vehicleNames = Object.keys(litresMap).filter(function (k) { return litresMap[k] > 0; });
+                if (vehicleNames.length === 0) {
+                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No fuel records found for ' + year + '-' + month + '.</span></div>';
+                    return;
+                }
+
+                // Sort by litres consumed (desc)
+                vehicleNames.sort(function (a, b) { return (litresMap[b] || 0) - (litresMap[a] || 0); });
+
+                // ── Step 3: Render cards ──
+                var maxKmpl = 0;
+                var cards = vehicleNames.map(function (name) {
+                    var litres = litresMap[name] || 0;
+                    var cached = fuelConsumptionCache[name];
+                    var km = (cached && cached.km) ? cached.km : 0;
+                    var kmpl = (km > 0 && litres > 0) ? (km / litres) : 0;
+                    if (kmpl > maxKmpl) maxKmpl = kmpl;
+                    return { name: name, litres: litres, km: km, kmpl: kmpl };
+                });
+
+                var refKmpl = maxKmpl > 0 ? maxKmpl : 12; // normalise bar to max or 12 as reference
+
+                var html = '';
+                var totalL = 0, totalKm = 0, countWithKm = 0;
+
+                cards.forEach(function (c) {
+                    totalL += c.litres;
+                    if (c.km > 0) { totalKm += c.km; countWithKm++; }
+
+                    var tier, tierLabel;
+                    if (c.kmpl <= 0) {
+                        tier = 'fuel-no-data';
+                        tierLabel = 'No GPS data';
+                    } else if (c.kmpl >= 8) {
+                        tier = 'fuel-excellent';
+                        tierLabel = 'Excellent';
+                    } else if (c.kmpl >= 5) {
+                        tier = 'fuel-good';
+                        tierLabel = 'Good';
+                    } else {
+                        tier = 'fuel-poor';
+                        tierLabel = 'Low';
+                    }
+
+                    var kmplDisplay = c.kmpl > 0 ? c.kmpl.toFixed(1) : '—';
+                    var barPct = c.kmpl > 0 ? Math.min((c.kmpl / refKmpl) * 100, 100).toFixed(1) : '0';
+
+                    html += '<div class="dash-fuel-card ' + tier + '">' +
+                        '<div class="dash-fuel-card-header">' +
+                        '<span class="dash-fuel-vehicle-name">🚛 ' + c.name + '</span>' +
+                        '<span class="dash-fuel-status-dot"></span>' +
+                        '</div>' +
+                        '<div class="dash-fuel-efficiency">' +
+                        '<span class="dash-fuel-kmpl">' + kmplDisplay + '</span>' +
+                        (c.kmpl > 0 ? '<span class="dash-fuel-unit">km/L</span>' : '') +
+                        '</div>' +
+                        '<div class="dash-fuel-sub-stats">' +
+                        '<div class="dash-fuel-sub-item">' +
+                        '<span class="dash-fuel-sub-label">⛽ Fuel</span>' +
+                        '<span class="dash-fuel-sub-val">' + c.litres.toFixed(0) + ' L</span>' +
+                        '</div>' +
+                        '<div class="dash-fuel-sub-item">' +
+                        '<span class="dash-fuel-sub-label">🛣️ GPS km</span>' +
+                        '<span class="dash-fuel-sub-val">' + (c.km > 0 ? Math.round(c.km) + ' km' : 'N/A') + '</span>' +
+                        '</div>' +
+                        '<div class="dash-fuel-sub-item">' +
+                        '<span class="dash-fuel-sub-label">📊 Status</span>' +
+                        '<span class="dash-fuel-sub-val">' + tierLabel + '</span>' +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="dash-fuel-bar-wrap">' +
+                        '<div class="dash-fuel-bar-fill" style="width:' + barPct + '%"></div>' +
+                        '</div>' +
+                        '</div>';
+                });
+
+                grid.innerHTML = html;
+
+                // ── Step 4: Summary bar ──
+                if (summaryBar) {
+                    var fleetAvg = totalKm > 0 && totalL > 0 ? (totalKm / totalL).toFixed(1) : '—';
+                    var lEl = document.getElementById('dashFuelTotalLitres');
+                    var kEl = document.getElementById('dashFuelTotalKm');
+                    var aEl = document.getElementById('dashFuelFleetAvg');
+                    if (lEl) lEl.textContent = totalL.toFixed(0) + ' L';
+                    if (kEl) kEl.textContent = totalKm > 0 ? Math.round(totalKm) + ' km' : '— km';
+                    if (aEl) aEl.textContent = fleetAvg + (totalKm > 0 ? ' km/L' : '');
+                    summaryBar.style.display = 'flex';
+                }
+
+            } catch (err) {
+                console.error('[DashFuel] Error rendering fuel widget:', err);
+                grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--brand-red);">Error loading fuel data. Please try again.</span></div>';
+            }
+        };
+
+        // Hook into dashboard load — render fuel widget when dashboard page is shown
+        document.addEventListener('DOMContentLoaded', function () {
+            // Observe page switches — re-render when dashboard becomes active
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    if (m.target && m.target.id === 'dashboard' && m.target.classList.contains('active')) {
+                        // Small delay to let other dashboard widgets load first
+                        setTimeout(function () {
+                            if (typeof window.renderDashboardFuelWidget === 'function') {
+                                window.renderDashboardFuelWidget();
+                            }
+                        }, 800);
+                    }
+                });
+            });
+
+            var dashPage = document.getElementById('dashboard');
+            if (dashPage) {
+                observer.observe(dashPage, { attributes: true, attributeFilter: ['class'] });
+                // Initial load if dashboard is already active
+                if (dashPage.classList.contains('active')) {
+                    setTimeout(function () {
+                        if (typeof window.renderDashboardFuelWidget === 'function') {
+                            window.renderDashboardFuelWidget();
+                        }
+                    }, 1200);
+                }
+            }
+        });
+
+    })();
+    </script>
 
 
 </body>

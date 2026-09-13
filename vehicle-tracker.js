@@ -1981,4 +1981,13 @@
 
     // Auto-check URL for token on page load
     checkUrlForToken();
+
+    // ── Expose fuel consumption cache to window for dashboard widget ──
+    // The dashboard fuel tracking widget reads this to get GPS km data
+    // without making additional Wialon API calls.
+    Object.defineProperty(window, 'trackerVehicleFuelConsumption', {
+        get: function () { return trackerVehicleFuelConsumption; },
+        configurable: true
+    });
+
 })();

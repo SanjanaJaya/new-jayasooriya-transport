@@ -13217,8 +13217,723 @@ body.dark-mode .job-number-auto-badge {
 }
 
 
+/* =====================================================
+   HEADER TRACKER BUTTON (Lorry Tracker Quick Launch)
+   ===================================================== */
+.header-tracker-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
+    color: #fff !important;
+    text-decoration: none !important;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(209, 0, 31, 0.30);
+    transition: all var(--ease-base);
+    border: 1.5px solid rgba(255,255,255,0.20);
+    line-height: 1;
+}
 
+.header-tracker-btn:hover {
+    background: linear-gradient(135deg, var(--brand-red-light) 0%, var(--brand-red) 100%);
+    box-shadow: 0 5px 18px rgba(209, 0, 31, 0.45);
+    transform: translateY(-1px) scale(1.02);
+    color: #fff !important;
+}
 
+.header-tracker-btn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 8px rgba(209, 0, 31, 0.25);
+}
+
+.header-tracker-icon {
+    font-size: 16px;
+    line-height: 1;
+    animation: trackerPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes trackerPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.75; transform: scale(0.92); }
+}
+
+.header-tracker-label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Hide label on small screens — show icon only */
+@media (max-width: 768px) {
+    .header-tracker-label {
+        display: none;
+    }
+    .header-tracker-btn {
+        padding: 7px 10px;
+        gap: 0;
+    }
+}
+
+/* =====================================================
+   FORM CONTROL UTILITY CLASS
+   (used in client tracker section selects/inputs)
+   ===================================================== */
+.form-control {
+    display: block;
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.form-control:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px var(--brand-red-glow);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+
+body.dark-mode .form-control {
+    background: var(--surface-raised);
+}
+
+/* =====================================================
+   CLIENT TRACKER SECTION — ADMIN PANEL CSS FIXES
+   ===================================================== */
+
+/* Page header in client pages */
+#client-accounts .page-header,
+#client-drop-points .page-header,
+#client-route-monitor .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Responsive button groups in client tracking header */
+#client-drop-points .page-header > div:last-child,
+#client-route-monitor .page-header > div:last-child {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Card wrapper for client tables */
+#client-accounts .card,
+#client-drop-points .card,
+#client-route-monitor .card {
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Fix overflow on the client route monitor table with 9 columns */
+#clientRouteMonitorTableBody td {
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+/* Restart Hire button consistent styling */
+#client-drop-points .btn[onclick="restartHireAdmin()"],
+#client-route-monitor .btn[onclick="restartHireAdmin()"] {
+    font-weight: 700;
+    padding: 9px 16px;
+    background: var(--brand-red) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--ease-base);
+}
+
+#client-drop-points .btn[onclick="restartHireAdmin()"]:hover,
+#client-route-monitor .btn[onclick="restartHireAdmin()"]:hover {
+    background: var(--brand-red-dark) !important;
+    transform: translateY(-1px);
+}
+
+/* =====================================================
+   DASHBOARD FUEL TRACKING WIDGET
+   ===================================================== */
+
+#dashboardFuelTrackingSection {
+    position: relative;
+}
+
+.dash-fuel-widget-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.dash-fuel-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    line-height: 1.5;
+    flex: 1;
+}
+
+.dash-fuel-legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.dash-fuel-leg-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.dash-fuel-leg-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.leg-excellent .dash-fuel-leg-dot { background: #00B878; }
+.leg-good .dash-fuel-leg-dot { background: #F0A500; }
+.leg-poor .dash-fuel-leg-dot { background: var(--brand-red); }
+
+/* Fuel grid */
+.dash-fuel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+/* Loading state */
+.dash-fuel-loading {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.dash-fuel-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--surface-border);
+    border-top-color: var(--brand-red);
+    border-radius: 50%;
+    animation: dashFuelSpin 0.8s linear infinite;
+}
+
+@keyframes dashFuelSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Individual fuel card */
+.dash-fuel-card {
+    background: var(--surface-card);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color var(--ease-base), box-shadow var(--ease-base), transform var(--ease-base);
+}
+
+.dash-fuel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.dash-fuel-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Colour variants */
+.dash-fuel-card.fuel-excellent {
+    border-color: rgba(0, 184, 120, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 184, 120, 0.08);
+}
+.dash-fuel-card.fuel-excellent::before {
+    background: linear-gradient(90deg, transparent, #00B878, transparent);
+}
+.dash-fuel-card.fuel-excellent:hover {
+    border-color: rgba(0, 184, 120, 0.55);
+    box-shadow: 0 6px 20px rgba(0, 184, 120, 0.16);
+}
+
+.dash-fuel-card.fuel-good {
+    border-color: rgba(240, 165, 0, 0.40);
+    box-shadow: 0 4px 14px rgba(240, 165, 0, 0.08);
+}
+.dash-fuel-card.fuel-good::before {
+    background: linear-gradient(90deg, transparent, #F0A500, transparent);
+}
+.dash-fuel-card.fuel-good:hover {
+    border-color: rgba(240, 165, 0, 0.60);
+    box-shadow: 0 6px 20px rgba(240, 165, 0, 0.16);
+}
+
+.dash-fuel-card.fuel-poor {
+    border-color: rgba(209, 0, 31, 0.35);
+    box-shadow: 0 4px 14px rgba(209, 0, 31, 0.08);
+}
+.dash-fuel-card.fuel-poor::before {
+    background: linear-gradient(90deg, transparent, var(--brand-red), transparent);
+}
+.dash-fuel-card.fuel-poor:hover {
+    border-color: rgba(209, 0, 31, 0.55);
+    box-shadow: 0 6px 20px rgba(209, 0, 31, 0.16);
+}
+
+.dash-fuel-card.fuel-no-data {
+    border-color: var(--surface-border);
+    opacity: 0.7;
+}
+.dash-fuel-card.fuel-no-data::before {
+    background: var(--surface-border);
+}
+
+/* Card header */
+.dash-fuel-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.dash-fuel-vehicle-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-fuel-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.fuel-excellent .dash-fuel-status-dot { background: #00B878; box-shadow: 0 0 6px rgba(0,184,120,.5); }
+.fuel-good .dash-fuel-status-dot { background: #F0A500; box-shadow: 0 0 6px rgba(240,165,0,.5); }
+.fuel-poor .dash-fuel-status-dot { background: var(--brand-red); box-shadow: 0 0 6px rgba(209,0,31,.5); animation: fuelPoorPulse 2s ease-in-out infinite; }
+.fuel-no-data .dash-fuel-status-dot { background: var(--text-muted); }
+
+@keyframes fuelPoorPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(209,0,31,.4); }
+    50% { box-shadow: 0 0 12px rgba(209,0,31,.8); }
+}
+
+/* Efficiency display */
+.dash-fuel-efficiency {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.dash-fuel-kmpl {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.5px;
+}
+
+.fuel-excellent .dash-fuel-kmpl { color: #00B878; }
+.fuel-good .dash-fuel-kmpl { color: #F0A500; }
+.fuel-poor .dash-fuel-kmpl { color: var(--brand-red); }
+.fuel-no-data .dash-fuel-kmpl { color: var(--text-muted); font-size: 18px; }
+
+.dash-fuel-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* Fuel sub-stats */
+.dash-fuel-sub-stats {
+    display: flex;
+    gap: 10px;
+}
+
+.dash-fuel-sub-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+}
+
+.dash-fuel-sub-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+}
+
+.dash-fuel-sub-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+/* Progress bar */
+.dash-fuel-bar-wrap {
+    height: 5px;
+    background: var(--surface-border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.dash-fuel-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fuel-excellent .dash-fuel-bar-fill { background: linear-gradient(90deg, #00B878, #00e699); }
+.fuel-good .dash-fuel-bar-fill { background: linear-gradient(90deg, #F0A500, #ffc62d); }
+.fuel-poor .dash-fuel-bar-fill { background: linear-gradient(90deg, #D1001F, #ff4d65); }
+.fuel-no-data .dash-fuel-bar-fill { background: var(--surface-border); }
+
+/* Summary bar below grid */
+.dash-fuel-summary-bar {
+    display: flex;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--surface-raised);
+    border: 1.5px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    flex-wrap: wrap;
+}
+
+.dash-fuel-sum-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 140px;
+}
+
+.dash-fuel-sum-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.dash-fuel-sum-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dash-fuel-sum-val {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-left: auto;
+}
+
+body.dark-mode .dash-fuel-card {
+    background: var(--surface-raised);
+}
+
+body.dark-mode .dash-fuel-summary-bar {
+    background: var(--surface-card);
+}
+
+/* =====================================================
+   TABLET LANDSCAPE — CHART SIZE FIXES
+   (Cumulative KM Compare chart was too small)
+   ===================================================== */
+@media only screen and (min-width: 768px) and (max-width: 1400px) and (orientation: landscape) {
+    /* Cumulative Daily KM comparison chart needs more height */
+    #cumulativeKmCompareSection .chart-wrapper,
+    #cumulativeKmCompareSection .chart-wrapper.chart-tall,
+    #cumulativeKmCompareSection .chart-wrapper.chart-wide {
+        height: 480px !important;
+        min-height: 420px !important;
+    }
+
+    /* Weekly vehicle KM chart also benefits from more height */
+    #weeklyVehicleKmSection .chart-wrapper.chart-tall {
+        height: 450px !important;
+    }
+
+    /* Fuel tracking widget grid on tablet landscape */
+    .dash-fuel-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+
+    /* Make client tracking filter controls wrap properly */
+    #client-drop-points .page-header > div:last-child,
+    #client-route-monitor .page-header > div:last-child {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Ensure form-control in client tracker sections have proper height */
+    #client-drop-points .form-control,
+    #client-route-monitor .form-control {
+        min-height: 40px;
+        font-size: 14px !important;
+    }
+}
+
+/* =====================================================
+   REDMI PAD PRO SPECIFIC FIXES
+   (Landscape: ~1200px wide, portrait: ~834px)
+   ===================================================== */
+@media only screen and (min-width: 1180px) and (max-width: 1400px) and (orientation: landscape) {
+    /* Ensure main content fills space properly */
+    .main-content {
+        min-width: 0;
+    }
+
+    .pages-container {
+        padding: 20px 24px calc(60px + env(safe-area-inset-bottom)) 24px;
+    }
+
+    /* Tracker header buttons: wrap on narrow Redmi Pad Pro */
+    .tracker-conn-right {
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: flex-end;
+    }
+
+    /* Header tracker button fit */
+    .header-tracker-btn {
+        padding: 6px 11px;
+        font-size: 11.5px;
+    }
+
+    /* SMS credit badge — shrink slightly */
+    .sms-credit-badge {
+        padding: 5px 10px;
+    }
+    .sms-credit-label {
+        display: none;
+    }
+
+    /* Dashboard metrics: ensure 4 columns on Redmi Pad Pro landscape */
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 14px;
+    }
+
+    /* Fuel widget on Redmi Pad Pro */
+    .dash-fuel-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+    }
+
+    .dash-fuel-card {
+        padding: 13px 12px;
+    }
+
+    .dash-fuel-kmpl {
+        font-size: 24px;
+    }
+
+    /* Performance sections — reduce padding */
+    .performance-section {
+        padding: 18px 20px;
+    }
+
+    /* Charts on Redmi Pad Pro landscape */
+    .charts-container {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 18px;
+    }
+
+    .chart-wrapper {
+        height: 320px !important;
+    }
+
+    .chart-wrapper.chart-tall {
+        height: 380px !important;
+    }
+
+    #cumulativeKmCompareSection .chart-wrapper {
+        height: 440px !important;
+    }
+}
+
+/* =====================================================
+   TABLET PORTRAIT — FUEL WIDGET FIXES
+   ===================================================== */
+@media only screen and (min-width: 600px) and (max-width: 1024px) and (orientation: portrait) {
+    .dash-fuel-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .dash-fuel-card {
+        padding: 14px 12px;
+    }
+
+    .dash-fuel-kmpl {
+        font-size: 24px;
+    }
+
+    .dash-fuel-summary-bar {
+        gap: 10px;
+    }
+
+    .dash-fuel-sum-item {
+        min-width: 120px;
+    }
+
+    /* Fix client tracker section on portrait tablet */
+    #client-drop-points .page-header,
+    #client-route-monitor .page-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #client-drop-points .page-header > div:last-child,
+    #client-route-monitor .page-header > div:last-child {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    /* Form controls take more space */
+    #dropPointClientFilter,
+    #monitorClientFilter,
+    #monitorDateFilter {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+/* =====================================================
+   MOBILE — FUEL WIDGET FIXES
+   ===================================================== */
+@media (max-width: 600px) {
+    .dash-fuel-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .dash-fuel-card {
+        padding: 12px 10px;
+    }
+
+    .dash-fuel-kmpl {
+        font-size: 22px;
+    }
+
+    .dash-fuel-unit {
+        font-size: 11px;
+    }
+
+    .dash-fuel-sub-stats {
+        gap: 6px;
+    }
+
+    .dash-fuel-widget-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .dash-fuel-legend {
+        gap: 10px;
+    }
+
+    .dash-fuel-summary-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .dash-fuel-sum-item {
+        min-width: unset;
+        flex: none;
+        width: 100%;
+    }
+
+    /* Header tracker button on mobile */
+    .header-tracker-btn {
+        padding: 6px 9px;
+    }
+
+    /* Client tracker on mobile */
+    #client-drop-points .page-header,
+    #client-route-monitor .page-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #client-drop-points .page-header > div:last-child,
+    #client-route-monitor .page-header > div:last-child {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    #dropPointClientFilter,
+    #monitorClientFilter,
+    #monitorDateFilter {
+        width: 100%;
+    }
+}
 
 
 
