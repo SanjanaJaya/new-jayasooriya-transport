@@ -929,7 +929,8 @@ async function loadDashboard() {
             loadDailyKmChart(monthValue, cachedData),
             loadDailyFuelChart(monthValue, cachedData),
             loadWeeklyVehicleKmChart(monthValue, cachedData),
-            loadCumulativeKmCompareChart(monthValue, cachedData)
+            loadCumulativeKmCompareChart(monthValue, cachedData),
+            loadOperationsKmCompareCharts(monthValue, cachedData)
         ]).catch(err => console.error("Error loading deferred dashboard components:", err));
 
         // Load heavy all-time statistics last
@@ -8683,6 +8684,351 @@ async function loadCumulativeKmCompareChart(monthValue, cachedData = null) {
         console.error('Error loading cumulative KM compare chart:', error.message);
     }
 }
+
+// ============ CUMULATIVE DAILY KM — KEVILTON & SITREK OPERATIONS ============
+let keviltonKmCompareChart = null;
+let sitrekKmCompareChart = null;
+
+function switchOpKmView(view) {
+    const btnBoth = document.querySelector('.op-km-tab-btn[data-op-view="both"]');
+    const btnKevilton = document.querySelector('.op-km-tab-btn[data-op-view="kevilton"]');
+    const btnSitrek = document.querySelector('.op-km-tab-btn[data-op-view="sitrek"]');
+    const kCard = document.getElementById('keviltonKmCard');
+    const sCard = document.getElementById('sitrekKmCard');
+
+    [btnBoth, btnKevilton, btnSitrek].forEach(b => b?.classList.remove('active'));
+
+    if (view === 'kevilton') {
+        btnKevilton?.classList.add('active');
+        if (kCard) kCard.style.display = 'block';
+        if (sCard) sCard.style.display = 'none';
+    } else if (view === 'sitrek') {
+        btnSitrek?.classList.add('active');
+        if (kCard) kCard.style.display = 'none';
+        if (sCard) sCard.style.display = 'block';
+    } else {
+        btnBoth?.classList.add('active');
+        if (kCard) kCard.style.display = 'block';
+        if (sCard) sCard.style.display = 'block';
+    }
+}
+window.switchOpKmView = switchOpKmView;
+
+async function loadOperationsKmCompareCharts(monthValue, cachedData = null) {
+    try {
+        const [year, month] = monthValue.split('-');
+        const yr = parseInt(year, 10);
+        const mo = parseInt(month, 10);
+
+        // Current month boundaries
+        const monthPadded = String(mo).padStart(2, '0');
+        const startDate = `${yr}-${monthPadded}-01`;
+        const lastDay = new Date(yr, mo, 0).getDate();
+        const endDate = `${yr}-${monthPadded}-${String(lastDay).padStart(2, '0')}`;
+
+        // Previous month boundaries
+        const prevDate = new Date(yr, mo - 2, 1);
+        const prevYr = prevDate.getFullYear();
+        const prevMo = prevDate.getMonth() + 1;
+        const prevMoPadded = String(prevMo).padStart(2, '0');
+        const prevStartDate = `${prevYr}-${prevMoPadded}-01`;
+        const prevLastDay = new Date(prevYr, prevMo, 0).getDate();
+        const prevEndDate = `${prevYr}-${prevMoPadded}-${String(prevLastDay).padStart(2, '0')}`;
+
+        const currentQueryUserId = getQueryUserId();
+
+        // ── 1. Fetch current month data & commitment vehicles map ──
+        let curHire, curCommit, curOther, commVehicles;
+        if (cachedData) {
+            curHire = cachedData.hireRecords;
+            curCommit = cachedData.commitmentRecords;
+            curOther = cachedData.otherOpHires;
+            commVehicles = cachedData.commitmentVehicles;
+        } else {
+            const [{ data: rH }, { data: rC }, { data: rO }, { data: rV }] = await Promise.all([
+                supabaseClient.from('hire_to_pay_records').select('hire_date, distance, vehicle_id').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_records').select('hire_date, distance, vehicle_id').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('other_operation_hires').select('hire_date, distance, operation_name').eq('user_id', currentQueryUserId).gte('hire_date', startDate).lte('hire_date', endDate),
+                supabaseClient.from('commitment_vehicles').select('id, vehicle_number, operation_name').eq('user_id', currentQueryUserId)
+            ]);
+            curHire = rH;
+            curCommit = rC;
+            curOther = rO;
+            commVehicles = rV;
+        }
+
+        const vehicleOpMap = {};
+        (commVehicles || []).forEach(v => {
+            vehicleOpMap[v.id] = (v.operation_name || 'Kevilton Operation').toLowerCase().replace(/[\s-]/g, '');
+        });
+
+        // ── 2. Fetch previous month data ──
+        const [{ data: prevHire }, { data: prevCommit }, { data: prevOther }, { data: prevV }] = await Promise.all([
+            supabaseClient.from('hire_to_pay_records').select('hire_date, distance, vehicle_id').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate),
+            supabaseClient.from('commitment_records').select('hire_date, distance, vehicle_id').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate),
+            supabaseClient.from('other_operation_hires').select('hire_date, distance, operation_name').eq('user_id', currentQueryUserId).gte('hire_date', prevStartDate).lte('hire_date', prevEndDate),
+            commVehicles ? Promise.resolve({ data: commVehicles }) : supabaseClient.from('commitment_vehicles').select('id, vehicle_number, operation_name').eq('user_id', currentQueryUserId)
+        ]);
+
+        const prevVehicleOpMap = vehicleOpMap;
+        if (prevV) {
+            (prevV || []).forEach(v => {
+                prevVehicleOpMap[v.id] = (v.operation_name || 'Kevilton Operation').toLowerCase().replace(/[\s-]/g, '');
+            });
+        }
+
+        // Helper function to build daily KM array for specific operation key ('kevilton' or 'sitrek')
+        function buildDailyKms(opKey, hireRecs, commitRecs, otherRecs, vehicleMap, daysCount) {
+            const daily = new Array(daysCount).fill(0);
+            // All Hire-to-Pay vehicle section hires belong to Kevilton Operation
+            if (opKey === 'kevilton') {
+                (hireRecs || []).forEach(r => {
+                    const day = parseInt((r.hire_date || '').split('-')[2], 10);
+                    if (day >= 1 && day <= daysCount) {
+                        daily[day - 1] += (r.distance || 0);
+                    }
+                });
+            }
+            (commitRecs || []).forEach(r => {
+                const day = parseInt((r.hire_date || '').split('-')[2], 10);
+                if (day >= 1 && day <= daysCount) {
+                    const op = vehicleMap[r.vehicle_id] || '';
+                    if (op.includes(opKey)) daily[day - 1] += (r.distance || 0);
+                }
+            });
+            (otherRecs || []).forEach(r => {
+                const day = parseInt((r.hire_date || '').split('-')[2], 10);
+                if (day >= 1 && day <= daysCount) {
+                    const op = (r.operation_name || '').toLowerCase().replace(/[\s-]/g, '');
+                    if (op.includes(opKey)) daily[day - 1] += (r.distance || 0);
+                }
+            });
+            return daily;
+        }
+
+        const maxDays = Math.max(lastDay, prevLastDay);
+        const labels = Array.from({ length: maxDays }, (_, i) => i + 1);
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const curMonthName = monthNames[mo - 1] + ' ' + yr;
+        const prevMonthName = monthNames[prevMo - 1] + ' ' + prevYr;
+
+        // Daily arrays
+        const keviltonCurDaily = buildDailyKms('kevilton', curHire, curCommit, curOther, vehicleOpMap, lastDay);
+        const keviltonPrevDaily = buildDailyKms('kevilton', prevHire, prevCommit, prevOther, prevVehicleOpMap, prevLastDay);
+
+        const sitrekCurDaily = buildDailyKms('sitrek', curHire, curCommit, curOther, vehicleOpMap, lastDay);
+        const sitrekPrevDaily = buildDailyKms('sitrek', prevHire, prevCommit, prevOther, prevVehicleOpMap, prevLastDay);
+
+        // Build Cumulative arrays
+        function buildCumulativeSeries(curDaily, prevDaily) {
+            const curCum = [], prevCum = [];
+            let curSum = 0, prevSum = 0;
+            for (let i = 0; i < maxDays; i++) {
+                if (i < lastDay) { curSum += curDaily[i]; curCum.push(curSum); } else { curCum.push(null); }
+                if (i < prevLastDay) { prevSum += prevDaily[i]; prevCum.push(prevSum); } else { prevCum.push(null); }
+            }
+            return { curCum, prevCum };
+        }
+
+        const keviltonCum = buildCumulativeSeries(keviltonCurDaily, keviltonPrevDaily);
+        const sitrekCum = buildCumulativeSeries(sitrekCurDaily, sitrekPrevDaily);
+
+        // Render function for individual operation line chart
+        function renderOpChart(chartId, currentChartInst, opTitle, primaryColor, secondaryColor, curCum, prevCum, curDaily, prevDaily) {
+            const curTotal = curCum.filter(v => v !== null).pop() || 0;
+            const prevTotal = prevCum.filter(v => v !== null).pop() || 0;
+            const diffPct = prevTotal > 0 ? (((curTotal - prevTotal) / prevTotal) * 100).toFixed(1) : '0.0';
+            const diffSign = parseFloat(diffPct) >= 0 ? '+' : '';
+
+            // Update header badge
+            const badgeId = chartId === 'keviltonKmCompareChart' ? 'keviltonKmBadge' : 'sitrekKmBadge';
+            const badgeEl = document.getElementById(badgeId);
+            if (badgeEl) {
+                badgeEl.textContent = `${curTotal.toLocaleString()} km vs ${prevTotal.toLocaleString()} km (${diffSign}${diffPct}%)`;
+            }
+
+            if (chartId === 'keviltonKmCompareChart' && keviltonKmCompareChart) {
+                keviltonKmCompareChart.destroy();
+                keviltonKmCompareChart = null;
+            }
+            if (chartId === 'sitrekKmCompareChart' && sitrekKmCompareChart) {
+                sitrekKmCompareChart.destroy();
+                sitrekKmCompareChart = null;
+            }
+
+            const ctx = document.getElementById(chartId)?.getContext('2d');
+            if (!ctx) return null;
+
+            const theme = getChartTheme();
+
+            const curGradient = ctx.createLinearGradient(0, 0, 0, 350);
+            curGradient.addColorStop(0, primaryColor + '55');
+            curGradient.addColorStop(1, primaryColor + '05');
+
+            const prevGradient = ctx.createLinearGradient(0, 0, 0, 350);
+            prevGradient.addColorStop(0, secondaryColor + '30');
+            prevGradient.addColorStop(1, secondaryColor + '03');
+
+            const newInst = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `${curMonthName} (Current)`,
+                            data: curCum,
+                            borderColor: primaryColor,
+                            backgroundColor: curGradient,
+                            borderWidth: 3,
+                            pointBackgroundColor: primaryColor,
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 3,
+                            pointHoverRadius: 7,
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false
+                        },
+                        {
+                            label: `${prevMonthName} (Last Month)`,
+                            data: prevCum,
+                            borderColor: secondaryColor,
+                            backgroundColor: prevGradient,
+                            borderWidth: 2.5,
+                            borderDash: [7, 4],
+                            pointBackgroundColor: secondaryColor,
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 2.5,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: [
+                                `${opTitle} — ${curMonthName} vs ${prevMonthName}`,
+                                `Current: ${curTotal.toLocaleString()} km  |  Last: ${prevTotal.toLocaleString()} km  |  ${diffSign}${diffPct}%`
+                            ],
+                            color: theme.titleColor,
+                            font: { size: 13, weight: 'bold' }
+                        },
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: theme.textColor,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 14,
+                                font: { size: 11, weight: '600' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: theme.tooltipBg,
+                            titleColor: theme.tooltipText,
+                            bodyColor: theme.tooltipText,
+                            borderColor: theme.tooltipBorder,
+                            borderWidth: 1,
+                            cornerRadius: 10,
+                            padding: 12,
+                            callbacks: {
+                                title: items => `Day ${items[0].label}`,
+                                label: item => {
+                                    const dayIdx = item.dataIndex;
+                                    const isCurrent = item.datasetIndex === 0;
+                                    const dailyVal = isCurrent
+                                        ? (dayIdx < curDaily.length ? curDaily[dayIdx] : 0)
+                                        : (dayIdx < prevDaily.length ? prevDaily[dayIdx] : 0);
+                                    const cumVal = item.parsed.y;
+                                    if (cumVal === null) return null;
+                                    return `${item.dataset.label}: ${cumVal.toLocaleString()} km (Daily: ${dailyVal.toLocaleString()} km)`;
+                                },
+                                afterBody: items => {
+                                    const dayIdx = items[0]?.dataIndex;
+                                    if (dayIdx === undefined) return '';
+                                    const curVal = dayIdx < curCum.length ? curCum[dayIdx] : null;
+                                    const prevVal = dayIdx < prevCum.length ? prevCum[dayIdx] : null;
+                                    if (curVal !== null && prevVal !== null && prevVal > 0) {
+                                        const diff = curVal - prevVal;
+                                        const pct = ((diff / prevVal) * 100).toFixed(1);
+                                        const sign = diff >= 0 ? '+' : '';
+                                        return `\n📈 Variance: ${sign}${diff.toLocaleString()} km (${sign}${pct}%)`;
+                                    }
+                                    return '';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => `${v.toLocaleString()} km`,
+                                color: theme.textColor,
+                                font: { size: 10 }
+                            },
+                            grid: { color: theme.gridColor },
+                            title: { display: true, text: 'Cumulative Distance (km)', color: theme.textColor, font: { size: 10 } }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                color: theme.textColor,
+                                callback: (val, idx) => {
+                                    const day = labels[idx];
+                                    if (day === 1 || day === maxDays || day % 5 === 0) return day;
+                                    return '';
+                                }
+                            },
+                            grid: { color: theme.gridColor },
+                            title: { display: true, text: 'Day of Month', color: theme.textColor, font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            return newInst;
+        }
+
+        keviltonKmCompareChart = renderOpChart(
+            'keviltonKmCompareChart',
+            keviltonKmCompareChart,
+            'Kevilton Operation',
+            '#DC143C',
+            '#FF8597',
+            keviltonCum.curCum,
+            keviltonCum.prevCum,
+            keviltonCurDaily,
+            keviltonPrevDaily
+        );
+
+        sitrekKmCompareChart = renderOpChart(
+            'sitrekKmCompareChart',
+            sitrekKmCompareChart,
+            'Sitrek Operation',
+            '#2980B9',
+            '#85C1E9',
+            sitrekCum.curCum,
+            sitrekCum.prevCum,
+            sitrekCurDaily,
+            sitrekPrevDaily
+        );
+
+    } catch (error) {
+        console.error('Error loading operations KM compare charts:', error.message);
+    }
+}
+
 
 // 7. Daily Fuel Usage & Cost Chart — GROUPED BAR (Per Day in Month)
 async function loadDailyFuelChart(monthValue, cachedData = null) {

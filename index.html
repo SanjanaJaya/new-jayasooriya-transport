@@ -857,6 +857,50 @@
                         </div>
                     </div>
 
+                    <!-- ══ KEVILTON & SITREK OPERATIONS DAILY KM COMPARISON ══ -->
+                    <div class="performance-section" id="operationsKmCompareSection">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                            <h3 style="margin:0;">📊 Operations Daily KM — Kevilton vs Sitrek (Current vs Last Month)</h3>
+                            <div class="op-km-tab-group" style="display:flex; gap:6px; background:var(--surface-raised); padding:4px; border-radius:10px; border:1px solid var(--surface-border);">
+                                <button class="op-km-tab-btn active" data-op-view="both" onclick="switchOpKmView('both')">🏢 Both Operations</button>
+                                <button class="op-km-tab-btn" data-op-view="kevilton" onclick="switchOpKmView('kevilton')">🔴 Kevilton</button>
+                                <button class="op-km-tab-btn" data-op-view="sitrek" onclick="switchOpKmView('sitrek')">🔵 Sitrek</button>
+                            </div>
+                        </div>
+
+                        <!-- Container holding both charts side-by-side or stacked -->
+                        <div class="op-km-charts-grid" id="opKmChartsGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap:20px;">
+                            <!-- Kevilton Chart Card -->
+                            <div class="op-km-chart-card" id="keviltonKmCard" style="background:var(--surface-card); border:1.5px solid rgba(209,0,31,0.25); border-radius:var(--radius-lg); padding:18px; position:relative;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <img src="https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png" alt="Kevilton" style="height:24px; width:24px; object-fit:contain; background:#fff; padding:2px; border-radius:6px; border:1px solid rgba(209,0,31,0.3);">
+                                        <h4 style="margin:0; font-size:15px; font-weight:800; color:var(--text-primary);">Kevilton Operation — Cumulative Daily KM</h4>
+                                    </div>
+                                    <span class="op-km-badge" id="keviltonKmBadge" style="padding:4px 10px; font-size:11px; font-weight:700; border-radius:6px; background:rgba(209,0,31,0.12); color:#FF6B81; border:1px solid rgba(209,0,31,0.3);">Current vs Last Month</span>
+                                </div>
+                                <div class="chart-wrapper chart-tall" style="height:400px; position:relative;">
+                                    <canvas id="keviltonKmCompareChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Sitrek Chart Card -->
+                            <div class="op-km-chart-card" id="sitrekKmCard" style="background:var(--surface-card); border:1.5px solid rgba(41,128,185,0.25); border-radius:var(--radius-lg); padding:18px; position:relative;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <img src="https://i.postimg.cc/FK9sV94L/images.png" alt="Sitrek" style="height:24px; width:24px; object-fit:contain; background:#fff; padding:2px; border-radius:6px; border:1px solid rgba(41,128,185,0.3);">
+                                        <h4 style="margin:0; font-size:15px; font-weight:800; color:var(--text-primary);">Sitrek Operation — Cumulative Daily KM</h4>
+                                    </div>
+                                    <span class="op-km-badge" id="sitrekKmBadge" style="padding:4px 10px; font-size:11px; font-weight:700; border-radius:6px; background:rgba(41,128,185,0.12); color:#5DADE2; border:1px solid rgba(41,128,185,0.3);">Current vs Last Month</span>
+                                </div>
+                                <div class="chart-wrapper chart-tall" style="height:400px; position:relative;">
+                                    <canvas id="sitrekKmCompareChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <div class="performance-section">
                         <h3>⛽ Daily Fuel Usage &amp; Cost</h3>
                         <div class="charts-container">
