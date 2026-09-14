@@ -568,7 +568,18 @@
 
                     <!-- ====== DASHBOARD FUEL TRACKING WIDGET ====== -->
                     <div class="performance-section" id="dashboardFuelTrackingSection">
-                        <h3>⛽ Live Fuel Tracking — This Month</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                            <h3 style="margin:0;">⛽ Live Fuel Tracking <span id="dashFuelPeriodSub" style="font-size:14px; font-weight:500; color:var(--text-muted);">— This Month</span></h3>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <label for="dashFuelPeriodSelect" style="font-size:12px; font-weight:600; color:var(--text-muted);">Period:</label>
+                                <select id="dashFuelPeriodSelect" class="form-control" style="padding:6px 12px; font-size:13px; border-radius:8px; background:var(--surface-ground, #1e222d); color:var(--text-primary, #fff); border:1px solid var(--surface-border, #2a2e3d); cursor:pointer;" onchange="delete window._lastFuelRecalcKey; if(typeof window.renderDashboardFuelWidget==='function') window.renderDashboardFuelWidget(true);">
+                                    <option value="this_month" selected>📅 This Month</option>
+                                    <option value="last_30">⏱️ Last 30 Days</option>
+                                    <option value="last_60">🗓️ Last 60 Days</option>
+                                    <option value="last_90">📊 Last 90 Days</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="dash-fuel-widget-header">
                             <span class="dash-fuel-subtitle">Real-time fuel efficiency per vehicle based on GPS km ÷ diesel litres consumed</span>
                             <div class="dash-fuel-legend">
@@ -4043,22 +4054,68 @@
     (function () {
         'use strict';
 
+        function getFuelDateRange(periodVal) {
+            var now = new Date();
+            var endDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            var startDateObj;
+            var periodTitle = "This Month";
+
+            if (periodVal === 'last_30') {
+                startDateObj = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                periodTitle = "Last 30 Days";
+            } else if (periodVal === 'last_60') {
+                startDateObj = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+                periodTitle = "Last 60 Days";
+            } else if (periodVal === 'last_90') {
+                startDateObj = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                periodTitle = "Last 90 Days";
+            } else {
+                var dashMonthVal = document.getElementById('dashboardMonth')?.value;
+                if (dashMonthVal && dashMonthVal.indexOf('-') !== -1) {
+                    var parts = dashMonthVal.split('-');
+                    var y = parseInt(parts[0], 10);
+                    var m = parseInt(parts[1], 10) - 1;
+                    startDateObj = new Date(y, m, 1);
+                    endDateObj = new Date(y, m + 1, 0);
+                } else {
+                    startDateObj = new Date(now.getFullYear(), now.getMonth(), 1);
+                    endDateObj = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                }
+                periodTitle = "This Month";
+            }
+
+            var formatYMD = function (d) {
+                var year = d.getFullYear();
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return year + '-' + month + '-' + day;
+            };
+
+            return {
+                startDate: formatYMD(startDateObj),
+                endDate: formatYMD(endDateObj),
+                timeFrom: Math.floor(startDateObj.getTime() / 1000),
+                timeTo: Math.floor(now.getTime() / 1000),
+                periodTitle: periodTitle
+            };
+        }
+
         // ── Core render function ──────────────────────────────────────────────────
-        window.renderDashboardFuelWidget = async function () {
+        window.renderDashboardFuelWidget = async function (forceRecalc) {
             var grid = document.getElementById('dashboardFuelGrid');
             var summaryBar = document.getElementById('dashFuelSummaryBar');
             if (!grid) return;
 
             // Use getQueryUserId or global currentUser set by app.js after auth completes
-            var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : (window.currentUser ? window.currentUser.id : null);
-            var sb = window.supabaseClient || null;
+            var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : (window.currentUser ? window.currentUser.id : (window.adminUserId || null));
+            var sb = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
 
             if (!userId || !sb) {
                 if (!window._dashFuelRetryCount) window._dashFuelRetryCount = 0;
-                if (window._dashFuelRetryCount < 15) {
+                if (window._dashFuelRetryCount < 20) {
                     window._dashFuelRetryCount++;
                     setTimeout(function() {
-                        if (typeof window.renderDashboardFuelWidget === 'function') window.renderDashboardFuelWidget();
+                        if (typeof window.renderDashboardFuelWidget === 'function') window.renderDashboardFuelWidget(forceRecalc);
                     }, 350);
                     return;
                 }
@@ -4067,16 +4124,22 @@
             }
             window._dashFuelRetryCount = 0;
 
-            grid.innerHTML = '<div class="dash-fuel-loading"><div class="dash-fuel-spinner"></div><span>Loading fuel efficiency data...</span></div>';
-            if (summaryBar) summaryBar.style.display = 'none';
+            var periodVal = document.getElementById('dashFuelPeriodSelect')?.value || 'this_month';
+            var range = getFuelDateRange(periodVal);
+
+            var subEl = document.getElementById('dashFuelPeriodSub');
+            if (subEl) subEl.textContent = '— ' + range.periodTitle;
+
+            if (forceRecalc && typeof window.calculateAndPopulateFuelConsumption === 'function') {
+                if (!window._lastFuelRecalcKey || window._lastFuelRecalcKey !== (periodVal + '_' + range.startDate)) {
+                    window._lastFuelRecalcKey = periodVal + '_' + range.startDate;
+                    window.calculateAndPopulateFuelConsumption(range);
+                }
+            }
 
             try {
-                var now = new Date();
-                var year = now.getFullYear();
-                var month = String(now.getMonth() + 1).padStart(2, '0');
-                var startDate = year + '-' + month + '-01';
-                var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-                var endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+                var startDate = range.startDate;
+                var endDate = range.endDate;
 
                 var results = await Promise.all([
                     sb.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId).neq('terminated', true),
@@ -4086,16 +4149,22 @@
                     sb.from('other_operation_hires').select('base_lorry_number, fuel_litres').eq('user_id', userId).gte('hire_date', startDate).lte('hire_date', endDate)
                 ]);
 
-                // Build vehicle name maps
+                // Build vehicle name maps & master set of vehicles
+                var vehicleNamesSet = new Set();
+
                 var hireVehicles = {};
                 (results[0].data || []).forEach(function (v) {
-                    hireVehicles[v.id] = typeof extractBaseVehicleName === 'function'
+                    var n = typeof extractBaseVehicleName === 'function'
                         ? extractBaseVehicleName(v.lorry_number) : (v.lorry_number || '').trim().toUpperCase();
+                    hireVehicles[v.id] = n;
+                    if (n) vehicleNamesSet.add(n);
                 });
                 var commitVehicles = {};
                 (results[1].data || []).forEach(function (v) {
-                    commitVehicles[v.id] = typeof extractBaseVehicleName === 'function'
+                    var n = typeof extractBaseVehicleName === 'function'
                         ? extractBaseVehicleName(v.vehicle_number) : (v.vehicle_number || '').trim().toUpperCase();
+                    commitVehicles[v.id] = n;
+                    if (n) vehicleNamesSet.add(n);
                 });
 
                 // Accumulate litres per vehicle
@@ -4104,6 +4173,7 @@
                     if (!name || !litres) return;
                     var key = name.trim().toUpperCase();
                     litresMap[key] = (litresMap[key] || 0) + parseFloat(litres || 0);
+                    vehicleNamesSet.add(key);
                 }
                 (results[2].data || []).forEach(function (r) { addLitres(hireVehicles[r.vehicle_id], r.fuel_litres); });
                 (results[3].data || []).forEach(function (r) { addLitres(commitVehicles[r.vehicle_id], r.fuel_litres); });
@@ -4115,16 +4185,23 @@
                     }
                 });
 
-                // GPS km from tracker cache (if tracker was visited this session)
+                // GPS km from tracker cache
                 var fuelConsumptionCache = window.trackerVehicleFuelConsumption || {};
+                Object.keys(fuelConsumptionCache).forEach(function (n) { if (n) vehicleNamesSet.add(n); });
 
-                var vehicleNames = Object.keys(litresMap).filter(function (k) { return litresMap[k] > 0; });
+                var vehicleNames = Array.from(vehicleNamesSet);
                 if (vehicleNames.length === 0) {
-                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No fuel records found for ' + year + '-' + month + '.</span></div>';
+                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No vehicle records found.</span></div>';
                     return;
                 }
 
-                vehicleNames.sort(function (a, b) { return (litresMap[b] || 0) - (litresMap[a] || 0); });
+                // Sort by litres consumed descending, then name
+                vehicleNames.sort(function (a, b) {
+                    var la = litresMap[a] || 0;
+                    var lb = litresMap[b] || 0;
+                    if (lb !== la) return lb - la;
+                    return a.localeCompare(b);
+                });
 
                 var maxKmpl = 0;
                 var cards = vehicleNames.map(function (name) {
@@ -4138,11 +4215,16 @@
 
                 var refKmpl = maxKmpl > 0 ? maxKmpl : 12;
                 var html = '';
-                var totalL = 0, totalKm = 0;
+                var totalL = 0;      // Total litres across all vehicles
+                var totalKm = 0;     // Total GPS km across GPS vehicles
+                var gpsFuelL = 0;    // Fuel litres ONLY for vehicles that have GPS data (c.km > 0)
 
                 cards.forEach(function (c) {
                     totalL += c.litres;
-                    if (c.km > 0) totalKm += c.km;
+                    if (c.km > 0) {
+                        totalKm += c.km;
+                        gpsFuelL += c.litres; // Count fuel only for vehicles with valid GPS data
+                    }
 
                     var tier, tierLabel;
                     if (c.kmpl <= 0)     { tier = 'fuel-no-data'; tierLabel = 'No GPS data'; }
@@ -4185,7 +4267,8 @@
                 grid.innerHTML = html;
 
                 if (summaryBar) {
-                    var fleetAvg = totalKm > 0 && totalL > 0 ? (totalKm / totalL).toFixed(1) : '—';
+                    // Calculate Fleet Avg KML strictly on vehicles that have valid GPS data
+                    var fleetAvg = (totalKm > 0 && gpsFuelL > 0) ? (totalKm / gpsFuelL).toFixed(1) : '—';
                     var lEl = document.getElementById('dashFuelTotalLitres');
                     var kEl = document.getElementById('dashFuelTotalKm');
                     var aEl = document.getElementById('dashFuelFleetAvg');

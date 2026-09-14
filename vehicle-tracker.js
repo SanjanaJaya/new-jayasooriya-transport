@@ -232,19 +232,21 @@
         }
     }
 
-    // ── Fetch ONLY fuel litres per vehicle from DB (this month) ──
-    async function fetchCurrentMonthFuelLitresPerVehicle() {
+    // ── Fetch ONLY fuel litres per vehicle from DB ──
+    async function fetchCurrentMonthFuelLitresPerVehicle(startDate, endDate) {
         try {
             if (typeof supabaseClient === 'undefined') return {};
             var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : null;
             if (!userId) return {};
 
-            var now = new Date();
-            var year = now.getFullYear();
-            var month = String(now.getMonth() + 1).padStart(2, '0');
-            var startDate = year + '-' + month + '-01';
-            var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-            var endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+            if (!startDate || !endDate) {
+                var now = new Date();
+                var year = now.getFullYear();
+                var month = String(now.getMonth() + 1).padStart(2, '0');
+                startDate = year + '-' + month + '-01';
+                var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+                endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+            }
 
             var results = await Promise.all([
                 supabaseClient.from('hire_to_pay_vehicles').select('id, lorry_number').eq('user_id', userId),
@@ -282,7 +284,7 @@
                 }
             });
 
-            console.log('[Fuel] Litres map loaded. Vehicle count:', Object.keys(litresMap).length);
+            console.log('[Fuel] Litres map loaded for range ' + startDate + ' to ' + endDate + '. Vehicle count:', Object.keys(litresMap).length);
             return litresMap;
         } catch (e) {
             console.error('[Fuel] Error fetching fuel litres from DB:', e);
@@ -322,32 +324,57 @@
     }
 
     // ── Calculate fuel consumption: Wialon GPS km ÷ DB fuel litres ──
-    async function calculateAndPopulateFuelConsumption() {
+    async function calculateAndPopulateFuelConsumption(customDateRange) {
         try {
-            console.log('[Fuel] Starting fuel consumption calculation...');
+            console.log('[Fuel] Starting fuel consumption calculation...', customDateRange);
+
+            var startDate = customDateRange ? customDateRange.startDate : null;
+            var endDate = customDateRange ? customDateRange.endDate : null;
 
             // Step 1: Get fuel litres from DB
-            var litresMap = await fetchCurrentMonthFuelLitresPerVehicle();
+            var litresMap = await fetchCurrentMonthFuelLitresPerVehicle(startDate, endDate);
 
-            // Immediately populate cards with litres (so something shows right away)
-            trackerUnits.forEach(function (unit) {
+            // Reset cache for new date range
+            trackerVehicleFuelConsumption = {};
+
+            // Ensure Wialon session and units are loaded
+            if (!trackerSessionId && typeof connectWialon === 'function') {
+                await connectWialon();
+            }
+            if (!trackerUnits || trackerUnits.length === 0) {
+                trackerUnits = await fetchTrackerUnits();
+            }
+
+            // Immediately populate cache with litres map
+            (trackerUnits || []).forEach(function (unit) {
                 var baseName = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
+                trackerVehicleFuelConsumption[baseName] = { kmpl: 0, km: 0, L: litresMap[baseName] || 0 };
+            });
+            Object.keys(litresMap).forEach(function (baseName) {
                 if (!(baseName in trackerVehicleFuelConsumption)) {
                     trackerVehicleFuelConsumption[baseName] = { kmpl: 0, km: 0, L: litresMap[baseName] || 0 };
                 }
             });
+
             updateFuelConsumptionOnCards();
 
-            // Step 2: Get monthly mileage from Wialon
+            // Step 2: Get mileage from Wialon
             if (typeof wialon === 'undefined' || !wialon.core || !wialon.core.Remote) {
                 console.warn('[Fuel] Wialon SDK not available, skipping GPS mileage.');
                 return;
             }
 
-            var now = new Date();
-            var timeFrom = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
-            var timeTo = Math.floor(now.getTime() / 1000);
+            var timeFrom, timeTo;
+            if (customDateRange && customDateRange.timeFrom && customDateRange.timeTo) {
+                timeFrom = customDateRange.timeFrom;
+                timeTo = customDateRange.timeTo;
+            } else {
+                var now = new Date();
+                timeFrom = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+                timeTo = Math.floor(now.getTime() / 1000);
+            }
+
             var remote = wialon.core.Remote.getInstance();
 
             for (var i = 0; i < trackerUnits.length; i++) {
@@ -377,9 +404,6 @@
                             return;
                         }
 
-                        var msgCount = (loadData && loadData.count) ? loadData.count : 0;
-                        console.log('[Mileage] Loaded', msgCount, 'position messages for', capturedUnit.name);
-
                         // Step 2b: Get trips (for mileage)
                         remote.remoteCall('unit/get_trips', {
                             itemId: capturedUnit.id,
@@ -407,13 +431,20 @@
                 var kmpl = (tripKm > 0 && litres > 0) ? (tripKm / litres) : 0;
                 trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: tripKm, L: litres };
                 updateFuelConsumptionOnCards();
+                if (typeof window.renderDashboardFuelWidget === 'function') {
+                    window.renderDashboardFuelWidget();
+                }
             }
 
             console.log('[Fuel] Complete for', trackerUnits.length, 'units.');
+            if (typeof window.renderDashboardFuelWidget === 'function') {
+                window.renderDashboardFuelWidget();
+            }
         } catch (e) {
             console.error('[Fuel] Error:', e);
         }
     }
+    window.calculateAndPopulateFuelConsumption = calculateAndPopulateFuelConsumption;
 
     function buildPopupHtml(unit) {
         var speedColor;
@@ -1523,9 +1554,11 @@
     }
 
     // ── Refresh Data ──
-    async function refreshTrackerData() {
+    async function refreshTrackerData(forceBackground) {
         var pageEl = document.getElementById('vehicle-tracker');
-        if (pageEl && !pageEl.classList.contains('active')) {
+        var isActive = pageEl && pageEl.classList.contains('active');
+
+        if (!isActive && !forceBackground) {
             // MEMORY FIX: Stop the refresh timer when not on the tracker page
             stopTrackerRefresh();
             console.log('Stopped refresh: Vehicle tracker page is not active.');
@@ -1537,7 +1570,7 @@
         }
 
         try {
-            await fetchDriversAndAssignments();
+            await fetchDriversAndAssignments(forceBackground);
             var units = await fetchTrackerUnits();
 
             if ((!units || units.length === 0) && trackerUnits && trackerUnits.length > 0) {
@@ -1547,19 +1580,24 @@
 
             trackerUnits = units;
 
-            renderTrackerStats(units);
-            renderTrackerMap(units);
-            renderTrackerCards(units);
-            setLastUpdate();
+            if (isActive) {
+                renderTrackerStats(units);
+                renderTrackerMap(units);
+                renderTrackerCards(units);
+                setLastUpdate();
+            }
 
             // Trigger fuel consumption calculation asynchronously
             var now = Date.now();
-            if (now - lastFuelConsumptionCalcTime > FUEL_CALC_INTERVAL) {
+            if (forceBackground || (now - lastFuelConsumptionCalcTime > FUEL_CALC_INTERVAL)) {
                 lastFuelConsumptionCalcTime = now;
                 calculateAndPopulateFuelConsumption();
             } else {
                 // Keep cards updated with cached data if already fetched
                 updateFuelConsumptionOnCards();
+                if (typeof window.renderDashboardFuelWidget === 'function') {
+                    window.renderDashboardFuelWidget();
+                }
             }
         } catch (err) {
             console.error('Error during vehicle data refresh:', err);
@@ -1574,7 +1612,12 @@
 
         console.log('Starting auto-refresh timer. Interval:', interval, 'ms');
         trackerRefreshTimer = setInterval(function () {
-            refreshTrackerData();
+            var pageEl = document.getElementById('vehicle-tracker');
+            if (pageEl && pageEl.classList.contains('active')) {
+                refreshTrackerData();
+            } else {
+                stopTrackerRefresh();
+            }
         }, interval);
     }
 
@@ -1960,7 +2003,7 @@
 
             var success = await connectWialon();
             if (success) {
-                await refreshTrackerData();
+                await refreshTrackerData(true);
                 startTrackerRefresh();
             } else {
                 if (grid) grid.innerHTML = '';
@@ -1971,7 +2014,7 @@
             }
         } else if (trackerSessionId) {
             // Already connected, just refresh
-            await refreshTrackerData();
+            await refreshTrackerData(true);
             startTrackerRefresh();
         } else {
             // No token — show empty state and settings

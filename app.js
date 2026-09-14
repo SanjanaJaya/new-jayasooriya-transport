@@ -46,6 +46,7 @@ function initSupabase() {
     if (window.supabase) {
         // Use the global window.supabase to create our client
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.supabaseClient = supabaseClient;
     }
 }
 
@@ -150,19 +151,24 @@ async function checkUserRole() {
             adminUserId = data.admin_id || currentUser.id;
         }
 
+        window.adminUserId = adminUserId;
+        window.userRole = userRole;
         console.log('User role:', userRole, 'Admin ID:', adminUserId);
         updateUIForRole();
     } catch (error) {
         console.error('Error checking user role:', error);
         userRole = 'admin';
         adminUserId = currentUser.id;
+        window.adminUserId = adminUserId;
+        window.userRole = userRole;
     }
 }
 
 // Get the user ID to use for queries (admin's ID for viewers, own ID for admins)
 function getQueryUserId() {
-    return adminUserId;
+    return adminUserId || (currentUser ? currentUser.id : (window.currentUser ? window.currentUser.id : null));
 }
+window.getQueryUserId = getQueryUserId;
 
 // Update UI based on user role
 function updateUIForRole() {
@@ -408,6 +414,7 @@ async function initializeApp() {
 
         if (session) {
             currentUser = session.user;
+            window.currentUser = currentUser;
             await checkUserRole();
             showApp();
             setDefaultMonths();
@@ -477,6 +484,7 @@ if (loginForm) {
             if (error) throw error;
 
             currentUser = data.user;
+            window.currentUser = currentUser;
             await checkUserRole();
             showApp();
             setDefaultMonths();
@@ -807,6 +815,9 @@ async function preloadAllData() {
             },
             async () => {
                 if (typeof loadVehicleExpiryPage === 'function') await loadVehicleExpiryPage();
+            },
+            async () => {
+                if (typeof window.initVehicleTracker === 'function') await window.initVehicleTracker();
             }
         ];
 
