@@ -241,11 +241,15 @@
 
             if (!startDate || !endDate) {
                 var now = new Date();
-                var year = now.getFullYear();
-                var month = String(now.getMonth() + 1).padStart(2, '0');
-                startDate = year + '-' + month + '-01';
-                var lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-                endDate = year + '-' + month + '-' + String(lastDay).padStart(2, '0');
+                var stObj = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                var fmt = function (d) {
+                    var y = d.getFullYear();
+                    var m = String(d.getMonth() + 1).padStart(2, '0');
+                    var day = String(d.getDate()).padStart(2, '0');
+                    return y + '-' + m + '-' + day;
+                };
+                startDate = fmt(stObj);
+                endDate = fmt(now);
             }
 
             var results = await Promise.all([
@@ -324,7 +328,64 @@
     }
 
     // ── Calculate fuel consumption: Wialon GPS km ÷ DB fuel litres ──
+    // Proven pattern: messages/load_interval (10-day chunks) → unit/get_trips(msgsSource:1) → messages/unload
+    // This mirrors the working tracker-app.js fetchUnitTripMileageForChunk() implementation.
+    var _fuelCalcRunning = false;
+
+    // Fetch one 10-day chunk of mileage for a single unit (mirrors tracker-app.js exactly)
+    function fetchMileageChunk(remote, unitId, fromSec, toSec) {
+        return new Promise(function (resolve) {
+            var done = false;
+            var guard = setTimeout(function () {
+                if (!done) { done = true; console.warn('[Mileage] Chunk timeout unitId:', unitId); resolve(0); }
+            }, 8000); // 8s timeout — same as tracker-app.js
+
+            remote.remoteCall('messages/load_interval', {
+                itemId: unitId,
+                timeFrom: fromSec,
+                timeTo: toSec,
+                flags: 0x0001,
+                flagsMask: 0x0001,
+                loadCount: 10000
+            }, function (loadCode, loadData) {
+                if (loadCode !== 0) {
+                    if (!done) { done = true; clearTimeout(guard); resolve(0); }
+                    return;
+                }
+
+                var count = (loadData && loadData.count) ? loadData.count : 0;
+                if (count === 0) {
+                    remote.remoteCall('messages/unload', {}, function () {
+                        if (!done) { done = true; clearTimeout(guard); resolve(0); }
+                    });
+                    return;
+                }
+
+                remote.remoteCall('unit/get_trips', {
+                    itemId: unitId,
+                    msgsSource: 1,  // 1 = use messages already loaded via load_interval above
+                    timeFrom: fromSec,
+                    timeTo: toSec
+                }, function (tripsCode, trips) {
+                    var totalMeters = 0;
+                    if (tripsCode === 0 && Array.isArray(trips)) {
+                        trips.forEach(function (t) { totalMeters += (t.m || 0); });
+                    }
+                    remote.remoteCall('messages/unload', {}, function () {
+                        if (!done) { done = true; clearTimeout(guard); resolve(totalMeters); }
+                    });
+                });
+            });
+        });
+    }
+
     async function calculateAndPopulateFuelConsumption(customDateRange) {
+        if (_fuelCalcRunning) {
+            console.warn('[Fuel] Calculation already in progress, skipping.');
+            return;
+        }
+        _fuelCalcRunning = true;
+
         try {
             console.log('[Fuel] Starting fuel consumption calculation...', customDateRange);
 
@@ -334,7 +395,7 @@
             // Step 1: Get fuel litres from DB
             var litresMap = await fetchCurrentMonthFuelLitresPerVehicle(startDate, endDate);
 
-            // Reset cache for new date range
+            // Reset cache
             trackerVehicleFuelConsumption = {};
 
             // Ensure Wialon session and units are loaded
@@ -345,7 +406,7 @@
                 trackerUnits = await fetchTrackerUnits();
             }
 
-            // Immediately populate cache with litres map
+            // Pre-populate with litres so widget shows fuel data immediately
             (trackerUnits || []).forEach(function (unit) {
                 var baseName = typeof extractBaseVehicleName === 'function'
                     ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
@@ -356,10 +417,9 @@
                     trackerVehicleFuelConsumption[baseName] = { kmpl: 0, km: 0, L: litresMap[baseName] || 0 };
                 }
             });
-
             updateFuelConsumptionOnCards();
 
-            // Step 2: Get mileage from Wialon
+            // Step 2: Get mileage from Wialon (skip if SDK unavailable)
             if (typeof wialon === 'undefined' || !wialon.core || !wialon.core.Remote) {
                 console.warn('[Fuel] Wialon SDK not available, skipping GPS mileage.');
                 return;
@@ -371,11 +431,12 @@
                 timeTo = customDateRange.timeTo;
             } else {
                 var now = new Date();
-                timeFrom = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+                timeFrom = Math.floor((now.getTime() - 30 * 24 * 60 * 60 * 1000) / 1000);
                 timeTo = Math.floor(now.getTime() / 1000);
             }
 
             var remote = wialon.core.Remote.getInstance();
+            var CHUNK_SEC = 10 * 86400; // 10-day chunks — proven safe for Wialon API
 
             for (var i = 0; i < trackerUnits.length; i++) {
                 var unit = trackerUnits[i];
@@ -383,65 +444,34 @@
                     ? extractBaseVehicleName(unit.name) : unit.name.trim().toUpperCase();
                 var litres = litresMap[baseName] || 0;
 
-                var km = await new Promise(function (resolve) {
-                    var capturedUnit = unit;
-                    var done = false;
-                    var guard = setTimeout(function () {
-                        if (!done) { done = true; console.warn('[Mileage] Timeout for', capturedUnit.name); resolve({ km: 0 }); }
-                    }, 90000);
+                // Fetch mileage in 10-day chunks for ALL Wialon units.
+                // Historical trip data exists regardless of live position.
+                // Vehicles with no Wialon config (LP-9759, LQ-0542) are absent from trackerUnits entirely.
+                var totalMeters = 0;
+                var cur = timeFrom;
+                while (cur < timeTo) {
+                    var chunkEnd = Math.min(cur + CHUNK_SEC, timeTo);
+                    var chunkMeters = await fetchMileageChunk(remote, unit.id, cur, chunkEnd);
+                    totalMeters += chunkMeters;
+                    cur = chunkEnd;
+                }
 
-                    // Step 2a: Load messages into the session
-                    remote.remoteCall('messages/load_interval', {
-                        itemId: capturedUnit.id,
-                        timeFrom: timeFrom,
-                        timeTo: timeTo,
-                        flags: 0x0001,      // 0x0001 = position data messages only
-                        flagsMask: 0x0001,
-                        loadCount: WIALON_MSG_LOAD_COUNT
-                    }, function (loadCode, loadData) {
-                        if (loadCode !== 0) {
-                            if (!done) { done = true; clearTimeout(guard); resolve({ km: 0 }); }
-                            return;
-                        }
+                var tripKm = totalMeters / 1000;
+                console.log('[Mileage]', baseName, '→', Math.round(tripKm), 'km |', litres.toFixed(1), 'L');
 
-                        // Step 2b: Get trips (for mileage)
-                        remote.remoteCall('unit/get_trips', {
-                            itemId: capturedUnit.id,
-                            msgsSource: 1,
-                            timeFrom: timeFrom,
-                            timeTo: timeTo
-                        }, function (tripsCode, trips) {
-                            if (done) return;
-
-                            var totalKm = 0;
-                            if (tripsCode === 0 && Array.isArray(trips)) {
-                                trips.forEach(function (t) { totalKm += (t.m || 0); });
-                            }
-
-                            done = true;
-                            clearTimeout(guard);
-                            remote.remoteCall('messages/unload', {}, function () {
-                                resolve({ km: totalKm / 1000 });
-                            });
-                        });
-                    });
-                });
-
-                var tripKm = km.km !== undefined ? km.km : km;
                 var kmpl = (tripKm > 0 && litres > 0) ? (tripKm / litres) : 0;
                 trackerVehicleFuelConsumption[baseName] = { kmpl: kmpl, km: tripKm, L: litres };
                 updateFuelConsumptionOnCards();
-                if (typeof window.renderDashboardFuelWidget === 'function') {
-                    window.renderDashboardFuelWidget();
-                }
             }
 
             console.log('[Fuel] Complete for', trackerUnits.length, 'units.');
             if (typeof window.renderDashboardFuelWidget === 'function') {
-                window.renderDashboardFuelWidget();
+                window.renderDashboardFuelWidget(false);
             }
         } catch (e) {
             console.error('[Fuel] Error:', e);
+        } finally {
+            _fuelCalcRunning = false;
         }
     }
     window.calculateAndPopulateFuelConsumption = calculateAndPopulateFuelConsumption;
@@ -1596,7 +1626,7 @@
                 // Keep cards updated with cached data if already fetched
                 updateFuelConsumptionOnCards();
                 if (typeof window.renderDashboardFuelWidget === 'function') {
-                    window.renderDashboardFuelWidget();
+                    window.renderDashboardFuelWidget(false);
                 }
             }
         } catch (err) {

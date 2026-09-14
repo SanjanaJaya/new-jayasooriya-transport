@@ -395,12 +395,6 @@
                     <h2 id="pageTitle">Dashboard</h2>
                 </div>
                 <div class="header-right">
-                    <!-- Mobile Lorry Tracker Launcher Button -->
-                    <a href="tracker.html" class="header-tracker-btn" title="Open Mobile Lorry Tracker App">
-                        <span class="header-tracker-icon">📡</span>
-                        <span class="header-tracker-label">Lorry Tracker</span>
-                    </a>
-
                     <!-- SMS Credit Badge -->
                     <div class="sms-credit-badge" id="smsCreditBadge" onclick="updateTextLkBalanceUI(true)" title="Text.lk Remaining Balance (Click to refresh)">
                         <span class="sms-credit-pulse"></span>
@@ -569,17 +563,16 @@
                     <!-- ====== DASHBOARD FUEL TRACKING WIDGET ====== -->
                     <div class="performance-section" id="dashboardFuelTrackingSection">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-                            <h3 style="margin:0;">⛽ Live Fuel Tracking <span id="dashFuelPeriodSub" style="font-size:14px; font-weight:500; color:var(--text-muted);">— This Month</span></h3>
+                            <h3 style="margin:0;">⛽ Live Fuel Tracking <span id="dashFuelPeriodSub" style="font-size:14px; font-weight:500; color:var(--text-muted);">— Last 30 Days</span></h3>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <label for="dashFuelPeriodSelect" style="font-size:12px; font-weight:600; color:var(--text-muted);">Period:</label>
-                                <select id="dashFuelPeriodSelect" class="form-control" style="padding:6px 12px; font-size:13px; border-radius:8px; background:var(--surface-ground, #1e222d); color:var(--text-primary, #fff); border:1px solid var(--surface-border, #2a2e3d); cursor:pointer;" onchange="delete window._lastFuelRecalcKey; if(typeof window.renderDashboardFuelWidget==='function') window.renderDashboardFuelWidget(true);">
-                                    <option value="this_month" selected>📅 This Month</option>
-                                    <option value="last_30">⏱️ Last 30 Days</option>
-                                    <option value="last_60">🗓️ Last 60 Days</option>
-                                    <option value="last_90">📊 Last 90 Days</option>
-                                </select>
+                                <span class="dash-fuel-period-badge" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:8px; background:rgba(209,0,31,0.12); color:var(--brand-red); border:1px solid rgba(209,0,31,0.3); display:flex; align-items:center; gap:6px;">⏱️ Last 30 Days</span>
                             </div>
                         </div>
+                        <!-- Top Animated Loading Progress Bar -->
+                        <div class="dash-fuel-loading-bar-container" id="dashFuelLoadingBar" style="display: block;">
+                            <div class="dash-fuel-loading-bar-fill"></div>
+                        </div>
+
                         <div class="dash-fuel-widget-header">
                             <span class="dash-fuel-subtitle">Real-time fuel efficiency per vehicle based on GPS km ÷ diesel litres consumed</span>
                             <div class="dash-fuel-legend">
@@ -4011,26 +4004,6 @@
                         setTimeout(function () { ripple.remove(); }, 700);
                     });
                 });
-
-            // ── Screen Orientation: request landscape on tablets & touch devices ──
-            // This runs after DOMContentLoaded. The manifest already declares "any"
-            // orientation so both portrait and landscape work, but we prefer landscape.
-            (function requestLandscapeOrientation() {
-                try {
-                    // Only request on touch devices (tablets/phones) — not desktop
-                    var isTouch = window.matchMedia('(pointer: coarse)').matches;
-                    // Only request if screen width is tablet-size (>=600px) in either orientation
-                    var isTabletOrLarger = Math.max(screen.width, screen.height) >= 600;
-                    if (isTouch && isTabletOrLarger && screen.orientation && screen.orientation.lock) {
-                        screen.orientation.lock('landscape').catch(function (err) {
-                            // Graceful fail — user may have system rotation locked or browser may not allow
-                            console.log('[Orientation] Could not lock to landscape:', err.message || err);
-                        });
-                    }
-                } catch (e) {
-                    // Ignore any errors — orientation API is optional
-                }
-            })();
             });
         })();
     </script>
@@ -4046,7 +4019,7 @@
     <script src="excel-export.js"></script>
     <script src="report-generator.js"></script>
     <script src="salary-slip.js"></script>
-    <script src="vehicle-tracker.js?v=24"></script>
+    <script src="vehicle-tracker.js?v=27"></script>
     <script src="credit-cards.js"></script>
 
     <!-- ===== DASHBOARD FUEL TRACKING WIDGET JS ===== -->
@@ -4054,35 +4027,10 @@
     (function () {
         'use strict';
 
-        function getFuelDateRange(periodVal) {
+        function getFuelDateRange() {
             var now = new Date();
             var endDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            var startDateObj;
-            var periodTitle = "This Month";
-
-            if (periodVal === 'last_30') {
-                startDateObj = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                periodTitle = "Last 30 Days";
-            } else if (periodVal === 'last_60') {
-                startDateObj = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-                periodTitle = "Last 60 Days";
-            } else if (periodVal === 'last_90') {
-                startDateObj = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-                periodTitle = "Last 90 Days";
-            } else {
-                var dashMonthVal = document.getElementById('dashboardMonth')?.value;
-                if (dashMonthVal && dashMonthVal.indexOf('-') !== -1) {
-                    var parts = dashMonthVal.split('-');
-                    var y = parseInt(parts[0], 10);
-                    var m = parseInt(parts[1], 10) - 1;
-                    startDateObj = new Date(y, m, 1);
-                    endDateObj = new Date(y, m + 1, 0);
-                } else {
-                    startDateObj = new Date(now.getFullYear(), now.getMonth(), 1);
-                    endDateObj = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                }
-                periodTitle = "This Month";
-            }
+            var startDateObj = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
             var formatYMD = function (d) {
                 var year = d.getFullYear();
@@ -4096,7 +4044,7 @@
                 endDate: formatYMD(endDateObj),
                 timeFrom: Math.floor(startDateObj.getTime() / 1000),
                 timeTo: Math.floor(now.getTime() / 1000),
-                periodTitle: periodTitle
+                periodTitle: "Last 30 Days"
             };
         }
 
@@ -4104,7 +4052,10 @@
         window.renderDashboardFuelWidget = async function (forceRecalc) {
             var grid = document.getElementById('dashboardFuelGrid');
             var summaryBar = document.getElementById('dashFuelSummaryBar');
+            var loadingBar = document.getElementById('dashFuelLoadingBar');
             if (!grid) return;
+
+            if (loadingBar) loadingBar.style.display = 'block';
 
             // Use getQueryUserId or global currentUser set by app.js after auth completes
             var userId = typeof getQueryUserId === 'function' ? getQueryUserId() : (window.currentUser ? window.currentUser.id : (window.adminUserId || null));
@@ -4120,20 +4071,24 @@
                     return;
                 }
                 grid.innerHTML = '<div class="dash-fuel-loading"><div class="dash-fuel-spinner"></div><span>Waiting for session...</span></div>';
+                if (loadingBar) loadingBar.style.display = 'none';
                 return;
             }
             window._dashFuelRetryCount = 0;
 
-            var periodVal = document.getElementById('dashFuelPeriodSelect')?.value || 'this_month';
-            var range = getFuelDateRange(periodVal);
+            var range = getFuelDateRange();
 
             var subEl = document.getElementById('dashFuelPeriodSub');
             if (subEl) subEl.textContent = '— ' + range.periodTitle;
 
             if (forceRecalc && typeof window.calculateAndPopulateFuelConsumption === 'function') {
-                if (!window._lastFuelRecalcKey || window._lastFuelRecalcKey !== (periodVal + '_' + range.startDate)) {
-                    window._lastFuelRecalcKey = periodVal + '_' + range.startDate;
-                    window.calculateAndPopulateFuelConsumption(range);
+                if (!window._lastFuelRecalcKey || window._lastFuelRecalcKey !== ('last_30_' + range.startDate)) {
+                    window._lastFuelRecalcKey = 'last_30_' + range.startDate;
+                    if (loadingBar) loadingBar.style.display = 'block';
+                    window.calculateAndPopulateFuelConsumption(range).finally(function() {
+                        var lb = document.getElementById('dashFuelLoadingBar');
+                        if (lb) lb.style.display = 'none';
+                    });
                 }
             }
 
@@ -4191,7 +4146,7 @@
 
                 var vehicleNames = Array.from(vehicleNamesSet);
                 if (vehicleNames.length === 0) {
-                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No vehicle records found.</span></div>';
+                    grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--text-muted);">No vehicle records found for Last 30 Days.</span></div>';
                     return;
                 }
 
@@ -4254,12 +4209,12 @@
                         '<span class="dash-fuel-sub-val">' + (c.km > 0 ? Math.round(c.km) + ' km' : 'N/A') + '</span>' +
                         '</div>' +
                         '<div class="dash-fuel-sub-item">' +
-                        '<span class="dash-fuel-sub-label">📊 Status</span>' +
+                        '<span class="dash-fuel-sub-label">Status</span>' +
                         '<span class="dash-fuel-sub-val">' + tierLabel + '</span>' +
                         '</div>' +
                         '</div>' +
                         '<div class="dash-fuel-bar-wrap">' +
-                        '<div class="dash-fuel-bar-fill" style="width:' + barPct + '%"></div>' +
+                        '<div class="dash-fuel-bar-fill" style="width:' + barPct + '%;"></div>' +
                         '</div>' +
                         '</div>';
                 });
@@ -4281,34 +4236,32 @@
             } catch (err) {
                 console.error('[DashFuel] Error:', err);
                 grid.innerHTML = '<div class="dash-fuel-loading"><span style="color:var(--brand-red);">Error loading fuel data.</span></div>';
+            } finally {
+                if (!window._fuelCalcInProgress && loadingBar) {
+                    loadingBar.style.display = 'none';
+                }
             }
         };
 
-        // ── Hook: wrap the global loadDashboard so fuel widget renders after it ──
-        // We wait until app.js defines loadDashboard, then wrap it.
+        // ── Hook: wrap the global loadDashboard so fuel widget renders immediately after it ──
         function hookLoadDashboard() {
             if (typeof window.loadDashboard !== 'function') {
-                // app.js not loaded yet — retry
                 setTimeout(hookLoadDashboard, 100);
                 return;
             }
             var _orig = window.loadDashboard;
             window.loadDashboard = async function () {
                 await _orig.apply(this, arguments);
-                // Render fuel widget 1.2s after dashboard finishes loading
-                setTimeout(function () {
-                    if (typeof window.renderDashboardFuelWidget === 'function') {
-                        window.renderDashboardFuelWidget();
-                    }
-                }, 1200);
+                if (typeof window.renderDashboardFuelWidget === 'function') {
+                    window.renderDashboardFuelWidget(true);
+                }
             };
         }
         hookLoadDashboard();
 
     })();
     </script>
-
-
 </body>
 
 </html>
+
