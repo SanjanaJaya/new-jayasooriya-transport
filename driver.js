@@ -1573,9 +1573,9 @@ function initDriverMap() {
         attributionControl: true
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 18
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri',
+        maxZoom: 19
     }).addTo(driverMap);
 
     // Zoom buttons repositioned to top right
@@ -2501,42 +2501,64 @@ async function loadDriverRace() {
             supabaseClient.from('commitment_vehicles').select('vehicle_number, vehicle_model, vector_art_url, photo_url, length')
         ]);
 
-        // Build normalized plate -> {model, artUrl, length} maps
-        const modelByPlateNorm = {};
-        const artByPlateNorm = {};
-        const lengthByPlateNorm = {};
+        // Build candidate list for robust candidate scoring across hire_to_pay_vehicles and commitment_vehicles
+        const vehicleCandidates = [];
         (hireVehiclesResult.data || []).forEach(v => {
-            const key = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            if (key) {
-                modelByPlateNorm[key] = v.vehicle_model;
-                artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
-                lengthByPlateNorm[key] = v.length || null;
+            const clean = (v.lorry_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (clean) {
+                vehicleCandidates.push({
+                    clean,
+                    model: v.vehicle_model || null,
+                    artUrl: v.vector_art_url || v.photo_url || null,
+                    length: v.length || null
+                });
             }
         });
         (commVehiclesResult.data || []).forEach(v => {
-            const key = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            if (key) {
-                if (!modelByPlateNorm[key]) modelByPlateNorm[key] = v.vehicle_model;
-                if (!artByPlateNorm[key]) artByPlateNorm[key] = v.vector_art_url || v.photo_url || null;
-                if (!lengthByPlateNorm[key]) lengthByPlateNorm[key] = v.length || null;
+            const clean = (v.vehicle_number || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (clean) {
+                vehicleCandidates.push({
+                    clean,
+                    model: v.vehicle_model || null,
+                    artUrl: v.vector_art_url || v.photo_url || null,
+                    length: v.length || null
+                });
             }
         });
 
-        // Helpers: get model / art URL / length from plate
-        function getModelForPlate(plate) {
-            if (!plate) return null;
-            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            return modelByPlateNorm[key] || null;
-        }
-        function getArtForPlate(plate) {
-            if (!plate) return null;
-            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            return artByPlateNorm[key] || null;
-        }
-        function getLengthForPlate(plate) {
-            if (!plate) return null;
-            const key = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            return lengthByPlateNorm[key] || null;
+        // Robust scored matching helper for plate -> vehicle info
+        function getVehicleInfoForPlate(plate) {
+            if (!plate) return { vehicleModel: null, vehicleArtUrl: null, vehicleLength: null };
+            const targetClean = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (!targetClean) return { vehicleModel: null, vehicleArtUrl: null, vehicleLength: null };
+
+            const scored = vehicleCandidates.map(c => {
+                let score = 0;
+                const isExact = c.clean === targetClean;
+                const isPartial = c.clean && (c.clean.includes(targetClean) || targetClean.includes(c.clean));
+                const hasArt = Boolean(c.artUrl);
+                const hasModel = Boolean(c.model);
+
+                if (isExact && hasArt) score = 6;
+                else if (isPartial && hasArt) score = 5;
+                else if (isExact && hasModel) score = 4;
+                else if (isPartial && hasModel) score = 3;
+                else if (isExact) score = 2;
+                else if (isPartial) score = 1;
+
+                return { ...c, score };
+            }).filter(c => c.score > 0);
+
+            scored.sort((a, b) => b.score - a.score);
+
+            if (scored.length > 0) {
+                return {
+                    vehicleModel: scored[0].model,
+                    vehicleArtUrl: scored[0].artUrl,
+                    vehicleLength: scored[0].length
+                };
+            }
+            return { vehicleModel: null, vehicleArtUrl: null, vehicleLength: null };
         }
 
         // Sum up km per driver
@@ -2555,13 +2577,12 @@ async function loadDriverRace() {
             })
             .map(d => {
                 const lorryNum = lorryByDriver[d.id] || null;
+                const vehInfo = getVehicleInfoForPlate(lorryNum);
                 return {
                     ...d,
                     totalKm: kmByDriver[d.id] || 0,
                     vehiclePlate: lorryNum,
-                    vehicleModel: getModelForPlate(lorryNum),
-                    vehicleArtUrl: getArtForPlate(lorryNum),
-                    vehicleLength: getLengthForPlate(lorryNum)
+                    ...vehInfo
                 };
             });
 
@@ -2575,12 +2596,11 @@ async function loadDriverRace() {
             })
             .map(d => {
                 const lorryNum = lorryByDriver[d.id] || null;
+                const vehInfo = getVehicleInfoForPlate(lorryNum);
                 return {
                     ...d,
                     vehiclePlate: lorryNum,
-                    vehicleModel: getModelForPlate(lorryNum),
-                    vehicleArtUrl: getArtForPlate(lorryNum),
-                    vehicleLength: getLengthForPlate(lorryNum)
+                    ...vehInfo
                 };
             });
 
@@ -2641,6 +2661,14 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
         return diffDays <= 30;
     }
 
+    // Build vehicle art element: real image if present, clean white ISUZU SVG fallback otherwise
+    function buildVehicleArt(artUrl) {
+        if (artUrl) {
+            return `<img src="${artUrl}" class="race-truck-img" alt="vehicle" onerror="this.onerror=null; this.parentElement.innerHTML=defaultLorrySVG;"/>`;
+        }
+        return defaultLorrySVG;
+    }
+
     if (rankedDrivers.length > 0) {
         rankedDrivers.forEach((d, index) => {
             const rank = index + 1;
@@ -2677,66 +2705,12 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                 }
             }
 
-            // Vehicle right-panel HTML (shown in right column)
-            const truckSVG = `<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="race-truck-svg">
-  <defs>
-    <linearGradient id="raceBoxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2a3045"/>
-      <stop offset="100%" stop-color="#1a2035"/>
-    </linearGradient>
-    <linearGradient id="raceCabGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3a4560"/>
-      <stop offset="100%" stop-color="#252d45"/>
-    </linearGradient>
-    <linearGradient id="raceGlassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.7"/>
-    </linearGradient>
-  </defs>
-  <!-- Shadow -->
-  <ellipse cx="40" cy="37" rx="34" ry="2.5" fill="rgba(0,0,0,0.4)"/>
-  <!-- Cargo Box -->
-  <rect x="5" y="8" width="40" height="22" rx="2" fill="url(#raceBoxGrad)" stroke="rgba(255,179,0,0.3)" stroke-width="0.8"/>
-  <!-- Box stripe -->
-  <rect x="5" y="16" width="40" height="1.5" fill="rgba(255,179,0,0.2)"/>
-  <!-- Cab -->
-  <path d="M 45,14 L 58,14 Q 68,14 72,20 L 75,28 Q 76,31 73,33 L 45,33 Z" fill="url(#raceCabGrad)" stroke="rgba(255,179,0,0.25)" stroke-width="0.8"/>
-  <!-- Windshield -->
-  <path d="M 58,15.5 L 66,15.5 Q 70,15.5 72,20 L 73,25 L 58,25 Z" fill="url(#raceGlassGrad)" opacity="0.85"/>
-  <!-- Side window -->
-  <rect x="48" y="17" width="8" height="7" rx="1" fill="url(#raceGlassGrad)" opacity="0.7"/>
-  <!-- Headlight -->
-  <rect x="73" y="27" width="4" height="4" rx="0.8" fill="#FEF9C3"/>
-  <rect x="74" y="28" width="2.5" height="2.5" rx="0.4" fill="#FBBF24"/>
-  <!-- Chassis -->
-  <rect x="8" y="32" width="62" height="2" fill="#1a1a2e"/>
-  <!-- Wheels -->
-  <circle cx="18" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
-  <circle cx="18" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="18" cy="34" r="0.9" fill="#0f172a"/>
-  <circle cx="32" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
-  <circle cx="32" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="32" cy="34" r="0.9" fill="#0f172a"/>
-  <circle cx="62" cy="34" r="5" fill="#0f172a" stroke="rgba(255,179,0,0.5)" stroke-width="1.2"/>
-  <circle cx="62" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
-</svg>`;
-
-            // Build vehicle art element: real image if we have a URL, SVG fallback otherwise
-            function buildVehicleArt(artUrl, isSVGFallback) {
-                if (artUrl) {
-                    return `<img src="${artUrl}" class="race-truck-img" alt="vehicle" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
-                            <div style="display:none;" class="race-truck-svg-wrap">${isSVGFallback}</div>`;
-                }
-                return `<div class="race-truck-svg-wrap">${isSVGFallback}</div>`;
-            }
-
             const formattedLength = formatLorryLength(d.vehicleLength);
             const lengthBadgeHtml = formattedLength ? `<span class="race-vehicle-length-badge">${formattedLength}</span>` : '';
 
             const vehiclePanelHtml = d.vehiclePlate
                 ? `<div class="race-vehicle-panel">
-                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, truckSVG)}</div>
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl)}</div>
                        <div class="race-vehicle-info">
                            <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
                            ${lengthBadgeHtml}
@@ -2744,7 +2718,7 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                        </div>
                    </div>`
                 : `<div class="race-vehicle-panel race-vehicle-panel--empty">
-                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, truckSVG)}</div>
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl)}</div>
                    </div>`;
 
             const card = document.createElement('div');
@@ -2817,48 +2791,12 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                 }
             }
 
-            // Vehicle right-panel for helper
-            const helperTruckSVG = `<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="race-truck-svg">
-  <defs>
-    <linearGradient id="raceBoxGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2a2a45"/>
-      <stop offset="100%" stop-color="#1a1a35"/>
-    </linearGradient>
-    <linearGradient id="raceCabGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3a3560"/>
-      <stop offset="100%" stop-color="#252545"/>
-    </linearGradient>
-    <linearGradient id="raceGlassGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.7"/>
-    </linearGradient>
-  </defs>
-  <ellipse cx="40" cy="37" rx="34" ry="2.5" fill="rgba(0,0,0,0.4)"/>
-  <rect x="5" y="8" width="40" height="22" rx="2" fill="url(#raceBoxGrad2)" stroke="rgba(168,85,247,0.3)" stroke-width="0.8"/>
-  <rect x="5" y="16" width="40" height="1.5" fill="rgba(168,85,247,0.2)"/>
-  <path d="M 45,14 L 58,14 Q 68,14 72,20 L 75,28 Q 76,31 73,33 L 45,33 Z" fill="url(#raceCabGrad2)" stroke="rgba(168,85,247,0.25)" stroke-width="0.8"/>
-  <path d="M 58,15.5 L 66,15.5 Q 70,15.5 72,20 L 73,25 L 58,25 Z" fill="url(#raceGlassGrad2)" opacity="0.85"/>
-  <rect x="48" y="17" width="8" height="7" rx="1" fill="url(#raceGlassGrad2)" opacity="0.7"/>
-  <rect x="73" y="27" width="4" height="4" rx="0.8" fill="#FEF9C3"/>
-  <rect x="74" y="28" width="2.5" height="2.5" rx="0.4" fill="#FBBF24"/>
-  <rect x="8" y="32" width="62" height="2" fill="#1a1a2e"/>
-  <circle cx="18" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
-  <circle cx="18" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="18" cy="34" r="0.9" fill="#0f172a"/>
-  <circle cx="32" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
-  <circle cx="32" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="32" cy="34" r="0.9" fill="#0f172a"/>
-  <circle cx="62" cy="34" r="5" fill="#0f172a" stroke="rgba(168,85,247,0.5)" stroke-width="1.2"/>
-  <circle cx="62" cy="34" r="2.2" fill="#334155"/>
-  <circle cx="62" cy="34" r="0.9" fill="#0f172a"/>
-</svg>`;
-
             const helperFormattedLength = formatLorryLength(d.vehicleLength);
             const helperLengthBadgeHtml = helperFormattedLength ? `<span class="race-vehicle-length-badge">${helperFormattedLength}</span>` : '';
 
             const helperVehiclePanelHtml = d.vehiclePlate
                 ? `<div class="race-vehicle-panel race-vehicle-panel--helper">
-                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, helperTruckSVG)}</div>
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl)}</div>
                        <div class="race-vehicle-info">
                            <span class="race-vehicle-plate-badge">${d.vehiclePlate}</span>
                            ${helperLengthBadgeHtml}
@@ -2866,7 +2804,7 @@ function renderRaceListUI(rankedDrivers, maxKm, helpers = []) {
                        </div>
                    </div>`
                 : `<div class="race-vehicle-panel race-vehicle-panel--empty race-vehicle-panel--helper">
-                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl, helperTruckSVG)}</div>
+                       <div class="race-truck-wrap">${buildVehicleArt(d.vehicleArtUrl)}</div>
                    </div>`;
 
             const card = document.createElement('div');
@@ -3277,9 +3215,9 @@ function initGpsMap() {
         attributionControl: false
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 18
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri',
+        maxZoom: 19
     }).addTo(gpsMap);
 
     setTimeout(() => { if (gpsMap) gpsMap.invalidateSize(); }, 350);

@@ -540,8 +540,8 @@
 
     const MAP_TILE_PROVIDERS = {
         street: {
-            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            options: { maxZoom: 19, attribution: '&copy; OpenStreetMap' }
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            options: { maxZoom: 19, attribution: '&copy; Esri World Street Map' }
         },
         satellite: {
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
