@@ -29,7 +29,7 @@ function normaliseVehicleDisplay(name) {
 // Function to load and add logo to PDF
 async function addLogoToReport(doc, x, y, size) {
     return new Promise((resolve, reject) => {
-        const logoUrl = 'https://i.postimg.cc/QdryzTyS/Bigger-New-Logo.png';
+        const logoUrl = 'https://i.postimg.cc/brWW9B6P/New-Logo-White-BG.png';
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         

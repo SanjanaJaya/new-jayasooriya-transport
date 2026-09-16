@@ -1074,3 +1074,21 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
 }
 
 .offline-banner.hidden { display: none; }
+
+/* Mobile Landscape Orientation */
+@media (max-height: 520px) and (orientation: landscape) {
+    .app-header {
+        padding: 8px 12px 6px;
+    }
+    .header-top-row {
+        margin-bottom: 4px;
+    }
+    .client-avatar {
+        width: 32px; height: 32px;
+        font-size: 16px;
+    }
+    .map-container {
+        height: 240px !important;
+    }
+}
+

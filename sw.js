@@ -4,7 +4,7 @@ const STATIC_ASSETS = [
     '/driver-styles.css',
     '/driver.js',
     '/driver-manifest.json',
-    'https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png',
+    'https://i.postimg.cc/brWW9B6P/New-Logo-White-BG.png',
     'https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png',
     'https://i.postimg.cc/pTbqBcdz/idm2DKn-i-I.png',
     'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',

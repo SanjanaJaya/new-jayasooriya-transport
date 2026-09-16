@@ -1345,3 +1345,25 @@ body.light-mode .portal-back-btn:hover {
         grid-template-columns: repeat(3, 1fr);
     }
 }
+
+/* Mobile Landscape Orientation (Smartphones in landscape) */
+@media (max-height: 520px) and (orientation: landscape) {
+    .app-header {
+        height: 48px !important;
+        padding: 0 12px !important;
+    }
+    .brand-logo {
+        width: 26px !important;
+        height: 26px !important;
+    }
+    .brand-title {
+        font-size: 13px !important;
+    }
+    .bottom-nav {
+        height: 48px !important;
+    }
+    .nav-icon {
+        font-size: 16px !important;
+    }
+}
+

@@ -10,7 +10,7 @@
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#080A0F",
-    "orientation": "portrait",
+    "orientation": "any",
     "categories": [
         "business",
         "productivity",
@@ -18,13 +18,13 @@
     ],
     "icons": [
         {
-            "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+            "src": "icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+            "src": "icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
@@ -35,10 +35,10 @@
             "name": "Month Race",
             "short_name": "Race",
             "description": "View driver standings and race details",
-            "url": "/driver.html",
+            "url": "driver.html",
             "icons": [
                 {
-                    "src": "https://i.postimg.cc/15hFLyyD/New-Logo-White-BG.png",
+                    "src": "icon-192.png",
                     "sizes": "192x192",
                     "type": "image/png"
                 }

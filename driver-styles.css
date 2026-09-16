@@ -4085,3 +4085,28 @@ body.light-mode .hint-card-header {
     }
 }
 
+/* Mobile Landscape Orientation (Phones in landscape) */
+@media (max-height: 520px) and (orientation: landscape) {
+    .app-header {
+        padding: 8px 12px !important;
+    }
+    .header-top-row {
+        margin-bottom: 4px !important;
+    }
+    .top-stat-section {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+    .stat-card {
+        padding: 10px 12px !important;
+    }
+    .salary-modal-content,
+    .driver-profile-modal-content,
+    .gps-modal-content {
+        max-height: 94dvh !important;
+        overflow-y: auto !important;
+        padding: 14px !important;
+    }
+}
+
+
