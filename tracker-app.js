@@ -953,6 +953,23 @@
 
     // ── Initialization ──
     async function initApp() {
+        // Security Gate: Verify active authenticated session
+        if (supabaseClient) {
+            try {
+                var authRes = await supabaseClient.auth.getSession();
+                var session = authRes && authRes.data ? authRes.data.session : null;
+                if (!session) {
+                    console.warn('Unauthenticated access attempt to tracker.html. Redirecting to index.html...');
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } catch (authErr) {
+                console.error('Tracker auth check error:', authErr);
+                window.location.href = 'index.html';
+                return;
+            }
+        }
+
         loadAddressCache();
         initTrackerMap();
         await loadDatabaseMetadata();

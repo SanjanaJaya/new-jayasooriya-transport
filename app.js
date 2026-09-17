@@ -443,6 +443,7 @@ if (document.readyState === 'loading') {
 
 // Authentication Functions
 function showLogin() {
+    document.body.classList.remove('authenticated');
     const modal = document.getElementById('loginModal');
     if (modal) modal.classList.add('active');
     const container = document.querySelector('.pages-container');
@@ -454,14 +455,15 @@ function showLogin() {
 }
 
 function showApp() {
+    document.body.classList.add('authenticated');
     const modal = document.getElementById('loginModal');
     if (modal) modal.classList.remove('active');
     const container = document.querySelector('.pages-container');
     const sidebar = document.querySelector('.sidebar');
     const header = document.querySelector('.top-header');
-    if (container) container.style.display = 'block';
-    if (sidebar) sidebar.style.display = 'flex';
-    if (header) header.style.display = 'flex';
+    if (container) container.style.display = '';
+    if (sidebar) sidebar.style.display = '';
+    if (header) header.style.display = '';
     if (currentUser) {
         document.getElementById('userEmail').textContent = currentUser.email;
     }

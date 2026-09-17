@@ -815,6 +815,11 @@ async function checkExistingSession() {
 
 // Switch between views
 function showView(viewId) {
+    if (viewId === 'loginView') {
+        document.body.classList.remove('authenticated');
+    } else {
+        document.body.classList.add('authenticated');
+    }
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');
     });

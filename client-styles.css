@@ -99,7 +99,22 @@ body {
     padding-right: env(safe-area-inset-right);
 }
 
-/* ── Views ── */
+/* ── Views & Security Gate ── */
+body:not(.authenticated) #appView {
+    display: none !important;
+}
+
+body:not(.authenticated) #loginView {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+}
+
+body.authenticated #loginView {
+    display: none !important;
+}
+
 .view { display: none; }
 .view.active { display: block; }
 

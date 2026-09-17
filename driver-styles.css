@@ -183,8 +183,26 @@ input, button, textarea, select { font-family: inherit; }
 }
 
 /* ════════════════════════════════════════════════════
-   LOGIN VIEW — Uber Black Premium
+   SECURITY GATE & LOGIN VIEW
 ═══════════════════════════════════════════════════ */
+body:not(.authenticated) #dashboardView,
+body:not(.authenticated) .app-header,
+body:not(.authenticated) .top-stat-section,
+body:not(.authenticated) .map-wrapper {
+    display: none !important;
+}
+
+body:not(.authenticated) #loginView {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+}
+
+body.authenticated #loginView {
+    display: none !important;
+}
+
 #loginView {
     justify-content: center;
     align-items: center;

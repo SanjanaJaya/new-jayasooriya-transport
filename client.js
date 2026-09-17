@@ -245,6 +245,7 @@ async function loginClient(email, password) {
 }
 
 function showApp() {
+    document.body.classList.add('authenticated');
     document.getElementById('loginView').classList.remove('active');
     document.getElementById('appView').classList.add('active');
 
@@ -260,6 +261,7 @@ function showApp() {
 }
 
 function showLogin() {
+    document.body.classList.remove('authenticated');
     document.getElementById('appView').classList.remove('active');
     document.getElementById('loginView').classList.add('active');
 }

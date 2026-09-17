@@ -1872,6 +1872,33 @@ tbody tr:last-child td { border-bottom: none; }
 .btn-view:hover { background: #1565C0; }
 
 /* =====================================================
+   SECURITY & AUTHENTICATION GATE
+   ===================================================== */
+body:not(.authenticated) .container > .sidebar,
+body:not(.authenticated) .container > .main-content > .top-header,
+body:not(.authenticated) .container > .main-content > .pages-container,
+body:not(.authenticated) .dark-mode-toggle,
+body:not(.authenticated) .admin-offline-banner {
+    display: none !important;
+}
+
+body:not(.authenticated) #loginModal {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    background: var(--surface-bg) !important;
+}
+
+body:not(.authenticated) .container {
+    background: var(--surface-bg) !important;
+}
+
+body.authenticated #loginModal {
+    display: none !important;
+}
+
+/* =====================================================
    MODALS
    ===================================================== */
 .modal {
