@@ -37,6 +37,7 @@ let topRoutesChart = null;
 let dailyActivityChart = null;
 let costVsRevenueChart = null;
 let dailyKmChart = null;
+let monthlyKmChart = null;
 let dailyFuelChart = null;
 let weeklyVehicleKmChart = null;
 let cumulativeKmCompareChart = null;
@@ -4986,9 +4987,11 @@ async function loadDashboardCharts(cachedData = null) {
         const revenues = [];
         const profits = [];
         const fuelCosts = [];
+        const monthlyKms = [];
         let totalRevenue6M = 0;
         let totalProfit6M = 0;
         let totalHires6M = 0;
+        let totalKm6M = 0;
 
         // Calculate 6-month date range
         const today = new Date();
@@ -5003,6 +5006,12 @@ async function loadDashboardCharts(cachedData = null) {
         const endMonthMonth = String(endMonthDate.getMonth() + 1).padStart(2, '0');
         const endMonthDay = String(endMonthDate.getDate()).padStart(2, '0');
         const endDate6M = `${endMonthYear}-${endMonthMonth}-${endMonthDay}`;
+
+        // 12-Month date range for monthly distance calculation
+        const startMonthDate12M = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+        const startMonthYear12M = startMonthDate12M.getFullYear();
+        const startMonthMonth12M = String(startMonthDate12M.getMonth() + 1).padStart(2, '0');
+        const startDate12M = `${startMonthYear12M}-${startMonthMonth12M}-01`;
 
         // Selected month breakdown range calculation
         const selMonth = document.getElementById('dashboardMonth')?.value;
@@ -5022,7 +5031,7 @@ async function loadDashboardCharts(cachedData = null) {
             bdOtherRec = cachedData.otherOpHires;
             bdDayOffs = cachedData.dayOffs;
 
-            // Fetch only 6-month data concurrently
+            // Fetch 12-month data concurrently
             const [
                 { data: rAllHireRecords6M },
                 { data: rAllCommitmentRecords6M },
@@ -5031,12 +5040,12 @@ async function loadDashboardCharts(cachedData = null) {
                 { data: rAllCommitmentVehicles },
                 { data: rAllElRecords6M }
             ] = await Promise.all([
-                supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
-                supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
-                supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate6M).lte('day_off_date', endDate6M),
-                supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
+                supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
+                supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
+                supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate12M).lte('day_off_date', endDate6M),
+                supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
                 supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId),
-                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate6M).lte('date', endDate6M)
+                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate12M).lte('date', endDate6M)
             ]);
             allHireRecords6M = rAllHireRecords6M;
             allCommitmentRecords6M = rAllCommitmentRecords6M;
@@ -5045,7 +5054,7 @@ async function loadDashboardCharts(cachedData = null) {
             allCommitmentVehicles = rAllCommitmentVehicles;
             allElRecords6M = rAllElRecords6M;
         } else {
-            // Fetch all 6-month datasets, commitment vehicles, and selected month breakdown data concurrently
+            // Fetch all 12-month datasets, commitment vehicles, and selected month breakdown data concurrently
             const [
                 { data: rAllHireRecords6M },
                 { data: rAllCommitmentRecords6M },
@@ -5059,17 +5068,17 @@ async function loadDashboardCharts(cachedData = null) {
                 { data: rBdDayOffs },
                 { data: rAllElRecords6M }
             ] = await Promise.all([
-                supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
-                supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
-                supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate6M).lte('day_off_date', endDate6M),
-                supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate6M).lte('hire_date', endDate6M),
+                supabaseClient.from('hire_to_pay_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
+                supabaseClient.from('commitment_records').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
+                supabaseClient.from('commitment_day_offs').select('*').eq('user_id', currentQueryUserId).gte('day_off_date', startDate12M).lte('day_off_date', endDate6M),
+                supabaseClient.from('other_operation_hires').select('*').eq('user_id', currentQueryUserId).gte('hire_date', startDate12M).lte('hire_date', endDate6M),
                 supabaseClient.from('commitment_vehicles').select('*').eq('user_id', currentQueryUserId),
                 // Selected Month Breakdown data
                 supabaseClient.from('hire_to_pay_records').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
                 supabaseClient.from('commitment_records').select('vehicle_id, distance').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
                 supabaseClient.from('other_operation_hires').select('hire_amount').eq('user_id', currentQueryUserId).gte('hire_date', selStart).lte('hire_date', selEnd),
                 supabaseClient.from('commitment_day_offs').select('deduction_amount').eq('user_id', currentQueryUserId).gte('day_off_date', selStart).lte('day_off_date', selEnd),
-                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate6M).lte('date', endDate6M)
+                supabaseClient.from('excessing_litres').select('*').eq('user_id', currentQueryUserId).gte('date', startDate12M).lte('date', endDate6M)
             ]);
             allHireRecords6M = rAllHireRecords6M;
             allCommitmentRecords6M = rAllCommitmentRecords6M;
@@ -5143,29 +5152,77 @@ async function loadDashboardCharts(cachedData = null) {
             const monthFuelAllowance = monthFuelCost * 0.1800; // 18.00% VAT OFF
             const monthNetProfit = monthProfit + monthFuelAllowance - monthElActualCost;
 
+            let monthKm = 0;
+            hireRecords?.forEach(r => { monthKm += (r.distance || 0); });
+            commitmentRecords?.forEach(r => { monthKm += (r.distance || 0); });
+            otherOpRecords?.forEach(r => { monthKm += (r.distance || 0); });
+            monthKm = Math.round(monthKm);
+
             months.push(monthLabel);
             revenues.push(monthRevenue);
             profits.push(monthNetProfit);
             fuelCosts.push(monthFuelCost);
+            monthlyKms.push(monthKm);
             totalRevenue6M += monthRevenue;
             totalProfit6M += monthNetProfit;
             totalHires6M += (hireRecords?.length || 0) + (commitmentRecords?.length || 0) + (otherOpRecords?.length || 0);
+            totalKm6M += monthKm;
+        }
+
+        // Calculate 12-month distance data for monthly distance run line chart
+        const kmMonths12M = [];
+        const monthlyKms12M = [];
+        let totalKm12M = 0;
+
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(1);
+            date.setMonth(date.getMonth() - i);
+            const year = date.getFullYear();
+            const monthRaw = date.getMonth() + 1;
+            const month = String(monthRaw).padStart(2, '0');
+            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            const targetMonthKey = `${year}-${month}`;
+
+            const hireRecords = allHireRecords6M?.filter(r => r.hire_date?.startsWith(targetMonthKey)) || [];
+            const commitmentRecords = allCommitmentRecords6M?.filter(r => r.hire_date?.startsWith(targetMonthKey)) || [];
+            const otherOpRecords = allOtherOpRecords6M?.filter(r => r.hire_date?.startsWith(targetMonthKey)) || [];
+
+            let monthKm = 0;
+            hireRecords.forEach(r => { monthKm += (r.distance || 0); });
+            commitmentRecords.forEach(r => { monthKm += (r.distance || 0); });
+            otherOpRecords.forEach(r => { monthKm += (r.distance || 0); });
+            monthKm = Math.round(monthKm);
+
+            kmMonths12M.push(monthLabel);
+            monthlyKms12M.push(monthKm);
+            totalKm12M += monthKm;
+        }
+
+        const totalKm12MEl = document.getElementById('totalKm12MValue');
+        if (totalKm12MEl) {
+            totalKm12MEl.textContent = `${totalKm12M.toLocaleString('en-US')} km`;
         }
 
         const avgRevenue = totalRevenue6M / 6;
         const avgProfit = totalProfit6M / 6;
         const profitMargin = totalRevenue6M > 0 ? ((totalProfit6M / totalRevenue6M) * 100) : 0;
 
+        const avgKm6M = totalKm6M / 6;
+
         document.getElementById('avgRevenue').textContent = `LKR ${avgRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('avgProfit').textContent = `LKR ${avgProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('profitMargin').textContent = `${profitMargin.toFixed(1)}%`;
         document.getElementById('sixMonthHires').textContent = totalHires6M;
+        const avgKmEl = document.getElementById('avgKm6M');
+        if (avgKmEl) avgKmEl.textContent = `${Math.round(avgKm6M).toLocaleString('en-US')} km`;
 
         if (revenueChart) revenueChart.destroy();
         if (profitChart) profitChart.destroy();
         if (fuelCostChart) fuelCostChart.destroy();
         if (revenueBreakdownChart) revenueBreakdownChart.destroy();
         if (vehicleRevenueChart) vehicleRevenueChart.destroy();
+        if (monthlyKmChart) monthlyKmChart.destroy();
 
         const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
         if (revenueCtx) {
@@ -5271,6 +5328,87 @@ async function loadDashboardCharts(cachedData = null) {
                         y: {
                             beginAtZero: true,
                             ticks: { callback: v => `LKR ${(v / 1000).toFixed(0)}K` }
+                        }
+                    }
+                }
+            });
+        }
+
+        const monthlyKmCtx = document.getElementById('monthlyKmChart')?.getContext('2d');
+        if (monthlyKmCtx) {
+            const theme = getChartTheme ? getChartTheme() : {};
+            
+            // Rich vibrant gradient area fill for line chart
+            const gradient = monthlyKmCtx.createLinearGradient(0, 0, 0, 320);
+            gradient.addColorStop(0, 'rgba(0, 180, 216, 0.4)');
+            gradient.addColorStop(0.5, 'rgba(0, 114, 206, 0.12)');
+            gradient.addColorStop(1, 'rgba(0, 114, 206, 0.0)');
+
+            monthlyKmChart = new Chart(monthlyKmCtx, {
+                type: 'line',
+                data: {
+                    labels: kmMonths12M,
+                    datasets: [{
+                        label: 'Total Distance Run (KM)',
+                        data: monthlyKms12M,
+                        borderColor: '#00B4D8',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#00B4D8',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#0072CE',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Monthly Total Distance Run (KM) — Last 12 Months (Total: ${totalKm12M.toLocaleString()} km)`,
+                            color: theme.titleColor || '#1A1D24',
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        legend: { display: true, position: 'top', labels: { color: theme.textColor } },
+                        tooltip: {
+                            backgroundColor: theme.tooltipBg || '#fff',
+                            titleColor: theme.tooltipText || '#1A1D24',
+                            bodyColor: theme.tooltipText || '#1A1D24',
+                            borderColor: theme.tooltipBorder || '#E2E5EA',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function (ctx) {
+                                    const val = ctx.parsed.y || 0;
+                                    return ` Total Distance: ${val.toLocaleString()} km`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: theme.gridColor || 'rgba(0,0,0,0.05)' },
+                            ticks: { color: theme.textColor || '#4B5260' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: theme.gridColor || 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                color: theme.textColor || '#4B5260',
+                                callback: v => `${(v).toLocaleString()} km`
+                            }
                         }
                     }
                 }

@@ -709,6 +709,10 @@
                                 <span class="detail-label">Total Hires</span>
                                 <span class="detail-value" id="sixMonthHires">0</span>
                             </div>
+                            <div class="detail-metric">
+                                <span class="detail-label">Avg Distance / Month</span>
+                                <span class="detail-value" id="avgKm6M">0 km</span>
+                            </div>
                         </div>
                     </div>
 
@@ -832,6 +836,20 @@
                         <div class="charts-container">
                             <div class="chart-wrapper chart-wide">
                                 <canvas id="costVsRevenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-section" id="monthlyKmSection">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                            <h3 style="margin: 0;">🗓️ Monthly Distance Run (KM)</h3>
+                            <div id="monthlyKmBadge12M" class="km-total-badge" style="padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; background: rgba(0, 180, 216, 0.12); color: #00B4D8; border: 1px solid rgba(0, 180, 216, 0.3); display: flex; align-items: center; gap: 6px;">
+                                🛣️ Last 12 Months Total: <span id="totalKm12MValue" style="font-size: 14px; font-weight: 800; color: var(--text-primary);">0 km</span>
+                            </div>
+                        </div>
+                        <div class="charts-container">
+                            <div class="chart-wrapper chart-wide">
+                                <canvas id="monthlyKmChart"></canvas>
                             </div>
                         </div>
                     </div>
