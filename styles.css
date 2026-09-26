@@ -14242,7 +14242,100 @@ body.dark-mode .dash-fuel-summary-bar {
         max-height: 90dvh !important;
         overflow-y: auto !important;
     }
+
+/* ============================================================
+   SYSMAPAPI — UNIFIED MAP ENGINE STYLING & CUSTOM UTILITIES
+   ============================================================ */
+
+.sys-map-truck-icon,
+.sys-map-distributor-icon,
+.sys-map-start-icon,
+.sys-map-stop-icon {
+    background: transparent;
+    border: none;
 }
+
+/* Autocomplete Input Dropdown Container */
+.sys-autocomplete-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.sys-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+    background: var(--surface-card, #ffffff);
+    border: 1.5px solid var(--surface-border, #cbd5e1);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    max-height: 240px;
+    overflow-y: auto;
+    margin-top: 5px;
+    animation: fadeIn 0.2s ease;
+}
+
+.sys-autocomplete-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--surface-border, #f1f5f9);
+    color: var(--text-primary, #1e293b);
+    transition: background 0.15s ease;
+}
+
+.sys-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.sys-autocomplete-item:hover,
+.sys-autocomplete-item.active {
+    background: rgba(209, 0, 31, 0.08);
+    color: var(--brand-red, #D1001F);
+}
+
+body.dark-mode .sys-autocomplete-dropdown {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+body.dark-mode .sys-autocomplete-item {
+    border-bottom-color: #1e293b;
+    color: #cbd5e1;
+}
+
+body.dark-mode .sys-autocomplete-item:hover {
+    background: rgba(209, 0, 31, 0.2);
+    color: #ffffff;
+}
+
+/* Glassmorphism Leaflet Popup override for SysMapAPI */
+.leaflet-popup-content-wrapper {
+    background: rgba(15, 23, 42, 0.92) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-popup-tip {
+    background: rgba(15, 23, 42, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.leaflet-popup-close-button {
+    color: #94a3b8 !important;
+    padding: 6px !important;
+}
+
+.leaflet-popup-close-button:hover {
+    color: #ffffff !important;
+}
+
 
 
 

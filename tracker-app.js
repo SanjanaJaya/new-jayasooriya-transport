@@ -540,16 +540,16 @@
 
     const MAP_TILE_PROVIDERS = {
         street: {
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-            options: { maxZoom: 19, attribution: '&copy; Esri World Street Map' }
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            options: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }
         },
         satellite: {
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             options: { maxZoom: 19, attribution: '&copy; Esri World Imagery' }
         },
         dark: {
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-            options: { maxZoom: 19, attribution: '&copy; Esri World Dark Gray' }
+            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            options: { maxZoom: 20, attribution: '&copy; OpenStreetMap &copy; CARTO' }
         }
     };
 

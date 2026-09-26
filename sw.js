@@ -1,8 +1,9 @@
-const CACHE_NAME = 'jt-driver-cache-v12';
+const CACHE_NAME = 'jt-driver-cache-v13';
 const STATIC_ASSETS = [
     '/driver.html',
     '/driver-styles.css',
     '/driver.js',
+    '/map-api.js',
     '/driver-manifest.json',
     'https://i.postimg.cc/brWW9B6P/New-Logo-White-BG.png',
     'https://i.postimg.cc/QdvbXY1c/id-AYs-TFstv.png',
