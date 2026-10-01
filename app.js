@@ -918,11 +918,19 @@ async function loadDashboard() {
         // Load Fleet Overview
         loadFleetOverview();
 
+        // Sync admin race month filter with the global dashboard month if present
+        const adminRaceMonthEl = document.getElementById('adminRaceMonthFilter');
+        if (adminRaceMonthEl) {
+            adminRaceMonthEl.value = monthValue; // Sync with global month
+        }
+        initAdminRaceMonthFilter();
+        const raceMonthVal = adminRaceMonthEl?.value || monthValue;
+
         // Phase 2: Load tables and charts asynchronously without blocking the UI
         Promise.all([
             loadVehiclePerformance(monthValue, cachedData),
             loadVehicleFuelEfficiency(monthValue, cachedData),
-            loadDriverPerformance(monthValue), // queries separate driver tables, so it remains independent
+            loadDriverPerformance(raceMonthVal), // queries separate driver tables using race month selector
             loadDashboardCharts(cachedData),
             loadVehicleRevenuePieChart(monthValue, cachedData),
             loadRevenueTypeSplitChart(monthValue, cachedData),
@@ -12017,6 +12025,83 @@ async function updateKmSalaryWidget() {
         console.error('Error updating salary widget:', err.message);
         widget.innerHTML = `<div style="color: var(--brand-red); font-size: 14px; text-align: center; width: 100%;">Failed to load salary widget: ${err.message}</div>`;
     }
+}
+
+// ============ ADMIN KM RACE MONTH NAVIGATION ============
+
+function initAdminRaceMonthFilter() {
+    const input = document.getElementById('adminRaceMonthFilter');
+    if (!input) return;
+    // Set to current month if empty
+    if (!input.value) {
+        const now = new Date();
+        input.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    // Set max to current month to prevent future navigation
+    const now = new Date();
+    input.max = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    input.min = '2026-01';
+    updateAdminRaceMonthNavUI();
+}
+
+function changeAdminRaceMonth(delta) {
+    const input = document.getElementById('adminRaceMonthFilter');
+    if (!input) return;
+
+    let val = input.value;
+    if (!val) {
+        const now = new Date();
+        val = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    const [yearStr, monthStr] = val.split('-');
+    let year = parseInt(yearStr);
+    let month = parseInt(monthStr) - 1; // 0-indexed
+
+    month += delta;
+    if (month < 0) { month = 11; year--; }
+    else if (month > 11) { month = 0; year++; }
+
+    // Clamp: don't go beyond current month
+    const now = new Date();
+    if (year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth())) {
+        year = now.getFullYear();
+        month = now.getMonth();
+    }
+    // Don't go before 2026-01
+    if (year < 2026) { year = 2026; month = 0; }
+
+    input.value = `${year}-${String(month + 1).padStart(2, '0')}`;
+    updateAdminRaceMonthNavUI();
+    loadAdminKmRace();
+}
+
+function updateAdminRaceMonthNavUI() {
+    const input = document.getElementById('adminRaceMonthFilter');
+    const nextBtn = document.getElementById('adminRaceNextMonth');
+    const prevBtn = document.getElementById('adminRacePrevMonth');
+    if (!input) return;
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    if (nextBtn) {
+        nextBtn.disabled = input.value >= currentMonth;
+        nextBtn.style.opacity = nextBtn.disabled ? '0.35' : '1';
+        nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
+    }
+    if (prevBtn) {
+        prevBtn.disabled = input.value <= '2026-01';
+        prevBtn.style.opacity = prevBtn.disabled ? '0.35' : '1';
+        prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
+    }
+}
+
+function loadAdminKmRace() {
+    const input = document.getElementById('adminRaceMonthFilter');
+    if (!input || !input.value) return;
+    updateAdminRaceMonthNavUI();
+    loadDriverPerformance(input.value);
 }
 
 async function loadDriverPerformance(monthValue) {

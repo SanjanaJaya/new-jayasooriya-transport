@@ -2397,16 +2397,63 @@ function animateNumericText(elementId, start, end, duration, prefix = "", suffix
 
 // ==================== DRIVER RACE Standings ====================
 
+// Month navigation state: { year, month } where month is 0-indexed
+let raceSelectedMonth = null;
+
+function getRaceSelectedDate() {
+    if (!raceSelectedMonth) {
+        const now = new Date();
+        raceSelectedMonth = { year: now.getFullYear(), month: now.getMonth() };
+    }
+    return raceSelectedMonth;
+}
+
+function changeRaceMonth(delta) {
+    const sel = getRaceSelectedDate();
+    sel.month += delta;
+    if (sel.month < 0) {
+        sel.month = 11;
+        sel.year--;
+    } else if (sel.month > 11) {
+        sel.month = 0;
+        sel.year++;
+    }
+    // Don't allow going beyond current month
+    const now = new Date();
+    if (sel.year > now.getFullYear() || (sel.year === now.getFullYear() && sel.month > now.getMonth())) {
+        sel.year = now.getFullYear();
+        sel.month = now.getMonth();
+    }
+    // Don't go before 2026-01
+    if (sel.year < 2026) {
+        sel.year = 2026;
+        sel.month = 0;
+    }
+    updateRaceMonthNavUI();
+    loadDriverRace();
+}
+
+function updateRaceMonthNavUI() {
+    const sel = getRaceSelectedDate();
+    const now = new Date();
+    const isCurrentMonth = sel.year === now.getFullYear() && sel.month === now.getMonth();
+    const isMinMonth = sel.year === 2026 && sel.month === 0;
+
+    const nextBtn = document.getElementById('raceNextMonthBtn');
+    const prevBtn = document.getElementById('racePrevMonthBtn');
+    if (nextBtn) nextBtn.disabled = isCurrentMonth;
+    if (prevBtn) prevBtn.disabled = isMinMonth;
+}
+
 function openRaceModal() {
-    console.log('[Modal Debug] openRaceModal() called');
     const modal = document.getElementById('raceModal');
-    console.log('[Modal Debug] raceModal element:', modal, 'classList before:', modal?.classList?.toString());
     if (modal) {
+        // Reset to current month when opening
+        const now = new Date();
+        raceSelectedMonth = { year: now.getFullYear(), month: now.getMonth() };
         modal.classList.add('active');
-        console.log('[Modal Debug] raceModal classList after:', modal.classList.toString());
+        updateRaceMonthNavUI();
         loadDriverRace();
-    } else {
-        console.error('[Modal Debug] raceModal element NOT FOUND in DOM!');
     }
 }
 
@@ -2442,14 +2489,17 @@ async function loadDriverRace() {
     listContainer.classList.add('hidden');
     listContainer.innerHTML = '';
 
-    const now = new Date();
-    // Format label strictly using 2026, e.g., "June 2026 Standings"
-    const displayDate = new Date(2026, now.getMonth(), 1);
+    // Use selected month from navigation state
+    const sel = getRaceSelectedDate();
+    const displayDate = new Date(sel.year, sel.month, 1);
     const monthName = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     if (labelEl) labelEl.textContent = `${monthName} ${t('race.standings')}`;
 
+    // Build cache key per month
+    const cacheKey = `jt_driver_race_standings_${sel.year}_${sel.month}`;
+
     if (!navigator.onLine) {
-        const cached = getCachedData('jt_driver_race_standings');
+        const cached = getCachedData(cacheKey);
         if (cached) {
             renderRaceListUI(cached.rankedDrivers, cached.maxKm, cached.helpers || []);
             loadingEl.classList.add('hidden');
@@ -2459,11 +2509,11 @@ async function loadDriverRace() {
     }
 
     try {
-        // Use current calendar month for the race, strictly restricted to 2026
-        const year = 2026;
-        const month = String(now.getMonth() + 1).padStart(2, '0');
+        // Use selected month for the race query
+        const year = sel.year;
+        const month = String(sel.month + 1).padStart(2, '0');
         const startDate = `${year}-${month}-01`;
-        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const lastDay = new Date(year, sel.month + 1, 0).getDate();
         const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
         // 1. Fetch active drivers and helpers with operation details
@@ -2614,7 +2664,7 @@ async function loadDriverRace() {
             loadingEl.classList.add('hidden');
             listContainer.classList.remove('hidden');
             // Cache empty standings
-            setCachedData('jt_driver_race_standings', { rankedDrivers: [], maxKm: 1, helpers: [] });
+            setCachedData(cacheKey, { rankedDrivers: [], maxKm: 1, helpers: [] });
             return;
         }
 
@@ -2623,7 +2673,7 @@ async function loadDriverRace() {
         const maxKm = rankedDrivers.length > 0 ? (rankedDrivers[0].totalKm || 1) : 1;
 
         // Cache standings
-        setCachedData('jt_driver_race_standings', { rankedDrivers, maxKm, helpers });
+        setCachedData(cacheKey, { rankedDrivers, maxKm, helpers });
 
         renderRaceListUI(rankedDrivers, maxKm, helpers);
 
@@ -2634,7 +2684,7 @@ async function loadDriverRace() {
         console.error('Error loading driver race:', err.message);
         
         // Fallback to cache on error
-        const cached = getCachedData('jt_driver_race_standings');
+        const cached = getCachedData(cacheKey);
         if (cached) {
             renderRaceListUI(cached.rankedDrivers, cached.maxKm, cached.helpers || []);
         } else {

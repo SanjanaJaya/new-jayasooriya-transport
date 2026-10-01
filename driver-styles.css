@@ -1655,6 +1655,63 @@ body.light-mode .kd-popup-copy-btn:hover {
 /* ════════════════════════════════════════════════════
    RACE / LEADERBOARD
 ═══════════════════════════════════════════════════ */
+
+/* Month Navigation */
+.race-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.race-month-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: var(--bg-card);
+    color: var(--text-1);
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-smooth);
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.race-month-arrow:hover {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+    transform: scale(1.08);
+}
+
+.race-month-arrow:active {
+    transform: scale(0.92);
+}
+
+.race-month-arrow:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.race-month-label {
+    min-width: 160px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--text-1) !important;
+    letter-spacing: -0.2px;
+    transition: opacity 0.2s;
+}
+
 .race-list { display: flex; flex-direction: column; gap: 10px; }
 
 .race-item {
